@@ -9,6 +9,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { trackEvent } from "@/lib/tracking";
+import { detectMarket } from "@/lib/market";
 import FaultResolutionScreen, { type DiagnosticResult } from "@/components/FaultResolutionScreen";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -21,8 +22,10 @@ export default function PublicSharePage() {
 
   useEffect(() => {
     if (!share_token) return;
-    // No auth header — this is a public endpoint
-    fetch(`${API_URL}/api/diagnostic/public/${share_token}`)
+    // No auth header — public endpoint. Send X-Market so backend picks correct fault_cards table.
+    fetch(`${API_URL}/api/diagnostic/public/${share_token}`, {
+      headers: { "X-Market": detectMarket() },
+    })
       .then(async (res) => {
         if (!res.ok) {
           if (res.status === 404) throw new Error("not_found");
@@ -63,9 +66,4 @@ export default function PublicSharePage() {
       {/* Minimal public header */}
       <div style={{ borderBottom: "1px solid #e2e8f0", padding: "12px 20px", display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ fontWeight: 700, fontSize: 15, color: "#0f172a" }}>SnapAI</span>
-        <span style={{ fontSize: 12, color: "#94a3b8" }}>Diagnostic Report</span>
-      </div>
-      <FaultResolutionScreen data={data} mode="public" />
-    </div>
-  );
-}
+        <span style={{ f

@@ -1269,3 +1269,292 @@ async def get_diagnostic_result(
         "share_url": share_url,
         "created_at": session.created_at.isoformat() if session.created_at else None,
     }
+
+
+# =============================================================================
+# Track D: remaining endpoints (D.2, D.3, D.4, D.9)
+# GET  /list                       -- paginated company history
+# POST /feedback                   -- tech feedback on a diagnosis
+# POST /finalize/{session_id}      -- set share_token + confidence_level
+# GET  /public/{share_token}       -- unauthenticated public share
+# Added: 2026-05-20  DEC-025 / DEC-026
+# =============================================================================
+
+import base64
+import uuid as _uuid_mod
+
+
+def _cursor_encode(dt) -> str:
+    """Encode a datetime to an opaque base64 cursor."""
+    return base64.urlsafe_b64encode(dt.isoformat().encode()).decode()
+
+
+def _cursor_decode(cursor: str):
+    """Decode a base64 cursor back to a datetime."""
+    from datetime import datetime
+    return datetime.fromisoformat(base64.urlsafe_b64decode(cursor.encode()).decode())
+
+
+def _generate_share_token() -> str:
+    """32-char hex token for URL sharing."""
+    import secrets as _secrets
+    return _secrets.token_hex(16)
+
+
+# -- D.2: GET /list -----------------------------------------------------------
+
+@router.get("/list")
+async def list_diagnoses(
+    limit: int = 20,
+    cursor: Optional[str] = None,
+    auth: AuthContext = Depends(get_current_user),
+    tables: MarketTables = Depends(get_tables),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    D.2 -- Paginated list of resolved diagnoses for the company.
+    Uses opaque base64 cursor on created_at DESC.
+    """
+    limit = min(max(1, limit), 50)
+    params: dict = {"cid": auth.company_id, "limit": limit + 1}
+    cursor_clause = ""
+    if cursor:
+        try:
+            cursor_dt = _cursor_decode(cursor)
+            cursor_clause = " AND ds.created_at < :cursor_dt"
+            params["cursor_dt"] = cursor_dt
+        except Exception:
+            pass
+
+    fc_table = tables.fault_cards
+
+    rows_res = await db.execute(
+        text(
+            "SELECT ds.id AS session_id, ds.created_at, ds.resolved_card_id,"
+            "       ds.confidence_level, ds.customer_label, ds.assessment_id,"
+            "       fc.card_name,"
+            "       a.photo_urls[1] AS nameplate_photo_url"
+            " FROM diagnostic_sessions ds"
+            " JOIN " + fc_table + " fc ON fc.id = ds.resolved_card_id"
+            " JOIN assessments a ON a.id = ds.assessment_id"
+            " WHERE ds.company_id = :cid"
+            "   AND ds.status = 'resolved'"
+            "   AND ds.deleted_at IS NULL"
+            "   AND ds.resolved_card_id IS NOT NULL"
+            + cursor_clause +
+            " ORDER BY ds.created_at DESC"
+            " LIMIT :limit"
+        ),
+        params,
+    )
+    rows = rows_res.fetchall()
+
+    has_more = len(rows) > limit
+    items = rows[:limit]
+    next_cursor = None
+    if has_more and items:
+        next_cursor = _cursor_encode(items[-1].created_at)
+
+    return {
+        "items": [
+            {
+                "session_id": str(r.session_id),
+                "assessment_id": str(r.assessment_id),
+                "fault_name": r.card_name,
+                "confidence": r.confidence_level or "high",
+                "customer_label": r.customer_label,
+                "nameplate_photo_url": r.nameplate_photo_url,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in items
+        ],
+        "next_cursor": next_cursor,
+    }
+
+
+# -- D.3: POST /feedback ------------------------------------------------------
+
+class DiagnosisFeedbackRequest(BaseModel):
+    session_id: str
+    agreement: str
+    real_fault_text: Optional[str] = None
+
+
+@router.post("/feedback", status_code=201)
+async def submit_diagnosis_feedback(
+    body: DiagnosisFeedbackRequest,
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    D.3 -- Tech submits agree/disagree feedback on a diagnosis.
+    Single shared diagnosis_feedback table (DEC-025).
+    """
+    sess_check = await db.execute(
+        text(
+            "SELECT id FROM diagnostic_sessions"
+            " WHERE id = :sid AND company_id = :cid LIMIT 1"
+        ),
+        {"sid": body.session_id, "cid": auth.company_id},
+    )
+    if not sess_check.fetchone():
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    await db.execute(
+        text(
+            "INSERT INTO diagnosis_feedback"
+            " (id, session_id, tech_user_id, agreement, real_fault_text, created_at)"
+            " VALUES (:id, :sid, :uid, :agr, :rft, :now)"
+        ),
+        {
+            "id": str(_uuid_mod.uuid4()),
+            "sid": body.session_id,
+            "uid": auth.user_id,
+            "agr": body.agreement,
+            "rft": body.real_fault_text,
+            "now": datetime.now(timezone.utc),
+        },
+    )
+    await db.commit()
+    return {"status": "ok"}
+
+
+# -- D.4: POST /finalize/{session_id} -----------------------------------------
+
+class FinalizeRequest(BaseModel):
+    customer_label: Optional[str] = None
+
+
+@router.post("/finalize/{session_id}")
+async def finalize_diagnosis(
+    session_id: str = Path(...),
+    body: FinalizeRequest = FinalizeRequest(),
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    D.4 -- Idempotent. Generates share_token + sets confidence_level.
+    Called fire-and-forget from frontend on diagnostic resolve (DEC-026).
+    """
+    sess_res = await db.execute(
+        text(
+            "SELECT id, company_id, status, share_token"
+            " FROM diagnostic_sessions"
+            " WHERE id = :sid AND company_id = :cid LIMIT 1"
+        ),
+        {"sid": session_id, "cid": auth.company_id},
+    )
+    session = sess_res.fetchone()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    if session.share_token:
+        return {"share_token": session.share_token, "status": "already_finalized"}
+
+    share_token = _generate_share_token()
+    confidence = "high"
+
+    updates: dict = {
+        "sid": session_id,
+        "token": share_token,
+        "confidence": confidence,
+        "now": datetime.now(timezone.utc),
+    }
+    label_set = ""
+    if body.customer_label:
+        label_set = ", customer_label = :label"
+        updates["label"] = body.customer_label
+
+    await db.execute(
+        text(
+            "UPDATE diagnostic_sessions"
+            " SET share_token = :token,"
+            "     confidence_level = :confidence,"
+            "     updated_at = :now"
+            + label_set +
+            " WHERE id = :sid"
+        ),
+        updates,
+    )
+    await db.commit()
+    return {"share_token": share_token, "status": "finalized"}
+
+
+# -- D.9: GET /public/{share_token} -------------------------------------------
+
+@router.get("/public/{share_token}")
+async def get_public_diagnosis(
+    share_token: str = Path(...),
+    tables: MarketTables = Depends(get_tables),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    D.9 -- Unauthenticated public share. Customer PII always null.
+    Market from X-Market header sent by frontend detectMarket().
+    """
+    sess_res = await db.execute(
+        text(
+            "SELECT id, assessment_id, status, resolved_card_id,"
+            "       created_at, share_token, confidence_level, reasoning_chain,"
+            "       customer_label, customer_address"
+            " FROM diagnostic_sessions"
+            " WHERE share_token = :token AND deleted_at IS NULL LIMIT 1"
+        ),
+        {"token": share_token},
+    )
+    session = sess_res.fetchone()
+    if not session or session.status != "resolved" or not session.resolved_card_id:
+        raise HTTPException(status_code=404, detail="Diagnosis not found.")
+
+    fc_table = tables.fault_cards
+    if tables.market == "US":
+        climate_col = "climate_notes_us"
+    else:
+        climate_col = "climate_notes_pk"
+
+    fc_sql = (
+        "SELECT id, card_name, action_steps, parts_needed, alternative_cards, "
+        + climate_col
+        + " FROM " + fc_table + " WHERE id = :cid LIMIT 1"
+    )
+    fc_res = await db.execute(text(fc_sql), {"cid": session.resolved_card_id})
+    fc_row = fc_res.fetchone()
+    if not fc_row:
+        raise HTTPException(status_code=404, detail="Fault card not found.")
+
+    alt_cards = fc_row.alternative_cards or []
+    alt_diagnoses = [
+        {"name": a.get("name", ""), "confidence": a.get("confidence", "low")}
+        for a in alt_cards if isinstance(a, dict)
+    ]
+
+    climate_note = getattr(fc_row, climate_col, None)
+
+    share_url = ""
+    if session.share_token:
+        base = (
+            "https://pk.snapai.mainnov.tech"
+            if tables.market == "PK"
+            else "https://snapai.mainnov.tech"
+        )
+        share_url = base + "/d/" + session.share_token
+
+    return {
+        "session_id": str(session.id),
+        "assessment_id": str(session.assessment_id) if session.assessment_id else None,
+        "fault": {
+            "card_id": session.resolved_card_id,
+            "name": fc_row.card_name,
+            "confidence": session.confidence_level or "high",
+        },
+        "reasoning_chain": session.reasoning_chain or [],
+        "action_steps": fc_row.action_steps or [],
+        "parts_needed": fc_row.parts_needed or [],
+        "time_estimate_minutes": None,
+        "common_cause_climate": climate_note,
+        "photo_evidence": [],
+        "alternative_diagnoses": alt_diagnoses,
+        "customer": {"label": None, "address": None},
+        "share_url": share_url,
+        "created_at": session.created_at.isoformat() if session.created_at else None,
+    }
