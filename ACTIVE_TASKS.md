@@ -204,3 +204,36 @@ All 8 items shipped in single commit `177f4f9` (hotfix lane, direct to main):
     - initialRecommendedTier derived from report.options (same logic as selectedTier init)
     - matched_recommendation computed inside tracking.ts helper automatically
 
+## Track D QA — Completed 2026-05-20 (commit 6314219)
+
+### What QA Found and Fixed
+
+| Check | Result | Action |
+|---|---|---|
+| QA-1: Alembic version | ✅ PASS — `028` | — |
+| QA-2: Schema 026+027 | ✅ PASS — all columns present | — |
+| QA-3: Backfill data | ✅ PASS — 19 US / 15 PK cards with action_steps | — |
+| QA-4: Backend endpoints | ❌ FAIL → FIXED | 4 of 5 Track D routes were missing from `diagnostic.py`. Parallel session (commits 872e959 + 575f73e) had added only `GET /result/{session_id}`. Missing: `GET /list`, `POST /feedback`, `POST /finalize/{session_id}`, `GET /public/{share_token}`. Added in commit `6314219`. |
+| QA-5: Frontend files | ✅ PASS — all 10 files present with correct logic | — |
+| QA-6: pak_operating_targets | ✅ PASS — R-32 label correct | — |
+| QA-7: diagnosis_feedback RLS | ✅ PASS — rls_enabled = true | — |
+
+### Bugs Found During QA (not in original scope)
+
+1. **`companies.market` column does not exist** — `GET /public/{share_token}` was written to query `SELECT market FROM companies WHERE id = :cid`. This column doesn't exist and would have 500'd at runtime. Fixed: use `get_tables()` dependency (X-Market header) instead. (→ DEC-029)
+
+2. **Public share page missing X-Market header** — Raw `fetch()` in `/d/[share_token]/page.tsx` didn't send `X-Market`. Backend `get_tables()` defaulted to US market for all PK share URLs. Fixed: added `headers: { "X-Market": detectMarket() }` to the fetch call. (→ DEC-030)
+
+3. **git index corruption blocked push** — Sequential git ops (read-tree + update-index) on NTFS-mounted repo caused `error: bad signature / fatal: index file corrupt`. Fixed: used `git fast-import` to build commit without touching `.git/index`. (→ DEC-028)
+
+4. **Edit tool truncated diagnostic.py** — File had Unicode box-drawing chars in comments (`──`). Edit tool truncated lines at ~80 chars, breaking Python syntax. Fixed: extracted clean remote version, appended via Python script. (→ DEC-027)
+
+### Lessons for Future Sessions
+
+- **Always grep-verify backend routes after any Track:** `grep "@router\." api/diagnostic.py | tail -10`
+- **Task list is not proof of code.** Check the actual file.
+- **Use `git fast-import` for all pushes** when index is suspect.
+- **Never Edit a file with Unicode.** Use Python append or `git fast-import`.
+- **`companies` table has no `market` column.** Always use `get_tables()`.
+- **Raw `fetch()` calls need explicit `X-Market`** header — `apiFetch` handles it automatically, raw `fetch()` does not.
+

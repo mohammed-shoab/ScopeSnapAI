@@ -55,7 +55,8 @@
 | Operation | Status | Notes |
 |---|---|---|
 | `/tmp/snapai_tmp` clone + normal git push | ✅ Works | **Preferred method (DEC-004):** `git clone git@github.com:... /tmp/snapai_tmp`, edit files there, `git add / commit / push origin main`. Avoids all NTFS issues. |
-| git plumbing (hash-object → mktree → commit-tree → push) from workspace | ⚠️ Fallback | Works but tedious. Use only if /tmp clone unavailable. Avoid for files with emoji/Unicode — NTFS truncation risk. |
+| `git fast-import` from workspace | ✅ Works | **Best method when /tmp clone unavailable.** `git hash-object -w <file>` → get blob SHA → pipe commit spec to `git fast-import --quiet`. Bypasses index entirely. No index.lock risk. Works even when `.git/index` is corrupt. See DEC-028 for full pattern. |
+| git plumbing (hash-object → mktree → commit-tree → push) from workspace | ⚠️ Fallback | Works but tedious. `git fast-import` is simpler for file-level changes. |
 | `git add / commit / push` from NTFS workspace | ❌ Fails | index.lock owned by Windows NTFS |
 | `rm -f .git/index.lock` from NTFS workspace | ❌ Fails | NTFS cross-OS permission |
 | GitHub REST API via curl | ❌ Blocked | Proxy 403 |
@@ -66,11 +67,13 @@
 
 | Method | Status | Notes |
 |---|---|---|
-| Python subprocess to generate file content | ✅ Works | Best for files with emoji or special chars |
-| `Edit` tool on pure-ASCII Python files | ✅ Works | Fine for small changes to ASCII-only files |
-| `Edit` tool on Python files with emoji/Unicode | ❌ Risky | NTFS encoding boundary can truncate UTF-8 sequences; causes SyntaxError on deploy |
-| `Edit` tool on TSX/JSX files with emoji in strings | ❌ Risky | Same NTFS truncation issue — emoji icon strings in SYMPTOM_PHOTO etc. get cut off, breaking JSX parser. ALSO: any file with trailing SVG paths or complex JSX can get truncated even without emoji |
-| `Edit` tool on any frontend file with long lines or SVG paths | ❌ Risky | `app/page.tsx` with inline SVG paths got truncated mid-element. Always use Python+/tmp for any TSX file modifications |
+| Python append script (`open(f,'a').write(content)`) | ✅ Works | **Preferred for any file with Unicode.** Bypasses Edit tool entirely. Write content in Python, no NTFS truncation. |
+| `git fast-import` plumbing | ✅ Works | **Preferred for pushing.** `git hash-object -w file` → `git fast-import`. No index, no lock, no truncation. |
+| Python subprocess to generate file content | ✅ Works | Also good for complex multi-file writes |
+| `Edit` tool on pure-ASCII files only | ✅ Works | Only safe if zero non-ASCII bytes AND short lines. Verify line count after. |
+| `Edit` tool on ANY file with non-ASCII chars | ❌ BANNED | DEC-027 (2026-05-20): NTFS truncation affects ALL file types — .py, .ts, .tsx, .md — whenever the file contains Unicode (emoji, box-drawing `──`, em-dashes `—`, Urdu text, etc.). The Edit tool silently truncates lines at ~80 chars, cutting off code mid-statement with no error. Causes SyntaxError (Python) or JSX parse failure (TSX) on deploy. **NEVER use Edit on Unicode files.** |
+| `Edit` tool on pure-ASCII files with short lines | ✅ OK | Only safe if: file has zero non-ASCII bytes, AND no line exceeds ~200 chars. Verify after: `python3 -c "ast.parse(open(f).read())"` (py) or `wc -l` vs expected count. |
+| `Edit` tool on TSX/JSX files with emoji in strings | ❌ BANNED | Same as above — emoji strings, SVG paths, long JSX lines all trigger NTFS truncation. |
 | Write tool for new files | ✅ Works | OK for new files |
 
 ---
@@ -197,6 +200,18 @@ All non-beta features are hidden behind `NEXT_PUBLIC_SHOW_*` env vars (all `fals
 | `GET` | `/api/photo-labels/{assessment_id}` | WS-A3 | List photo labels for an assessment |
 | `POST` | `/api/job-confirmation/` | WS-A3 | Tech post-job confirmation — actual fix, resolved status, final invoice |
 | `GET` | `/api/job-confirmation/{assessment_id}` | WS-A3 | Get confirmation record for an assessment |
+
+**Track D — Diagnosis History + Public Share (added 2026-05-20, commit 6314219):**
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/diagnostic/result/{session_id}` | ✅ Clerk JWT | Fetch full resolved diagnosis — fault, action_steps, parts_needed, alternatives, photo_evidence, share_url. Returns 404 if not found, 409 if not resolved. |
+| `GET` | `/api/diagnostic/list?limit=20&cursor=` | ✅ Clerk JWT | Paginated company diagnosis history. Base64 opaque cursor on `created_at DESC`. Returns `{items, next_cursor}`. |
+| `POST` | `/api/diagnostic/feedback` | ✅ Clerk JWT | Tech agreement feedback — `{session_id, agreement: "agree"/"disagree", real_fault_text?}`. Saves to `diagnosis_feedback` table (DEC-025). |
+| `POST` | `/api/diagnostic/finalize/{session_id}` | ✅ Clerk JWT | Idempotent. Sets `share_token` + `confidence_level` on first call. Called fire-and-forget from frontend on resolve (DEC-026). Body: `{customer_label?}`. |
+| `GET` | `/api/diagnostic/public/{share_token}` | ❌ No auth | Public share. Reads `X-Market` header (sent by frontend `detectMarket()`). Returns same shape as `/result` but `customer.label` and `customer.address` always null. |
+
+> ⚠️ **Market routing on public endpoint:** `/api/diagnostic/public/{share_token}` uses `get_tables()` dependency to read `X-Market` header. The frontend `/d/[share_token]/page.tsx` sends this header explicitly via `headers: { "X-Market": detectMarket() }` in the raw `fetch()` call (DEC-030). Do NOT use `companies.market` — that column does not exist (DEC-029).
 
 > ⚠️ **Router ordering note (fixed 2026-05-01, commit c05658a):** `GET /api/estimates/recommend` MUST be registered BEFORE `GET /api/estimates/{estimate_id}` in main.py, otherwise the catch-all `/{estimate_id}` intercepts `/recommend` and causes a UUID parse DataError. This is now fixed — recommend_router is included before estimates.router.
 
@@ -455,9 +470,31 @@ git push origin main
 
 **Railway auto-deploys** within ~4–5 minutes of a push to `main`. No manual step needed.
 
-### Fallback — git plumbing (only if /tmp clone unavailable)
+### Fallback — git fast-import (preferred when /tmp clone unavailable)
 
-If the /tmp directory is not writable or the clone fails for network reasons, the git plumbing method (hash-object → mktree → commit-tree) still works from the NTFS workspace, but avoid it for files with emoji/Unicode characters (NTFS truncation risk).
+If the /tmp directory is not writable or the clone fails for network reasons, use `git fast-import`:
+
+```bash
+# Step 1: Hash file(s) into object store (bypasses index)
+BLOB=$(git hash-object -w path/to/changed/file.py)
+
+# Step 2: Commit via fast-import (no index touched)
+MSG="your commit message"
+git fast-import --quiet << EOF
+commit refs/heads/main
+author Claude Bot <claude@anthropic.com> $(date +%s) +0000
+committer Claude Bot <claude@anthropic.com> $(date +%s) +0000
+data $(echo -n "$MSG" | wc -c)
+$MSG
+from $(git rev-parse origin/main)
+M 100644 $BLOB path/to/changed/file.py
+EOF
+
+# Step 3: Push
+git push origin main
+```
+
+See DEC-028 for full pattern. `git fast-import` is immune to index corruption and NTFS lock conflicts.
 
 ### ❌ Things that do NOT work (do not retry these)
 - `git add / git commit / git push` from the NTFS workspace mount — fails: index.lock owned by Windows NTFS
@@ -575,6 +612,16 @@ Logo spec: 120×120px, green `#1a8754` rounded square (radius 24px), white "S" A
 **Root cause detail:** `model.series_type` comes from the backend `/api/models/all` PK response (added in commit `0adc374`), where `series_type` is derived from `s.get("type", "non_inverter")` in the `pak_brands` JSONB series array. The `inverter` boolean column in `pak_brands` is irrelevant — `type='inverter'` string in the JSON is the correct source (DEC-008).
 
 **Commit:** `a951a02` | **File:** `scopesnap-web/components/StepZeroPanel.tsx` | **Verified live:** 2026-05-19
+
+---
+
+### WA-8 — git index corruption when running sequential git ops on NTFS-mounted repo (2026-05-20)
+
+**Problem:** Running multiple sequential git commands (read-tree, update-index, stash, add) from the Linux sandbox against the NTFS-mounted workspace causes `error: bad signature 0x00000000 / fatal: index file corrupt`. Even `rm -f .git/index && git read-tree HEAD` only provides transient relief — the next operation re-corrupts it. Root cause: concurrent `.git/index.lock` creation races between sandbox git and Windows processes (VS Code, shell).
+
+**Fix:** Use `git fast-import` to bypass the index entirely. See DEC-028 and the updated Fallback section above.
+
+**Never do:** `git stash` → `git pull --rebase` → `git stash pop` from the sandbox. This sequence will corrupt the index 100% of the time on this repo.
 
 ---
 

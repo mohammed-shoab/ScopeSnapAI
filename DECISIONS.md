@@ -293,3 +293,179 @@ Techs can still navigate to the estimate via Assessments list if needed.
 **Impact:** The old `setPhase("evidence")` call is removed. Evidence/photo collection phase still
 exists for non-diagnostic-resolved assessments (e.g., service/tune_up) but is no longer reached
 from the diagnostic resolution path.
+
+
+## DEC-027 -- NTFS truncation affects ALL files with Unicode, not just emoji-containing TSX (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Problem:** During Track D QA, the Edit tool was used to replace a section of
+`scopesnap-api/api/diagnostic.py`. The file contained Unicode box-drawing characters
+in section header comments (e.g. `# -- D.9: GET /public/{share_token} --------`).
+The Edit tool truncated the file at approximately 80 characters per line, cutting off
+lines mid-sentence and producing a file that was 1565 lines instead of the expected 1578+.
+Python's `ast.parse()` reported a SyntaxError at the truncation point.
+
+**DEC-010 only covered null-byte padding; DEC-013 only covered git stash.
+This is a new failure mode: the Edit tool itself truncates on NTFS for any file with
+non-ASCII characters, regardless of whether it's TSX, TS, or PY.**
+
+**Rule extension:**
+> NEVER use the `Edit` tool on ANY file that contains non-ASCII characters
+> (Unicode, emoji, box-drawing, em-dashes, etc.), regardless of file type.
+> This includes `.py`, `.ts`, `.tsx`, `.md` files.
+
+**Safe write patterns for files with Unicode:**
+1. Python append script: `with open(path, 'a') as f: f.write(content)` — bypasses Edit
+2. `git fast-import` plumbing — bypasses index and Edit tool entirely
+3. Desktop Commander `write_file` in chunks of ≤30 lines — use for full rewrites
+
+**Detection after any Edit on a Unicode-containing file:**
+```bash
+python3 -c "import ast; ast.parse(open('file.py').read()); print('OK')"
+wc -l file.py  # compare to expected line count
+```
+
+**Recovery used in this incident:**
+1. `git show <remote-sha>:<path> > /tmp/file_clean.py` — extract clean remote version
+2. Append new content via Python script (no Edit tool)
+3. `git hash-object -w <file>` + `git fast-import` to commit without using index
+
+---
+
+## DEC-028 -- git index corruption recovery: use git fast-import to bypass index (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Problem:** Multiple sequential `git read-tree`, `git update-index`, and `git stash`
+operations in the Linux sandbox against an NTFS-mounted repo caused the `.git/index`
+file to become corrupted (`error: bad signature 0x00000000 / fatal: index file corrupt`).
+Once corrupted, even `rm -f .git/index && git read-tree HEAD` only worked transiently --
+the next git operation would corrupt it again. `git stash`, `git add`, `git checkout -- .`
+all failed.
+
+**Root cause:** Concurrent lock file creation races between sandbox git and Windows git
+(VS Code, shell, etc.) on the NTFS mount. The `.git/index.lock` being left behind by
+a timed-out bash call caused subsequent operations to write to a stale/partially-written
+index file.
+
+**Recovery pattern (2026-05-20 incident):**
+```bash
+# 1. Hash the target file(s) directly into the object store (bypasses index)
+HASH=$(git hash-object -w path/to/file.py)
+
+# 2. Build the commit via fast-import (no index needed)
+git fast-import --quiet << EOF
+commit refs/heads/main
+author Claude Bot <claude@anthropic.com> $(date +%s) +0000
+committer Claude Bot <claude@anthropic.com> $(date +%s) +0000
+data <byte-length-of-message>
+<commit message>
+from <parent-sha>
+M 100644 <blob-hash> path/to/file.py
+EOF
+
+# 3. Push normally
+git push origin main
+```
+
+**Key insight:** `git fast-import` creates commits from blob hashes without touching
+`.git/index` at all. It is the safest way to push file changes when the index is broken.
+
+**Prevention:**
+- Never run multiple git operations in rapid succession against the NTFS-mounted repo
+- Remove `.git/index.lock` before every git command: `rm -f .git/index.lock`
+- Prefer `git fast-import` for all pushes in this environment (avoids stash, add, commit cycle)
+
+---
+
+## DEC-029 -- companies table has NO market column; market routing is always header-based (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Problem:** During Track D implementation, `GET /api/diagnostic/public/{share_token}`
+was written to determine market by querying `SELECT market FROM companies WHERE id = :cid`.
+This column does not exist and would have caused a 500 at runtime.
+
+**Rule:** The `companies` table has NO `market` column. Market is ALWAYS determined by:
+- **Frontend:** `detectMarket()` in `lib/market.ts` (hostname-based: `pk.*` → PK, else US)
+- **Backend:** `X-Market` HTTP header → `get_tables()` in `api/dependencies.py`
+- **Never:** A column on the companies/users/assessments tables
+
+**Correct pattern for market-aware backend endpoints:**
+```python
+@router.get("/some-endpoint")
+async def my_endpoint(
+    tables: MarketTables = Depends(get_tables),  # reads X-Market header
+    ...
+):
+    fc_table = tables.fault_cards   # "fault_cards" or "pak_fault_cards"
+    market = tables.market          # "US" or "PK"
+```
+
+**For unauthenticated endpoints** (no Clerk JWT): still add `get_tables` dependency.
+The `X-Market` header must be sent by the client. See DEC-030.
+
+---
+
+## DEC-030 -- Raw fetch() calls on public pages must explicitly send X-Market header (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Problem:** Authenticated API calls use `apiFetch()` from `lib/api.ts`, which
+auto-injects `X-Market: detectMarket()` on every request. However, the public share
+page `/d/[share_token]` uses a raw `fetch()` call (no Clerk auth headers needed).
+Raw `fetch()` does NOT auto-inject X-Market, so the backend `get_tables()` defaults
+to US market for all public share requests, including PK URLs.
+
+**Fix applied (commit 6314219):**
+```typescript
+// Public page -- no apiFetch, but still send X-Market
+fetch(`${API_URL}/api/diagnostic/public/${share_token}`, {
+  headers: { "X-Market": detectMarket() },
+})
+```
+
+**Rule:** Any `fetch()` call (raw, not apiFetch) that hits a market-aware endpoint
+MUST manually add `headers: { "X-Market": detectMarket() }`.
+
+**Pattern to search for potential violations:**
+```bash
+grep -rn "fetch(" scopesnap-web/ | grep -v "apiFetch\|node_modules" | grep "/api/"
+```
+Each result should either use `apiFetch` or explicitly pass `X-Market`.
+
+---
+
+## DEC-031 -- QA must verify code on disk, not just task list status (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Problem:** Track D tasks D.1-D.9 were marked [completed] in ACTIVE_TASKS.md.
+But QA-4 (backend code audit via grep) revealed that 4 of the 5 new backend endpoints
+were missing from the actual file. The parallel session had added only
+`GET /result/{session_id}` (commits 872e959 + 575f73e). The remaining 4 routes --
+`GET /list`, `POST /feedback`, `POST /finalize/{session_id}`, `GET /public/{share_token}` --
+were never written to `diagnostic.py`.
+
+**Root cause:** Task completion was tracked optimistically (the AI declared tasks done
+before verifying the file on disk). Context window limits in long sessions mean the AI
+may lose track of whether it actually wrote something vs. only planned to write it.
+
+**Mandatory QA checklist for any backend track:**
+```bash
+# Count @router. decorators in target file
+grep -c "@router\." scopesnap-api/api/diagnostic.py
+
+# Verify each expected route exists
+grep "@router\." scopesnap-api/api/diagnostic.py | grep -E "result|list|feedback|finalize|public"
+
+# Syntax check
+python3 -c "import ast; ast.parse(open('scopesnap-api/api/diagnostic.py').read()); print('OK')"
+
+# Confirm file wasn't truncated
+wc -l scopesnap-api/api/diagnostic.py
+```
+
+**Rule:** Before marking any backend track complete, always grep the actual file for
+every route that was supposed to be added. Task list status alone is not sufficient proof.

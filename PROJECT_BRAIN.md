@@ -36,20 +36,21 @@
 
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both prod domains) | `400ede1` | Production Live | 2026-05-20 |
-| Railway backend (prod) | `400ede1` | Health OK | 2026-05-20 |
+| Vercel (both prod domains) | `575f73e` | Production Live | 2026-05-20 |
+| Railway backend (prod) | `6314219` | Deploying (Track D endpoints complete) | 2026-05-20 |
 | Alembic migration (prod) | `028` | Applied (026+027 schema stamped) | 2026-05-20 |
 | pak_data_defaults | 1 row (market=PK) | Seeded | 2026-05-19 |
 | pak_operating_targets | PK PSI thresholds + R-32 (5 rows, 30–50°C ambient) | Seeded | 2026-05-18 |
 
-**Current git HEAD (main):** `400ede1` — "Track D: diagnosis screen + history v1 (D.1-D.14)"
+**Current git HEAD (main):** `6314219` — "QA fix: add 4 remaining Track D backend endpoints (list/feedback/finalize/public) + X-Market on public share fetch"
 
 **Recent commits (newest first — main):**
-- `400ede1` — Track D: diagnosis screen + history v1 (D.1-D.14)
-- `4678ee4` — fix(migrations): linearize Alembic chain -- 028 down_revision 025->027, add 026+027
-- `0dad83c` — chore: update brain -- HEAD 4a51c35, REC.3 hotfix noted
-- `4a51c35` — fix(REC.3): migration 028 -- f-string interpolation, not op.execute bind params
-- `177f4f9` — feat(track-r): R.1-R.8 print, hide-empty, addr-guard, QR-npm, profile-check, site-visit-fee
+- `6314219` — QA fix: add 4 remaining Track D backend endpoints (list/feedback/finalize/public) + X-Market on public share fetch
+- `575f73e` — fix: diagnoses page passes Clerk token to apiFetch (Track D D.7)
+- `872e959` — feat: add GET /api/diagnostic/result/{session_id} endpoint (Track D D.7)
+- `0bd74c7` — chore: brain -- REC.5 wiring complete, HEAD e5ffefb
+- `e5ffefb` — feat(REC.5): wire recommendationShown, Overridden, Approved into assess/estimate/report
+- `254c0b7` — fix: mobile button stack + pak_operating_targets R-32 label + ACTIVE_TASKS cleanup
 
 ---
 
@@ -105,6 +106,7 @@
 
 | Date | Markets | Outcome | Bugs Fixed |
 |------|---------|---------|-----------|
+| 2026-05-20 | Track D full QA | PASS ✅ COMPLETE | 5 gaps found+fixed: 4 missing backend endpoints (list/feedback/finalize/public), companies.market column bug, X-Market on public fetch, git index corruption, NTFS Edit truncation on .py files |
 | 2026-05-19 | PK only (SOW Addendum) | PASS ✅ COMPLETE | 2 (BUG-015 X-Market header, BUG-016 PK suction PSI routing); A-2/A-4/A-5 verified; B-1/C-3 seeded |
 | 2026-05-18 | Houston only | PASS ✅ COMPLETE | 7 (BUG-011 badge + 5 CRLF stash truncations + BUG-012 electrical spec auto-fill) |
 | 2026-05-15 | Houston + PK | PASS | BUG-010b (_complete_service_session rollback) |
