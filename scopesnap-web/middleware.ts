@@ -67,7 +67,7 @@ export async function middleware(request: NextRequest) {
 
     return clerkMiddleware(async (auth, req) => {
       if (isProtectedRoute(req)) {
-        await auth.protect();
+        auth().protect();
       }
       return NextResponse.next();
     })(request, {} as never);
