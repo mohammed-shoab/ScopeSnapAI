@@ -28,5 +28,8 @@
     "tailwindcss": "^3.4.1",
     "autoprefixer": "^10.0.1",
     "postcss": "^8"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
