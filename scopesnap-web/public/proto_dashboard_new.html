@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopeSnap — Owner Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --bg: #f7f7f3;
+  --surface: #ffffff;
+  --surface2: #f0efea;
+  --border: #e2dfd7;
+  --text: #1a1a18;
+  --text2: #7a7770;
+  --green: #1a8754;
+  --green-bg: #e8f5ee;
+  --green-dark: #0f5c38;
+  --green-light: #d0f0dc;
+  --orange: #c4600a;
+  --orange-bg: #fef3e8;
+  --blue: #1565c0;
+  --blue-bg: #e3f0fd;
+  --red: #c62828;
+  --red-bg: #fce8e8;
+  --purple: #6a1b9a;
+  --purple-bg: #f3e8f9;
+  --gold: #e6a817;
+  --gold-bg: #fdf6e0;
+  --shadow: 0 1px 3px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.03);
+  --shadow-lg: 0 4px 20px rgba(0,0,0,.06);
+  --radius: 14px;
+  --radius-sm: 10px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:'Plus Jakarta Sans',sans-serif; line-height:1.6; -webkit-font-smoothing:antialiased; }
+
+/* Layout */
+.layout { display:flex; min-height:100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background: var(--text);
+  color: white;
+  padding: 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+}
+.sidebar-logo {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sidebar-logo .logo-box {
+  width: 36px; height: 36px;
+  background: var(--green);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 16px;
+}
+.sidebar-logo .logo-name { font-weight: 800; font-size: 17px; letter-spacing: -.3px; }
+.sidebar-logo .logo-name span { color: var(--green); }
+
+.sidebar-nav { padding: 12px 10px; flex: 1; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  color: rgba(255,255,255,.55);
+  cursor: pointer;
+  transition: all .15s;
+  margin-bottom: 2px;
+}
+.nav-item:hover { background: rgba(255,255,255,.06); color: rgba(255,255,255,.85); }
+.nav-item.active { background: rgba(26,135,84,.2); color: white; font-weight: 600; }
+.nav-item .nav-icon { font-size: 16px; width: 24px; text-align: center; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--red);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.nav-section {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: rgba(255,255,255,.25);
+  padding: 16px 12px 6px;
+}
+
+.sidebar-footer {
+  padding: 16px 14px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  display: flex; align-items: center; gap: 10px;
+}
+.sidebar-footer .user-avatar {
+  width: 32px; height: 32px;
+  background: var(--green);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+}
+.sidebar-footer .user-name { font-size: 12px; font-weight: 600; }
+.sidebar-footer .user-role { font-size: 10px; color: rgba(255,255,255,.4); }
+
+/* Main */
+.main { margin-left: 240px; flex: 1; padding: 24px 32px; }
+
+/* Top bar */
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.top-bar h1 { font-size: 24px; font-weight: 800; letter-spacing: -.5px; }
+.top-bar .date-range {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer;
+}
+
+/* The Hero Number — Jobs' "3-second answer" */
+.hero-metric {
+  background: linear-gradient(135deg, var(--green-dark) 0%, #0d4a2e 100%);
+  border-radius: 16px;
+  padding: 28px 32px;
+  color: white;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 8px 32px rgba(15,92,56,.25);
+}
+.hero-metric .hero-left h2 { font-size: 13px; font-weight: 600; opacity: .7; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .8px; }
+.hero-metric .hero-number { font-family: 'IBM Plex Mono', monospace; font-size: 48px; font-weight: 700; letter-spacing: -2px; line-height: 1; }
+.hero-metric .hero-sub { font-size: 13px; opacity: .7; margin-top: 6px; }
+.hero-metric .hero-right { text-align: right; }
+.hero-metric .hero-cta {
+  padding: 10px 20px;
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 8px;
+  color: white;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.hero-metric .hero-cta:hover { background: rgba(255,255,255,.25); }
+
+/* Stat cards grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+}
+.stat-card .stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 6px;
+}
+.stat-card .stat-number {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+.stat-card .stat-change {
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.stat-card .stat-change.up { color: var(--green); }
+.stat-card .stat-change.down { color: var(--red); }
+
+/* Two column layout */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+/* Panel */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.panel-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.panel-header h3 { font-size: 14px; font-weight: 700; }
+.panel-header .panel-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.panel-body { padding: 16px 20px; }
+
+/* Tech accuracy table */
+.tech-row {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+.tech-row:last-child { border-bottom: none; }
+.tech-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  flex-shrink: 0;
+}
+.tech-info { flex: 1; }
+.tech-info .tech-name { font-size: 13px; font-weight: 600; }
+.tech-info .tech-meta { font-size: 10px; color: var(--text2); }
+.tech-score {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: right;
+}
+.tech-bar {
+  width: 100px;
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.tech-bar-fill { height: 100%; border-radius: 3px; }
+
+/* Benchmark card */
+.bench-item {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.bench-item:last-child { border-bottom: none; }
+.bench-label { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+.bench-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  position: relative;
+}
+.bench-track {
+  flex: 1;
+  height: 8px;
+  background: var(--surface2);
+  border-radius: 4px;
+  position: relative;
+}
+.bench-marker {
+  position: absolute;
+  top: -8px;
+  width: 3px;
+  height: 24px;
+  border-radius: 2px;
+}
+.bench-marker.you { background: var(--green); }
+.bench-marker.avg { background: var(--border); }
+.bench-marker.top { background: var(--gold); }
+.bench-values {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text2);
+  margin-top: 4px;
+}
+.bench-your-val {
+  font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+}
+
+/* Leak items */
+.leak-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.leak-item:last-child { border-bottom: none; }
+.leak-info h4 { font-size: 12px; font-weight: 600; }
+.leak-info p { font-size: 10px; color: var(--text2); }
+.leak-amount {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--red);
+}
+
+/* Equipment table */
+.equip-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+  font-size: 12px;
+}
+.equip-row:last-child { border-bottom: none; }
+.equip-icon { font-size: 18px; }
+.equip-detail { flex: 1; }
+.equip-detail h4 { font-size: 12px; font-weight: 600; }
+.equip-detail p { font-size: 10px; color: var(--text2); }
+.equip-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* Action card */
+.action-card {
+  background: linear-gradient(135deg, var(--orange-bg), #fff8f0);
+  border: 2px solid var(--orange);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.action-card h3 { font-size: 15px; font-weight: 700; color: var(--orange); }
+.action-card p { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.action-card button {
+  padding: 10px 20px;
+  background: var(--orange);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* Recent estimates list */
+.estimate-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 80px 100px 80px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  align-items: center;
+}
+.estimate-row:last-child { border-bottom: none; }
+.estimate-row.header {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.estimate-customer h4 { font-size: 12px; font-weight: 600; }
+.estimate-customer p { font-size: 10px; color: var(--text2); }
+.estimate-amount {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+}
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.status-badge.approved { background: var(--green-bg); color: var(--green); }
+.status-badge.pending { background: var(--gold-bg); color: var(--gold); }
+.status-badge.viewed { background: var(--blue-bg); color: var(--blue); }
+.status-badge.sent { background: var(--surface2); color: var(--text2); }
+
+/* Full width panel */
+.full-width { margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ====== SIDEBAR ====== -->
+<div class="sidebar">
+<div class="sidebar-logo">
+<div class="logo-box">S</div>
+<div class="logo-name">Scope<span>Snap</span></div>
+</div>
+
+<div class="sidebar-nav">
+<div class="nav-section">Overview</div>
+<div class="nav-item active"><span class="nav-icon">📊</span> Dashboard</div>
+<div class="nav-item"><span class="nav-icon">📋</span> Estimates <span class="nav-badge">47</span></div>
+
+<div class="nav-section">Intelligence</div>
+<div class="nav-item"><span class="nav-icon">🎯</span> Accuracy Tracker</div>
+<div class="nav-item"><span class="nav-icon">🔍</span> Profit Leaks <span class="nav-badge" style="background:var(--orange)">$70K</span></div>
+<div class="nav-item"><span class="nav-icon">📈</span> BenchmarkIQ</div>
+<div class="nav-item"><span class="nav-icon">🏠</span> Property History</div>
+
+<div class="nav-section">Equipment</div>
+<div class="nav-item"><span class="nav-icon">❄️</span> Equipment Database</div>
+<div class="nav-item"><span class="nav-icon">⚠️</span> Aging Alerts <span class="nav-badge" style="background:var(--red)">43</span></div>
+
+<div class="nav-section">Team</div>
+<div class="nav-item"><span class="nav-icon">👥</span> Technicians</div>
+<div class="nav-item"><span class="nav-icon">🏆</span> Leaderboard</div>
+
+<div class="nav-section">Settings</div>
+<div class="nav-item"><span class="nav-icon">💰</span> Pricing Database</div>
+<div class="nav-item"><span class="nav-icon">🔗</span> Integrations</div>
+<div class="nav-item"><span class="nav-icon">⚙️</span> Settings</div>
+</div>
+
+<div class="sidebar-footer">
+<div class="user-avatar">DM</div>
+<div>
+<div class="user-name">Dave Martinez</div>
+<div class="user-role">ABC HVAC Services · Team Plan</div>
+</div>
+</div>
+</div>
+
+<!-- ====== MAIN CONTENT ====== -->
+<div class="main">
+
+<!-- Top bar -->
+<div class="top-bar">
+<h1>Dashboard</h1>
+<div class="date-range">📅 This Week · Mar 14 – Mar 20, 2026 ▾</div>
+</div>
+
+<!-- THE HERO NUMBER — "Am I making money?" -->
+<div class="hero-metric">
+<div class="hero-left">
+<h2>Estimated Annual Profit Leak</h2>
+<div class="hero-number">$70,560</div>
+<div class="hero-sub">Your estimates are 14% below actual cost on average · That's $588 lost per job across 120 jobs/month</div>
+</div>
+<div class="hero-right">
+<div style="font-size:11px;opacity:.6;margin-bottom:8px;text-align:right">Want help fixing this?</div>
+<button class="hero-cta">Talk to Our Data Team →</button>
+</div>
+</div>
+
+<!-- 4 stat cards -->
+<div class="stats-grid">
+<div class="stat-card">
+<div class="stat-label">Estimates This Week</div>
+<div class="stat-number">47</div>
+<div class="stat-change up">↑ 12% vs last week</div>
+</div>
+<div class="stat-card">
+<div class="stat-label">Close Rate</div>
+<div class="stat-number" style="color:var(--green)">62%</div>
+<div class="stat-change up">↑ 14pts since ScopeSnap (was 48%)</div>
+</div>
+<div class="stat-card">
+<div class="stat-label">Average Ticket</div>
+<div class="stat-number">$4,200</div>
+<div class="stat-change up">↑ $600 since Good/Better/Best</div>
+</div>
+<div class="stat-card">
+<div class="stat-label">Revenue (Approved)</div>
+<div class="stat-number" style="color:var(--green)">$121.8K</div>
+<div class="stat-change up">↑ 23% vs last week</div>
+</div>
+</div>
+
+<!-- Action card — services flywheel trigger -->
+<div class="action-card">
+<div>
+<h3>⚠️ Coil replacement jobs are under-estimated by 23%</h3>
+<p>This is your biggest leak — coil jobs consistently take 2+ hours longer than estimated. Fix this and recover ~$28K/year.</p>
+</div>
+<button>See Full Analysis →</button>
+</div>
+
+<!-- Two column: Tech Accuracy + Benchmark -->
+<div class="two-col">
+
+<!-- Tech Accuracy Panel -->
+<div class="panel">
+<div class="panel-header">
+<h3>🎯 Tech Accuracy Scores</h3>
+<div class="panel-badge" style="background:var(--blue-bg);color:var(--blue)">LeakSense</div>
+</div>
+<div class="panel-body">
+
+<div class="tech-row">
+<div class="tech-avatar" style="background:var(--green-bg);color:var(--green)">MR</div>
+<div class="tech-info">
+<div class="tech-name">Mike Rodriguez</div>
+<div class="tech-meta">142 estimates · Top performer</div>
+</div>
+<div>
+<div class="tech-bar"><div class="tech-bar-fill" style="width:92%;background:var(--green)"></div></div>
+</div>
+<div class="tech-score" style="color:var(--green)">92.4%</div>
+</div>
+
+<div class="tech-row">
+<div class="tech-avatar" style="background:var(--blue-bg);color:var(--blue)">JS</div>
+<div class="tech-info">
+<div class="tech-name">James Sullivan</div>
+<div class="tech-meta">98 estimates · Improving</div>
+</div>
+<div>
+<div class="tech-bar"><div class="tech-bar-fill" style="width:88%;background:var(--blue)"></div></div>
+</div>
+<div class="tech-score" style="color:var(--blue)">88.1%</div>
+</div>
+
+<div class="tech-row">
+<div class="tech-avatar" style="background:var(--gold-bg);color:var(--gold)">BK</div>
+<div class="tech-info">
+<div class="tech-name">Brian Kim</div>
+<div class="tech-meta">115 estimates · Under-prices labor</div>
+</div>
+<div>
+<div class="tech-bar"><div class="tech-bar-fill" style="width:84%;background:var(--gold)"></div></div>
+</div>
+<div class="tech-score" style="color:var(--gold)">84.0%</div>
+</div>
+
+<div class="tech-row">
+<div class="tech-avatar" style="background:var(--red-bg);color:var(--red)">JV</div>
+<div class="tech-info">
+<div class="tech-name">Javier Vasquez</div>
+<div class="tech-meta">91 estimates · Needs coaching</div>
+</div>
+<div>
+<div class="tech-bar"><div class="tech-bar-fill" style="width:78%;background:var(--red)"></div></div>
+</div>
+<div class="tech-score" style="color:var(--red)">78.2%</div>
+</div>
+
+<div style="margin-top:12px;padding:10px;background:var(--green-bg);border-radius:8px">
+<p style="font-size:10px;color:var(--green);font-weight:600">💡 AI SUGGESTION: Pair Javier with Mike for 5 ride-alongs on coil replacement jobs. Mike's labor estimates are 23% more accurate on these jobs.</p>
+</div>
+</div>
+</div>
+
+<!-- BenchmarkIQ Panel -->
+<div class="panel">
+<div class="panel-header">
+<h3>📈 BenchmarkIQ — Houston Metro</h3>
+<div class="panel-badge" style="background:var(--purple-bg);color:var(--purple)">vs 287 HVAC companies</div>
+</div>
+<div class="panel-body">
+
+<div class="bench-item">
+<div class="bench-label">Revenue Per Truck</div>
+<div class="bench-track" style="position:relative">
+<div class="bench-marker avg" style="left:55%"></div>
+<div class="bench-marker you" style="left:42%"></div>
+<div class="bench-marker top" style="left:82%"></div>
+</div>
+<div class="bench-values">
+<span class="bench-your-val" style="color:var(--orange)">You: $380K</span>
+<span>Avg: $420K</span>
+<span style="color:var(--gold)">Top 25%: $520K</span>
+</div>
+</div>
+
+<div class="bench-item">
+<div class="bench-label">Average Ticket</div>
+<div class="bench-track" style="position:relative">
+<div class="bench-marker avg" style="left:48%"></div>
+<div class="bench-marker you" style="left:58%"></div>
+<div class="bench-marker top" style="left:78%"></div>
+</div>
+<div class="bench-values">
+<span class="bench-your-val" style="color:var(--green)">You: $4,200 ✓</span>
+<span>Avg: $3,800</span>
+<span style="color:var(--gold)">Top 25%: $5,100</span>
+</div>
+</div>
+
+<div class="bench-item">
+<div class="bench-label">Labor Cost %</div>
+<div class="bench-track" style="position:relative">
+<div class="bench-marker top" style="left:30%"></div>
+<div class="bench-marker avg" style="left:50%"></div>
+<div class="bench-marker you" style="left:68%"></div>
+</div>
+<div class="bench-values">
+<span style="color:var(--gold)">Top 25%: 28%</span>
+<span>Avg: 32%</span>
+<span class="bench-your-val" style="color:var(--red)">You: 38% ⚠️</span>
+</div>
+</div>
+
+<div class="bench-item">
+<div class="bench-label">Estimate Close Rate</div>
+<div class="bench-track" style="position:relative">
+<div class="bench-marker avg" style="left:45%"></div>
+<div class="bench-marker you" style="left:68%"></div>
+<div class="bench-marker top" style="left:80%"></div>
+</div>
+<div class="bench-values">
+<span class="bench-your-val" style="color:var(--green)">You: 62% ✓</span>
+<span>Avg: 51%</span>
+<span style="color:var(--gold)">Top 25%: 67%</span>
+</div>
+</div>
+
+<div style="margin-top:8px;padding:10px;background:var(--purple-bg);border-radius:8px">
+<p style="font-size:10px;color:var(--purple);font-weight:600">Your close rate is top 10% in Houston. The homeowner visual reports are working. Focus on reducing labor cost % to improve revenue per truck.</p>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Two column: Top Leaks + Equipment Alerts -->
+<div class="two-col">
+
+<!-- Profit Leaks -->
+<div class="panel">
+<div class="panel-header">
+<h3>🔍 Top Profit Leaks Found</h3>
+<div class="panel-badge" style="background:var(--red-bg);color:var(--red)">$70.5K/year</div>
+</div>
+<div class="panel-body">
+<div class="leak-item">
+<div class="leak-info">
+<h4>Coil replacement labor under-estimated</h4>
+<p>Avg estimate: 3.5 hrs · Avg actual: 5.2 hrs · 23 jobs this quarter</p>
+</div>
+<div class="leak-amount">-$28,200/yr</div>
+</div>
+<div class="leak-item">
+<div class="leak-info">
+<h4>R-410A refrigerant cost not updated</h4>
+<p>Your pricing: $85/lb · Current market: $112/lb · 45 jobs affected</p>
+</div>
+<div class="leak-amount">-$18,900/yr</div>
+</div>
+<div class="leak-item">
+<div class="leak-info">
+<h4>Brian's system replacements under-priced</h4>
+<p>Avg estimate: $7,800 · Avg actual cost: $8,650 · 18 jobs this quarter</p>
+</div>
+<div class="leak-amount">-$15,300/yr</div>
+</div>
+<div class="leak-item">
+<div class="leak-info">
+<h4>Permit costs not included in estimates</h4>
+<p>Houston HVAC permit: $175 avg · Missing from 68% of replacement estimates</p>
+</div>
+<div class="leak-amount">-$8,160/yr</div>
+</div>
+</div>
+</div>
+
+<!-- Equipment Intelligence -->
+<div class="panel">
+<div class="panel-header">
+<h3>⚠️ Equipment Aging Alerts</h3>
+<div class="panel-badge" style="background:var(--orange-bg);color:var(--orange)">43 properties</div>
+</div>
+<div class="panel-body">
+<div style="padding:12px;background:var(--orange-bg);border-radius:8px;margin-bottom:12px">
+<p style="font-size:11px;color:var(--orange);font-weight:600">🎯 Replacement Campaign Opportunity</p>
+<p style="font-size:11px;color:var(--text);margin-top:4px">43 properties have AC units past 15-year mark. Estimated replacement revenue: <strong>$344,000</strong> if 50% convert.</p>
+</div>
+
+<div class="equip-row">
+<span class="equip-icon">🔴</span>
+<div class="equip-detail">
+<h4>Carrier 24ABR — 18 properties</h4>
+<p>Avg age: 17 yrs · Known compressor failures · End-of-life</p>
+</div>
+<div class="equip-status" style="background:var(--red-bg);color:var(--red)">CRITICAL</div>
+</div>
+<div class="equip-row">
+<span class="equip-icon">🟠</span>
+<div class="equip-detail">
+<h4>Trane XR13 — 14 properties</h4>
+<p>Avg age: 16 yrs · Coil failures common after yr 14</p>
+</div>
+<div class="equip-status" style="background:var(--orange-bg);color:var(--orange)">AGING</div>
+</div>
+<div class="equip-row">
+<span class="equip-icon">🟠</span>
+<div class="equip-detail">
+<h4>Goodman GSX13 — 11 properties</h4>
+<p>Avg age: 15 yrs · Refrigerant leak pattern after yr 12</p>
+</div>
+<div class="equip-status" style="background:var(--orange-bg);color:var(--orange)">AGING</div>
+</div>
+
+<button style="width:100%;margin-top:12px;padding:10px;background:var(--green);color:white;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">📧 Generate Replacement Campaign →</button>
+</div>
+</div>
+</div>
+
+<!-- Recent Estimates — Full width -->
+<div class="panel full-width">
+<div class="panel-header">
+<h3>📋 Recent Estimates</h3>
+<div style="display:flex;gap:8px">
+<span class="status-badge approved">29 Approved</span>
+<span class="status-badge pending">8 Pending</span>
+<span class="status-badge sent">10 Sent</span>
+</div>
+</div>
+<div class="panel-body">
+
+<div class="estimate-row header">
+<span>Customer</span>
+<span>Tech</span>
+<span>Amount</span>
+<span>Status</span>
+<span>Accuracy</span>
+</div>
+
+<div class="estimate-row">
+<div class="estimate-customer"><h4>Sarah Johnson</h4><p>4215 Oakwood Dr · Coil replacement</p></div>
+<div style="font-size:12px">Mike R.</div>
+<div class="estimate-amount">$2,530</div>
+<div><span class="status-badge pending">⏳ Pending</span></div>
+<div style="font-size:11px;color:var(--text2)">—</div>
+</div>
+
+<div class="estimate-row">
+<div class="estimate-customer"><h4>Mike Chen</h4><p>892 Willow Creek · Annual maintenance</p></div>
+<div style="font-size:12px">Mike R.</div>
+<div class="estimate-amount">$289</div>
+<div><span class="status-badge approved">✓ Approved</span></div>
+<div style="font-size:11px;color:var(--green);font-weight:600">96%</div>
+</div>
+
+<div class="estimate-row">
+<div class="estimate-customer"><h4>Robert Walsh</h4><p>1847 Maple Ave · System replacement</p></div>
+<div style="font-size:12px">Brian K.</div>
+<div class="estimate-amount">$8,400</div>
+<div><span class="status-badge approved">✓ Approved</span></div>
+<div style="font-size:11px;color:var(--red);font-weight:600">81% ⚠️</div>
+</div>
+
+<div class="estimate-row">
+<div class="estimate-customer"><h4>Lisa Park</h4><p>2741 Sunset Ridge · Furnace diagnosis</p></div>
+<div style="font-size:12px">James S.</div>
+<div class="estimate-amount">$1,850</div>
+<div><span class="status-badge viewed">👁 Viewed</span></div>
+<div style="font-size:11px;color:var(--text2)">—</div>
+</div>
+
+<div class="estimate-row">
+<div class="estimate-customer"><h4>Tom Davis</h4><p>5103 Pine Valley · Thermostat upgrade</p></div>
+<div style="font-size:12px">Javier V.</div>
+<div class="estimate-amount">$680</div>
+<div><span class="status-badge sent">📨 Sent</span></div>
+<div style="font-size:11px;color:var(--text2)">—</div>
+</div>
+
+<div class="estimate-row">
+<div class="estimate-customer"><h4>Angela Morrison</h4><p>3300 River Oaks · Ductwork repair</p></div>
+<div style="font-size:12px">Javier V.</div>
+<div class="estimate-amount">$3,200</div>
+<div><span class="status-badge approved">✓ Approved</span></div>
+<div style="font-size:11px;color:var(--orange);font-weight:600">74% ⚠️</div>
+</div>
+
+</div>
+</div>
+
+<!-- Footer -->
+<div style="text-align:center;padding:16px;font-size:10px;color:var(--text2)">
+ScopeSnap Owner Dashboard — Demo Prototype · Mainnov Tech · March 2026<br>
+Data shown is simulated for demonstration purposes
+</div>
+
+</div>
+</div>
+</body>
+</html>

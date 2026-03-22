@@ -1,0 +1,57 @@
+# ── ScopeSnap — Production Docker Compose Override ───────────────────────────
+# Use alongside docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# This override:
+# - Sets ENVIRONMENT=production on all services
+# - Uses production build targets (optimized, no reload)
+# - Removes development volume mounts
+# - Adds restart policies
+# - Uses Postgres with proper auth (change password!)
+
+version: "3.9"
+
+services:
+
+  db:
+    environment:
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-CHANGE_ME_IN_PROD}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ./scopesnap-api
+      dockerfile: Dockerfile
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: "postgresql+asyncpg://postgres:${DB_PASSWORD:-CHANGE_ME_IN_PROD}@db:5432/scopesnap_dev"
+      PORT: "8000"
+      UVICORN_WORKERS: "4"
+    env_file:
+      - ./scopesnap-api/.env.production
+    # Remove dev volume mount (code is baked into image)
+    volumes:
+      - uploads_data:/app/uploads
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  web:
+    build:
+      context: ./scopesnap-web
+      dockerfile: Dockerfile
+      target: prod
+    environment:
+      NODE_ENV: production
+    env_file:
+      - ./scopesnap-web/.env.production
+    # Remove dev volume mount
+    volumes: []
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 256M

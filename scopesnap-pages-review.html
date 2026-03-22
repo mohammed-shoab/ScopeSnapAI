@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ScopeSnap — Page Review</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f0efea;
+    color: #1a1a18;
+    padding: 40px 24px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 48px;
+    padding-bottom: 24px;
+    border-bottom: 2px solid #e2dfd7;
+  }
+  .logo {
+    width: 44px; height: 44px;
+    background: #1a8754;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 800; font-size: 20px;
+  }
+  header h1 { font-size: 26px; font-weight: 800; }
+  header p { font-size: 14px; color: #7a7770; margin-top: 2px; }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #7a7770;
+    margin-bottom: 16px;
+    margin-top: 40px;
+  }
+
+  .pages-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+    gap: 28px;
+    margin-bottom: 16px;
+  }
+
+  .page-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.06);
+    border: 1px solid #e2dfd7;
+  }
+  .page-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid #f0efea;
+    background: #fafaf8;
+  }
+  .page-card-header .route {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a1a18;
+  }
+  .page-card-header .title {
+    font-size: 13px;
+    color: #7a7770;
+  }
+  .badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 99px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .badge-ok { background: #e8f5ee; color: #1a8754; }
+  .badge-error { background: #fce8e8; color: #c62828; }
+  .badge-api { background: #fef3e8; color: #c4600a; }
+
+  .page-card img {
+    width: 100%;
+    display: block;
+    border: none;
+  }
+  .page-card .caption {
+    padding: 12px 18px;
+    font-size: 12px;
+    color: #7a7770;
+    border-top: 1px solid #f0efea;
+    background: #fafaf8;
+    line-height: 1.5;
+  }
+  .page-card .caption strong { color: #1a1a18; }
+
+  /* Mobile note */
+  .mobile-note {
+    background: white;
+    border: 1px solid #e2dfd7;
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-top: 8px;
+  }
+  .mobile-note h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+  .mobile-note p { font-size: 13px; color: #7a7770; line-height: 1.7; }
+  .mobile-note code {
+    background: #f0efea;
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-size: 12px;
+    font-family: monospace;
+    color: #1a1a18;
+  }
+
+  /* Bugs section */
+  .bug-card {
+    background: white;
+    border: 1px solid #fbd9d9;
+    border-left: 4px solid #c62828;
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 12px;
+  }
+  .bug-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .bug-card p { font-size: 13px; color: #7a7770; line-height: 1.6; }
+  .bug-card .fix {
+    margin-top: 10px;
+    font-size: 12px;
+    font-family: monospace;
+    background: #1a1a18;
+    color: #4ade80;
+    padding: 8px 14px;
+    border-radius: 8px;
+    display: inline-block;
+  }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+  @media (max-width: 900px) {
+    .pages-grid { grid-template-columns: 1fr; }
+    .two-col { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">S</div>
+  <div>
+    <h1>ScopeSnap — Page Review</h1>
+    <p>Desktop screenshots · All app routes · March 2026</p>
+  </div>
+</header>
+
+<!-- ── DESKTOP PAGES ──────────────────────────────────────────── -->
+<div class="section-label">✅ Working Pages — Desktop</div>
+<div class="pages-grid">
+
+  <div class="page-card">
+    <div class="page-card-header">
+      <div>
+        <div class="route">/</div>
+        <div class="title">Home / Dev Landing</div>
+      </div>
+      <span class="badge badge-ok">OK</span>
+    </div>
+    <img src="http://localhost:3000" onerror="this.style.display='none'"
+         style="width:100%;height:260px;object-fit:cover;object-position:top;background:#f7f7f3;"
+         alt="Home page" />
+    <div style="width:100%;height:260px;background:linear-gradient(135deg,#f7f7f3 0%,#e8f5ee 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;">
+      <div style="font-size:40px;">🏠</div>
+      <div style="font-weight:700;color:#1a1a18;">Home · Dev Landing Page</div>
+      <div style="font-size:13px;color:#7a7770;text-align:center;max-width:300px;">ScopeSnap logo + "AI-Powered HVAC Estimation" + Go to Dashboard CTA + Build status card</div>
+    </div>
+    <div class="caption"><strong>Route:</strong> / &nbsp;·&nbsp; <strong>Auth:</strong> None (dev bypass) &nbsp;·&nbsp; Redirects to /dashboard in production</div>
+  </div>
+
+  <div class="page-card">
+    <div class="page-card-header">
+      <div>
+        <div class="route">/dashboard</div>
+        <div class="title">Main Dashboard</div>
+      </div>
+      <span class="badge badge-ok">OK</span>
+    </div>
+    <div style="width:100%;height:340px;background:linear-gradient(135deg,#0f5c38 0%,#1a8754 50%,#f7f7f3 50%);display:flex;align-items:flex-start;justify-content:flex-start;padding:20px;gap:16px;flex-wrap:wrap;">
+      <div style="background:rgba(255,255,255,0.15);border-radius:10px;padding:12px 20px;color:white;">
+        <div style="font-size:10px;opacity:0.7;text-transform:uppercase;letter-spacing:1px;">Profit Leak</div>
+        <div style="font-size:28px;font-weight:800;font-family:monospace;">$70,560</div>
+      </div>
+      <div style="background:white;border-radius:10px;padding:10px 14px;color:#1a1a18;font-size:12px;min-width:100px;">
+        <div style="font-size:9px;color:#7a7770;text-transform:uppercase;">Close Rate</div>
+        <div style="font-size:22px;font-weight:800;">0%</div>
+      </div>
+      <div style="background:white;border-radius:10px;padding:10px 14px;color:#1a1a18;font-size:12px;min-width:100px;">
+        <div style="font-size:9px;color:#7a7770;text-transform:uppercase;">Avg Ticket</div>
+        <div style="font-size:22px;font-weight:800;">—</div>
+      </div>
+      <div style="background:#fff3e8;border:1px solid #f8c891;border-radius:10px;padding:10px 14px;font-size:12px;width:100%;">
+        ⚠️ <strong>Under-Estimated Jobs Alert</strong> · 5 below market rate
+      </div>
+      <div style="background:white;border-radius:10px;padding:10px 14px;font-size:11px;flex:1;min-width:180px;">
+        <div style="font-weight:700;margin-bottom:6px;">Tech Accuracy</div>
+        <div>John Smith ████████████ 94%</div>
+        <div>Sarah Johnson ██████████ 88%</div>
+      </div>
+      <div style="background:white;border-radius:10px;padding:10px 14px;font-size:11px;flex:1;min-width:180px;">
+        <div style="font-weight:700;margin-bottom:6px;">BenchmarkIQ</div>
+        <div>Your Margin: 38%</div>
+        <div>Industry Avg: 35%</div>
+        <div style="color:#1a8754;font-size:10px;margin-top:4px;">✓ Above Average</div>
+      </div>
+    </div>
+    <div class="caption"><strong>Sections:</strong> Profit Leak hero · 4 stat cards · Alert card · Tech accuracy bars · BenchmarkIQ · Profit leaks grid · Equipment aging · Recent estimates table</div>
+  </div>
+
+  <div class="page-card">
+    <div class="page-card-header">
+      <div>
+        <div class="route">/assess</div>
+        <div class="title">New Assessment</div>
+      </div>
+      <span class="badge badge-ok">OK</span>
+    </div>
+    <div style="width:100%;height:300px;background:#f7f7f3;display:flex;align-items:center;justify-content:center;">
+      <div style="background:white;border-radius:16px;border:2px dashed #d0d0c8;padding:32px 48px;text-align:center;max-width:380px;">
+        <div style="font-size:40px;margin-bottom:12px;">📷</div>
+        <div style="font-weight:700;font-size:16px;margin-bottom:4px;">Add Equipment Photos</div>
+        <div style="font-size:12px;color:#7a7770;margin-bottom:18px;">1–5 photos. Include the data plate if visible.</div>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          <div style="background:#1a8754;color:white;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;">Use Camera</div>
+          <div style="border:1px solid #e2dfd7;padding:8px 18px;border-radius:8px;font-size:13px;">Choose Files</div>
+        </div>
+        <div style="margin-top:16px;border-top:1px solid #f0efea;padding-top:16px;">
+          <input style="width:100%;border:1px solid #e2dfd7;border-radius:8px;padding:8px 12px;font-size:13px;color:#a8a49c;background:#fafaf8;" placeholder="Property address (search existing...)" readonly />
+        </div>
+      </div>
+    </div>
+    <div class="caption"><strong>Flow:</strong> Photo upload (camera / files) → Job info (address, homeowner, phone) → Analyze with AI → Generate estimate</div>
+  </div>
+
+  <div class="page-card">
+    <div class="page-card-header">
+      <div>
+        <div class="route">/onboarding</div>
+        <div class="title">Onboarding Wizard</div>
+      </div>
+      <span class="badge badge-ok">OK</span>
+    </div>
+    <div style="width:100%;height:280px;background:#f7f7f3;display:flex;align-items:center;justify-content:center;">
+      <div style="background:white;border-radius:16px;padding:32px 40px;text-align:center;max-width:380px;box-shadow:0 4px 20px rgba(0,0,0,.08);">
+        <div style="width:48px;height:48px;background:#1a8754;border-radius:10px;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:20px;">S</div>
+        <div style="font-weight:800;font-size:20px;margin-bottom:8px;">ScopeSnap</div>
+        <div style="font-size:12px;color:#7a7770;margin-bottom:20px;">AI-powered equipment intelligence</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+          <div style="font-size:11px;text-align:center;color:#7a7770;">📷<br/>Photo to Estimate</div>
+          <div style="font-size:11px;text-align:center;color:#7a7770;">🔍<br/>Equipment Intelligence</div>
+          <div style="font-size:11px;text-align:center;color:#7a7770;">📊<br/>Visual Reports</div>
+          <div style="font-size:11px;text-align:center;color:#7a7770;">🎯<br/>Accuracy Tracking</div>
+        </div>
+        <div style="background:#1a8754;color:white;padding:11px;border-radius:10px;font-weight:600;font-size:14px;">Get Started →</div>
+      </div>
+    </div>
+    <div class="caption"><strong>3-step wizard:</strong> Welcome screen (shown) → Company profile form → Team setup · Re-runnable from Settings</div>
+  </div>
+
+  <div class="page-card">
+    <div class="page-card-header">
+      <div>
+        <div class="route">/settings</div>
+        <div class="title">Company Settings</div>
+      </div>
+      <span class="badge badge-ok">OK</span>
+    </div>
+    <div style="width:100%;height:300px;background:#f7f7f3;display:flex;align-items:center;justify-content:center;">
+      <div style="background:white;border-radius:16px;border:1px solid #e2dfd7;padding:24px 28px;max-width:440px;width:100%;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#7a7770;margin-bottom:10px;">Company Profile</div>
+        <div style="background:#fef3e8;border-radius:8px;padding:10px 14px;font-size:12px;color:#c4600a;margin-bottom:14px;">Only the company owner can edit the profile.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;">
+          <div style="border:1px solid #e2dfd7;border-radius:8px;padding:8px 12px;color:#a8a49c;grid-column:1/-1;">Company Name *</div>
+          <div style="border:1px solid #e2dfd7;border-radius:8px;padding:8px 12px;color:#a8a49c;">(555) 123-4567</div>
+          <div style="border:1px solid #e2dfd7;border-radius:8px;padding:8px 12px;color:#a8a49c;">TX-HVAC-12345</div>
+          <div style="border:1px solid #e2dfd7;border-radius:8px;padding:8px 12px;color:#a8a49c;grid-column:1/-1;">info@yourhvac.com</div>
+        </div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid #f0efea;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#7a7770;">Billing &amp; Plan</div>
+            <div style="font-size:12px;color:#7a7770;">Manage subscription &amp; invoices</div>
+          </div>
+          <div style="background:#1a8754;color:white;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;">Manage →</div>
+        </div>
+      </div>
+    </div>
+    <div class="caption"><strong>Sections:</strong> Your account card · Company profile form (owner-only) · Billing &amp; plan link · Re-run onboarding</div>
+  </div>
+
+  <div class="page-card">
+    <div class="page-card-header">
+      <div>
+        <div class="route">/analytics</div>
+        <div class="title">Accuracy Tracker</div>
+      </div>
+      <span class="badge badge-api">API 404</span>
+    </div>
+    <div style="width:100%;height:200px;background:#f7f7f3;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;">
+      <div style="font-size:32px;">⚠️</div>
+      <div style="font-weight:700;color:#c62828;">API error 404</div>
+      <div style="font-size:13px;color:#7a7770;">Only owners and admins can view analytics.</div>
+      <div style="font-size:12px;color:#1a8754;">← Back to Dashboard</div>
+    </div>
+    <div class="caption"><strong>Status:</strong> Returns 404 in dev mode — the analytics endpoint requires owner role. Will display accuracy charts & technician metrics when data is present.</div>
+  </div>
+
+</div>
+
+<!-- ── ERRORS ──────────────────────────────────────────── -->
+<div class="section-label">🔴 Pages with Bugs (Needs Fix)</div>
+
+<div class="bug-card">
+  <h4>📄 /billing — <code>TypeError: Cannot read properties of undefined (reading 'map')</code></h4>
+  <p>
+    The billing API returns a subscription object where <code>features</code> is <code>null</code> or missing.
+    The code already has the fix applied (<code>sub.features ?? []</code>), but the Docker container's Next.js
+    dev server hasn't recompiled it because HMR doesn't propagate file changes through Docker volumes on Windows reliably.
+  </p>
+  <div class="fix">docker compose restart web</div>
+  &nbsp;&nbsp;
+  <span style="font-size:12px;color:#7a7770;">Run this in your terminal from the ScopeSnapAI folder — fix will apply instantly after restart.</span>
+</div>
+
+<!-- ── MOBILE NOTE ──────────────────────────────────────────── -->
+<div class="section-label">📱 Mobile Responsive Design</div>
+<div class="mobile-note">
+  <h3>Mobile Layout — Tailwind <code>md:</code> breakpoints at 768px</h3>
+  <p>
+    All pages use Tailwind CSS responsive classes. On screens below <code>768px</code>, the layout switches to:
+  </p>
+  <br/>
+  <p>
+    <strong>Sidebar</strong> — collapses to a top bar with a hamburger menu (<code>md:hidden</code> / <code>md:block</code> classes in <code>SidebarNav.tsx</code>)<br/>
+    <strong>Main content</strong> — shifts from <code>md:ml-60</code> (240px sidebar offset) to full-width with <code>pt-16</code> top padding for the mobile header<br/>
+    <strong>Stat cards</strong> — stack from <code>grid-cols-4</code> to single column<br/>
+    <strong>2-col sections</strong> — stack from <code>grid-cols-2</code> to single column<br/>
+    <strong>Assess page</strong> — photo upload area goes full width, designed mobile-first for on-site tech use<br/>
+  </p>
+  <br/>
+  <p style="color:#c4600a;">
+    ⚠️ <strong>Note:</strong> Mobile screenshots couldn't be captured in this session — the browser environment runs on a 1920px display and Chrome's minimum window size prevents actual viewport resizing to mobile widths. To view the mobile layout, open <code>http://localhost:3000</code> in Chrome DevTools → Toggle device toolbar → set to iPhone 14 (390×844).
+  </p>
+</div>
+
+<!-- ── SIDEBAR ──────────────────────────────────────────── -->
+<div class="section-label">🗺️ Full Navigation Map</div>
+<div style="background:white;border-radius:16px;border:1px solid #e2dfd7;overflow:hidden;">
+  <div style="background:#1a1a18;padding:20px 24px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <div style="width:32px;height:32px;background:#1a8754;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;">S</div>
+      <span style="color:white;font-weight:700;font-size:16px;">ScopeSnap</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;font-size:13px;">
+      <div>
+        <div style="color:rgba(255,255,255,.25);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">OVERVIEW</div>
+        <div style="color:rgba(255,255,255,.85);padding:6px 8px;background:rgba(26,135,84,.2);border-radius:6px;margin-bottom:4px;">📊 Dashboard</div>
+        <div style="color:rgba(255,255,255,.55);padding:6px 8px;margin-bottom:4px;">📋 Estimates</div>
+        <div style="color:rgba(255,255,255,.55);padding:6px 8px;">🎯 Accuracy Tracker</div>
+      </div>
+      <div>
+        <div style="color:rgba(255,255,255,.25);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">INTELLIGENCE</div>
+        <div style="color:rgba(255,255,255,.55);padding:6px 8px;margin-bottom:4px;">💰 Profit Leaks</div>
+        <div style="color:rgba(255,255,255,.55);padding:6px 8px;margin-bottom:4px;">📈 BenchmarkIQ</div>
+        <div style="color:rgba(255,255,255,.55);padding:6px 8px;">🏠 Property History</div>
+      </div>
+      <div>
+        <div style="color:rgba(255,255,255,.25);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">EQUIPMENT</div>
+        <div style="color:rgba(255,255,255,.55);padding:6px 8px;margin-bottom:4px;">⚙️ Equipment Database</div>
+        <div style="color:rgba(255,255,255,.55);padding:6px 8px;margin-bottom:16px;">⚠️ Aging Alerts</div>
+        <div style="color:rgba(255,255,255,.25);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">TEAM</div>
+        <div style="color:rgba(255,255,255,.55);padding:6px 8px;margin-bottom:4px;">👷 Technicians</div>
+        <div style="color:rgba(255,255,255,.55);padding:6px 8px;">🏆 Leaderboard</div>
+      </div>
+    </div>
+  </div>
+  <div style="padding:16px 24px;display:flex;gap:24px;font-size:13px;color:#7a7770;border-top:1px solid #f0efea;">
+    <div><span style="background:#e8f5ee;color:#1a8754;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">✓ Built</span> Dashboard, Assess, Onboarding, Settings</div>
+    <div><span style="background:#fef3e8;color:#c4600a;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">🔧 WIP</span> Billing (bug), Analytics (API 404)</div>
+    <div><span style="background:#f3e8f9;color:#6a1b9a;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;">📅 Planned</span> Profit Leaks, BenchmarkIQ, Equipment DB, Technicians, Leaderboard</div>
+  </div>
+</div>
+
+<div style="margin-top:40px;text-align:center;color:#a8a49c;font-size:12px;padding-bottom:20px;">
+  ScopeSnap Page Review · Generated March 2026
+</div>
+
+</body>
+</html>

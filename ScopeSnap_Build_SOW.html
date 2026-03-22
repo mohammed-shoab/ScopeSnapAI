@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopeSnap — Build SOW (Statement of Work)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+:root {
+  --bg:#f7f7f3;--s:#fff;--s2:#f0efea;--b:#e2dfd7;--t:#1a1a18;--t2:#7a7770;
+  --g:#1a8754;--gb:#e8f5ee;--o:#c4600a;--ob:#fef3e8;--bl:#1565c0;--bb:#e3f0fd;
+  --r:#c62828;--rb:#fce8e8;--p:#6a1b9a;--pb:#f3e8f9;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--t);font-family:'Plus Jakarta Sans',sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+.wrap{max-width:920px;margin:0 auto;padding:32px 24px}
+h1{font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
+.sub{font-size:13px;color:var(--t2);margin-bottom:24px}
+.ver{background:var(--s);border:1px solid var(--b);border-radius:10px;padding:14px 18px;font-size:11px;color:var(--t2);line-height:1.8;margin-bottom:24px}
+.ver strong{color:var(--t)}
+
+/* Work Package */
+.wp{background:var(--s);border:1px solid var(--b);border-radius:14px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.03);overflow:hidden}
+.wp-header{padding:18px 22px;border-bottom:1px solid var(--b);display:flex;align-items:center;gap:12px}
+.wp-num{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:white;background:var(--t);padding:4px 10px;border-radius:6px}
+.wp-num.setup{background:var(--p)}
+.wp-num.core{background:var(--g)}
+.wp-num.output{background:var(--bl)}
+.wp-num.deliver{background:var(--o)}
+.wp-num.polish{background:#6a6a65}
+.wp-title{font-size:16px;font-weight:800;letter-spacing:-.3px}
+.wp-meta{margin-left:auto;display:flex;gap:8px;align-items:center}
+.wp-effort{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--t2);background:var(--s2);padding:3px 8px;border-radius:4px}
+.wp-phase{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:3px 8px;border-radius:4px}
+.wp-phase.w1{background:var(--gb);color:var(--g)}
+.wp-phase.w2{background:var(--gb);color:var(--g)}
+.wp-phase.w3{background:var(--bb);color:var(--bl)}
+.wp-phase.w4{background:var(--ob);color:var(--o)}
+.wp-phase.w5{background:var(--pb);color:var(--p)}
+.wp-body{padding:18px 22px}
+.wp-body h4{font-size:12px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.8px;font-family:'IBM Plex Mono',monospace;margin:16px 0 6px}
+.wp-body h4:first-child{margin-top:0}
+.wp-body p,.wp-body li{font-size:12px;line-height:1.7}
+.wp-body ul,.wp-body ol{padding-left:20px;margin:6px 0}
+.wp-body li{margin-bottom:3px}
+pre{background:#1a1a18;color:#e0ddd5;border-radius:8px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1.6;overflow-x:auto;margin:8px 0;white-space:pre-wrap;word-break:break-word}
+code{font-family:'IBM Plex Mono',monospace;font-size:10px;background:var(--s2);padding:1px 4px;border-radius:3px}
+.ref{display:inline-block;font-size:9px;font-weight:600;font-family:'IBM Plex Mono',monospace;background:var(--bb);color:var(--bl);padding:2px 6px;border-radius:3px;margin:1px 2px}
+.ref-g{background:var(--gb);color:var(--g)}
+
+/* Acceptance criteria */
+.ac{background:var(--s2);border-radius:8px;padding:12px 16px;margin:8px 0}
+.ac li{font-size:11px;position:relative;padding-left:6px}
+.ac li::marker{content:'☐ '}
+
+/* Warning/info */
+.warn{background:var(--ob);border-left:3px solid var(--o);border-radius:0 8px 8px 0;padding:10px 14px;margin:10px 0;font-size:11px}
+.info{background:var(--bb);border-left:3px solid var(--bl);border-radius:0 8px 8px 0;padding:10px 14px;margin:10px 0;font-size:11px}
+.ok{background:var(--gb);border-left:3px solid var(--g);border-radius:0 8px 8px 0;padding:10px 14px;margin:10px 0;font-size:11px}
+.block{background:var(--rb);border-left:3px solid var(--r);border-radius:0 8px 8px 0;padding:10px 14px;margin:10px 0;font-size:11px}
+
+/* Phase divider */
+.phase-div{text-align:center;padding:24px 0 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--t2)}
+.phase-div span{background:var(--bg);padding:0 16px}
+.phase-div::before{content:'';display:block;height:1px;background:var(--b);margin-bottom:-8px}
+
+/* Table */
+.tw{overflow-x:auto;margin:8px 0}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{background:var(--s2);font-weight:700;text-align:left;padding:8px 10px;border:1px solid var(--b);font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:8px 10px;border:1px solid var(--b);vertical-align:top}
+
+.ft{text-align:center;padding:24px;font-size:10px;color:var(--t2);line-height:1.8}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>ScopeSnap — Build SOW</h1>
+<p class="sub">Sequential work packages for building ScopeSnap MVP. Feed to Cowork one at a time. Each package is self-contained.</p>
+
+<div class="ver">
+<strong>VERSION:</strong> V1.0 — March 21, 2026<br>
+<strong>HOW TO USE:</strong> Give Cowork the reference documents listed below. Then feed work packages in order (WP-01 → WP-02 → ...). Each WP has clear acceptance criteria — don't move to the next until all checkboxes pass. WPs within the same week can run in parallel if marked.<br>
+<strong>REFERENCE DOCUMENTS (give all to Cowork):</strong><br>
+• ScopeSnap_Product_Bible.html — Product strategy, vision, competitive intel, pricing<br>
+• ScopeSnap_MVP_Technical_Spec.html — Database schema, API endpoints, AI prompts, architecture<br>
+• ScopeSnap_Prototype_Demo.html — Tech mobile app prototype (visual reference for all screens)<br>
+• ScopeSnap_Owner_Dashboard.html — Owner dashboard prototype (visual reference)<br>
+• ScopeSnap_Homeowner_Report.html — Homeowner report prototype (visual reference for report page)<br>
+<strong>ENVIRONMENT:</strong> Local development. PostgreSQL local, FastAPI with uvicorn, Next.js dev server. See Tech Spec §00 for setup commands.<br>
+<strong>NOT IN SCOPE:</strong> LeakSense (Phase 2), BenchmarkIQ (Phase 3), cloud deployment (separate task after MVP), SEO calculators, landing page, Google Ads, community marketing.
+</div>
+
+<!-- ============================================================ -->
+<div class="phase-div"><span>WEEK 1 — Foundation + AI Core</span></div>
+<!-- ============================================================ -->
+
+<!-- WP-01 -->
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num setup">WP-01</span>
+<span class="wp-title">Project Scaffolding & Local Environment</span>
+<div class="wp-meta"><span class="wp-effort">~3-4 hrs</span><span class="wp-phase w1">Week 1</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>Create both project repositories with folder structure, install all dependencies, configure local PostgreSQL database, set up environment variables, and build the service abstraction layer (local ↔ cloud swappable).</p>
+
+<h4>Reference</h4>
+<p><span class="ref ref-g">Tech Spec §00</span> Local Development Setup — exact commands and dependencies<br>
+<span class="ref ref-g">Tech Spec §02</span> Database Schema — all CREATE TABLE statements<br>
+<span class="ref ref-g">Tech Spec §08</span> File Storage — LocalStorage class</p>
+
+<h4>Deliverables</h4>
+<ol>
+<li><strong>Backend repo:</strong> <code>scopesnap-api/</code>
+<pre>scopesnap-api/
+  main.py              # FastAPI app entry point
+  config.py            # Settings from .env (pydantic-settings)
+  db/
+    database.py        # AsyncSession setup, engine
+    models.py          # SQLAlchemy ORM models (ALL 12 tables from Tech Spec §02)
+    migrations/        # Alembic migrations folder
+  api/
+    __init__.py
+    auth.py            # Clerk JWT verification middleware
+    assessments.py     # Assessment endpoints (placeholder)
+    estimates.py       # Estimate endpoints (placeholder)
+    reports.py         # Public report endpoints (placeholder)
+  services/
+    storage.py         # LocalStorage + R2Storage abstraction
+    email.py           # ConsoleSender + ResendSender abstraction
+    vision.py          # Gemini API wrapper (placeholder)
+  prompts/
+    equipment_analysis.py  # Vision prompt from Tech Spec §04
+    homeowner_narrative.py # Narrative prompt from Tech Spec §04
+  .env.example
+  requirements.txt
+  Dockerfile           # For future Cloud Run deployment</pre></li>
+<li><strong>Frontend repo:</strong> <code>scopesnap-web/</code>
+<pre>scopesnap-web/
+  app/
+    layout.tsx
+    page.tsx            # Landing (placeholder)
+    (app)/              # Authenticated app routes
+      dashboard/page.tsx
+      assess/page.tsx
+      estimate/[id]/page.tsx
+    r/[slug]/[reportId]/page.tsx  # Public homeowner report (SSR)
+  components/
+    ui/                 # Shared UI components
+  lib/
+    api.ts              # API client (fetch wrapper)
+  .env.local.example
+  tailwind.config.ts</pre></li>
+<li><strong>Database:</strong> Local PostgreSQL with all 12 tables created via Alembic migration</li>
+<li><strong>Service abstractions:</strong> LocalStorage (saves to ./uploads/), ConsoleSender (prints email to terminal), both with same interface as their cloud counterparts</li>
+</ol>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+<li><code>uvicorn main:app --reload</code> starts without errors on localhost:8000</li>
+<li><code>npm run dev</code> starts without errors on localhost:3000</li>
+<li>GET <code>http://localhost:8000/health</code> returns <code>{"status": "ok", "db": "connected"}</code></li>
+<li>All 12 database tables exist (verify with <code>\dt</code> in psql)</li>
+<li>Alembic migration runs cleanly: <code>alembic upgrade head</code></li>
+<li><code>.env.example</code> documents every required environment variable</li>
+<li>LocalStorage can save and retrieve a test file from ./uploads/</li>
+</ul></div>
+
+<h4>Dependencies</h4>
+<p>None — this is the first work package.</p>
+
+<div class="warn"><strong>IMPORTANT:</strong> The ORM models must match Tech Spec §02 EXACTLY — every column, every type, every constraint, every index. Don't simplify or skip JSONB fields. The schema is designed for future features (accuracy tracking, equipment lifecycle, property history). Build it right now so we never need a painful migration later.</div>
+</div>
+</div>
+
+<!-- WP-02 -->
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num core">WP-02</span>
+<span class="wp-title">Photo Upload + Vision AI Analysis</span>
+<div class="wp-meta"><span class="wp-effort">~4-6 hrs</span><span class="wp-phase w1">Week 1</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>The core AI pipeline: upload 1-5 equipment photos → call Gemini 2.5 Flash with the structured prompt → parse JSON response → store results. This is the single most important piece of the product.</p>
+
+<h4>Reference</h4>
+<p><span class="ref ref-g">Tech Spec §03</span> POST /api/assessments and POST /api/assessments/{id}/analyze<br>
+<span class="ref ref-g">Tech Spec §04</span> EQUIPMENT_ANALYSIS_PROMPT — use this exact prompt<br>
+<span class="ref ref-g">Tech Spec §01</span> Request Flow — steps 3-5<br>
+<span class="ref">Prototype</span> ScopeSnap_Prototype_Demo.html — Capture → Analyzing → Intelligence Results screens</p>
+
+<h4>Deliverables</h4>
+<ol>
+<li><strong>POST /api/assessments</strong> — Accept multipart upload (1-5 images). Compress to 1200px wide server-side (Pillow). Save to LocalStorage. Create assessment record in DB with photo_urls and status='pending'.</li>
+<li><strong>POST /api/assessments/{id}/analyze</strong> — Load photos from storage. Send to Gemini 2.5 Flash with EQUIPMENT_ANALYSIS_PROMPT from Tech Spec §04. Parse JSON response. Store full AI response in <code>assessments.ai_analysis</code>. Store structured equipment ID in <code>assessments.ai_equipment_id</code>. Store condition in <code>assessments.ai_condition</code>. Store issues in <code>assessments.ai_issues</code>. Store photo annotations in <code>assessment_photos</code> table. Update status to 'analyzed'.</li>
+<li><strong>PATCH /api/assessments/{id}</strong> — Tech overrides any AI field (brand, model, condition). Store overrides in <code>assessments.tech_overrides</code> JSONB.</li>
+<li><strong>Gemini service wrapper:</strong> <code>services/vision.py</code> — handles API call, retries (max 2), timeout (30s), error handling (if Gemini returns non-JSON, log and return error). Falls back gracefully if confidence < 50 (returns result but flags as low confidence).</li>
+</ol>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+<li>Upload 2 HVAC equipment photos → get back assessment_id within 2 seconds</li>
+<li>Call /analyze → get structured JSON with brand, model, condition, components, annotations within 15 seconds</li>
+<li>Response includes photo_annotations with x/y coordinates and color codes</li>
+<li>ai_analysis stores the complete raw Gemini response (for debugging)</li>
+<li>ai_equipment_id is structured JSON: {"brand":"...","model":"...","confidence":...}</li>
+<li>PATCH override works — changing brand from "Carrier" to "Trane" stores in tech_overrides</li>
+<li>Handles edge cases: blurry photo (low confidence returned), non-HVAC image (error message), Gemini timeout (retry once then return error)</li>
+</ul></div>
+
+<h4>Dependencies</h4>
+<p><strong>WP-01</strong> must be complete (database, folder structure, storage abstraction).</p>
+
+<h4>Test Data</h4>
+<p>Download 10-20 HVAC equipment photos from Google Images or manufacturer sites. Include: Carrier outdoor unit (model plate visible), Trane furnace, Goodman AC (corroded coil), blurry photo, non-HVAC photo (car engine). Save in <code>test_data/photos/</code>.</p>
+
+<div class="ok"><strong>THIS IS THE PRODUCT.</strong> If this work package produces accurate equipment identification from photos, ScopeSnap works. If it doesn't, nothing else matters. Spend extra time on prompt tuning here. Test with at least 20 different equipment photos before moving on.</div>
+</div>
+</div>
+
+<!-- WP-03 -->
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num core">WP-03</span>
+<span class="wp-title">Equipment Database + Serial Number Decoding</span>
+<div class="wp-meta"><span class="wp-effort">~4-5 hrs</span><span class="wp-phase w1">Week 1</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>Seed the global equipment_models reference table with top 50 HVAC models. Build serial number decoder for all 5 brands. Build the model-matching logic that links a Vision AI result to a known model.</p>
+
+<h4>Reference</h4>
+<p><span class="ref ref-g">Tech Spec §07</span> Equipment Database — brands, models, data sources, serial decode example<br>
+<span class="ref ref-g">Tech Spec §02</span> equipment_models and equipment_instances tables</p>
+
+<h4>Deliverables</h4>
+<ol>
+<li><strong>Seed script:</strong> <code>scripts/seed_equipment_db.py</code> — Populates equipment_models with 50 entries (10 per brand: Carrier, Trane, Lennox, Goodman, Rheem). Each entry has: brand, model_series, model_pattern (regex), equipment_type, seer_rating, tonnage_range, manufacture_years, avg_lifespan_years, known_issues (JSONB), serial_decode_pattern (JSONB).</li>
+<li><strong>Serial decoder:</strong> <code>services/serial_decoder.py</code> — Given a serial number + brand, returns {"year": 2016, "week": 20}. Implement for all 5 brands using the pattern stored in equipment_models.serial_decode_pattern. Falls back to null if pattern doesn't match.</li>
+<li><strong>Model matcher:</strong> <code>services/equipment_matcher.py</code> — Given brand + model_number from Vision AI, queries equipment_models using the model_pattern regex. Returns the matching model with lifecycle data, known issues, and recalls. Returns null if no match (model goes into an "unmatched" queue for future DB expansion).</li>
+<li><strong>Integration with WP-02:</strong> After Vision AI returns results, automatically call model matcher and serial decoder. Enrich assessment response with lifecycle data.</li>
+</ol>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+<li>Seed script populates 50 models without errors</li>
+<li>Query for brand="Carrier" returns 10 models</li>
+<li>Model matcher: input "Carrier" + "24ACC636A003" → matches to 24ACC6 series → returns lifecycle data (avg lifespan 15 yrs, known coil corrosion issue)</li>
+<li>Serial decoder: input serial "3516E12345" for Carrier → returns year=2016, week=16</li>
+<li>Unknown model (e.g., "BrandX" + "ZZZ999") → returns null match, no crash</li>
+<li>equipment_instances record created/updated when assessment is analyzed at a property</li>
+</ul></div>
+
+<h4>Dependencies</h4>
+<p><strong>WP-01</strong> (database). Can run in parallel with <strong>WP-02</strong> (vision AI) — they integrate at the end.</p>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="phase-div"><span>WEEK 2 — Estimation Engine</span></div>
+<!-- ============================================================ -->
+
+<!-- WP-04 -->
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num core">WP-04</span>
+<span class="wp-title">Pricing Database + Estimate Generation Pipeline</span>
+<div class="wp-meta"><span class="wp-effort">~5-6 hrs</span><span class="wp-phase w2">Week 2</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>The estimation engine. Takes AI analysis results + pricing data → generates Good/Better/Best options with line items. Zero AI cost — all deterministic math and DB lookups.</p>
+
+<h4>Reference</h4>
+<p><span class="ref ref-g">Tech Spec §05</span> Estimate Generation Pipeline — all 9 steps, job-type mapping table<br>
+<span class="ref ref-g">Tech Spec §02</span> estimates, estimate_line_items, pricing_rules tables<br>
+<span class="ref ref-g">Tech Spec §03</span> POST /api/estimates/generate, PATCH /api/estimates/{id}</p>
+
+<h4>Deliverables</h4>
+<ol>
+<li><strong>Pricing seed script:</strong> <code>scripts/seed_pricing.py</code> — Populates pricing_rules with national defaults for common HVAC job types: coil_replacement, full_system, compressor_replacement, refrigerant_recharge, maintenance, repair. Each rule has: parts_cost (min/max/avg), labor_hours (min/max/avg), permit_cost, refrigerant_cost_per_lb.</li>
+<li><strong>POST /api/estimates/generate</strong> — Takes assessment_id + optional tech adjustments. Runs the 9-step pipeline from Tech Spec §05: determine job types from condition → lookup pricing (cascade: company → region → national) → calculate line items → apply markup → calculate energy savings → build Good/Better/Best options → calculate 5-year total cost. Returns complete estimate with options array.</li>
+<li><strong>PATCH /api/estimates/{id}</strong> — Tech adjusts line items, markup percentage, or option details. Recalculates totals.</li>
+<li><strong>Condition-to-options mapping:</strong> Stored as config (not hardcoded). Maps condition combos to 2-3 tier options per Tech Spec §05 table.</li>
+</ol>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+<li>For a Carrier AC with moderate coil corrosion: returns 3 options — Clean & Treat (~$450), Replace Coil (~$2,500), New System (~$8,400)</li>
+<li>Each option has itemized line items (parts, labor, permits, disposal)</li>
+<li>Markup slider: changing from 35% to 45% recalculates all totals correctly</li>
+<li>Pricing cascade works: if company pricing exists → use it. If not → use national default</li>
+<li>5-year total cost calculated for each option (includes upfront + energy + likely repairs)</li>
+<li>Energy savings calculated using SEER comparison formula (old SEER vs new SEER)</li>
+<li>All amounts stored as decimal(10,2) — no floating point rounding errors</li>
+</ul></div>
+
+<h4>Dependencies</h4>
+<p><strong>WP-01</strong> (database), <strong>WP-02</strong> (AI analysis results to feed into estimation).</p>
+
+<div class="warn"><strong>NO AI IN THIS PIPELINE.</strong> If you find yourself calling Gemini or any LLM to calculate pricing, you're doing it wrong. This is SQL queries + arithmetic + template fill. The AI already did its job in WP-02. This step is pure math.</div>
+</div>
+</div>
+
+<!-- WP-05 -->
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num core">WP-05</span>
+<span class="wp-title">Property History + Customer Management</span>
+<div class="wp-meta"><span class="wp-effort">~2-3 hrs</span><span class="wp-phase w2">Week 2</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>Address lookup, property record management, and customer data. When a tech types "4215 Oakwood Dr" — show all previous visits, equipment history, and customer info.</p>
+
+<h4>Reference</h4>
+<p><span class="ref ref-g">Tech Spec §02</span> properties, equipment_instances tables<br>
+<span class="ref ref-g">Tech Spec §03</span> GET /api/properties/search<br>
+<span class="ref">Prototype</span> Capture screen — "⚡ Previous visit found" alert</p>
+
+<h4>Deliverables</h4>
+<ol>
+<li><strong>GET /api/properties/search?q={address}</strong> — Fuzzy search on address_line1 + zip. Returns matching properties with visit count, last visit date, customer name, and linked equipment.</li>
+<li><strong>Property upsert logic:</strong> When assessment is created at an address, find-or-create the property record. If existing, increment visit_count, update last_visit_at.</li>
+<li><strong>Equipment history per property:</strong> When assessment completes, link the equipment_instance to the property. Next visit shows: "Carrier 24ACC636, last assessed March 2026, condition: Fair."</li>
+</ol>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+<li>Search "4215 Oakwood" → returns matching property with history</li>
+<li>Create 2 assessments at same address → property.visit_count = 2</li>
+<li>Second assessment shows equipment from first visit</li>
+<li>New address → creates new property record automatically</li>
+<li>Unique constraint prevents duplicate properties per company (same address + zip)</li>
+</ul></div>
+
+<h4>Dependencies</h4>
+<p><strong>WP-01</strong> (database). Can run in parallel with <strong>WP-04</strong>.</p>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="phase-div"><span>WEEK 3 — Document Generation</span></div>
+<!-- ============================================================ -->
+
+<!-- WP-06 -->
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num output">WP-06</span>
+<span class="wp-title">Homeowner Visual Report (Public Page)</span>
+<div class="wp-meta"><span class="wp-effort">~6-8 hrs</span><span class="wp-phase w3">Week 3</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>The key differentiator. A public, no-auth, server-rendered HTML page that homeowners see when they tap the link in their text/email. Must work perfectly on mobile and desktop. This is what closes deals.</p>
+
+<h4>Reference</h4>
+<p><span class="ref ref-g">Tech Spec §06</span> Homeowner Report Generation — architecture, annotation rendering, URL security<br>
+<span class="ref ref-g">Tech Spec §03</span> GET /r/{company_slug}/{report_short_id}<br>
+<span class="ref">Prototype</span> ScopeSnap_Homeowner_Report.html — Part 2 (mobile) and Part 3 (desktop) are the EXACT visual targets</p>
+
+<h4>Deliverables</h4>
+<ol>
+<li><strong>Next.js SSR page:</strong> <code>app/r/[slug]/[reportId]/page.tsx</code> — Server-side rendered. Fetches estimate + assessment + photos + company data. No client-side auth required.</li>
+<li><strong>Annotated photo component:</strong> SVG overlay on equipment photo using coordinates from assessment_photos.annotations. Animated dashed circles for issues (red/orange/green). Callout labels with descriptions. Match the visual style in the prototype exactly.</li>
+<li><strong>Health gauge component:</strong> Circular gauge showing EXCELLENT/GOOD/FAIR/POOR/CRITICAL with color coding.</li>
+<li><strong>Equipment info section:</strong> Brand, model, install year, remaining life estimate, SEER rating.</li>
+<li><strong>Issue cards:</strong> Red/orange/green issue explanations in plain English (from ai_issues → description_plain).</li>
+<li><strong>Options cards:</strong> Three selectable option cards with pricing. Tapping one updates the "Approve" button text dynamically (client-side JS).</li>
+<li><strong>5-year cost comparison:</strong> Horizontal bar chart comparing total 5-year cost of each option.</li>
+<li><strong>Approve button:</strong> Posts selected option to <code>/api/reports/{token}/approve</code>.</li>
+<li><strong>Contact section:</strong> Call/Text buttons with tech's phone number.</li>
+<li><strong>View tracking:</strong> First page load sets estimates.viewed_at. Does NOT overwrite on subsequent loads.</li>
+<li><strong>Report token security:</strong> URL uses report_short_id (human-readable). API calls use report_token (32-char random). Never expose internal UUIDs.</li>
+<li><strong>Responsive:</strong> Must look professional on both mobile (375px) and desktop (1200px). Use the prototype Part 2 layout for mobile, Part 3 layout for desktop.</li>
+<li><strong>Company branding:</strong> Show company logo, name, license number, phone from companies table.</li>
+</ol>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+<li>Open localhost:3000/r/abc-hvac/rpt-001 on phone-sized viewport → matches prototype Part 2 layout</li>
+<li>Open same URL on desktop viewport → matches prototype Part 3 layout</li>
+<li>Annotated photo shows SVG overlays with animated issue circles</li>
+<li>Tap option card → approve button text updates ("Approve Option B — $2,530")</li>
+<li>Tap approve → POST request sent with selected option</li>
+<li>First page load sets viewed_at in database; refresh does NOT overwrite</li>
+<li>Page loads in under 2 seconds (SSR, no heavy JS frameworks)</li>
+<li>Page works without JavaScript (options are visible, just not selectable without JS)</li>
+<li>Company logo and branding displayed correctly</li>
+<li>"ScopeSnap" branding in footer (subtle, not competing with company brand)</li>
+</ul></div>
+
+<h4>Dependencies</h4>
+<p><strong>WP-02</strong> (AI analysis with annotations), <strong>WP-04</strong> (estimate with options and line items).</p>
+
+<div class="ok"><strong>VISUAL REFERENCE IS LAW.</strong> The prototypes (ScopeSnap_Homeowner_Report.html Part 2 and Part 3) are the design targets. Match them as closely as possible. The annotated photo with animated callouts, the health gauge, the selectable option cards with dynamic approve button, the 5-year cost bars — all of these must be present and look professional. This page is what the homeowner sees. It IS the product for them.</div>
+</div>
+</div>
+
+<!-- WP-07 -->
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num output">WP-07</span>
+<span class="wp-title">Contractor PDF Estimate</span>
+<div class="wp-meta"><span class="wp-effort">~3-4 hrs</span><span class="wp-phase w3">Week 3</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>Professional PDF estimate for the contractor's records. Company branded. Line items for each tier. This is the table-stakes output that matches what EstimationPro does.</p>
+
+<h4>Reference</h4>
+<p><span class="ref ref-g">Tech Spec §03</span> POST /api/estimates/{id}/documents<br>
+<span class="ref ref-g">Tech Spec §06</span> WeasyPrint PDF generation</p>
+
+<h4>Deliverables</h4>
+<ol>
+<li><strong>HTML template:</strong> <code>templates/contractor_estimate.html</code> — Professional layout with company logo, license, contact. Customer info. Job address. Date. Line items per option tier (parts, labor, permits, total). Warranty terms. Validity period (30 days).</li>
+<li><strong>WeasyPrint rendering:</strong> <code>services/pdf_generator.py</code> — Takes estimate data, fills template, renders to PDF. Saves to LocalStorage (or R2 in production).</li>
+<li><strong>POST /api/estimates/{id}/documents</strong> — Generates both contractor PDF AND updates homeowner report URL. Returns URLs for both.</li>
+</ol>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+<li>PDF opens correctly in any PDF viewer</li>
+<li>Company logo, name, license number displayed at top</li>
+<li>All three option tiers shown with itemized line items</li>
+<li>Totals are correct (match the estimate data exactly)</li>
+<li>PDF file size under 500KB</li>
+<li>Generated and saved in under 3 seconds</li>
+</ul></div>
+
+<h4>Dependencies</h4>
+<p><strong>WP-04</strong> (estimate data). Can run in parallel with <strong>WP-06</strong>.</p>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="phase-div"><span>WEEK 4 — Complete Workflow + Delivery</span></div>
+<!-- ============================================================ -->
+
+<!-- WP-08 -->
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num deliver">WP-08</span>
+<span class="wp-title">Tech Mobile App — All Screens</span>
+<div class="wp-meta"><span class="wp-effort">~8-10 hrs</span><span class="wp-phase w4">Week 4</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>The complete tech-facing mobile experience as a Progressive Web App. All 9 screens from the prototype, wired to real API endpoints.</p>
+
+<h4>Reference</h4>
+<p><span class="ref">Prototype</span> ScopeSnap_Prototype_Demo.html — ALL 9 screens are the visual targets<br>
+<span class="ref ref-g">Tech Spec §03</span> All authenticated API endpoints<br>
+<span class="ref ref-g">Tech Spec §01</span> Request Flow — all 13 steps</p>
+
+<h4>Deliverables</h4>
+<p>9 screens matching the prototype, in this navigation flow:</p>
+<ol>
+<li><strong>Home</strong> — Today's accuracy score, recent estimates, job list. <code>GET /api/dashboard</code></li>
+<li><strong>Capture</strong> — Camera access (browser API), take 1-5 photos, address input with property search autocomplete. <code>GET /api/properties/search</code>, <code>POST /api/assessments</code></li>
+<li><strong>Analyzing</strong> — Loading animation while AI processes. <code>POST /api/assessments/{id}/analyze</code></li>
+<li><strong>Intelligence Results</strong> — Equipment ID with confidence, condition per component, lifecycle data, known issues, recalls. Tech can override any field. <code>PATCH /api/assessments/{id}</code></li>
+<li><strong>Estimate Builder</strong> — Good/Better/Best options with line items. Markup slider. Tech can adjust any line item. <code>POST /api/estimates/generate</code>, <code>PATCH /api/estimates/{id}</code></li>
+<li><strong>Output</strong> — Two tabs: contractor estimate + homeowner report preview. <code>POST /api/estimates/{id}/documents</code></li>
+<li><strong>Present Mode</strong> — Full-screen slideshow for showing homeowner at job site: annotated photo, health card, options, cost comparison.</li>
+<li><strong>Send</strong> — Enter customer phone/email. Send estimate. Schedule follow-ups. <code>POST /api/estimates/{id}/send</code></li>
+<li><strong>Save to History</strong> — Confirmation screen. Property record updated. Equipment saved. <code>POST /api/assessments/{id}/complete</code></li>
+</ol>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+<li>Complete flow works end-to-end: Home → Capture → Analyze → Results → Estimate → Output → Send → Save</li>
+<li>Camera access works on mobile browser (getUserMedia API)</li>
+<li>Address autocomplete shows property history for known addresses</li>
+<li>AI analysis returns results in under 15 seconds</li>
+<li>Markup slider updates all pricing in real-time</li>
+<li>Present Mode shows full-screen slides with annotated photo</li>
+<li>Send screen dispatches email (to console in dev) and creates follow-up records</li>
+<li>Bottom navigation bar allows jumping to any major screen</li>
+<li>App is installable as PWA (manifest.json, service worker for offline shell)</li>
+<li>Responsive: works on phone (375px-430px) and tablet (768px)</li>
+</ul></div>
+
+<h4>Dependencies</h4>
+<p><strong>ALL previous WPs</strong> (WP-01 through WP-07). This is the integration work package.</p>
+
+<div class="block"><strong>THIS IS THE LARGEST WP.</strong> If scope gets tight, deprioritize Present Mode (screen 7) and make it a stretch goal. The critical path is: Capture → Analyze → Estimate → Output → Send. Present Mode is nice-to-have for V1.</div>
+</div>
+</div>
+
+<!-- WP-09 -->
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num deliver">WP-09</span>
+<span class="wp-title">Email Notifications + Follow-Up Scheduler</span>
+<div class="wp-meta"><span class="wp-effort">~3-4 hrs</span><span class="wp-phase w4">Week 4</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>When tech sends estimate: homeowner gets a text + email with link to report. Then automated follow-ups at 24h, 48h, 7d if not approved. When homeowner views/approves, tech gets notified.</p>
+
+<h4>Reference</h4>
+<p><span class="ref ref-g">Tech Spec §11</span> Email templates, follow-up scheduler, cron logic<br>
+<span class="ref">Prototype</span> ScopeSnap_Homeowner_Report.html — Part 1 (text message + email notification)</p>
+
+<h4>Deliverables</h4>
+<ol>
+<li><strong>POST /api/estimates/{id}/send</strong> — Sends email via abstracted sender (ConsoleSender in dev → Resend in prod). Email content matches prototype Part 1: health gauge, 3 pricing cards, CTA button. Schedules 3 follow-ups in follow_ups table.</li>
+<li><strong>Email templates:</strong> estimate_sent, reminder_24h, reminder_48h, reminder_7d, deposit_receipt, tech_notification (6 total).</li>
+<li><strong>Follow-up processor:</strong> Background task (or simple cron endpoint) that checks for due follow-ups and sends them. Cancels follow-ups if estimate is already approved.</li>
+<li><strong>Tech notifications:</strong> When homeowner opens report (viewed_at set) or approves, send notification to the tech.</li>
+</ol>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+<li>Sending estimate creates 3 follow-up records (24h, 48h, 7d) in database</li>
+<li>Follow-up processor finds due follow-ups and "sends" them (console log in dev)</li>
+<li>If estimate is approved, remaining follow-ups are cancelled</li>
+<li>Tech notification triggered when viewed_at is first set</li>
+<li>Email template renders correctly with estimate data</li>
+<li>ConsoleSender logs the full email content to terminal (for testing without real email)</li>
+</ul></div>
+
+<h4>Dependencies</h4>
+<p><strong>WP-04</strong> (estimates), <strong>WP-06</strong> (report URL to include in email).</p>
+</div>
+</div>
+
+<!-- WP-10 -->
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num deliver">WP-10</span>
+<span class="wp-title">Stripe Payments — Deposit Collection</span>
+<div class="wp-meta"><span class="wp-effort">~3-4 hrs</span><span class="wp-phase w4">Week 4</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>When homeowner taps "Approve + Pay Deposit" on the report, create a Stripe Checkout session for the deposit amount. Handle the payment webhook to update estimate status.</p>
+
+<h4>Reference</h4>
+<p><span class="ref ref-g">Tech Spec §10</span> Stripe integration — products, checkout, webhooks<br>
+<span class="ref ref-g">Tech Spec §03</span> POST /api/reports/{token}/approve, POST /api/reports/{token}/payment, POST /api/webhooks/stripe</p>
+
+<h4>Deliverables</h4>
+<ol>
+<li><strong>POST /api/reports/{token}/approve</strong> — Validate token, record selected option and approval timestamp.</li>
+<li><strong>POST /api/reports/{token}/payment</strong> — Create Stripe Checkout Session for deposit amount (20% of selected option total). Redirect homeowner to Stripe hosted checkout.</li>
+<li><strong>POST /api/webhooks/stripe</strong> — Handle checkout.session.completed event. Update estimate status to 'deposit_paid'. Store stripe_payment_intent_id. Send deposit receipt email. Notify contractor.</li>
+<li><strong>Stripe test mode setup:</strong> Test products/prices. Test webhook endpoint with Stripe CLI (<code>stripe listen --forward-to localhost:8000/api/webhooks/stripe</code>).</li>
+</ol>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+<li>Homeowner taps "Approve Option B" → selects option, shows payment button</li>
+<li>Taps "Pay Deposit" → redirected to Stripe Checkout with correct amount ($506 for $2,530 estimate)</li>
+<li>Use test card 4242424242424242 → payment succeeds → redirected back to report showing "Approved ✓"</li>
+<li>Webhook fires → estimate.status = 'deposit_paid' in database</li>
+<li>Contractor receives notification that deposit was paid</li>
+<li>Stripe CLI webhook forwarding works in local development</li>
+</ul></div>
+
+<h4>Dependencies</h4>
+<p><strong>WP-06</strong> (homeowner report with approve button).</p>
+</div>
+</div>
+
+<!-- WP-11 -->
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num deliver">WP-11</span>
+<span class="wp-title">Authentication + Multi-Tenancy (Clerk)</span>
+<div class="wp-meta"><span class="wp-effort">~3-4 hrs</span><span class="wp-phase w4">Week 4</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>Sign up, login, company creation, and role-based access. Clerk handles auth UI — we handle mapping Clerk users to our database and enforcing company isolation.</p>
+
+<h4>Reference</h4>
+<p><span class="ref ref-g">Tech Spec §09</span> Authentication & Multi-Tenancy — Clerk setup, RLS, middleware<br>
+<span class="ref ref-g">Tech Spec §03</span> Auth middleware, POST /api/auth/setup</p>
+
+<h4>Deliverables</h4>
+<ol>
+<li><strong>Clerk integration (frontend):</strong> Sign up / login pages using Clerk's hosted UI. Organization creation flow (company = Clerk organization).</li>
+<li><strong>Clerk integration (backend):</strong> JWT verification middleware. Extract user_id and org_id from Clerk JWT. Map to our users/companies tables.</li>
+<li><strong>POST /api/auth/setup:</strong> Called after first login. Creates company + user records if they don't exist. Sets role (first user = 'owner', subsequent = 'tech').</li>
+<li><strong>RLS enforcement:</strong> Set app.current_company_id on every authenticated request. Verify that queries only return data for the current company.</li>
+<li><strong>Role checks:</strong> Owner can see all techs' estimates. Tech can only see their own.</li>
+</ol>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+<li>New user signs up → Clerk handles email verification → first login calls /api/auth/setup → company + user created</li>
+<li>Second user joins same organization → mapped to same company, role = 'tech'</li>
+<li>Tech A cannot see Tech B's estimates (RLS enforced)</li>
+<li>Owner can see all estimates across all techs</li>
+<li>Unauthenticated request to /api/assessments returns 401</li>
+<li>Public report endpoints (/r/...) work WITHOUT authentication</li>
+</ul></div>
+
+<h4>Dependencies</h4>
+<p><strong>WP-01</strong> (database, user/company tables). Can be started any time after WP-01.</p>
+
+<div class="info"><strong>ORDERING NOTE:</strong> This WP is listed in Week 4, but you can start it earlier if you want auth from the beginning. During Weeks 1-3, you can use a hardcoded test user to bypass auth while building the core features. Wire up Clerk when ready.</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="phase-div"><span>WEEK 4 CHECKPOINT — End-to-End Test</span></div>
+<!-- ============================================================ -->
+
+<!-- WP-12 -->
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num polish">WP-12</span>
+<span class="wp-title">Integration Testing — Complete Loop</span>
+<div class="wp-meta"><span class="wp-effort">~4-5 hrs</span><span class="wp-phase w4">Week 4</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>Not new features — integration testing of the complete end-to-end flow. Fix every broken handoff, missing field, and edge case. This is the "ship it" checkpoint.</p>
+
+<h4>The Test Script</h4>
+<p>Perform this exact sequence manually and verify every step:</p>
+<ol>
+<li>Sign up as "Dave Martinez" → create company "ABC HVAC Services" with logo, phone, license</li>
+<li>Add tech "Mike Rodriguez" to the company</li>
+<li>As Mike: open app → tap "New Assessment"</li>
+<li>Enter address "4215 Oakwood Dr, Houston TX 77004" → no previous visits shown (new property)</li>
+<li>Upload 2 photos of HVAC equipment (use test photos)</li>
+<li>Tap "Analyze" → wait for AI results → verify brand, model, condition returned</li>
+<li>Review results → override one field (e.g., change install year) → verify override saved</li>
+<li>Tap "Generate Estimate" → verify 3 options with correct line items and pricing</li>
+<li>Adjust markup to 40% → verify totals recalculate</li>
+<li>Generate documents → verify both contractor PDF and homeowner report URL created</li>
+<li>Open homeowner report URL in incognito browser → verify it loads without auth, shows annotated photo, 3 options, company branding</li>
+<li>Tap Option B → approve button updates → tap approve</li>
+<li>Pay deposit via Stripe test card → verify status updates to 'deposit_paid'</li>
+<li>Verify Mike received notification that Sarah approved</li>
+<li>Go back to Mike's app → verify estimate shows as "Approved + Deposit Paid"</li>
+<li>Mark job as complete → enter actual cost → verify accuracy score calculated</li>
+<li>Create SECOND assessment at same address → verify "Previous visit found" with equipment history</li>
+</ol>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+<li>All 17 steps above complete without errors</li>
+<li>Total time for the complete flow (steps 3-16): under 5 minutes</li>
+<li>Property history works on return visits</li>
+<li>Homeowner report renders correctly on mobile AND desktop</li>
+<li>No console errors in browser (frontend)</li>
+<li>No unhandled exceptions in FastAPI logs (backend)</li>
+<li>Database has correct records in all relevant tables</li>
+</ul></div>
+
+<div class="ok"><strong>WHEN THIS PASSES, MVP IS COMPLETE.</strong> You have a working product that can be deployed to cloud and given to real HVAC contractors. Everything after this is polish, billing, and go-to-market.</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="phase-div"><span>WEEK 5-8 — Polish, Dashboard, Billing, Launch Prep</span></div>
+<!-- ============================================================ -->
+
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num polish">WP-13</span>
+<span class="wp-title">Cloud Deployment</span>
+<div class="wp-meta"><span class="wp-effort">~3-4 hrs</span><span class="wp-phase w5">Week 5</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>Move from local to cloud. Swap all service abstractions from local to production.</p>
+<h4>Deliverables</h4>
+<ol>
+<li>Deploy FastAPI to Google Cloud Run (Dockerfile already built in WP-01)</li>
+<li>Create Neon database, run migrations, set DATABASE_URL</li>
+<li>Create Cloudflare R2 bucket, swap LocalStorage → R2Storage</li>
+<li>Connect frontend repo to Vercel, auto-deploy from main branch</li>
+<li>Switch Clerk to production keys</li>
+<li>Set up Resend account, swap ConsoleSender → ResendSender</li>
+<li>Configure custom domain (scopesnap.com or report.scopesnap.com)</li>
+<li>Set Google Cloud billing alert at $1</li>
+</ol>
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+<li>Complete WP-12 test script passes on cloud deployment (not just local)</li>
+<li>Report URL accessible from any device on the internet</li>
+<li>Billing alert configured and verified</li>
+<li>SSL working on all domains</li>
+</ul></div>
+</div>
+</div>
+
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num polish">WP-14</span>
+<span class="wp-title">Owner Dashboard (V1)</span>
+<div class="wp-meta"><span class="wp-effort">~6-8 hrs</span><span class="wp-phase w5">Week 5-6</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>Dave's laptop view. Not the full BenchmarkIQ dashboard from the prototype — V1 is the essentials only.</p>
+<h4>Reference</h4>
+<p><span class="ref">Prototype</span> ScopeSnap_Owner_Dashboard.html — visual target (implement top half only for V1)<br>
+<span class="ref ref-g">Tech Spec §03</span> GET /api/estimates, GET /api/techs/accuracy, GET /api/equipment/aging-alerts</p>
+<h4>V1 Scope (build this)</h4>
+<ul>
+<li>Stat cards: total estimates, close rate, avg ticket, revenue</li>
+<li>Recent estimates table with status badges and tech names</li>
+<li>Per-tech accuracy scores (basic — just the numbers, not the full coaching suggestions)</li>
+<li>Date range filter</li>
+</ul>
+<h4>NOT in V1 (build later)</h4>
+<ul>
+<li>BenchmarkIQ comparisons (requires Phase 3 data)</li>
+<li>AI coaching suggestions</li>
+<li>Profit leak detection (requires Phase 2 LeakSense)</li>
+<li>Equipment aging alerts campaign generator</li>
+</ul>
+</div>
+</div>
+
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num polish">WP-15</span>
+<span class="wp-title">Stripe Subscription Billing</span>
+<div class="wp-meta"><span class="wp-effort">~4-5 hrs</span><span class="wp-phase w5">Week 6-7</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>Free tier enforcement (5 estimates/month), upgrade to Early Bird ($9.99/50), usage metering, monthly reset.</p>
+<h4>Reference</h4>
+<p><span class="ref ref-g">Tech Spec §10</span> Stripe products, prices, webhook handler<br>
+<span class="ref ref-g">Product Bible §07</span> Pricing tiers and Early Bird strategy</p>
+<h4>Deliverables</h4>
+<ol>
+<li>Estimate counter enforcement — block estimate creation when monthly_estimate_count >= monthly_estimate_limit</li>
+<li>Upgrade modal — shown when limit hit, links to Stripe Checkout for subscription</li>
+<li>Webhook handler for subscription created / renewed / cancelled</li>
+<li>Monthly reset of estimate counter on billing cycle renewal</li>
+<li>Stripe Customer Portal link for self-service plan management</li>
+</ol>
+</div>
+</div>
+
+<div class="wp">
+<div class="wp-header">
+<span class="wp-num polish">WP-16</span>
+<span class="wp-title">Company Onboarding Flow</span>
+<div class="wp-meta"><span class="wp-effort">~3-4 hrs</span><span class="wp-phase w5">Week 7</span></div>
+</div>
+<div class="wp-body">
+<h4>What to Build</h4>
+<p>First-time setup: company name, logo upload, phone, license number, default markup %, follow-up schedule preferences. This replaces the hardcoded test company from development.</p>
+<h4>Deliverables</h4>
+<ol>
+<li>Multi-step onboarding form (3 steps): Company Info → Branding → Preferences</li>
+<li>Logo upload → save to R2 → display on all estimates and reports</li>
+<li>Default markup percentage setting (used as starting point in estimate builder)</li>
+<li>Follow-up schedule preferences (enable/disable, timing for 24h/48h/7d)</li>
+<li>Invite technician flow (sends Clerk org invite)</li>
+</ol>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SUMMARY -->
+<!-- ============================================================ -->
+
+<div class="phase-div"><span>Summary</span></div>
+
+<div class="wp">
+<div class="wp-header">
+<span class="wp-title">Work Package Overview — 16 Total</span>
+</div>
+<div class="wp-body">
+<div class="tw">
+<table>
+<thead><tr><th>WP</th><th>Name</th><th>Week</th><th>Effort</th><th>Depends On</th><th>Critical Path?</th></tr></thead>
+<tbody>
+<tr style="background:var(--pb)"><td>01</td><td>Project Scaffolding & Local Environment</td><td>1</td><td>3-4h</td><td>—</td><td>YES</td></tr>
+<tr style="background:var(--gb)"><td>02</td><td>Photo Upload + Vision AI Analysis</td><td>1</td><td>4-6h</td><td>01</td><td>YES</td></tr>
+<tr style="background:var(--gb)"><td>03</td><td>Equipment Database + Serial Decoding</td><td>1</td><td>4-5h</td><td>01</td><td>Parallel w/ 02</td></tr>
+<tr style="background:var(--gb)"><td>04</td><td>Pricing DB + Estimate Generation</td><td>2</td><td>5-6h</td><td>01, 02</td><td>YES</td></tr>
+<tr style="background:var(--gb)"><td>05</td><td>Property History + Customer Mgmt</td><td>2</td><td>2-3h</td><td>01</td><td>Parallel w/ 04</td></tr>
+<tr style="background:var(--bb)"><td>06</td><td>Homeowner Visual Report</td><td>3</td><td>6-8h</td><td>02, 04</td><td>YES</td></tr>
+<tr style="background:var(--bb)"><td>07</td><td>Contractor PDF Estimate</td><td>3</td><td>3-4h</td><td>04</td><td>Parallel w/ 06</td></tr>
+<tr style="background:var(--ob)"><td>08</td><td>Tech Mobile App — All Screens</td><td>4</td><td>8-10h</td><td>All above</td><td>YES</td></tr>
+<tr style="background:var(--ob)"><td>09</td><td>Email + Follow-Up Scheduler</td><td>4</td><td>3-4h</td><td>04, 06</td><td>YES</td></tr>
+<tr style="background:var(--ob)"><td>10</td><td>Stripe Deposit Payments</td><td>4</td><td>3-4h</td><td>06</td><td>YES</td></tr>
+<tr style="background:var(--ob)"><td>11</td><td>Auth + Multi-Tenancy (Clerk)</td><td>4</td><td>3-4h</td><td>01</td><td>Can start early</td></tr>
+<tr><td>12</td><td>Integration Testing — Complete Loop</td><td>4</td><td>4-5h</td><td>All above</td><td>GATE</td></tr>
+<tr><td>13</td><td>Cloud Deployment</td><td>5</td><td>3-4h</td><td>12</td><td>YES</td></tr>
+<tr><td>14</td><td>Owner Dashboard V1</td><td>5-6</td><td>6-8h</td><td>13</td><td>No</td></tr>
+<tr><td>15</td><td>Stripe Subscription Billing</td><td>6-7</td><td>4-5h</td><td>13</td><td>Before launch</td></tr>
+<tr><td>16</td><td>Company Onboarding Flow</td><td>7</td><td>3-4h</td><td>13</td><td>Before launch</td></tr>
+</tbody>
+</table>
+</div>
+<p style="margin-top:12px"><strong>Total estimated effort: 70-90 hours across 7 weeks.</strong></p>
+<p><strong>Critical path:</strong> WP-01 → WP-02 → WP-04 → WP-06 → WP-08 → WP-12 → WP-13. If you do nothing else, this chain gives you a deployable product.</p>
+
+<div class="warn"><strong>FOR COWORK:</strong> Feed work packages in order. For each WP, provide: (1) this SOW entry, (2) the referenced Tech Spec sections, (3) the relevant prototype HTML file. After each WP, run the acceptance criteria manually before proceeding. If a WP fails acceptance, fix before moving on. Do NOT skip the integration test (WP-12) — it catches every broken handoff between work packages.</div>
+</div>
+</div>
+
+<!-- FOOTER -->
+<div class="ft">
+ScopeSnap Build SOW — V1.0 — March 21, 2026<br>
+Mainnov Tech — Confidential<br>
+Companion to: ScopeSnap Product Bible V2.0 · ScopeSnap MVP Technical Spec V1.1<br>
+<strong style="color:var(--g)">EXECUTION RULE:</strong> Don't move to the next work package until all acceptance criteria pass on the current one.
+</div>
+
+</div>
+</body>
+</html>

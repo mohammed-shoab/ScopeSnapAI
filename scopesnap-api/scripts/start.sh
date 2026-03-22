@@ -1,0 +1,43 @@
+#!/bin/bash
+# ── ScopeSnap API — Docker Startup Script ─────────────────────────────────────
+# Runs migrations then starts the server.
+# Called by Dockerfile CMD.
+# Environment variable ENVIRONMENT controls dev vs prod behaviour.
+
+set -e
+
+echo "=================================================="
+echo "  ScopeSnap API — Starting up"
+echo "  ENVIRONMENT=${ENVIRONMENT:-development}"
+echo "  PORT=${PORT:-8000}"
+echo "=================================================="
+
+echo ""
+echo "Running database migrations..."
+alembic upgrade head
+echo "✅ Migrations complete"
+
+echo ""
+echo "Starting uvicorn..."
+
+# Calculate workers: 2 × CPU cores + 1 (standard formula for async workers)
+CPU_CORES=$(nproc --all 2>/dev/null || echo "1")
+WORKERS=${UVICORN_WORKERS:-$((CPU_CORES * 2 + 1))}
+PORT=${PORT:-8000}
+
+if [ "${ENVIRONMENT}" = "production" ]; then
+    echo "  Mode: PRODUCTION (${WORKERS} workers, no reload)"
+    exec uvicorn main:app \
+        --host 0.0.0.0 \
+        --port "${PORT}" \
+        --workers "${WORKERS}" \
+        --log-level info \
+        --access-log
+else
+    echo "  Mode: DEVELOPMENT (1 worker, --reload)"
+    exec uvicorn main:app \
+        --host 0.0.0.0 \
+        --port "${PORT}" \
+        --reload \
+        --log-level debug
+fi

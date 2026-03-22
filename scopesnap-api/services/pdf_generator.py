@@ -1,0 +1,564 @@
+"""
+ScopeSnap — PDF Generator (Pure Python, zero system dependencies)
+
+Generates the contractor-facing PDF estimate using a hand-written PDF writer.
+No WeasyPrint, no Cairo, no Pango — works in any Python environment.
+
+Falls back gracefully to WeasyPrint if it happens to be available.
+"""
+
+import io
+import os
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Optional
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Pure-Python PDF Writer
+# Generates valid PDF 1.4 output using only Python stdlib (io, struct, etc.)
+# ──────────────────────────────────────────────────────────────────────────────
+
+class _PdfWriter:
+    """
+    Minimal PDF 1.4 writer. Supports text, lines, rectangles, and colors.
+    Uses built-in Helvetica/Helvetica-Bold fonts (always available in PDF readers).
+    Coordinate system: origin bottom-left, y increases upward.
+    We flip to top-left internally by subtracting from page height.
+    """
+    PAGE_W = 612   # US Letter width in points (8.5 in × 72)
+    PAGE_H = 792   # US Letter height in points (11 in × 72)
+
+    # Colors (r, g, b) — 0.0-1.0
+    GREEN       = (0.102, 0.529, 0.329)  # #1a8754
+    GREEN_DARK  = (0.059, 0.361, 0.220)  # #0f5c38
+    ORANGE      = (0.769, 0.376, 0.039)  # #c4600a
+    RED         = (0.776, 0.157, 0.157)  # #c62828
+    BLUE        = (0.086, 0.396, 0.753)  # #1565c0
+    GRAY        = (0.420, 0.420, 0.400)  # #6b6b66
+    LIGHT_GRAY  = (0.878, 0.867, 0.835)  # #e0ddd5
+    BLACK       = (0.098, 0.098, 0.094)  # #1a1a18
+    WHITE       = (1.0,   1.0,   1.0)
+
+    def __init__(self):
+        self._objects = []   # list of (obj_id, bytes)
+        self._pages   = []   # list of page obj_ids
+        self._obj_id  = 1
+        self._buf     = None  # current page content buffer
+
+    # ── Object helpers ────────────────────────────────────────────────────────
+
+    def _new_obj(self) -> int:
+        oid = self._obj_id
+        self._obj_id += 1
+        return oid
+
+    def _add_obj(self, oid: int, content: str):
+        self._objects.append((oid, content.encode("latin-1", errors="replace")))
+
+    def _esc(self, s: str) -> str:
+        """Escape a string for use inside PDF string literals (Latin-1 safe)."""
+        # Replace common Unicode chars that don't exist in Latin-1
+        replacements = {
+            "\u2014": "-",   # em dash -> hyphen
+            "\u2013": "-",   # en dash -> hyphen
+            "\u2019": "'",   # right single quote
+            "\u2018": "'",   # left single quote
+            "\u201c": '"',   # left double quote
+            "\u201d": '"',   # right double quote
+            "\u2022": "*",   # bullet
+            "\u2605": "*",   # black star -> asterisk
+            "\u2606": "*",   # white star -> asterisk
+            "\u00b7": ".",   # middle dot
+            "\u00a0": " ",   # non-breaking space
+            "\u2026": "...", # ellipsis
+        }
+        for uni, asc in replacements.items():
+            s = s.replace(uni, asc)
+        # Drop any remaining non-latin-1 chars
+        s = s.encode("latin-1", errors="replace").decode("latin-1")
+        return (
+            s.replace("\\", "\\\\")
+             .replace("(", "\\(")
+             .replace(")", "\\)")
+             .replace("\n", "\\n")
+             .replace("\r", "\\r")
+        )
+
+    # ── Page management ───────────────────────────────────────────────────────
+
+    def new_page(self):
+        """Start a new page. Flush any previous page first."""
+        self._buf = io.StringIO()
+        self._cur_y = self.PAGE_H  # tracks current y for next_line()
+
+    def _flush_page(self):
+        """Finalize the current page and add it to the PDF."""
+        stream = self._buf.getvalue().encode("latin-1", errors="replace")
+        # Content stream object
+        cs_id = self._new_obj()
+        cs_bytes = (
+            f"{cs_id} 0 obj\n"
+            f"<< /Length {len(stream)} >>\n"
+            "stream\n"
+        ).encode("latin-1") + stream + b"\nendstream\nendobj\n"
+        self._objects.append((cs_id, cs_bytes[cs_bytes.index(b"obj\n")+4:]))
+        # Rewrite as raw - store pre-serialized
+        self._objects[-1] = (cs_id, cs_bytes)
+
+        # Page object
+        pg_id = self._new_obj()
+        page_obj = (
+            f"{pg_id} 0 obj\n"
+            f"<< /Type /Page\n"
+            f"   /MediaBox [0 0 {self.PAGE_W} {self.PAGE_H}]\n"
+            f"   /Contents {cs_id} 0 R\n"
+            f"   /Resources << /Font << "
+            f"/F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> "
+            f"/F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> "
+            f"/F3 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >> "
+            f">> >> >>\n"
+            "endobj\n"
+        )
+        self._objects.append((pg_id, page_obj.encode("latin-1")))
+        self._pages.append(pg_id)
+        self._buf = None
+
+    # ── Drawing primitives (coordinates: top-left origin) ─────────────────────
+
+    def _y(self, y_top: float) -> float:
+        """Convert top-left y to PDF bottom-left y."""
+        return self.PAGE_H - y_top
+
+    def rect_fill(self, x: float, y: float, w: float, h: float, color):
+        r, g, b = color
+        self._buf.write(
+            f"{r:.3f} {g:.3f} {b:.3f} rg\n"
+            f"{x:.2f} {self._y(y+h):.2f} {w:.2f} {h:.2f} re f\n"
+        )
+
+    def rect_stroke(self, x: float, y: float, w: float, h: float, color, lw: float = 0.5):
+        r, g, b = color
+        self._buf.write(
+            f"{lw:.2f} w\n"
+            f"{r:.3f} {g:.3f} {b:.3f} RG\n"
+            f"{x:.2f} {self._y(y+h):.2f} {w:.2f} {h:.2f} re S\n"
+        )
+
+    def line(self, x1, y1, x2, y2, color, lw: float = 0.5):
+        r, g, b = color
+        self._buf.write(
+            f"{lw:.2f} w\n"
+            f"{r:.3f} {g:.3f} {b:.3f} RG\n"
+            f"{x1:.2f} {self._y(y1):.2f} m {x2:.2f} {self._y(y2):.2f} l S\n"
+        )
+
+    def text(self, x: float, y: float, s: str, size: float = 10,
+             color=None, bold: bool = False, italic: bool = False):
+        """Draw text at position (x, y) where y is from top of page."""
+        if not s:
+            return
+        if color is None:
+            color = self.BLACK
+        r, g, b = color
+        font = "F2" if bold else ("F3" if italic else "F1")
+        escaped = self._esc(str(s))
+        self._buf.write(
+            f"BT\n"
+            f"/{font} {size:.1f} Tf\n"
+            f"{r:.3f} {g:.3f} {b:.3f} rg\n"
+            f"{x:.2f} {self._y(y):.2f} Td\n"
+            f"({escaped}) Tj\n"
+            "ET\n"
+        )
+
+    def text_right(self, x_right: float, y: float, s: str, size: float = 10,
+                   color=None, bold: bool = False):
+        """Draw right-aligned text ending at x_right."""
+        if not s:
+            return
+        # Approximate character width (Helvetica avg ~0.55 × size)
+        approx_w = len(str(s)) * size * 0.52
+        x = x_right - approx_w
+        self.text(x, y, s, size=size, color=color, bold=bold)
+
+    def multiline_text(self, x: float, y: float, s: str, size: float = 10,
+                       max_width: float = 400, line_height: float = 14,
+                       color=None, bold: bool = False) -> float:
+        """Draw wrapped text. Returns new y after last line."""
+        words = str(s).split()
+        lines, cur = [], []
+        for w in words:
+            cur.append(w)
+            # rough width estimate
+            if len(" ".join(cur)) * size * 0.52 > max_width:
+                if len(cur) > 1:
+                    lines.append(" ".join(cur[:-1]))
+                    cur = [w]
+                else:
+                    lines.append(" ".join(cur))
+                    cur = []
+        if cur:
+            lines.append(" ".join(cur))
+        for line in lines:
+            self.text(x, y, line, size=size, color=color, bold=bold)
+            y += line_height
+        return y
+
+    # ── Serialization ─────────────────────────────────────────────────────────
+
+    def save(self, path: str):
+        """Finalize and write the PDF to disk."""
+        if self._buf is not None:
+            self._flush_page()
+
+        buf = io.BytesIO()
+        buf.write(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+
+        offsets = {}
+        for oid, raw in self._objects:
+            offsets[oid] = buf.tell()
+            if raw.startswith(f"{oid} 0 obj".encode()):
+                buf.write(raw)
+            else:
+                buf.write(f"{oid} 0 obj\n".encode() + raw + b"\nendobj\n")
+
+        # Pages tree
+        pages_id = self._new_obj()
+        kids = " ".join(f"{p} 0 R" for p in self._pages)
+        pages_obj = (
+            f"{pages_id} 0 obj\n"
+            f"<< /Type /Pages /Kids [{kids}] /Count {len(self._pages)} >>\n"
+            "endobj\n"
+        ).encode("latin-1")
+        offsets[pages_id] = buf.tell()
+        buf.write(pages_obj)
+
+        # Update each page's Parent reference (simple approach: re-add as dict inline)
+        # (We'll reference pages tree in catalog instead)
+
+        # Catalog
+        cat_id = self._new_obj()
+        cat_obj = (
+            f"{cat_id} 0 obj\n"
+            f"<< /Type /Catalog /Pages {pages_id} 0 R >>\n"
+            "endobj\n"
+        ).encode("latin-1")
+        offsets[cat_id] = buf.tell()
+        buf.write(cat_obj)
+
+        # Cross-reference table
+        xref_pos = buf.tell()
+        all_ids = sorted(offsets.keys())
+        buf.write(f"xref\n0 {max(all_ids)+1}\n".encode())
+        buf.write(b"0000000000 65535 f \n")
+        for i in range(1, max(all_ids) + 1):
+            if i in offsets:
+                buf.write(f"{offsets[i]:010d} 00000 n \n".encode())
+            else:
+                buf.write(b"0000000000 65535 f \n")
+
+        buf.write(
+            f"trailer\n<< /Size {max(all_ids)+1} /Root {cat_id} 0 R >>\n"
+            f"startxref\n{xref_pos}\n%%EOF\n".encode()
+        )
+
+        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+        with open(path, "wb") as f:
+            f.write(buf.getvalue())
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Estimate-specific layout helpers
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _fmt_money(val) -> str:
+    try:
+        n = float(val or 0)
+        return f"${n:,.0f}"
+    except (TypeError, ValueError):
+        return str(val or "—")
+
+
+def _fmt_slug(s: str) -> str:
+    """Convert snake_case / kebab-case slugs to Title Case for display.
+    e.g. 'evaporator_coil' → 'Evaporator Coil', 'dirty-filter' → 'Dirty Filter'
+    """
+    if not s:
+        return ""
+    return s.replace("_", " ").replace("-", " ").title()
+
+
+def _tier_label(tier: str) -> str:
+    return {"good": "Option A - Good", "better": "Option B - Better (Recommended)", "best": "Option C - Best"}.get(
+        tier.lower(), tier.title()
+    )
+
+
+def _tier_color(tier: str):
+    return {
+        "good":   (0.102, 0.529, 0.329),  # green
+        "better": (0.086, 0.396, 0.753),  # blue
+        "best":   (0.557, 0.267, 0.678),  # purple
+    }.get(tier.lower(), (0.4, 0.4, 0.4))
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Main public API  (same signature as the old WeasyPrint version)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def generate_contractor_pdf(
+    estimate_data: dict,
+    output_dir: str = "/tmp/scopesnap_uploads/pdfs",
+    filename: Optional[str] = None,
+) -> str:
+    """
+    Generate a contractor PDF estimate — pure Python, no system dependencies.
+
+    Args:
+        estimate_data: Estimate dict with company, property, equipment, options, issues.
+        output_dir: Directory to save the PDF.
+        filename: Optional filename override.
+
+    Returns:
+        Absolute path to the generated PDF file.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    if not filename:
+        short_id = estimate_data.get("report_short_id", "est")
+        filename = f"estimate-{short_id}.pdf"
+    output_path = os.path.join(output_dir, filename)
+
+    company    = estimate_data.get("company") or {}
+    prop       = estimate_data.get("property") or {}
+    equipment  = estimate_data.get("equipment") or {}
+    options    = estimate_data.get("options") or []
+    issues     = estimate_data.get("issues") or []
+    short_id   = estimate_data.get("report_short_id", "—")
+    today      = datetime.now(timezone.utc).strftime("%B %d, %Y")
+
+    p = _PdfWriter()
+    M  = 48       # left margin
+    RX = 564      # right edge (612 - 48)
+    W  = RX - M   # content width
+
+    # ── PAGE 1: Header + Company + Customer + Options ─────────────────────────
+    p.new_page()
+
+    # Dark green header bar
+    p.rect_fill(0, 0, 612, 72, _PdfWriter.GREEN_DARK)
+
+    # Logo box
+    p.rect_fill(M, 14, 38, 38, _PdfWriter.GREEN)
+    p.text(M + 12, 38, "S", size=22, color=_PdfWriter.WHITE, bold=True)
+
+    # Brand name
+    p.text(M + 48, 28, "Scope", size=18, color=_PdfWriter.WHITE, bold=True)
+    p.text(M + 98, 28, "Snap", size=18, color=(0.4, 0.9, 0.6))
+
+    # Estimate ID + Date (top right)
+    p.text_right(RX, 25, f"ESTIMATE  #{short_id}", size=9, color=(0.8, 0.95, 0.85))
+    p.text_right(RX, 40, today, size=9, color=(0.6, 0.8, 0.7))
+
+    y = 90
+
+    # ── Company info row ──────────────────────────────────────────────────────
+    co_name = company.get("name") or "Your HVAC Company"
+    co_phone = company.get("phone") or ""
+    co_license = company.get("license_number") or ""
+
+    p.text(M, y, co_name, size=13, bold=True)
+    info_parts = [x for x in [co_phone, f"License #{co_license}" if co_license else ""] if x]
+    if info_parts:
+        p.text(M, y + 16, "  ·  ".join(info_parts), size=9, color=_PdfWriter.GRAY)
+    y += 40
+
+    # ── Customer / Property ───────────────────────────────────────────────────
+    p.rect_fill(M, y, W, 1, _PdfWriter.LIGHT_GRAY)
+    y += 8
+
+    cust_name = prop.get("customer_name") or ""
+    addr1 = prop.get("address_line1") or ""
+    city_state = ", ".join(filter(None, [prop.get("city"), prop.get("state"), prop.get("zip")]))
+    address_line = "  ".join(filter(None, [addr1, city_state]))
+
+    p.text(M, y, "PREPARED FOR", size=8, color=_PdfWriter.GRAY)
+    p.text(M, y + 13, cust_name or "Homeowner", size=11, bold=True)
+    if address_line:
+        p.text(M, y + 27, address_line, size=9, color=_PdfWriter.GRAY)
+
+    # Equipment info (right side of same row)
+    eq_brand = equipment.get("brand") or ""
+    eq_model = equipment.get("model_number") or ""
+    eq_year  = equipment.get("install_year") or ""
+    eq_label = " ".join(filter(None, [eq_brand, eq_model]))
+    if eq_label:
+        p.text_right(RX, y, "EQUIPMENT", size=8, color=_PdfWriter.GRAY)
+        p.text_right(RX, y + 13, eq_label, size=11, bold=True)
+        if eq_year:
+            p.text_right(RX, y + 27, f"Installed {eq_year}", size=9, color=_PdfWriter.GRAY)
+
+    y += 52
+
+    # Issues summary (if any)
+    if issues:
+        p.rect_fill(M, y, W, 1, _PdfWriter.LIGHT_GRAY)
+        y += 10
+        p.text(M, y, "ISSUES FOUND", size=8, color=_PdfWriter.ORANGE, bold=True)
+        y += 14
+        for iss in issues[:4]:
+            comp  = _fmt_slug(iss.get("component", ""))
+            issue = _fmt_slug(iss.get("issue", ""))
+            sev   = iss.get("severity", "medium")
+            sev_color = _PdfWriter.RED if sev in ("high", "critical") else (
+                _PdfWriter.ORANGE if sev == "medium" else _PdfWriter.GREEN)
+            # bullet dot
+            p.rect_fill(M, y + 4, 5, 5, sev_color)
+            label = f"{comp} — {issue}" if issue else comp
+            p.text(M + 10, y, label, size=9)
+            y += 14
+        y += 6
+
+    # ── Options table ─────────────────────────────────────────────────────────
+    p.rect_fill(M, y, W, 1, _PdfWriter.LIGHT_GRAY)
+    y += 10
+    p.text(M, y, "YOUR OPTIONS", size=8, color=_PdfWriter.GRAY, bold=True)
+    y += 16
+
+    for opt in options:
+        tier  = (opt.get("tier") or "").lower()
+        name  = opt.get("name") or tier.title()
+        desc  = opt.get("description") or ""
+        total = opt.get("total") or 0
+        five_yr = opt.get("five_year_total")
+        color = _tier_color(tier)
+
+        # Option header bar
+        p.rect_fill(M, y, W, 26, color)
+        label = _tier_label(tier)
+        p.text(M + 10, y + 7, label, size=10, color=_PdfWriter.WHITE, bold=True)
+        p.text_right(RX - 8, y + 7, _fmt_money(total), size=12, color=_PdfWriter.WHITE, bold=True)
+        y += 26
+
+        # Name + description
+        p.text(M + 10, y + 5, name, size=10, bold=True)
+        if desc:
+            desc_end_y = p.multiline_text(M + 10, y + 18, desc, size=9,
+                                          max_width=W - 120, line_height=13,
+                                          color=_PdfWriter.GRAY)
+            desc_h = max(desc_end_y - (y + 18), 0) + 18
+        else:
+            desc_h = 18
+
+        # 5-year cost (right side)
+        if five_yr:
+            p.text_right(RX - 8, y + 5, f"5-yr: {_fmt_money(five_yr)}", size=8, color=_PdfWriter.GRAY)
+
+        # Energy savings
+        es = opt.get("energy_savings")
+        if es:
+            ann = es.get("annual_savings") if isinstance(es, dict) else es
+            if ann and float(ann or 0) > 0:
+                p.text_right(RX - 8, y + 18, f"Saves ${float(ann):,.0f}/yr", size=8, color=_PdfWriter.GREEN)
+
+        y += desc_h + 6
+
+        # Line items (if present)
+        line_items = opt.get("line_items") or []
+        if line_items:
+            for item in line_items:
+                item_label = item.get("description") or item.get("label") or item.get("category") or "Item"
+                item_amt   = item.get("total") or item.get("amount") or 0
+                p.text(M + 16, y, item_label, size=8, color=_PdfWriter.GRAY)
+                p.text_right(RX - 8, y, _fmt_money(item_amt), size=8, color=_PdfWriter.GRAY)
+                y += 12
+            # Subtotal / Markup / Total breakdown
+            subtotal = opt.get("subtotal") or 0
+            markup_pct = opt.get("markup_percent") or 0
+            if subtotal and markup_pct:
+                p.line(M + 16, y - 2, RX - 8, y - 2, _PdfWriter.LIGHT_GRAY)
+                p.text(M + 16, y + 4, f"Subtotal", size=8)
+                p.text_right(RX - 8, y + 4, _fmt_money(subtotal), size=8)
+                y += 14
+                p.text(M + 16, y, f"Markup ({markup_pct:.0f}%)", size=8, color=_PdfWriter.GRAY)
+                markup_amt = float(total or 0) - float(subtotal or 0)
+                p.text_right(RX - 8, y, _fmt_money(markup_amt), size=8, color=_PdfWriter.GRAY)
+                y += 14
+            # Total line
+            p.rect_fill(M + 10, y, W - 20, 22, (0.96, 0.96, 0.94))
+            p.text(M + 16, y + 6, "TOTAL", size=10, bold=True)
+            p.text_right(RX - 8, y + 6, _fmt_money(total), size=12, bold=True, color=color)
+            y += 30
+        else:
+            y += 6
+
+        y += 4
+
+        # Page break check
+        if y > 720:
+            p._flush_page()
+            p.new_page()
+            y = 40
+
+    # ── 5-Year Comparison table ───────────────────────────────────────────────
+    if len(options) > 1 and any(o.get("five_year_total") for o in options):
+        if y > 640:
+            p._flush_page()
+            p.new_page()
+            y = 40
+
+        p.rect_fill(M, y, W, 1, _PdfWriter.LIGHT_GRAY)
+        y += 10
+        p.text(M, y, "5-YEAR COST COMPARISON", size=8, color=_PdfWriter.GRAY, bold=True)
+        y += 16
+
+        # Header row
+        p.rect_fill(M, y, W, 20, (0.93, 0.93, 0.91))
+        p.text(M + 10, y + 5, "Option", size=9, bold=True)
+        p.text(232, y + 5, "Install", size=9, bold=True)
+        p.text(330, y + 5, "5-Year Total", size=9, bold=True)
+        p.text(450, y + 5, "Annual Savings", size=9, bold=True)
+        y += 20
+
+        for opt in options:
+            tier   = (opt.get("tier") or "").lower()
+            name   = opt.get("name") or tier.title()
+            total  = opt.get("total") or 0
+            five_yr = opt.get("five_year_total")
+            es = opt.get("energy_savings")
+            ann = None
+            if es:
+                ann = es.get("annual_savings") if isinstance(es, dict) else es
+            color = _tier_color(tier)
+
+            bg = (0.97, 1.0, 0.97) if tier == "better" else (1.0, 1.0, 1.0)
+            p.rect_fill(M, y, W, 18, bg)
+            p.text(M + 10, y + 4, name, size=9, bold=(tier == "better"), color=color)
+            p.text(232, y + 4, _fmt_money(total), size=9, bold=True)
+            p.text(330, y + 4, _fmt_money(five_yr) if five_yr else "—", size=9, color=_PdfWriter.GRAY)
+            if ann and float(ann or 0) > 0:
+                p.text(450, y + 4, f"${float(ann):,.0f}/yr", size=9, color=_PdfWriter.GREEN)
+            else:
+                p.text(450, y + 4, "—", size=9, color=_PdfWriter.GRAY)
+            p.line(M, y + 18, RX, y + 18, _PdfWriter.LIGHT_GRAY)
+            y += 18
+
+        y += 10
+
+    # ── Footer ────────────────────────────────────────────────────────────────
+    footer_y = 770
+    p.rect_fill(0, footer_y - 4, 612, 26, (0.95, 0.95, 0.93))
+    p.line(0, footer_y - 4, 612, footer_y - 4, _PdfWriter.LIGHT_GRAY)
+    footer_text = f"{co_name}  ·  {co_phone}  ·  Powered by ScopeSnap"
+    p.text(M, footer_y + 4, footer_text, size=8, color=_PdfWriter.GRAY)
+    p.text_right(RX, footer_y + 4, f"Estimate #{short_id}  ·  {today}", size=8, color=_PdfWriter.GRAY)
+
+    p.save(output_path)
+    return output_path
+
+
+# ── Legacy helpers kept for compatibility ─────────────────────────────────────
+
+def build_estimate_context_from_api_response(api_response: dict) -> dict:
+    return api_response

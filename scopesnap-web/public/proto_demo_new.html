@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopeSnap AI — Interactive Prototype Demo</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --bg: #f5f5f0;
+  --surface: #ffffff;
+  --surface2: #f0efea;
+  --border: #e0ddd5;
+  --text: #1a1a18;
+  --text2: #6b6960;
+  --green: #1a8754;
+  --green-bg: #e8f5ee;
+  --green-dark: #0f5c38;
+  --orange: #c4600a;
+  --orange-bg: #fef3e8;
+  --blue: #1565c0;
+  --blue-bg: #e3f0fd;
+  --red: #c62828;
+  --red-bg: #fce8e8;
+  --purple: #6a1b9a;
+  --purple-bg: #f3e8f9;
+  --gold: #f9a825;
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 12px rgba(0,0,0,.04);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,.08), 0 8px 32px rgba(0,0,0,.06);
+  --radius: 14px;
+  --radius-sm: 10px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+/* Phone frame */
+.phone-frame {
+  max-width: 420px;
+  margin: 20px auto;
+  background: #1a1a18;
+  border-radius: 36px;
+  padding: 12px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.2);
+}
+.phone-screen {
+  background: var(--bg);
+  border-radius: 28px;
+  overflow: hidden;
+  height: 820px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Status bar */
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 20px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  background: var(--surface);
+}
+.status-bar .time { font-variant-numeric: tabular-nums; }
+
+/* Navigation */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.nav .logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav .logo-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--green);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 16px;
+  font-weight: 800;
+}
+.nav .logo-text {
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -.3px;
+}
+.nav .logo-text span { color: var(--green); }
+.nav .avatar {
+  width: 32px;
+  height: 32px;
+  background: var(--green-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green);
+}
+
+/* Screens */
+.screen { display: none; flex: 1; overflow: hidden; }
+.screen.active { display: flex; flex-direction: column; }
+
+/* Screen content area */
+.screen-content {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* SCREEN NAVIGATOR */
+.screen-nav {
+  display: flex;
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.screen-nav button {
+  flex: 1;
+  padding: 10px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  transition: all .2s;
+  line-height: 1.3;
+}
+.screen-nav button:hover { border-color: var(--green); color: var(--green); }
+.screen-nav button.active { background: var(--green); color: white; border-color: var(--green); }
+
+/* ONBOARDING */
+.onboard-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 580px;
+  padding: 24px 20px;
+  text-align: center;
+}
+.onboard-logo {
+  width: 72px; height: 72px;
+  background: linear-gradient(135deg, var(--green-dark), var(--green));
+  border-radius: 18px;
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 32px; font-weight: 800;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(26,135,84,.25);
+}
+.onboard-title { font-size: 24px; font-weight: 800; letter-spacing: -.5px; margin-bottom: 4px; }
+.onboard-title span { color: var(--green); }
+.onboard-sub { font-size: 13px; color: var(--text2); margin-bottom: 28px; max-width: 280px; }
+.onboard-step { font-size: 10px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; font-family: 'IBM Plex Mono', monospace; margin-bottom: 16px; }
+
+.trade-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 20px;
+}
+.trade-card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+}
+.trade-card:hover { border-color: var(--green); transform: translateY(-1px); }
+.trade-card.selected { border-color: var(--green); background: var(--green-bg); }
+.trade-card .trade-icon { font-size: 28px; margin-bottom: 6px; }
+.trade-card .trade-name { font-size: 13px; font-weight: 700; }
+.trade-card .trade-desc { font-size: 9px; color: var(--text2); margin-top: 2px; }
+
+.onboard-btn {
+  width: 100%;
+  padding: 16px;
+  background: var(--green);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(26,135,84,.25);
+  transition: all .15s;
+}
+.onboard-btn:hover { background: var(--green-dark); }
+.onboard-btn.disabled { background: var(--border); color: var(--text2); box-shadow: none; cursor: default; }
+.onboard-skip { font-size: 11px; color: var(--text2); margin-top: 12px; cursor: pointer; }
+.onboard-skip:hover { color: var(--green); }
+
+.onboard-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14px;
+  margin-bottom: 10px;
+  outline: none;
+  transition: border-color .2s;
+  background: var(--surface);
+}
+.onboard-input:focus { border-color: var(--green); }
+.onboard-input::placeholder { color: var(--text2); }
+
+.onboard-features {
+  display: flex;
+  gap: 8px;
+  margin: 20px 0;
+  width: 100%;
+}
+.onboard-feat {
+  flex: 1;
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 12px 8px;
+  text-align: center;
+}
+.onboard-feat .feat-icon { font-size: 20px; margin-bottom: 4px; }
+.onboard-feat .feat-text { font-size: 9px; font-weight: 600; color: var(--text2); line-height: 1.3; }
+
+.onboard-dots {
+  display: flex;
+  gap: 6px;
+  margin-top: 16px;
+}
+.onboard-dots .odot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+}
+.onboard-dots .odot.active { background: var(--green); width: 24px; border-radius: 4px; }
+
+/* HOME SCREEN */
+.welcome-card {
+  background: linear-gradient(135deg, var(--green-dark), var(--green));
+  border-radius: var(--radius);
+  padding: 20px;
+  color: white;
+  margin-bottom: 16px;
+}
+.welcome-card h2 { font-size: 20px; font-weight: 800; margin-bottom: 4px; letter-spacing: -.3px; }
+.welcome-card p { font-size: 13px; opacity: .85; }
+.welcome-card .accuracy {
+  margin-top: 12px;
+  background: rgba(255,255,255,.15);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.welcome-card .accuracy .score { font-size: 22px; font-weight: 800; font-family: 'IBM Plex Mono', monospace; }
+.welcome-card .accuracy .label { font-size: 11px; opacity: .8; }
+
+.new-assessment-btn {
+  width: 100%;
+  padding: 18px;
+  background: var(--green);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-lg);
+  transition: transform .15s, box-shadow .15s;
+  letter-spacing: -.2px;
+}
+.new-assessment-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(26,135,84,.3); }
+.new-assessment-btn:active { transform: translateY(0); }
+
+.today-jobs {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.today-jobs .header {
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+}
+.today-jobs .header span { color: var(--green); font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+.job-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.job-item:last-child { border-bottom: none; }
+.job-time {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--green);
+  min-width: 50px;
+}
+.job-detail h4 { font-size: 13px; font-weight: 600; }
+.job-detail p { font-size: 11px; color: var(--text2); }
+.job-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.job-badge.history { background: var(--purple-bg); color: var(--purple); }
+.job-badge.new { background: var(--blue-bg); color: var(--blue); }
+
+/* CAPTURE SCREEN */
+.camera-viewfinder {
+  background: #1a1a18;
+  border-radius: var(--radius);
+  height: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.camera-viewfinder .grid-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  pointer-events: none;
+}
+.camera-viewfinder .grid-overlay > div {
+  border: 1px solid rgba(255,255,255,.08);
+}
+.camera-viewfinder .equipment-img {
+  font-size: 80px;
+  opacity: .6;
+  filter: grayscale(.3);
+}
+.camera-viewfinder .focus-ring {
+  width: 120px;
+  height: 120px;
+  border: 2px solid rgba(255,255,255,.6);
+  border-radius: 12px;
+  position: absolute;
+  animation: focus-pulse 2s infinite;
+}
+@keyframes focus-pulse {
+  0%, 100% { opacity: .6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+.camera-tip {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: rgba(0,0,0,.7);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: rgba(255,255,255,.9);
+}
+.camera-counter {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(0,0,0,.6);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.capture-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 8px 0;
+}
+.shutter-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 4px solid var(--green);
+  background: white;
+  cursor: pointer;
+  position: relative;
+  transition: transform .1s;
+}
+.shutter-btn::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--green);
+  transition: transform .15s;
+}
+.shutter-btn:active::after { transform: scale(.85); }
+.mic-btn, .done-btn {
+  padding: 10px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text2);
+}
+.done-btn { background: var(--green); color: white; border-color: var(--green); }
+
+/* ANALYZING ANIMATION */
+.analyzing-overlay {
+  text-align: center;
+  padding: 60px 20px;
+}
+.scan-animation {
+  width: 160px;
+  height: 160px;
+  margin: 0 auto 24px;
+  position: relative;
+  border-radius: 16px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+}
+.scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+  animation: scan 1.8s ease-in-out infinite;
+}
+@keyframes scan { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
+.analyzing-overlay h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.analyzing-overlay p { font-size: 13px; color: var(--text2); }
+.progress-bar {
+  width: 200px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 16px auto 0;
+  overflow: hidden;
+}
+.progress-bar .fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  animation: progress 2.5s ease-out forwards;
+}
+@keyframes progress { 0% { width: 0; } 100% { width: 100%; } }
+
+/* INTELLIGENCE CARDS */
+.intel-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.intel-card .card-header {
+  padding: 12px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  font-family: 'IBM Plex Mono', monospace;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.intel-card .card-body { padding: 0 16px 16px; }
+.intel-card.green .card-header { color: var(--green); border-bottom: 2px solid var(--green); }
+.intel-card.orange .card-header { color: var(--orange); border-bottom: 2px solid var(--orange); }
+.intel-card.blue .card-header { color: var(--blue); border-bottom: 2px solid var(--blue); }
+.intel-card.purple .card-header { color: var(--purple); border-bottom: 2px solid var(--purple); }
+
+.equip-id {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+  letter-spacing: -.5px;
+}
+.equip-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0;
+}
+.spec-tag {
+  padding: 3px 8px;
+  background: var(--surface2);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  font-family: 'IBM Plex Mono', monospace;
+}
+.confidence-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.confidence-track {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.confidence-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 3px;
+  width: 94%;
+}
+.confidence-label { font-size: 11px; font-weight: 600; color: var(--green); font-family: 'IBM Plex Mono', monospace; }
+
+.condition-item {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+}
+.condition-item:last-child { border-bottom: none; }
+.condition-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.condition-icon.warn { background: var(--orange-bg); }
+.condition-icon.ok { background: var(--green-bg); }
+.condition-icon.alert { background: var(--red-bg); }
+.condition-text h4 { font-size: 12px; font-weight: 600; }
+.condition-text p { font-size: 11px; color: var(--text2); line-height: 1.5; }
+
+.lifecycle-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.lifecycle-stat:last-child { border-bottom: none; }
+.lifecycle-stat .label { font-size: 12px; color: var(--text2); }
+.lifecycle-stat .value { font-size: 12px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+
+.alert-box {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  margin-top: 8px;
+  line-height: 1.6;
+}
+.alert-box.warn { background: var(--orange-bg); color: var(--orange); }
+.alert-box.info { background: var(--blue-bg); color: var(--blue); }
+.alert-box.good { background: var(--green-bg); color: var(--green); }
+
+/* ESTIMATE BUILDER */
+.tier-cards {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.tier-card {
+  flex: 1;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+}
+.tier-card.selected { border-color: var(--green); background: var(--green-bg); }
+.tier-card .tier-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); margin-bottom: 4px; }
+.tier-card .tier-name { font-size: 12px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+.tier-card .tier-price { font-family: 'IBM Plex Mono', monospace; font-size: 18px; font-weight: 700; color: var(--green); }
+.tier-card .tier-note { font-size: 9px; color: var(--text2); margin-top: 4px; }
+
+.line-items {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.line-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.line-item:last-child { border-bottom: none; }
+.line-item .item-name { color: var(--text); }
+.line-item .item-price { font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+.line-item.total { background: var(--surface2); font-weight: 700; }
+.line-item.total .item-price { color: var(--green); font-size: 14px; }
+
+.markup-slider {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.markup-slider label { font-size: 12px; font-weight: 600; display: flex; justify-content: space-between; margin-bottom: 6px; }
+.markup-slider label span { color: var(--green); font-family: 'IBM Plex Mono', monospace; }
+.markup-slider input[type=range] { width: 100%; accent-color: var(--green); }
+
+.generate-btns {
+  display: flex;
+  gap: 8px;
+}
+.generate-btn {
+  flex: 1;
+  padding: 14px 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+}
+.generate-btn.primary { background: var(--green); color: white; }
+.generate-btn.primary:hover { background: var(--green-dark); }
+.generate-btn.secondary { background: var(--surface); border: 2px solid var(--green); color: var(--green); }
+
+/* OUTPUT SCREENS */
+.output-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  background: var(--surface2);
+  border-radius: 10px;
+  padding: 3px;
+}
+.output-tab {
+  flex: 1;
+  padding: 8px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .2s;
+  color: var(--text2);
+  border: none;
+  background: none;
+  font-family: inherit;
+}
+.output-tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+
+/* Homeowner Report */
+.hr-page {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 20px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+.hr-company {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--green);
+}
+.hr-company-logo {
+  width: 40px;
+  height: 40px;
+  background: var(--green);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 16px;
+}
+.hr-company-name { font-size: 14px; font-weight: 700; }
+.hr-company-sub { font-size: 10px; color: var(--text2); }
+
+.health-meter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  margin: 12px 0;
+}
+.health-gauge {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 5px solid var(--border);
+  border-top-color: var(--green);
+  border-right-color: var(--gold);
+  border-bottom-color: var(--orange);
+  border-left-color: var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+.health-text h4 { font-size: 14px; font-weight: 700; }
+.health-text p { font-size: 11px; color: var(--text2); }
+
+.option-cards { display: flex; flex-direction: column; gap: 8px; }
+.option-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  position: relative;
+}
+.option-card.recommended { border-color: var(--green); border-width: 2px; }
+.option-card.recommended::after {
+  content: '★ RECOMMENDED';
+  position: absolute;
+  top: -9px;
+  right: 12px;
+  background: var(--green);
+  color: white;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: .5px;
+}
+.option-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.option-card .option-price { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 700; color: var(--green); }
+.option-card p { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+.energy-box {
+  background: var(--blue-bg);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-top: 12px;
+}
+.energy-box h4 { font-size: 12px; font-weight: 700; color: var(--blue); margin-bottom: 4px; }
+.energy-box p { font-size: 11px; color: var(--text); }
+
+/* Action buttons */
+.action-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+.action-btn {
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.action-btn.green { background: var(--green); color: white; }
+.action-btn.green:hover { background: var(--green-dark); }
+.action-btn.outline { background: var(--surface); border: 2px solid var(--border); color: var(--text); }
+
+/* Section label */
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--text2);
+  font-family: 'IBM Plex Mono', monospace;
+  margin-bottom: 8px;
+  margin-top: 16px;
+}
+
+/* Info banner */
+.demo-banner {
+  max-width: 420px;
+  margin: 20px auto 0;
+  background: var(--green-dark);
+  color: white;
+  padding: 16px 20px;
+  border-radius: 12px;
+  text-align: center;
+}
+.demo-banner h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.demo-banner p { font-size: 12px; opacity: .8; }
+
+/* Scroll hint */
+.scroll-hint { text-align: center; padding: 8px; font-size: 10px; color: var(--text2); }
+</style>
+</head>
+<body>
+
+<div class="demo-banner">
+<h3>ScopeSnap AI — Interactive Prototype</h3>
+<p>Click through each screen to experience the product. Navigate using buttons at the bottom.</p>
+</div>
+
+<div class="phone-frame">
+<div class="phone-screen">
+
+<!-- Status Bar -->
+<div class="status-bar">
+<span class="time">8:28 AM</span>
+<span>📶 🔋 94%</span>
+</div>
+
+<!-- Nav -->
+<div class="nav">
+<div class="logo">
+<div class="logo-icon">S</div>
+<div class="logo-text">Scope<span>Snap</span></div>
+</div>
+<div class="avatar">MR</div>
+</div>
+
+<!-- ======= ONBOARDING SCREEN 1: WELCOME ======= -->
+<div class="screen active" id="screen-welcome">
+<div class="screen-content" style="padding:0">
+<div class="onboard-center">
+<div class="onboard-logo">S</div>
+<div class="onboard-title">Scope<span>Snap</span></div>
+<div class="onboard-sub">AI-powered equipment intelligence.<br>Photo → Estimate → Customer Report.<br>In under 5 minutes.</div>
+
+<div class="onboard-features">
+<div class="onboard-feat"><div class="feat-icon">📸</div><div class="feat-text">Photo to<br>Estimate</div></div>
+<div class="onboard-feat"><div class="feat-icon">🔍</div><div class="feat-text">Equipment<br>Intelligence</div></div>
+<div class="onboard-feat"><div class="feat-icon">📊</div><div class="feat-text">Visual<br>Reports</div></div>
+<div class="onboard-feat"><div class="feat-icon">🎯</div><div class="feat-text">Accuracy<br>Tracking</div></div>
+</div>
+
+<button class="onboard-btn" onclick="showScreen('screen-trade')">Get Started →</button>
+<div class="onboard-skip" onclick="showScreen('screen-trade')">Takes 30 seconds to set up</div>
+<div class="onboard-dots"><div class="odot active"></div><div class="odot"></div><div class="odot"></div></div>
+</div>
+</div>
+</div>
+
+<!-- ======= ONBOARDING SCREEN 2: PICK YOUR TRADE ======= -->
+<div class="screen" id="screen-trade">
+<div class="screen-content" style="padding:0">
+<div class="onboard-center" style="justify-content:flex-start;padding-top:32px">
+<div class="onboard-step">Step 1 of 2</div>
+<div class="onboard-title" style="font-size:20px">What's your trade?</div>
+<div class="onboard-sub" style="margin-bottom:20px">This configures your equipment database, pricing templates, and AI prompts. You can change this later.</div>
+
+<div class="trade-grid">
+<div class="trade-card selected" onclick="selectTrade(this, 'HVAC')">
+<div class="trade-icon">❄️</div>
+<div class="trade-name">HVAC</div>
+<div class="trade-desc">AC, Furnace, Heat Pump</div>
+</div>
+<div class="trade-card" onclick="selectTrade(this, 'Plumbing')">
+<div class="trade-icon">🔧</div>
+<div class="trade-name">Plumbing</div>
+<div class="trade-desc">Water Heater, Pipes, Drains</div>
+</div>
+<div class="trade-card" onclick="selectTrade(this, 'Electrical')">
+<div class="trade-icon">⚡</div>
+<div class="trade-name">Electrical</div>
+<div class="trade-desc">Panels, Wiring, Outlets</div>
+</div>
+<div class="trade-card" onclick="selectTrade(this, 'Roofing')">
+<div class="trade-icon">🏠</div>
+<div class="trade-name">Roofing</div>
+<div class="trade-desc">Shingles, Flashing, Gutters</div>
+</div>
+</div>
+
+<button class="onboard-btn" onclick="showScreen('screen-company')">Continue →</button>
+<div class="onboard-dots"><div class="odot"></div><div class="odot active"></div><div class="odot"></div></div>
+</div>
+</div>
+</div>
+
+<!-- ======= ONBOARDING SCREEN 3: COMPANY INFO ======= -->
+<div class="screen" id="screen-company">
+<div class="screen-content" style="padding:0">
+<div class="onboard-center" style="justify-content:flex-start;padding-top:32px">
+<div class="onboard-step">Step 2 of 2</div>
+<div class="onboard-title" style="font-size:20px">Your Company</div>
+<div class="onboard-sub" style="margin-bottom:20px">This appears on estimates and reports your customers receive.</div>
+
+<input class="onboard-input" type="text" placeholder="Company Name" value="ABC HVAC Services">
+<input class="onboard-input" type="tel" placeholder="Phone Number" value="(713) 555-0142">
+<input class="onboard-input" type="text" placeholder="License # (shown on estimates)" value="TACLA12345">
+
+<div style="width:100%;background:var(--surface);border:2px dashed var(--border);border-radius:10px;padding:20px;text-align:center;margin-bottom:12px;cursor:pointer">
+<div style="font-size:24px;margin-bottom:4px">📷</div>
+<div style="font-size:12px;font-weight:600;color:var(--text2)">Upload Company Logo</div>
+<div style="font-size:10px;color:var(--text2)">Optional · Shown on reports</div>
+</div>
+
+<button class="onboard-btn" onclick="completeOnboarding()" style="margin-top:4px">Launch ScopeSnap 🚀</button>
+<div class="onboard-skip" onclick="completeOnboarding()">I'll finish this later</div>
+<div class="onboard-dots"><div class="odot"></div><div class="odot"></div><div class="odot active"></div></div>
+</div>
+</div>
+</div>
+
+<!-- ======= SCREEN 1: HOME ======= -->
+<div class="screen" id="screen-home">
+<div class="screen-content">
+<div class="welcome-card">
+<h2>Good morning, Mike</h2>
+<p>5 jobs scheduled today · 2 follow-ups pending</p>
+<div class="accuracy">
+<div><div class="label">Your Accuracy Score</div><div class="score">92.4%</div></div>
+<div style="text-align:right"><div class="label">Houston Rank</div><div class="score">Top 15%</div></div>
+</div>
+</div>
+
+<button class="new-assessment-btn" onclick="showScreen('screen-capture')">📸 New Assessment</button>
+
+<div class="today-jobs">
+<div class="header">Today's Jobs <span>from Jobber</span></div>
+<div class="job-item" onclick="showScreen('screen-capture')" style="cursor:pointer">
+<div class="job-time">8:30</div>
+<div class="job-detail">
+<h4>Sarah Johnson — AC Not Cooling</h4>
+<p>4215 Oakwood Dr, Houston TX</p>
+</div>
+<span class="job-badge history">1 prior visit</span>
+</div>
+<div class="job-item">
+<div class="job-time">10:15</div>
+<div class="job-detail">
+<h4>Mike Chen — Annual Maintenance</h4>
+<p>892 Willow Creek Blvd</p>
+</div>
+<span class="job-badge new">New customer</span>
+</div>
+<div class="job-item">
+<div class="job-time">12:00</div>
+<div class="job-detail">
+<h4>Lisa Park — Furnace Noise</h4>
+<p>2741 Sunset Ridge Dr</p>
+</div>
+<span class="job-badge new">New customer</span>
+</div>
+<div class="job-item">
+<div class="job-time">2:30</div>
+<div class="job-detail">
+<h4>Tom Davis — Thermostat Issue</h4>
+<p>5103 Pine Valley Ct</p>
+</div>
+<span class="job-badge history">3 prior visits</span>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ======= SCREEN 2: CAPTURE ======= -->
+<div class="screen" id="screen-capture">
+<div class="screen-content">
+<div class="section-label">📸 Capture Equipment</div>
+<div class="camera-viewfinder">
+<div class="grid-overlay"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+<div class="equipment-img">❄️</div>
+<div class="focus-ring"></div>
+<div class="camera-counter">2 / 5 photos</div>
+<div class="camera-tip">💡 Tip: Get a close-up of the nameplate for best equipment identification</div>
+</div>
+
+<div class="capture-controls">
+<button class="mic-btn">🎤 Voice</button>
+<div class="shutter-btn" onclick="showScreen('screen-analyzing')"></div>
+<button class="done-btn" onclick="showScreen('screen-analyzing')">Done →</button>
+</div>
+
+<div class="intel-card purple" style="margin-top:16px">
+<div class="card-header">📋 Property History</div>
+<div class="card-body">
+<p style="font-size:12px;color:var(--text2)"><strong style="color:var(--text)">4215 Oakwood Dr</strong> — Last visit: March 2025 by Tech Brian</p>
+<p style="font-size:11px;color:var(--text2);margin-top:4px">Carrier 24ACC636 · Noted: early evaporator coil corrosion · Recommended coil cleaning in 6 months</p>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ======= SCREEN 3: ANALYZING ======= -->
+<div class="screen" id="screen-analyzing">
+<div class="screen-content">
+<div class="analyzing-overlay">
+<div class="scan-animation">
+❄️
+<div class="scan-line"></div>
+</div>
+<h3>Analyzing Equipment</h3>
+<p>Identifying brand, model, and condition...</p>
+<div class="progress-bar"><div class="fill"></div></div>
+<p style="margin-top:20px;font-size:11px;color:var(--text2)">Cross-referencing equipment database<br>Checking property history<br>Scanning for recalls</p>
+<button class="new-assessment-btn" style="margin-top:24px;font-size:14px" onclick="showScreen('screen-intelligence')">See Results →</button>
+</div>
+</div>
+</div>
+
+<!-- ======= SCREEN 4: INTELLIGENCE ======= -->
+<div class="screen" id="screen-intelligence">
+<div class="screen-content">
+<div class="section-label">🔍 Assessment Results</div>
+
+<!-- Equipment ID Card -->
+<div class="intel-card green">
+<div class="card-header">✓ Equipment Identified</div>
+<div class="card-body">
+<div class="equip-id">Carrier 24ACC636A003</div>
+<div class="equip-specs">
+<span class="spec-tag">3-ton</span>
+<span class="spec-tag">SEER 16</span>
+<span class="spec-tag">R-410A</span>
+<span class="spec-tag">Mfg: 2016</span>
+<span class="spec-tag">9 yrs old</span>
+</div>
+<div class="confidence-bar">
+<span style="font-size:10px;color:var(--text2)">ID Confidence</span>
+<div class="confidence-track"><div class="confidence-fill"></div></div>
+<span class="confidence-label">94%</span>
+</div>
+</div>
+</div>
+
+<!-- Condition Card -->
+<div class="intel-card orange">
+<div class="card-header">⚠ Condition Assessment</div>
+<div class="card-body">
+<div class="condition-item">
+<div class="condition-icon warn">⚠️</div>
+<div class="condition-text">
+<h4>Evaporator Coil — MODERATE Corrosion</h4>
+<p>Worsened since March 2025 visit. Green oxide buildup visible on coil surface. Reducing efficiency ~15-20%.</p>
+</div>
+</div>
+<div class="condition-item">
+<div class="condition-icon ok">✓</div>
+<div class="condition-text">
+<h4>Condenser Fins — Minor Bending</h4>
+<p>~15% blockage on west-facing side. Straightening recommended but not urgent.</p>
+</div>
+</div>
+<div class="condition-item">
+<div class="condition-icon ok">✓</div>
+<div class="condition-text">
+<h4>Compressor — Normal Operation</h4>
+<p>No unusual sounds or vibration detected from visual inspection.</p>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Lifecycle Card -->
+<div class="intel-card blue">
+<div class="card-header">📊 Lifecycle Intelligence</div>
+<div class="card-body">
+<div class="lifecycle-stat"><span class="label">Expected Lifespan</span><span class="value">15–20 years</span></div>
+<div class="lifecycle-stat"><span class="label">Current Age</span><span class="value">9 years</span></div>
+<div class="lifecycle-stat"><span class="label">Remaining Life (est.)</span><span class="value" style="color:var(--gold)">6–11 years</span></div>
+<div class="lifecycle-stat"><span class="label">Active Recalls</span><span class="value" style="color:var(--green)">None ✓</span></div>
+<div class="alert-box warn">⚠️ Carrier 24ACC6 series coils in Gulf Coast humidity show accelerated corrosion after year 7. 34% of units in Houston metro needed coil replacement by year 10.</div>
+</div>
+</div>
+
+<button class="new-assessment-btn" onclick="showScreen('screen-estimate')">Generate Estimate →</button>
+</div>
+</div>
+
+<!-- ======= SCREEN 5: ESTIMATE BUILDER ======= -->
+<div class="screen" id="screen-estimate">
+<div class="screen-content">
+<div class="section-label">💰 Estimate Builder</div>
+
+<div class="tier-cards">
+<div class="tier-card" onclick="selectTier(this)">
+<div class="tier-label">Good</div>
+<div class="tier-name">Clean & Treat</div>
+<div class="tier-price">$450</div>
+<div class="tier-note">Buys 1-2 years</div>
+</div>
+<div class="tier-card selected" onclick="selectTier(this)">
+<div class="tier-label">Better</div>
+<div class="tier-name">Replace Coil</div>
+<div class="tier-price">$2,530</div>
+<div class="tier-note">Extends 5-8 yrs</div>
+</div>
+<div class="tier-card" onclick="selectTier(this)">
+<div class="tier-label">Best</div>
+<div class="tier-name">New System</div>
+<div class="tier-price">$8,400</div>
+<div class="tier-note">Saves $600/yr</div>
+</div>
+</div>
+
+<div class="section-label" style="margin-top:8px">Line Items — Coil Replacement</div>
+<div class="line-items">
+<div class="line-item"><span class="item-name">Carrier evap coil (24ACC636)</span><span class="item-price">$1,180</span></div>
+<div class="line-item"><span class="item-name">Refrigerant R-410A (recharge)</span><span class="item-price">$285</span></div>
+<div class="line-item"><span class="item-name">Filter drier replacement</span><span class="item-price">$95</span></div>
+<div class="line-item"><span class="item-name">Labor (4.5 hrs × $150/hr)</span><span class="item-price">$675</span></div>
+<div class="line-item"><span class="item-name">Anti-corrosion coating</span><span class="item-price">$65</span></div>
+<div class="line-item total"><span class="item-name">Subtotal</span><span class="item-price">$2,300</span></div>
+<div class="line-item total"><span class="item-name">Markup (10%)</span><span class="item-price">$230</span></div>
+<div class="line-item total"><span class="item-name">Total</span><span class="item-price">$2,530</span></div>
+</div>
+
+<div class="markup-slider">
+<label>Your Markup <span>10%</span></label>
+<input type="range" min="0" max="50" value="10">
+</div>
+
+<div class="generate-btns">
+<button class="generate-btn secondary" onclick="showScreen('screen-output')">Estimate Only</button>
+<button class="generate-btn primary" onclick="showScreen('screen-output')">Estimate + Homeowner Report →</button>
+</div>
+</div>
+</div>
+
+<!-- ======= SCREEN 6: OUTPUT ======= -->
+<div class="screen" id="screen-output">
+<div class="screen-content">
+
+<div class="output-tabs">
+<button class="output-tab" onclick="showTab('tab-estimate', this)">Contractor Estimate</button>
+<button class="output-tab active" onclick="showTab('tab-homeowner', this)">Homeowner Report ★</button>
+</div>
+
+<!-- TAB: Contractor Estimate -->
+<div id="tab-estimate" style="display:none">
+<div class="hr-page">
+<div class="hr-company">
+<div class="hr-company-logo">A</div>
+<div><div class="hr-company-name">ABC HVAC Services</div><div class="hr-company-sub">License #TACLA12345 · Houston, TX</div></div>
+</div>
+<p style="font-size:12px;font-weight:700;margin-bottom:4px">Estimate #SS-2026-0847</p>
+<p style="font-size:11px;color:var(--text2)">Prepared for: Sarah Johnson, 4215 Oakwood Dr</p>
+<p style="font-size:11px;color:var(--text2)">Date: March 20, 2026</p>
+<div class="line-items" style="margin-top:12px;border:1px solid var(--border)">
+<div class="line-item" style="background:var(--surface2);font-weight:700"><span>Description</span><span>Amount</span></div>
+<div class="line-item"><span class="item-name">Carrier evaporator coil (24ACC636)</span><span class="item-price">$1,180</span></div>
+<div class="line-item"><span class="item-name">R-410A refrigerant recharge</span><span class="item-price">$285</span></div>
+<div class="line-item"><span class="item-name">Filter drier replacement</span><span class="item-price">$95</span></div>
+<div class="line-item"><span class="item-name">Labor — coil replacement (4.5 hrs)</span><span class="item-price">$675</span></div>
+<div class="line-item"><span class="item-name">Anti-corrosion coating</span><span class="item-price">$65</span></div>
+<div class="line-item total"><span>TOTAL</span><span class="item-price">$2,530</span></div>
+</div>
+</div>
+</div>
+
+<!-- TAB: Homeowner Report -->
+<div id="tab-homeowner">
+<!-- Page 1: Health Report -->
+<div class="hr-page">
+<div class="hr-company">
+<div class="hr-company-logo">A</div>
+<div><div class="hr-company-name">ABC HVAC Services</div><div class="hr-company-sub">Your Equipment Health Report</div></div>
+</div>
+
+<p style="font-size:12px;color:var(--text2);margin-bottom:4px">Prepared for <strong style="color:var(--text)">Sarah Johnson</strong> · 4215 Oakwood Dr, Houston TX</p>
+<p style="font-size:11px;color:var(--text2)">Assessment by Mike Rodriguez · March 20, 2026</p>
+
+<div class="health-meter">
+<div class="health-gauge">FAIR</div>
+<div class="health-text">
+<h4>Your AC System: Fair Condition</h4>
+<p>Functional but declining. One component needs attention to prevent further deterioration.</p>
+</div>
+</div>
+
+<p style="font-size:13px;font-weight:600;margin-top:16px;margin-bottom:8px">What We Found</p>
+<p style="font-size:12px;color:var(--text2);line-height:1.7">Your air conditioning system's <strong style="color:var(--text)">evaporator coil has developed moderate corrosion</strong>. This is a common issue for this model in Houston's humid climate and is reducing your system's efficiency by approximately 15-20%. The rest of the system is in acceptable condition for its age.</p>
+
+<div style="background:var(--surface2);border-radius:8px;padding:12px;margin-top:12px">
+<p style="font-size:11px;color:var(--text2)"><strong style="color:var(--text)">Your Equipment:</strong> Carrier Air Conditioner</p>
+<p style="font-size:11px;color:var(--text2)">Installed: 2016 (9 years old) · Expected life: 15-20 years</p>
+<p style="font-size:11px;color:var(--text2)">Estimated remaining life: <strong style="color:var(--gold)">6-11 years with coil repair</strong></p>
+</div>
+</div>
+
+<!-- Page 2: Options -->
+<div class="hr-page">
+<p style="font-size:14px;font-weight:700;margin-bottom:12px">Your Options</p>
+
+<div class="option-cards">
+<div class="option-card">
+<h4>Option A: Clean & Treat</h4>
+<div class="option-price">$450</div>
+<p>Professional cleaning and anti-corrosion treatment. Extends system life 1-2 years. <strong>Best if you're planning to sell the home soon.</strong></p>
+</div>
+<div class="option-card recommended">
+<h4>Option B: Replace the Coil</h4>
+<div class="option-price">$2,530</div>
+<p>New evaporator coil with anti-corrosion coating. Extends system life 5-8 more years. <strong>Best balance of cost and longevity.</strong></p>
+</div>
+<div class="option-card">
+<h4>Option C: New System</h4>
+<div class="option-price">$8,400</div>
+<p>Brand new Carrier system, SEER 20 (vs your current SEER 16). Lasts 15-20 years. <strong>Saves ~$600/year in energy costs.</strong></p>
+</div>
+</div>
+
+<div class="energy-box">
+<h4>💡 Energy Savings Note</h4>
+<p>Your current SEER 16 system costs ~$1,200/year to operate. A new SEER 20 system would cost ~$600/year. You may also qualify for a <strong>$1,500 utility rebate</strong> for upgrading.</p>
+</div>
+
+<p style="font-size:10px;color:var(--text2);margin-top:16px;text-align:center;line-height:1.6">Take your time with this decision — we're available to answer any questions.<br>Mike Rodriguez · ABC HVAC Services · (713) 555-0142<br><span style="color:var(--text2);font-family:'IBM Plex Mono',monospace;font-size:9px">Powered by ScopeSnap HVAC Intelligence</span></p>
+</div>
+
+<div class="action-btns">
+<button class="action-btn green" onclick="showScreen('screen-send')">📱 Send to Customer</button>
+<button class="action-btn outline" onclick="showScreen('screen-present')" style="background:var(--text);color:white;border-color:var(--text)">👁 Show to Customer (Present Mode)</button>
+<button class="action-btn outline" onclick="showScreen('screen-saved')">💾 Save to History</button>
+</div>
+
+</div>
+</div>
+</div>
+
+<!-- ======= SCREEN 7: PRESENT MODE (Full-screen slideshow) ======= -->
+<div class="screen" id="screen-present">
+<div class="screen-content" style="padding:0">
+
+<!-- Slide indicator -->
+<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--text);color:white">
+<button onclick="showScreen('screen-output')" style="background:none;border:none;color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">✕ Exit</button>
+<span style="font-size:11px;font-family:'IBM Plex Mono',monospace" id="slide-counter">1 / 4</span>
+<span style="font-size:10px;opacity:.6">Swipe or tap arrows</span>
+</div>
+
+<!-- Slides container -->
+<div id="present-slides" style="position:relative;overflow:hidden">
+
+<!-- SLIDE 1: Annotated Photo - THE KEY DIFFERENTIATOR -->
+<div class="present-slide active" id="slide-1">
+<div style="padding:16px">
+<p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--green);font-family:'IBM Plex Mono',monospace;margin-bottom:8px">What We Found</p>
+
+<!-- The annotated equipment photo -->
+<div style="position:relative;background:#2a2a28;border-radius:12px;overflow:hidden;margin-bottom:12px">
+<!-- Simulated equipment photo with SVG annotations -->
+<svg viewBox="0 0 380 280" style="width:100%;display:block">
+<!-- Background - simulated photo of AC unit -->
+<rect width="380" height="280" fill="#3a3a35"/>
+<!-- AC unit body -->
+<rect x="60" y="40" width="260" height="200" rx="8" fill="#5a5a55" stroke="#4a4a45" stroke-width="2"/>
+<!-- Fan grille -->
+<circle cx="190" cy="120" r="60" fill="none" stroke="#6a6a65" stroke-width="2"/>
+<circle cx="190" cy="120" r="45" fill="none" stroke="#6a6a65" stroke-width="1"/>
+<circle cx="190" cy="120" r="30" fill="none" stroke="#6a6a65" stroke-width="1"/>
+<!-- Nameplate -->
+<rect x="100" y="195" width="180" height="30" rx="3" fill="#7a7a75" stroke="#8a8a85"/>
+<text x="190" y="215" text-anchor="middle" fill="#ccc" font-size="10" font-family="IBM Plex Mono">CARRIER 24ACC636A003</text>
+<!-- Condenser fins -->
+<g opacity=".5">
+<line x1="65" y1="50" x2="65" y2="230" stroke="#6a6a65" stroke-width="1"/>
+<line x1="70" y1="50" x2="70" y2="230" stroke="#6a6a65" stroke-width="1"/>
+<line x1="75" y1="50" x2="75" y2="230" stroke="#6a6a65" stroke-width="1"/>
+<line x1="80" y1="50" x2="80" y2="230" stroke="#6a6a65" stroke-width="1"/>
+</g>
+
+<!-- ANNOTATION 1: Corrosion area with red circle and callout -->
+<circle cx="140" cy="100" r="35" fill="none" stroke="#ff4444" stroke-width="2.5" stroke-dasharray="6,3">
+<animate attributeName="stroke-dashoffset" from="0" to="18" dur="2s" repeatCount="indefinite"/>
+</circle>
+<line x1="170" y1="80" x2="280" y2="35" stroke="#ff4444" stroke-width="1.5"/>
+<rect x="218" y="12" width="155" height="36" rx="6" fill="#ff4444"/>
+<text x="226" y="27" fill="white" font-size="9" font-weight="700" font-family="Plus Jakarta Sans">⚠ MODERATE CORROSION</text>
+<text x="226" y="40" fill="rgba(255,255,255,.8)" font-size="8" font-family="Plus Jakarta Sans">Evaporator coil — green oxide</text>
+
+<!-- ANNOTATION 2: Bent fins with orange callout -->
+<rect x="62" y="55" width="22" height="90" fill="none" stroke="#ff8800" stroke-width="2" rx="3"/>
+<line x1="73" y1="60" x2="30" y2="35" stroke="#ff8800" stroke-width="1.5"/>
+<rect x="2" y="16" width="110" height="32" rx="6" fill="#ff8800"/>
+<text x="10" y="30" fill="white" font-size="9" font-weight="700" font-family="Plus Jakarta Sans">⚡ BENT FINS</text>
+<text x="10" y="42" fill="rgba(255,255,255,.8)" font-size="8" font-family="Plus Jakarta Sans">~15% airflow blocked</text>
+
+<!-- ANNOTATION 3: Nameplate with green callout -->
+<rect x="96" y="191" width="188" height="38" fill="none" stroke="#22cc66" stroke-width="2" rx="5"/>
+<line x1="285" y1="210" x2="340" y2="260" stroke="#22cc66" stroke-width="1.5"/>
+<rect x="260" y="250" width="115" height="26" rx="6" fill="#22cc66"/>
+<text x="268" y="267" fill="white" font-size="9" font-weight="700" font-family="Plus Jakarta Sans">✓ MODEL IDENTIFIED</text>
+
+<!-- ANNOTATION 4: Compressor area with green check -->
+<circle cx="250" cy="160" r="20" fill="none" stroke="#22cc66" stroke-width="1.5"/>
+<text x="250" y="165" text-anchor="middle" fill="#22cc66" font-size="16">✓</text>
+</svg>
+
+<!-- Photo caption -->
+<div style="padding:10px 14px;background:rgba(0,0,0,.85);color:white">
+<p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--green);margin-bottom:4px">AI-Annotated Assessment Photo</p>
+<p style="font-size:11px;opacity:.85;line-height:1.5">Red = needs attention · Orange = minor issue · Green = identified/OK</p>
+</div>
+</div>
+
+<!-- Issue summary below photo -->
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--red-bg);border-radius:8px">
+<span style="font-size:16px">🔴</span>
+<div><p style="font-size:12px;font-weight:700;color:var(--red)">Evaporator Coil Corrosion</p><p style="font-size:10px;color:var(--text2)">Green oxide buildup reducing efficiency 15-20%. Common in Houston humidity for units 7+ years old.</p></div>
+</div>
+<div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--orange-bg);border-radius:8px">
+<span style="font-size:16px">🟠</span>
+<div><p style="font-size:12px;font-weight:700;color:var(--orange)">Condenser Fins Bent</p><p style="font-size:10px;color:var(--text2)">~15% airflow blocked on west side. Can be straightened during service visit.</p></div>
+</div>
+<div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--green-bg);border-radius:8px">
+<span style="font-size:16px">🟢</span>
+<div><p style="font-size:12px;font-weight:700;color:var(--green)">Compressor Normal</p><p style="font-size:10px;color:var(--text2)">No visual signs of damage. Operating within expected parameters.</p></div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- SLIDE 2: Equipment Health Card -->
+<div class="present-slide" id="slide-2" style="display:none">
+<div style="padding:16px">
+<p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--blue);font-family:'IBM Plex Mono',monospace;margin-bottom:12px">Equipment Health Card</p>
+
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px">
+<div style="text-align:center;margin-bottom:16px">
+<div style="display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;border-radius:50%;border:6px solid var(--gold);font-size:15px;font-weight:800;color:var(--gold)">FAIR</div>
+<p style="font-size:18px;font-weight:800;margin-top:8px">Carrier 24ACC636</p>
+<p style="font-size:12px;color:var(--text2)">3-Ton Air Conditioning System</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+<div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center">
+<p style="font-size:10px;color:var(--text2);font-weight:600">INSTALLED</p>
+<p style="font-size:20px;font-weight:800;font-family:'IBM Plex Mono',monospace">2016</p>
+<p style="font-size:10px;color:var(--text2)">9 years ago</p>
+</div>
+<div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center">
+<p style="font-size:10px;color:var(--text2);font-weight:600">EXPECTED LIFE</p>
+<p style="font-size:20px;font-weight:800;font-family:'IBM Plex Mono',monospace">15-20</p>
+<p style="font-size:10px;color:var(--text2)">years typical</p>
+</div>
+<div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center">
+<p style="font-size:10px;color:var(--text2);font-weight:600">REMAINING LIFE</p>
+<p style="font-size:20px;font-weight:800;font-family:'IBM Plex Mono',monospace;color:var(--gold)">6-11</p>
+<p style="font-size:10px;color:var(--text2)">years (with repair)</p>
+</div>
+<div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center">
+<p style="font-size:10px;color:var(--text2);font-weight:600">EFFICIENCY</p>
+<p style="font-size:20px;font-weight:800;font-family:'IBM Plex Mono',monospace">SEER 16</p>
+<p style="font-size:10px;color:var(--text2)">modern = SEER 20+</p>
+</div>
+</div>
+</div>
+
+<div style="background:var(--orange-bg);border-radius:8px;padding:12px">
+<p style="font-size:11px;color:var(--orange);font-weight:600">⚠️ Houston Climate Advisory</p>
+<p style="font-size:11px;color:var(--text);margin-top:4px;line-height:1.6">Gulf Coast humidity accelerates coil corrosion in this model series. 34% of Carrier 24ACC6 units in the Houston metro area needed coil replacement by year 10. Your unit is currently at year 9.</p>
+</div>
+</div>
+</div>
+
+<!-- SLIDE 3: Your Options -->
+<div class="present-slide" id="slide-3" style="display:none">
+<div style="padding:16px">
+<p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--green);font-family:'IBM Plex Mono',monospace;margin-bottom:12px">Your Options</p>
+
+<div class="option-cards">
+<div class="option-card" style="padding:16px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start">
+<div><p style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Option A</p><h4 style="font-size:14px;margin-top:2px">Clean & Treat</h4></div>
+<div style="text-align:right"><div class="option-price" style="font-size:22px">$450</div></div>
+</div>
+<p style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6">Professional deep cleaning and anti-corrosion treatment applied to the existing coil. Extends system life <strong style="color:var(--text)">1-2 years</strong>.</p>
+<p style="font-size:11px;color:var(--text2);margin-top:6px;font-style:italic">Best if you're planning to sell the home soon.</p>
+</div>
+
+<div class="option-card recommended" style="padding:16px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start">
+<div><p style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px">Option B — Recommended</p><h4 style="font-size:14px;margin-top:2px">Replace the Coil</h4></div>
+<div style="text-align:right"><div class="option-price" style="font-size:22px">$2,530</div></div>
+</div>
+<p style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6">Brand new evaporator coil with factory anti-corrosion coating. Extends system life <strong style="color:var(--text)">5-8 more years</strong>. Includes R-410A recharge and filter drier.</p>
+<p style="font-size:11px;color:var(--green);margin-top:6px;font-weight:600">✓ Best balance of cost and longevity</p>
+</div>
+
+<div class="option-card" style="padding:16px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start">
+<div><p style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px">Option C</p><h4 style="font-size:14px;margin-top:2px">New System</h4></div>
+<div style="text-align:right"><div class="option-price" style="font-size:22px">$8,400</div></div>
+</div>
+<p style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.6">Brand new Carrier system, SEER 20 rating. Lasts <strong style="color:var(--text)">15-20 years</strong>. Saves approximately <strong style="color:var(--green)">$600/year</strong> in energy costs vs your current system.</p>
+<div class="energy-box" style="margin-top:8px">
+<p style="font-size:11px;color:var(--blue)"><strong>💡 Rebate Alert:</strong> You may qualify for a $1,500 utility rebate for upgrading to SEER 20+</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- SLIDE 4: 5-Year Cost Comparison -->
+<div class="present-slide" id="slide-4" style="display:none">
+<div style="padding:16px">
+<p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--purple);font-family:'IBM Plex Mono',monospace;margin-bottom:12px">5-Year Total Cost Comparison</p>
+
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px">
+<!-- Chart header -->
+<div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+<p style="font-size:12px;font-weight:700">What each option really costs over 5 years</p>
+<p style="font-size:10px;color:var(--text2)">Including energy costs, likely repairs, and upfront investment</p>
+</div>
+<!-- Visual bar chart -->
+<div style="padding:16px">
+<div style="margin-bottom:16px">
+<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:600">A: Clean & Treat</span><span style="font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--red)">$12,450</span></div>
+<div style="height:28px;background:var(--surface2);border-radius:6px;overflow:hidden">
+<div style="height:100%;width:100%;background:linear-gradient(90deg,var(--orange) 4%,var(--red-bg) 4% 38%,var(--orange-bg) 38%);border-radius:6px;display:flex;align-items:center;padding-left:8px">
+<span style="font-size:8px;font-weight:600;color:var(--text)">$450 repair + $6,000 energy + $6,000 likely 2nd repair</span>
+</div>
+</div>
+</div>
+<div style="margin-bottom:16px">
+<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:600">B: Replace Coil ★</span><span style="font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--green)">$8,530</span></div>
+<div style="height:28px;background:var(--surface2);border-radius:6px;overflow:hidden">
+<div style="height:100%;width:68%;background:linear-gradient(90deg,var(--green) 20%,var(--green-bg) 20%);border-radius:6px;display:flex;align-items:center;padding-left:8px">
+<span style="font-size:8px;font-weight:600;color:white">$2,530 + $6,000 energy</span>
+</div>
+</div>
+</div>
+<div style="margin-bottom:8px">
+<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:600">C: New System</span><span style="font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--blue)">$9,900</span></div>
+<div style="height:28px;background:var(--surface2);border-radius:6px;overflow:hidden">
+<div style="height:100%;width:80%;background:linear-gradient(90deg,var(--blue) 55%,var(--blue-bg) 55%);border-radius:6px;display:flex;align-items:center;padding-left:8px">
+<span style="font-size:8px;font-weight:600;color:white">$8,400 upfront - $1,500 rebate + $3,000 energy</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div style="background:var(--green-bg);border-radius:8px;padding:14px;margin-bottom:12px">
+<p style="font-size:12px;font-weight:700;color:var(--green)">★ Recommendation: Option B saves $3,920 vs doing nothing</p>
+<p style="font-size:11px;color:var(--text);margin-top:4px;line-height:1.6">Replacing the coil now ($2,530) avoids the likely $6,000 emergency replacement within 2 years that Option A leads to. Option C makes sense if you plan to stay 10+ years.</p>
+</div>
+
+<!-- Approve CTA -->
+<div style="background:var(--surface);border:2px solid var(--green);border-radius:12px;padding:16px;text-align:center">
+<p style="font-size:13px;font-weight:700;margin-bottom:8px">Ready to move forward?</p>
+<p style="font-size:11px;color:var(--text2);margin-bottom:12px">Select your preferred option and approve from your phone</p>
+<button class="action-btn green" style="width:100%;font-size:15px">✓ Approve & Pay Deposit</button>
+<p style="font-size:9px;color:var(--text2);margin-top:8px">Or take your time — this report has been sent to your email</p>
+</div>
+
+<p style="font-size:9px;color:var(--text2);text-align:center;margin-top:16px;line-height:1.5">Prepared by Mike Rodriguez · ABC HVAC Services · (713) 555-0142<br><span style="font-family:'IBM Plex Mono',monospace">Powered by ScopeSnap HVAC Intelligence</span></p>
+</div>
+</div>
+
+</div>
+
+<!-- Slide navigation arrows -->
+<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 16px;background:var(--surface);border-top:1px solid var(--border)">
+<button onclick="changeSlide(-1)" style="padding:10px 20px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">← Back</button>
+<div style="display:flex;gap:6px" id="slide-dots">
+<div style="width:8px;height:8px;border-radius:50%;background:var(--green)" class="dot active"></div>
+<div style="width:8px;height:8px;border-radius:50%;background:var(--border)" class="dot"></div>
+<div style="width:8px;height:8px;border-radius:50%;background:var(--border)" class="dot"></div>
+<div style="width:8px;height:8px;border-radius:50%;background:var(--border)" class="dot"></div>
+</div>
+<button onclick="changeSlide(1)" style="padding:10px 20px;border:1px solid var(--green);border-radius:8px;background:var(--green);color:white;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer">Next →</button>
+</div>
+
+</div>
+</div>
+
+<!-- ======= SCREEN 8: SEND TO CUSTOMER ======= -->
+<div class="screen" id="screen-send">
+<div class="screen-content">
+<div class="section-label">📱 Send to Customer</div>
+
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px">
+<p style="font-size:14px;font-weight:700;margin-bottom:4px">Send to Sarah Johnson</p>
+<p style="font-size:11px;color:var(--text2);margin-bottom:16px">Customer will receive a link to the visual report + estimate. They can approve and pay from their phone.</p>
+
+<div style="margin-bottom:12px">
+<label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Phone Number (Text)</label>
+<div style="display:flex;gap:8px">
+<input type="text" value="(713) 555-0198" style="flex:1;padding:12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px" readonly>
+<button style="padding:12px 16px;background:var(--green);color:white;border:none;border-radius:8px;font-family:inherit;font-weight:700;cursor:pointer;font-size:12px">Send 📱</button>
+</div>
+</div>
+
+<div style="margin-bottom:16px">
+<label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px">Email Address</label>
+<div style="display:flex;gap:8px">
+<input type="text" value="sarah.johnson@gmail.com" style="flex:1;padding:12px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px" readonly>
+<button style="padding:12px 16px;background:var(--blue);color:white;border:none;border-radius:8px;font-family:inherit;font-weight:700;cursor:pointer;font-size:12px">Send 📧</button>
+</div>
+</div>
+
+<div style="background:var(--green-bg);border-radius:8px;padding:12px">
+<p style="font-size:11px;color:var(--green);font-weight:600">What the customer receives:</p>
+<ul style="font-size:11px;color:var(--text);padding-left:16px;margin-top:4px;line-height:1.8">
+<li>Visual condition report with annotated photos</li>
+<li>Equipment health card</li>
+<li>3 options with 5-year cost comparison</li>
+<li>"Approve & Pay Deposit" button</li>
+<li>Your company branding and contact info</li>
+</ul>
+</div>
+</div>
+
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+<p style="font-size:12px;font-weight:700;margin-bottom:8px">🔔 Auto Follow-Up Schedule</p>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="display:flex;justify-content:space-between;padding:8px;background:var(--surface2);border-radius:6px;font-size:11px">
+<span>24 hours — if not viewed</span><span style="color:var(--green);font-weight:600">✓ ON</span>
+</div>
+<div style="display:flex;justify-content:space-between;padding:8px;background:var(--surface2);border-radius:6px;font-size:11px">
+<span>48 hours — if viewed, no response</span><span style="color:var(--green);font-weight:600">✓ ON</span>
+</div>
+<div style="display:flex;justify-content:space-between;padding:8px;background:var(--surface2);border-radius:6px;font-size:11px">
+<span>7 days — final check-in</span><span style="color:var(--green);font-weight:600">✓ ON</span>
+</div>
+</div>
+</div>
+
+<button class="action-btn outline" onclick="showScreen('screen-output')">← Back to Output</button>
+</div>
+</div>
+
+<!-- ======= SCREEN 9: SAVED CONFIRMATION ======= -->
+<div class="screen" id="screen-saved">
+<div class="screen-content">
+
+<div style="text-align:center;padding:40px 20px 20px">
+<div style="width:72px;height:72px;background:var(--green-bg);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:16px">✓</div>
+<h3 style="font-size:18px;font-weight:800;margin-bottom:4px">Saved to History</h3>
+<p style="font-size:13px;color:var(--text2)">Assessment, estimate, and homeowner report saved.</p>
+</div>
+
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+<p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--green);font-family:'IBM Plex Mono',monospace;margin-bottom:8px">Property Record Updated</p>
+<div style="background:var(--surface2);border-radius:8px;padding:12px">
+<p style="font-size:12px;font-weight:700">4215 Oakwood Dr, Houston TX</p>
+<p style="font-size:11px;color:var(--text2);margin-top:4px">Sarah Johnson</p>
+<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+<p style="font-size:10px;font-weight:600;color:var(--text2);margin-bottom:4px">EQUIPMENT ON FILE:</p>
+<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+<span style="font-size:14px">❄️</span>
+<div>
+<p style="font-size:11px;font-weight:600">Carrier 24ACC636A003</p>
+<p style="font-size:10px;color:var(--text2)">AC · Installed 2016 · Condition: Fair</p>
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:8px;padding:6px 0">
+<span style="font-size:14px">🔥</span>
+<div>
+<p style="font-size:11px;font-weight:600">Carrier 58CVA Gas Furnace</p>
+<p style="font-size:10px;color:var(--text2)">Furnace · Installed 2016 · Last checked Mar 2025</p>
+</div>
+</div>
+</div>
+<div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px">
+<p style="font-size:10px;font-weight:600;color:var(--text2);margin-bottom:4px">VISIT HISTORY:</p>
+<div style="padding:4px 0;font-size:10px;color:var(--text2)">
+<p><strong style="color:var(--text)">Mar 20, 2026</strong> — Tech Mike R. · AC coil corrosion (moderate) · Estimate: $2,530 coil replacement · ⏳ Pending customer approval</p>
+<p style="margin-top:4px"><strong style="color:var(--text)">Mar 15, 2025</strong> — Tech Brian K. · AC coil corrosion (mild) · Recommended cleaning in 6 months</p>
+</div>
+</div>
+</div>
+</div>
+
+<div style="background:var(--blue-bg);border-radius:8px;padding:12px;margin-bottom:12px">
+<p style="font-size:11px;color:var(--blue);font-weight:600">📊 Accuracy Tracker</p>
+<p style="font-size:11px;color:var(--text);margin-top:4px">This estimate will be tracked against actual cost when the job completes. Your current accuracy: <strong>92.4%</strong></p>
+</div>
+
+<div style="background:var(--purple-bg);border-radius:8px;padding:12px;margin-bottom:16px">
+<p style="font-size:11px;color:var(--purple);font-weight:600">🔮 Proactive Alert Set</p>
+<p style="font-size:11px;color:var(--text);margin-top:4px">If Sarah doesn't approve within 30 days, ScopeSnap will remind you to follow up. Also: furnace was last checked 12 months ago — maintenance reminder will generate in June.</p>
+</div>
+
+<button class="action-btn green" onclick="showScreen('screen-home')" style="width:100%">🏠 Back to Home</button>
+</div>
+</div>
+
+<!-- SCREEN NAVIGATOR -->
+<div class="screen-nav">
+<button class="active" onclick="showScreen('screen-home')">🏠 Home</button>
+<button onclick="showScreen('screen-capture')">📸 Capture</button>
+<button onclick="showScreen('screen-intelligence')">🔍 Results</button>
+<button onclick="showScreen('screen-estimate')">💰 Estimate</button>
+<button onclick="showScreen('screen-output')">📄 Output</button>
+</div>
+
+</div>
+</div>
+
+<div style="max-width:420px;margin:20px auto;padding:0 12px">
+<p style="font-size:11px;color:#999;text-align:center;line-height:1.6">ScopeSnap Prototype Demo V1.0 — March 2026<br>This is a clickable mockup demonstrating the complete user experience.<br>Navigate between screens using the bottom bar.</p>
+</div>
+
+<script>
+let currentSlide = 1;
+const totalSlides = 4;
+let selectedTrade = 'HVAC';
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  // Only update nav for main app screens (not onboarding)
+  const navScreens = {'screen-home':0,'screen-capture':1,'screen-analyzing':1,'screen-intelligence':2,'screen-estimate':3,'screen-output':4,'screen-present':4,'screen-send':4,'screen-saved':4};
+  const idx = navScreens[id];
+  document.querySelectorAll('.screen-nav button').forEach(b => b.classList.remove('active'));
+  if(idx !== undefined) document.querySelectorAll('.screen-nav button')[idx].classList.add('active');
+  // Hide nav bar during onboarding, show during app
+  const isOnboarding = ['screen-welcome','screen-trade','screen-company'].includes(id);
+  document.querySelector('.screen-nav').style.display = isOnboarding ? 'none' : 'flex';
+  document.querySelector('.nav').style.display = isOnboarding ? 'none' : 'flex';
+  if(id === 'screen-present') { currentSlide = 1; updateSlide(); }
+}
+
+function selectTrade(el, trade) {
+  document.querySelectorAll('.trade-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedTrade = trade;
+}
+
+function completeOnboarding() {
+  showScreen('screen-home');
+}
+
+function selectTier(el) {
+  document.querySelectorAll('.tier-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function showTab(tabId, btn) {
+  document.getElementById('tab-estimate').style.display = 'none';
+  document.getElementById('tab-homeowner').style.display = 'none';
+  document.getElementById(tabId).style.display = 'block';
+  document.querySelectorAll('.output-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+}
+function changeSlide(dir) {
+  currentSlide += dir;
+  if(currentSlide < 1) currentSlide = 1;
+  if(currentSlide > totalSlides) currentSlide = totalSlides;
+  updateSlide();
+}
+function updateSlide() {
+  for(let i = 1; i <= totalSlides; i++) {
+    document.getElementById('slide-'+i).style.display = i === currentSlide ? 'block' : 'none';
+  }
+  document.getElementById('slide-counter').textContent = currentSlide + ' / ' + totalSlides;
+  const dots = document.querySelectorAll('#slide-dots .dot');
+  dots.forEach((d, i) => {
+    d.style.background = i === currentSlide-1 ? 'var(--green)' : 'var(--border)';
+  });
+}
+
+// Start with onboarding — hide nav
+document.querySelector('.screen-nav').style.display = 'none';
+document.querySelector('.nav').style.display = 'none';
+</script>
+</body>
+</html>

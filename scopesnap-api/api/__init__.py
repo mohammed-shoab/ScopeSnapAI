@@ -1,0 +1,1 @@
+# ScopeSnap API routes package

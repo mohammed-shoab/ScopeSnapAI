@@ -1,0 +1,105 @@
+# ── ScopeSnap — Docker Compose ────────────────────────────────────────────────
+# Runs the full stack locally with one command:
+#   docker compose up
+#
+# Services:
+#   db    → PostgreSQL 16         → localhost:5432
+#   api   → FastAPI (Python)      → localhost:8000
+#   web   → Next.js (TypeScript)  → localhost:3000
+#
+# First time setup:
+#   docker compose up --build
+#
+# After code changes:
+#   docker compose up  (no --build needed, --reload handles it)
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Database ────────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16
+    container_name: scopesnap-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: scopesnap_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d scopesnap_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── API (FastAPI) ────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./scopesnap-api
+      dockerfile: Dockerfile
+    container_name: scopesnap-api
+    restart: unless-stopped
+    env_file:
+      - ./scopesnap-api/.env
+    environment:
+      # Override DB URL to point to the 'db' container (not localhost)
+      DATABASE_URL: postgresql+asyncpg://postgres:devpass@db:5432/scopesnap_dev
+      ENVIRONMENT: development
+      UPLOAD_DIR: /app/uploads
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source code for --reload to pick up changes instantly
+      - ./scopesnap-api:/app
+      # Named volume for uploaded files (photos etc.)
+      - uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── Web (Next.js) ────────────────────────────────────────────────────────────
+  web:
+    build:
+      context: ./scopesnap-web
+      dockerfile: Dockerfile
+      target: dev
+    container_name: scopesnap-web
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Z2xvd2luZy1jb3diaXJkLTg5LmNsZXJrLmFjY291bnRzLmRldiQ
+      # Internal API calls from the container go through Docker network
+      API_URL: http://api:8000
+      # Enable polling-based file watching so Next.js HMR works inside Docker on Windows.
+      # inotify events don't propagate from Windows host through the volume mount, so
+      # without polling the dev server never detects file changes and client chunks go
+      # stale (causing options.factory crashes and text-content hydration mismatches).
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot reload
+      - ./scopesnap-web:/app
+      # Keep node_modules inside the container (don't overwrite with host)
+      - /app/node_modules
+    depends_on:
+      api:
+        condition: service_healthy
+
+# ── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+  uploads_data:
+    driver: local

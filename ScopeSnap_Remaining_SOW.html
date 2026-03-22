@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopeSnap — Remaining Work SOW (Beta-Ready MVP)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+:root {
+  --bg:#f7f7f3;--s:#fff;--s2:#f0efea;--b:#e2dfd7;--t:#1a1a18;--t2:#7a7770;
+  --g:#1a8754;--gb:#e8f5ee;--o:#c4600a;--ob:#fef3e8;--bl:#1565c0;--bb:#e3f0fd;
+  --r:#c62828;--rb:#fce8e8;--p:#6a1b9a;--pb:#f3e8f9;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--t);font-family:'Plus Jakarta Sans',sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+.wrap{max-width:960px;margin:0 auto;padding:32px 24px}
+h1{font-size:30px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
+.sub{font-size:13px;color:var(--t2);margin-bottom:24px}
+
+.ver{background:var(--s);border:1px solid var(--b);border-radius:10px;padding:16px 20px;font-size:11.5px;color:var(--t2);line-height:1.9;margin-bottom:28px}
+.ver strong{color:var(--t)}
+
+/* Priority badge */
+.pri{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:3px 8px;border-radius:4px;margin-left:6px}
+.pri.red{background:var(--rb);color:var(--r)}
+.pri.orange{background:var(--ob);color:var(--o)}
+.pri.blue{background:var(--bb);color:var(--bl)}
+.pri.green{background:var(--gb);color:var(--g)}
+
+/* Work Package */
+.wp{background:var(--s);border:1px solid var(--b);border-radius:16px;margin-bottom:24px;box-shadow:0 2px 6px rgba(0,0,0,.04);overflow:hidden}
+.wp-header{padding:18px 22px;border-bottom:1px solid var(--b);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.wp-num{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:white;background:var(--t);padding:5px 11px;border-radius:7px;flex-shrink:0}
+.wp-num.red{background:var(--r)}
+.wp-num.orange{background:var(--o)}
+.wp-num.blue{background:var(--bl)}
+.wp-num.green{background:var(--g)}
+.wp-num.purple{background:var(--p)}
+.wp-title{font-size:16px;font-weight:800;letter-spacing:-.3px;flex:1}
+.wp-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.wp-effort{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;color:var(--t2);background:var(--s2);padding:3px 9px;border-radius:5px}
+
+.wp-body{padding:20px 22px}
+.wp-body h4{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.9px;font-family:'IBM Plex Mono',monospace;margin:20px 0 8px;border-top:1px solid var(--b);padding-top:16px}
+.wp-body h4:first-child{margin-top:0;border-top:none;padding-top:0}
+.wp-body p{font-size:13px;line-height:1.75;margin-bottom:6px}
+.wp-body li{font-size:12.5px;line-height:1.7;margin-bottom:4px}
+.wp-body ul,.wp-body ol{padding-left:20px;margin:6px 0 10px}
+
+pre{background:#1a1a18;color:#e0ddd5;border-radius:10px;padding:16px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;line-height:1.65;overflow-x:auto;margin:10px 0;white-space:pre-wrap;word-break:break-word}
+code{font-family:'IBM Plex Mono',monospace;font-size:10.5px;background:var(--s2);padding:2px 5px;border-radius:4px;color:var(--t)}
+
+.ref{display:inline-block;font-size:9px;font-weight:700;font-family:'IBM Plex Mono',monospace;background:var(--bb);color:var(--bl);padding:2px 7px;border-radius:4px;margin:1px 2px}
+.ref-g{background:var(--gb);color:var(--g)}
+.ref-o{background:var(--ob);color:var(--o)}
+
+/* Acceptance criteria */
+.ac{background:var(--s2);border-radius:10px;padding:14px 18px;margin:10px 0}
+.ac li{font-size:11.5px;position:relative;padding-left:4px;margin-bottom:5px}
+.ac li::marker{content:'☐ '}
+
+/* Warning/info */
+.warn{background:var(--ob);border-left:3px solid var(--o);border-radius:0 8px 8px 0;padding:11px 15px;margin:12px 0;font-size:11.5px}
+.info{background:var(--bb);border-left:3px solid var(--bl);border-radius:0 8px 8px 0;padding:11px 15px;margin:12px 0;font-size:11.5px}
+.ok{background:var(--gb);border-left:3px solid var(--g);border-radius:0 8px 8px 0;padding:11px 15px;margin:12px 0;font-size:11.5px}
+.rule{background:#f3e8f9;border-left:3px solid var(--p);border-radius:0 8px 8px 0;padding:11px 15px;margin:12px 0;font-size:11.5px}
+
+/* Phase divider */
+.phase-div{text-align:center;padding:28px 0 14px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:2.5px;color:var(--t2)}
+.phase-div span{background:var(--bg);padding:0 18px}
+.phase-div::before{content:'';display:block;height:1px;background:var(--b);margin-bottom:-9px}
+
+/* Table */
+.tw{overflow-x:auto;margin:10px 0}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+th{background:var(--s2);font-weight:700;text-align:left;padding:9px 11px;border:1px solid var(--b);font-family:'IBM Plex Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:9px 11px;border:1px solid var(--b);vertical-align:top;font-size:12px}
+
+.ft{text-align:center;padding:28px;font-size:10px;color:var(--t2);line-height:1.9}
+
+/* Screen mockup pill */
+.screen{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;background:#1a1a18;color:#e0ddd5;padding:3px 9px;border-radius:5px;margin:1px 2px}
+
+/* Jobs principle */
+.jobs{background:linear-gradient(135deg,#f0faf5 0%,#e8f5ee 100%);border:1px solid #b8deca;border-radius:10px;padding:14px 18px;margin:12px 0;font-size:12px}
+.jobs strong{color:var(--g)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>ScopeSnap — Remaining Work SOW</h1>
+<p class="sub">Everything left to reach Beta-Ready MVP. Feed to an AI agent one work package at a time in order.</p>
+
+<div class="ver">
+<strong>VERSION:</strong> V1.0 — March 22, 2026<br>
+<strong>CONTEXT:</strong> All WP-01 through WP-16 from the original SOW are implemented. The app runs cleanly, all 14+ screens render without hydration errors, all mobile overflow issues are fixed, and the estimate builder has been redesigned with labor/parts/fees breakdown, inline edit/delete, and repair/replace toggles. What remains are the gaps between "it runs" and "a beta HVAC tech can use it on a real job in the field."<br><br>
+<strong>REFERENCE DOCUMENTS (give all to the AI agent):</strong><br>
+• <code>ScopeSnap_Product_Bible.html</code> — Product strategy, Steve Jobs principles, competitive intel<br>
+• <code>ScopeSnap_MVP_Technical_Spec.html</code> — Database schema, API endpoints, AI prompts, architecture<br>
+• <code>ScopeSnap_Prototype_Demo.html</code> — Tech mobile app prototype — <strong>VISUAL LAW</strong> for all screens<br>
+• <code>ScopeSnap_Build_SOW.html</code> — Original build SOW (completed — read for context only)<br>
+• <code>STATUS.md</code> — Current completion state<br><br>
+<strong>INVIOLABLE DESIGN RULES (never break these):</strong><br>
+1. Every screen must match the prototype exactly — layout, card style, color tokens, typography, spacing<br>
+2. Steve Jobs: answer the most important question in 3 seconds, then layer detail underneath<br>
+3. Steve Jobs: end result first — show the tech the outcome, then the steps to get there<br>
+4. Steve Jobs: remove everything that isn't essential; if you can't explain why an element is there, remove it<br>
+5. Color tokens: brand-green=#1a8754, brand-blue=#1565c0, surface-bg=#f7f7f3, surface-secondary=#f0efea, text-primary=#1a1a18, text-secondary=#7a7770<br>
+6. Mobile-first — every screen must work perfectly at 390px wide. No horizontal scroll. All tap targets ≥44px.<br>
+7. Never add features that aren't in the prototype or this SOW. Scope creep kills MVPs.<br><br>
+<strong>TECH STACK (don't change these):</strong> Next.js 14 App Router (TypeScript) + Tailwind CSS + FastAPI (Python) + PostgreSQL + Local file storage (dev). All frontend files in <code>scopesnap-web/</code>. All backend files in <code>scopesnap-api/</code>. Dev auth: <code>X-Dev-Clerk-User-Id: test_user_mike</code> header on all API calls.<br><br>
+<strong>EXECUTION ORDER:</strong> RW-01 → RW-02 → RW-03 → RW-04 → RW-05 → RW-06. Do not skip ahead. Each WP depends on the previous.
+</div>
+
+<!-- ============================================================ -->
+<div class="phase-div"><span>Phase 1 — Navigation &amp; Core Field UX</span></div>
+<!-- ============================================================ -->
+
+<!-- RW-01 -->
+<div class="wp">
+<div class="wp-header">
+  <span class="wp-num red">RW-01</span>
+  <span class="wp-title">Bottom Navigation Bar — Mobile Primary Navigation</span>
+  <div class="wp-meta">
+    <span class="wp-effort">~3 hrs</span>
+    <span class="pri red">P0 — Field Blocker</span>
+  </div>
+</div>
+<div class="wp-body">
+
+<h4>Why This Exists</h4>
+<p>HVAC techs use this app one-handed while holding tools. The current sidebar (hamburger → slide-out) is a two-tap, two-handed operation. The prototype shows a 5-tab bottom bar that techs can reach with their thumb without looking. This is the single biggest usability gap between the current build and something a tech can actually use in the field.</p>
+
+<div class="jobs">
+  <strong>Steve Jobs rule:</strong> The most important actions must be reachable with one thumb, in under one second, without looking down. On a phone, that means a bottom tab bar — not a sidebar.
+</div>
+
+<h4>What the Prototype Shows</h4>
+<p>Open <code>ScopeSnap_Prototype_Demo.html</code>. Every screen has a fixed bottom bar with exactly 5 tabs:</p>
+<div class="tw"><table>
+  <tr><th>Tab #</th><th>Icon</th><th>Label</th><th>Route</th><th>Notes</th></tr>
+  <tr><td>1</td><td>🏠 Home</td><td>Home</td><td><code>/dashboard</code></td><td>Active state: filled house icon</td></tr>
+  <tr><td>2</td><td>📷 Camera</td><td>Assess</td><td><code>/assess</code></td><td>Center tab — larger, brand-green circle background. PRIMARY ACTION.</td></tr>
+  <tr><td>3</td><td>📋 Estimates</td><td>Jobs</td><td><code>/estimates</code></td><td>Shows badge with pending count</td></tr>
+  <tr><td>4</td><td>📈 Intel</td><td>Intel</td><td><code>/analytics</code></td><td>Routes to analytics page</td></tr>
+  <tr><td>5</td><td>⚙️ Settings</td><td>Settings</td><td><code>/settings</code></td><td>Routes to settings page</td></tr>
+</table></div>
+
+<h4>What to Build</h4>
+<p>Create a new component <code>scopesnap-web/components/BottomNav.tsx</code> and wire it into the app layout. The sidebar stays as-is for desktop (md: and up). The bottom nav replaces it as the primary navigation on mobile (below md:).</p>
+
+<h4>Exact Specification</h4>
+
+<p><strong>Component: <code>components/BottomNav.tsx</code></strong></p>
+<pre>"use client";
+// BottomNav — visible below md:, hidden md:hidden
+// Fixed at bottom of viewport. 5 tabs. Safe area inset for iPhone notch.
+// Tab 2 (Assess/Camera) is the hero action — bigger, green circle.
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const TABS = [
+  { href: "/dashboard",  icon: "home",     label: "Home"     },
+  { href: "/assess",     icon: "camera",   label: "Assess",  hero: true },
+  { href: "/estimates",  icon: "list",     label: "Jobs"     },
+  { href: "/analytics",  icon: "chart",    label: "Intel"    },
+  { href: "/settings",   icon: "gear",     label: "Settings" },
+];
+
+// Use inline SVG icons (no external dependency) — match prototype icons exactly
+// Hero tab (Assess): 52px circle, brand-green background, white camera icon, elevated +2px
+// Regular tabs: 24px icon, brand-green when active, text-secondary when inactive
+// Active indicator: filled icon + brand-green label text. NO underline, NO pill background.
+// Height: 64px + env(safe-area-inset-bottom) for iPhone
+// Background: white, top border 1px surface-border, backdrop blur for glass effect
+</pre>
+
+<p><strong>Layout change in <code>app/(app)/layout.tsx</code>:</strong></p>
+<pre>// ADD BottomNav below the existing &lt;main&gt; block — mobile only
+// ADD pb-20 to the main content area so content isn't hidden behind the bar
+// KEEP the existing SidebarNav — it handles desktop (md:) navigation unchanged
+
+return (
+  &lt;div className="min-h-screen bg-surface-bg" suppressHydrationWarning&gt;
+    &lt;SidebarNav /&gt;                          {/* desktop sidebar — unchanged */}
+    &lt;main className="md:ml-60 transition-all duration-300"&gt;
+      &lt;div className="pt-16 md:pt-0 px-4 md:px-8 py-6 pb-24 md:pb-6"&gt;
+        {/* pb-24 on mobile = clears the 64px bottom nav + safe area */}
+        {IS_DEV && &lt;DevBadge /&gt;}
+        {children}
+      &lt;/div&gt;
+    &lt;/main&gt;
+    &lt;BottomNav /&gt;                           {/* mobile bottom nav — new */}
+  &lt;/div&gt;
+);
+</pre>
+
+<p><strong>Active state logic:</strong></p>
+<pre>// A tab is "active" when pathname starts with its href
+// /dashboard → Home active
+// /assess → Assess active (hero tab)
+// /estimate/[id] → Jobs active (parent is /estimates)
+// /estimates → Jobs active
+// /analytics → Intel active
+// /intelligence/* → Intel active
+// /settings/* → Settings active
+</pre>
+
+<p><strong>Hero tab (Assess/Camera) — exact styling:</strong></p>
+<pre>// The center camera tab is the star of the show (Jobs principle: hero action must be obvious)
+// - Outer container: 52px × 52px circle
+// - Background: linear-gradient(135deg, #1a8754, #159a5e)
+// - Box shadow: 0 4px 14px rgba(26,135,84,.45) — same as the green CTA buttons
+// - Icon: white camera SVG, 24px
+// - Position: translateY(-8px) — floats above the bar, creating a shelf effect
+// - Active state: brighter gradient, shadow intensifies
+// - The "Assess" label below the circle: text-[10px] font-semibold brand-green
+</pre>
+
+<p><strong>SVG icons to use (inline, no library):</strong></p>
+<pre>// Home: outline house SVG (fill on active)
+// Camera: outline camera SVG (always white inside hero circle)
+// List: outline clipboard/list SVG (fill on active)
+// Chart: outline bar chart SVG (fill on active)
+// Gear: outline gear/settings SVG (fill on active)
+// All icons: 22px × 22px viewBox="0 0 24 24", stroke-based, strokeWidth=1.75
+// Active: use fill variant OR change stroke color to brand-green
+</pre>
+
+<p><strong>Accessibility:</strong></p>
+<pre>// Each tab is an &lt;a&gt; via Next.js &lt;Link&gt;
+// aria-label="Navigate to Dashboard" etc.
+// aria-current="page" on active tab
+// Role: navigation, aria-label="Main navigation"
+</pre>
+
+<h4>Do Not Touch</h4>
+<ul>
+  <li><code>SidebarNav.tsx</code> — leave completely unchanged. It still handles desktop.</li>
+  <li>Any existing page files — zero changes to page content.</li>
+  <li>The hamburger button in SidebarNav — leave it. It remains for desktop tablet users.</li>
+</ul>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+  <li>At 390px viewport width, bottom nav is visible and fixed at the bottom of every (app) screen</li>
+  <li>At 768px+ viewport width, bottom nav is completely hidden (md:hidden)</li>
+  <li>Tapping any tab navigates to the correct route without full page reload</li>
+  <li>Active tab shows brand-green icon + brand-green label text</li>
+  <li>Hero camera tab floats 8px above the bar with green circle background and shadow</li>
+  <li>Content on every page is not hidden behind the bottom nav (pb-24 on mobile)</li>
+  <li>iPhone safe area is respected — no tab text cut off on notch devices</li>
+  <li>No hydration errors (use suppressHydrationWarning where pathname-dependent)</li>
+  <li>The existing desktop sidebar layout is completely unaffected</li>
+</ul></div>
+
+<div class="warn"><strong>IMPORTANT:</strong> Match the prototype tab bar exactly — icon style, spacing, hero tab elevation, colors. Do not invent a different design. Open <code>ScopeSnap_Prototype_Demo.html</code> and replicate it pixel-for-pixel at the bottom of every screen.</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="phase-div"><span>Phase 2 — Assessment Flow Fix</span></div>
+<!-- ============================================================ -->
+
+<!-- RW-02 -->
+<div class="wp">
+<div class="wp-header">
+  <span class="wp-num red">RW-02</span>
+  <span class="wp-title">Assessment Camera Flow — End-to-End Verification &amp; Fix</span>
+  <div class="wp-meta">
+    <span class="wp-effort">~2–3 hrs</span>
+    <span class="pri red">P0 — Field Blocker</span>
+  </div>
+</div>
+<div class="wp-body">
+
+<h4>Why This Exists</h4>
+<p>The assessment page (<code>/assess</code>) is the entire product. If the photo capture → AI analysis → estimate creation chain fails silently or shows a blank screen at any step, the tech loses the job. This WP audits and hardens every step of the chain, and ensures the loading states and error messages match the prototype exactly.</p>
+
+<div class="jobs">
+  <strong>Steve Jobs rule:</strong> Every screen in a flow must answer "what is happening right now?" The tech should never see a blank screen or a spinner with no label. Every state has a message.
+</div>
+
+<h4>The 5 Phases to Verify (in order)</h4>
+<p>Open <code>app/(app)/assess/page.tsx</code>. The flow has these phases: <span class="screen">capture</span> → <span class="screen">uploading</span> → <span class="screen">analyzing</span> → <span class="screen">results</span> → <span class="screen">estimating</span></p>
+
+<h4>Phase 1 — Capture Screen</h4>
+<p>Matches prototype screen "Screen 2 — Capture". Must show:</p>
+<ul>
+  <li>Property address input with autocomplete from existing properties in the DB</li>
+  <li>Homeowner name + phone fields</li>
+  <li>Photo grid showing selected photos (up to 5)</li>
+  <li>Two ways to add photos: <strong>(A) File picker</strong> for web, <strong>(B) Camera button</strong> that opens <code>capture="environment"</code> for mobile</li>
+  <li>A single prominent CTA: <strong>"Analyze Equipment →"</strong> button (brand-green, full-width, 56px tall)</li>
+</ul>
+<p><strong>Issue to fix:</strong> Verify the camera input uses <code>accept="image/*" capture="environment"</code> so it opens the rear camera directly on Android/iOS without showing a file picker first. If it currently opens a file picker on mobile, fix it to open the native camera.</p>
+
+<h4>Phase 2 — Uploading Screen</h4>
+<p>While photos upload to <code>POST /api/assessments</code>:</p>
+<ul>
+  <li>Show a full-screen overlay with animated green progress indicator (not just a spinner)</li>
+  <li>Text: "Uploading photos…" then "Analyzing with AI…" (change the message when the analyze call starts)</li>
+  <li>Do NOT allow tapping back — the flow must complete</li>
+</ul>
+
+<h4>Phase 3 — Analyzing Screen</h4>
+<p>Matches prototype screen "Screen 3 — Analyzing". Must show:</p>
+<ul>
+  <li>A scanning animation (CSS pulse/scan line across the equipment photo thumbnail)</li>
+  <li>Text: "AI is identifying your equipment…" </li>
+  <li>Sub-text: "Usually takes 8–15 seconds"</li>
+  <li>A progress indicator showing the stages: Uploading → Reading photos → Identifying model → Checking recalls → Building estimate</li>
+</ul>
+<p><strong>Implementation:</strong> After the upload completes, immediately call <code>POST /api/assessments/{id}/analyze</code>. This is the Gemini call. It can take 8–20 seconds. Poll <code>GET /api/assessments/{id}</code> every 2 seconds until <code>status === "analyzed"</code>, then automatically transition to the results phase.</p>
+
+<h4>Phase 4 — Intelligence Results Screen</h4>
+<p>Matches prototype screen "Screen 4 — Intelligence Results". Must show:</p>
+<ul>
+  <li><strong>Identified Equipment card:</strong> Brand + Model + Tonnage + SEER (from <code>ai_equipment_id</code>). Confidence badge (e.g. "94% confidence"). Age estimate.</li>
+  <li><strong>Condition card:</strong> Overall condition (CRITICAL / POOR / FAIR / GOOD) with color coding. Red=CRITICAL, Orange=POOR, Yellow=FAIR, Green=GOOD.</li>
+  <li><strong>Issues list:</strong> Each issue from <code>ai_issues</code> shows: component name, severity dot (red/orange/yellow), description in plain English (no jargon).</li>
+  <li><strong>Tech Override section:</strong> Collapsed by default ("✏ Override AI readings"). Tap to expand fields: Brand, Model, Condition, Year — all editable. Submits <code>PATCH /api/assessments/{id}</code>.</li>
+  <li><strong>Single CTA:</strong> "Build Estimate →" button (brand-green, full-width). Calls <code>POST /api/estimates</code> to create the estimate, then navigates to <code>/estimate/{id}</code>.</li>
+</ul>
+
+<h4>Error States (all must be handled)</h4>
+<pre>// Every API call must have an error handler that shows a human-readable message
+// Never show a blank white screen or a raw JSON error
+
+Upload fails:
+  → "Couldn't upload photos. Check your connection and try again."
+  → [Retry] button returns to capture phase with photos still selected
+
+Gemini AI times out / returns error:
+  → "AI analysis took too long. This sometimes happens on slow connections."
+  → [Try again] button re-calls the analyze endpoint
+  → [Enter manually] button skips AI and goes to manual equipment entry form
+
+Estimate creation fails:
+  → "Couldn't build estimate. The assessment was saved."
+  → [Try again] button
+
+All error messages:
+  → Brand-red text on light red background card
+  → No stack traces, no API error codes visible to the user
+  → Always include an action button — never a dead end
+</pre>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+  <li>On a real mobile device (or Chrome DevTools mobile emulation), tapping the camera button opens the rear camera directly (not a file picker)</li>
+  <li>Uploading 1–3 photos shows the uploading → analyzing progress screens with correct messages</li>
+  <li>The results screen shows equipment ID, condition card, and issues list from the AI response</li>
+  <li>If the API fails at any step, a human-readable error message with a Retry button appears — never a blank screen</li>
+  <li>"Build Estimate →" creates the estimate and navigates to <code>/estimate/{id}</code></li>
+  <li>All 5 phases match the corresponding screens in <code>ScopeSnap_Prototype_Demo.html</code></li>
+</ul></div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="phase-div"><span>Phase 3 — Estimate Output &amp; Present Mode</span></div>
+<!-- ============================================================ -->
+
+<!-- RW-03 -->
+<div class="wp">
+<div class="wp-header">
+  <span class="wp-num orange">RW-03</span>
+  <span class="wp-title">Present Mode — 4-Slide Full-Screen Slideshow</span>
+  <div class="wp-meta">
+    <span class="wp-effort">~4–5 hrs</span>
+    <span class="pri orange">P1 — Key Differentiator</span>
+  </div>
+</div>
+<div class="wp-body">
+
+<h4>Why This Exists</h4>
+<p>Present Mode is the moment a tech turns their phone to show a homeowner the diagnosis. It's the product's "wow" moment — a clean, full-screen slideshow that makes the tech look professional and the homeowner feel informed. The prototype has 4 specific slides. Currently it's a disabled "Coming Soon" button on the Output tab.</p>
+
+<div class="jobs">
+  <strong>Steve Jobs rule:</strong> Present Mode is a theater experience. When it opens, everything else disappears. The tech is on stage. The homeowner is the audience. There is no UI chrome — just the content.
+</div>
+
+<h4>Where to Build It</h4>
+<p>File: <code>app/(app)/estimate/[id]/page.tsx</code> — inside the Output tab section. Replace the disabled "Present Mode — Coming Soon" button with a fully functional button that opens the slideshow.</p>
+
+<h4>Implementation: Full-Screen Overlay</h4>
+<p>Present Mode should be a React component rendered as a full-screen overlay (fixed, inset-0, z-50, bg-black) on top of everything. It does NOT navigate away — it overlays. ESC or swipe-down closes it.</p>
+
+<pre>// Trigger: tap "🖥 Present Mode" button on Output tab
+// State: const [presenting, setPresenting] = useState(false);
+// When presenting=true: render &lt;PresentMode estimate={estimate} onClose={() => setPresenting(false)} /&gt;
+// The overlay covers the full screen including the status bar area (safe-area-inset)
+</pre>
+
+<h4>The 4 Slides — Exact Content per Prototype</h4>
+<p>Open <code>ScopeSnap_Prototype_Demo.html</code> and navigate to the Present Mode screens. Replicate exactly:</p>
+
+<p><strong>Slide 1 — Annotated Equipment Photo</strong></p>
+<pre>Layout: Full-screen dark background. Equipment photo fills top 60% of screen.
+        Annotated callouts overlaid on the photo (SVG overlay layer).
+        Issues from ai_issues appear as labeled callout bubbles:
+          - CRITICAL severity → red callout dot + label
+          - FAIR/POOR severity → orange callout dot + label
+          - GOOD → green callout dot + label
+        Bottom 40%: Company name, address, date.
+        Callouts animate in one-by-one with a 0.4s fade (CSS animation).
+        Callout positions: Use a simple grid (top-left, top-right, bottom-left, bottom-right)
+          assigned in order of ai_issues array.
+
+If no photo exists: show a placeholder equipment silhouette SVG (HVAC unit outline).
+If no issues exist: show "Equipment looks good" message.
+</pre>
+
+<p><strong>Slide 2 — Equipment Health Card</strong></p>
+<pre>Layout: Clean white card on dark green (#0f5c38) background.
+
+Top: Equipment identification
+  - Brand + Model (large, bold): e.g. "Carrier 24ACC636"
+  - Tonnage + SEER: e.g. "3-ton · 14 SEER"
+  - Age: e.g. "Installed: 2016 (8 years old)"
+
+Middle: Health gauge
+  - A large circular gauge (SVG arc, 0-100%)
+  - Color: red (0-30%), orange (31-60%), yellow (61-80%), green (81-100%)
+  - Score derived from condition: CRITICAL=20, POOR=40, FAIR=65, GOOD=85
+  - Label inside: "FAIR" / "POOR" / "CRITICAL" / "GOOD"
+  - Sub-label: "Estimated X–Y years remaining"
+
+Bottom: Top 3 issues as pill-style badges
+  - Each badge: severity color + issue component name
+  - E.g. 🔴 Coil Corrosion  🟠 Bent Fins  🟡 Dirty Filter
+</pre>
+
+<p><strong>Slide 3 — Options Comparison</strong></p>
+<pre>Layout: Dark background (#1a1a18). Three option cards stacked vertically.
+
+Each card shows:
+  - Option letter (A / B / C) + tier badge (Good / Better / Best)
+  - Option name (e.g. "Replace Evaporator Coil")
+  - Price (large, bold, tier color: gray/green/blue)
+  - Job type: "🔧 Repair" or "🔄 Replace" pill
+
+Selected option (defaulting to "Better" / Option B):
+  - White card background
+  - Brand-green border + checkmark
+  - Slightly larger (scale-105)
+
+Tapping a card selects it (updates selectedTier state in parent).
+
+Bottom: "See Cost Breakdown →" text in brand-green — reminds tech this is interactive
+</pre>
+
+<p><strong>Slide 4 — 5-Year Value Comparison</strong></p>
+<pre>Layout: Clean white background. Chart + summary.
+
+Title: "True 5-Year Cost" (not just install price — the homeowner needs to see total value)
+
+Bar chart (horizontal bars, each option is a row):
+  - Option A bar: gray, length proportional to five_year_total
+  - Option B bar: green, length proportional to five_year_total (usually shorter = better value)
+  - Option C bar: blue, length proportional to five_year_total
+
+Each bar label: Option name + five_year_total amount at the end
+
+Below chart: Energy savings highlight if applicable
+  - "Option B saves you $X over 5 years vs Option A"
+  - Big green number, centered
+
+Bottom: Single CTA button (not navigation — just visual)
+  - "I'll send you this report to review with your family →"
+  - This is the tech's verbal script — they say this line and tap Send
+</pre>
+
+<h4>Navigation Between Slides</h4>
+<pre>// Swipe left/right (touch events) OR tap left/right arrows
+// Progress dots at bottom: 4 dots, current slide filled green
+// Back arrow (top-left): closes Present Mode, returns to Output tab
+// Slide counter: "1 of 4" top-right in small mono text
+// Auto-advance: NO. Tech controls pace.
+</pre>
+
+<h4>Technical Notes</h4>
+<pre>// All data comes from estimate prop — no additional API calls needed
+// Health score: derive from estimate.options[0].line_items or assessment ai_condition
+// Equipment photo: use estimate's first assessment photo (fetch from assessments API if needed)
+// If no photos: use placeholder SVG (inline, no external asset needed)
+// Chart bars: pure CSS flexbox width percentages — no chart library needed
+// Keep bundle size zero: no new npm installs for this feature
+</pre>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+  <li>Tapping "🖥 Present Mode" on the Output tab opens the full-screen overlay</li>
+  <li>All 4 slides render with real estimate data (not placeholder text)</li>
+  <li>Swiping left/right navigates between slides smoothly</li>
+  <li>Progress dots show current slide</li>
+  <li>Equipment photo (or placeholder) displays on Slide 1 with issue callouts</li>
+  <li>Health gauge on Slide 2 reflects the AI condition rating</li>
+  <li>Tapping an option card on Slide 3 updates the selection (reflected in estimate builder)</li>
+  <li>5-year bars on Slide 4 are proportional to actual five_year_total values</li>
+  <li>Back arrow / swipe-down closes the overlay cleanly</li>
+  <li>Matches <code>ScopeSnap_Prototype_Demo.html</code> Present Mode screens as closely as possible</li>
+</ul></div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="phase-div"><span>Phase 4 — Send Flow &amp; Delivery</span></div>
+<!-- ============================================================ -->
+
+<!-- RW-04 -->
+<div class="wp">
+<div class="wp-header">
+  <span class="wp-num orange">RW-04</span>
+  <span class="wp-title">Send Estimate Flow — Fix &amp; Verify End-to-End</span>
+  <div class="wp-meta">
+    <span class="wp-effort">~2–3 hrs</span>
+    <span class="pri orange">P1 — Core Feature</span>
+  </div>
+</div>
+<div class="wp-body">
+
+<h4>Current State</h4>
+<p>The backend <code>POST /api/estimates/{id}/send</code> exists and is implemented in <code>scopesnap-api/api/estimates.py</code>. In dev mode it uses <code>ConsoleSender</code> which prints the email to the terminal. In production it would use <code>ResendSender</code>. The frontend currently handles a 501 silently (pretends it succeeded). This needs to be a real, verifiable send that a beta tester can confirm worked.</p>
+
+<h4>What to Fix — Frontend (<code>estimate/[id]/page.tsx</code> Send Tab)</h4>
+
+<p><strong>1. Remove the silent 501 bypass.</strong> The current code at lines ~439–444 silently marks the send as successful if it gets a 501. Remove this. If the API returns an error, show the error.</p>
+
+<p><strong>2. Pre-fill contact info from the assessment.</strong></p>
+<pre>// When the Send tab loads, fetch the property/homeowner contact info
+// GET /api/assessments/{estimate.assessment_id} returns property.customer_email + customer_phone
+// Pre-fill the email and phone fields with these values
+// Allow the tech to override them before sending
+// Tech should NOT have to re-type contact info they already entered during assessment
+</pre>
+
+<p><strong>3. Improve the Send screen UI.</strong> Matches prototype screen "Screen 8 — Send to Customer":</p>
+<pre>// Show the homeowner's name prominently at top: "Send to Sarah Johnson"
+// Show a preview of what they'll receive:
+//   - Estimate summary card: Option B selected, $6,200, "Replace Evaporator Coil"
+//   - Report URL preview (truncated): "scopesnap.app/r/..."
+// Auto follow-up schedule: show the 3 follow-up times visually (24h, 48h, 7 days)
+// Two send methods: Email + SMS (both can be sent simultaneously)
+// Single CTA: "Send Now →" (brand-green, full-width, 56px)
+</pre>
+
+<p><strong>4. Success state.</strong> After sending, match prototype "Screen 8b — Sent Confirmation":</p>
+<pre>// Large checkmark animation (CSS scale + fade in)
+// "Sent to Sarah ✓" — use actual homeowner name
+// "You'll be notified when she views it"
+// Show the report URL with a Copy Link button
+// Two action buttons stacked:
+//   Primary: "Save to History →" (brand-green)
+//   Secondary: "Start New Assessment" (outline, brand-green text)
+</pre>
+
+<h4>What to Fix — Backend</h4>
+
+<p><strong>Verify ConsoleSender works in dev.</strong> Open <code>scopesnap-api/services/email.py</code> and confirm <code>ConsoleSender.send_estimate()</code> prints the full email content to the terminal. Add a clear separator so it's easy to find in logs:</p>
+<pre># ConsoleSender output format:
+# ═══════════════════════════════════════════
+# 📧 EMAIL SENT (dev mode — not real)
+# To: homeowner@example.com
+# Subject: Your HVAC Estimate from ABC HVAC Services
+# Report URL: http://localhost:3000/r/abc-hvac/RPT-0042
+# Selected Option: Replace Evaporator Coil — $6,200
+# ═══════════════════════════════════════════
+</pre>
+
+<p><strong>Verify the follow-up schedule is being created.</strong> After a successful send, check that <code>estimate_followups</code> table rows are being created for 24h, 48h, and 7-day follow-ups.</p>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+  <li>Send tab pre-fills email and phone from the assessment's homeowner data</li>
+  <li>Tapping "Send Now →" calls <code>POST /api/estimates/{id}/send</code> and shows a loading spinner on the button</li>
+  <li>In dev mode: terminal shows the ConsoleSender output with all email fields</li>
+  <li>Success state shows homeowner name, report URL, and Copy Link button</li>
+  <li>Error state (no email/phone, network fail) shows a human-readable message with Retry</li>
+  <li>Follow-up rows exist in the DB after a successful send (verify with DB query)</li>
+  <li>The 501 silent bypass is removed — the flow is real, not faked</li>
+</ul></div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="phase-div"><span>Phase 5 — Data &amp; Reliability</span></div>
+<!-- ============================================================ -->
+
+<!-- RW-05 -->
+<div class="wp">
+<div class="wp-header">
+  <span class="wp-num blue">RW-05</span>
+  <span class="wp-title">Seed Real Pricing Data — Equipment Database &amp; Labor Rates</span>
+  <div class="wp-meta">
+    <span class="wp-effort">~2–3 hrs</span>
+    <span class="pri orange">P1 — Beta Readiness</span>
+  </div>
+</div>
+<div class="wp-body">
+
+<h4>Why This Exists</h4>
+<p>Right now the estimate builder generates $0 line items because the equipment and pricing databases have no real data. Beta testers need to see real dollar amounts so they can evaluate whether the estimates are accurate. The SOW originally called for 50 equipment entries (5 brands × 10 models). This WP creates the seed data.</p>
+
+<div class="jobs">
+  <strong>Steve Jobs rule:</strong> A demo with real data is a product. A demo with fake or empty data is a prototype. Beta testers must see numbers that feel real.
+</div>
+
+<h4>Part A — Equipment Database Seed</h4>
+<p>File to create: <code>scopesnap-api/db/seeds/equipment_seed.py</code></p>
+<p>Run via: <code>python -m db.seeds.equipment_seed</code></p>
+<p>Populate the <code>equipment_models</code> table with the following 50 entries (5 brands × 10 models each):</p>
+
+<div class="tw"><table>
+  <tr><th>Brand</th><th>Models to Include (10 each)</th><th>Notes</th></tr>
+  <tr>
+    <td><strong>Carrier</strong></td>
+    <td>24ACC636 (3T/16S), 24ACC624 (2T/16S), 24ACC648 (4T/16S), 24SCA530 (2.5T/14S), 24SCA536 (3T/14S), 24SPA548 (4T/18S), 24SPA560 (5T/18S), 58STA090 (Furnace 80k), 59MN080 (Furnace 96%), CH14NB036 (3T/14S heat pump)</td>
+    <td>Most common brand in Southern US</td>
+  </tr>
+  <tr>
+    <td><strong>Lennox</strong></td>
+    <td>XC21-036 (3T/21S), XC16-036 (3T/16S), XC13-036 (3T/13S), XP21-036 (3T/21S HP), XP17-036 (3T/17S HP), ML14XC1-036 (3T/14S), SL28XCV-036 (3T/28S), EL296UH080 (Furn 80k/96%), SLP98UH070 (Furn 70k/98%), CBA38MV-036 (AHU/air handler)</td>
+    <td>Premium brand — higher cost baseline</td>
+  </tr>
+  <tr>
+    <td><strong>Trane</strong></td>
+    <td>XR15 (3T/15S), XR14 (3T/14S), XL18i (3T/18S), XV20i (3T/20S), XR13 (3T/13S), XR15c (3T/15S HP), XR14c (3T/14S HP), S9V2 (Furn 80k/96%), S8X1 (Furn 80k/80%), TEM6 (AHU 3T)</td>
+    <td>Second most common brand</td>
+  </tr>
+  <tr>
+    <td><strong>Rheem</strong></td>
+    <td>RA16AZ036 (3T/16S), RA14AZ036 (3T/14S), RP20AZ036 (3T/20S HP), RP17AZ036 (3T/17S HP), RA13NA036 (3T/13S), RASL-JEZ036 (3T/21S), R96VA0801317 (Furn 80k/96%), RGFM-07EAUER (Furn 70k/80%), RHAL-037JAZ (AHU 3T), RPM036AJT (3T pkg unit)</td>
+    <td>Mid-market, common in Southeast</td>
+  </tr>
+  <tr>
+    <td><strong>Goodman</strong></td>
+    <td>GSX160361 (3T/16S), GSX130361 (3T/13S), GSXC180361 (3T/18S), GSZC180361 (3T/18S HP), GSXH503610 (3T/15.2S HP), GMH950804BX (Furn 80k/96%), GMVC960804CN (Furn 80k/96% 2stg), AMST36BU1400 (AHU 3T), CAPF3636B6 (coil 3T), CPG1524M41 (pkg unit 2T/14S)</td>
+    <td>Budget brand — lowest contractor cost, highest volume</td>
+  </tr>
+</table></div>
+
+<p><strong>Per-model data to include:</strong></p>
+<pre>equipment_models columns to populate per model:
+  brand: (string)
+  model_number: (string)
+  equipment_type: "central_ac" | "heat_pump" | "furnace" | "air_handler" | "package_unit"
+  tonnage: (decimal, e.g. 3.0)
+  seer_rating: (decimal, e.g. 16.0)
+  afue_rating: (decimal or null — only for furnaces)
+  manufacture_years: (int range, e.g. "2015-2024")
+  common_issues: (JSONB array) — top 3 failure modes for this model family
+  typical_lifespan_years: (int, e.g. 15)
+  refrigerant_type: "R-410A" | "R-22" | "R-32" | "R-454B"
+  contractor_cost_low: (decimal — low end of contractor cost range)
+  contractor_cost_high: (decimal — high end of contractor cost range)
+  install_hours_low: (decimal — low end of typical install hours)
+  install_hours_high: (decimal — high end)
+  notes: (string — any important install notes, recall history, etc.)
+</pre>
+
+<p><strong>Pricing reference (use these as baselines, adjust ±20% per brand tier):</strong></p>
+<pre>AC Units (2-ton):    contractor cost $800–1,100  | install 4–6 hrs
+AC Units (3-ton):    contractor cost $1,000–1,400 | install 5–7 hrs
+AC Units (4-ton):    contractor cost $1,200–1,700 | install 6–8 hrs
+Heat Pumps (3-ton):  contractor cost $1,400–1,900 | install 6–9 hrs
+Furnaces (80k/80%):  contractor cost $600–900     | install 4–6 hrs
+Furnaces (80k/96%):  contractor cost $1,000–1,400 | install 4–6 hrs
+Air Handlers (3T):   contractor cost $400–700     | install 3–4 hrs
+Package Units (3T):  contractor cost $1,600–2,200 | install 6–9 hrs
+
+Carrier = +15% vs baseline
+Lennox = +25% vs baseline
+Trane = +20% vs baseline
+Rheem = baseline
+Goodman = −20% vs baseline
+</pre>
+
+<h4>Part B — Default Pricing Rules</h4>
+<p>Populate the <code>pricing_rules</code> table with the following national defaults. These appear in the Settings → Pricing page as pre-filled values that the tech/owner can override.</p>
+
+<pre>INSERT INTO pricing_rules (company_id, rule_type, name, labor_rate, parts_cost, permit_cost):
+
+Labor Rates:
+  "Standard HVAC Labor" — $92/hr (national mid-market average)
+  "Emergency / Weekend"  — $138/hr (1.5× standard)
+  "Warranty Recall Work" — $0/hr (warranty — no charge)
+
+Common Parts (flat-rate cards):
+  "Capacitor Replacement"    — labor: 0.75hr, parts: $35, total: ~$120
+  "Contactor Replacement"    — labor: 0.75hr, parts: $40, total: ~$125
+  "Refrigerant R-410A Add"   — labor: 1hr, parts: $15/lb × avg 2lb, total: ~$150
+  "Filter Replacement (1in)" — labor: 0.25hr, parts: $12, total: ~$35
+  "Filter Replacement (4in)" — labor: 0.25hr, parts: $38, total: ~$60
+  "Thermostat Replacement"   — labor: 1hr, parts: $85, total: ~$175
+  "Blower Motor Replacement" — labor: 2.5hr, parts: $180, total: ~$410
+  "Drain Pan Treatment"      — labor: 0.5hr, parts: $25, total: ~$70
+
+Permit Costs (regional defaults):
+  "HVAC Replacement Permit — Low market"    — $100
+  "HVAC Replacement Permit — Mid market"    — $175
+  "HVAC Replacement Permit — High market"   — $300
+
+Disposal:
+  "Old Equipment Haul-Away"  — $125
+  "Refrigerant Reclaim Fee"  — $50
+</pre>
+
+<h4>Part C — Verify Estimate Generation Uses This Data</h4>
+<p>After seeding, test the full flow: capture assessment → analyze → build estimate. Confirm the generated estimate's line items show real dollar amounts pulled from the pricing_rules and equipment_models tables, not zeros.</p>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+  <li>Running <code>python -m db.seeds.equipment_seed</code> inserts all 50 equipment model rows without errors</li>
+  <li>Running <code>python -m db.seeds.pricing_seed</code> inserts all pricing rule rows without errors</li>
+  <li>Settings → Pricing page shows the seeded national defaults in the list</li>
+  <li>A new estimate generated after seeding shows non-zero dollar amounts in all line items</li>
+  <li>The 5-year comparison table shows real numbers (not all $0 or $608)</li>
+  <li>Seeds are idempotent — running them twice doesn't create duplicate rows</li>
+</ul></div>
+</div>
+</div>
+
+<!-- RW-06 -->
+<div class="wp">
+<div class="wp-header">
+  <span class="wp-num blue">RW-06</span>
+  <span class="wp-title">Offline Detection &amp; Connection Error Handling</span>
+  <div class="wp-meta">
+    <span class="wp-effort">~2 hrs</span>
+    <span class="pri blue">P2 — Field Reliability</span>
+  </div>
+</div>
+<div class="wp-body">
+
+<h4>Why This Exists</h4>
+<p>HVAC techs work in basements, utility closets, and rural properties with poor signal. The current app shows a blank white screen or an unhandled promise rejection when the API is unreachable. On a job site, that is a product failure. This WP adds a lightweight offline layer — no service workers, no complex caching — just clear error states and graceful recovery.</p>
+
+<div class="jobs">
+  <strong>Steve Jobs rule:</strong> The app must never leave the user stranded. Every dead end must have a door out. "You're offline" is useful. A blank screen is abandonment.
+</div>
+
+<h4>What to Build</h4>
+
+<p><strong>1. Global offline banner</strong> — create <code>components/OfflineBanner.tsx</code>:</p>
+<pre>"use client";
+// Listens to window online/offline events
+// When offline: shows a non-blocking banner at the top of the screen
+//   - Fixed top bar (below the mobile header), z-50
+//   - Background: #c4600a (brand-orange/warning)
+//   - Text: "No connection — changes will sync when you're back online"
+//   - Icon: wifi-off SVG
+// When back online: banner slides up and disappears (0.3s transition)
+// Does NOT block interaction — just informs
+
+// Add to app/(app)/layout.tsx above &lt;main&gt;
+</pre>
+
+<p><strong>2. API fetch wrapper — graceful failure</strong> — update <code>lib/api.ts</code>:</p>
+<pre>// Add a safeFetch() utility that wraps every API call:
+//   - On network error (TypeError: Failed to fetch): throw a typed OfflineError
+//   - On 5xx server error: throw a typed ServerError
+//   - On 4xx: throw a typed ApiError with the detail message
+//   - Never let raw errors bubble to the UI
+
+// Every page that calls the API should catch OfflineError and show:
+//   "You're offline. This page will load when your connection returns."
+//   + a Retry button that re-calls the fetch
+
+export class OfflineError extends Error { name = "OfflineError" }
+export class ServerError extends Error { name = "ServerError" }
+export class ApiError extends Error {
+  constructor(public status: number, message: string) { super(message) }
+  name = "ApiError"
+}
+</pre>
+
+<p><strong>3. Page-level error boundaries</strong> — add to the 3 most critical pages:</p>
+<pre>Pages to update: /assess, /estimate/[id], /dashboard
+
+Pattern for each:
+  if (error instanceof OfflineError) return &lt;OfflinePlaceholder onRetry={retry} /&gt;
+  if (error instanceof ServerError) return &lt;ErrorCard message="Server error. Try again." onRetry={retry} /&gt;
+
+OfflinePlaceholder component:
+  - WiFi-off icon (large, center)
+  - "You're offline"
+  - Sub-text specific to page:
+      /assess: "Connect to start a new assessment"
+      /estimate/[id]: "Your estimate is saved. Connect to generate documents."
+      /dashboard: "Connect to see your latest jobs"
+  - [Retry] button (outline, brand-green)
+</pre>
+
+<p><strong>4. Assessment data — local draft saving</strong></p>
+<pre>// On the /assess page capture screen:
+// When the tech fills in the address + homeowner info + selects photos,
+// save a draft to localStorage under key "scopesnap_draft_assessment"
+// Structure: { address, homeowner_name, phone, timestamp }
+// (Photos are too large for localStorage — just save the text fields)
+//
+// When the page loads: check for a saved draft
+// If found and less than 4 hours old: show a yellow recovery bar:
+//   "Unsaved assessment: [address] — [time ago]  [Continue] [Discard]"
+// This prevents losing customer info if the phone dies mid-job
+
+// NOTE: This is the ONLY use of localStorage in the app.
+// Do not use localStorage for anything else.
+</pre>
+
+<h4>Acceptance Criteria</h4>
+<div class="ac"><ul>
+  <li>With DevTools → Network → Offline: orange banner appears within 1 second</li>
+  <li>With DevTools → Network → Online again: banner disappears smoothly</li>
+  <li>On /assess with network offline: a human-readable offline placeholder shows instead of a blank screen</li>
+  <li>On /estimate/[id] with network offline: offline placeholder shows with message "Your estimate is saved"</li>
+  <li>On /dashboard with network offline: offline placeholder shows latest cached data (or empty state if no cache)</li>
+  <li>Filling in address + name on /assess and refreshing the page: a yellow recovery bar appears with the draft info</li>
+  <li>No unhandled promise rejections in the browser console under any network condition</li>
+</ul></div>
+
+<div class="info"><strong>Scope boundary:</strong> This WP does NOT implement full offline PWA, service workers, background sync, or IndexedDB. Those are Phase 2 features. This is just: clear error messages + draft saving for the most critical form.</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="phase-div"><span>Final Verification</span></div>
+<!-- ============================================================ -->
+
+<!-- RW-07 -->
+<div class="wp">
+<div class="wp-header">
+  <span class="wp-num green">RW-07</span>
+  <span class="wp-title">End-to-End Beta Readiness Audit</span>
+  <div class="wp-meta">
+    <span class="wp-effort">~2 hrs</span>
+    <span class="pri green">P0 — Gate to Beta</span>
+  </div>
+</div>
+<div class="wp-body">
+
+<h4>What This Is</h4>
+<p>A structured walkthrough of Mike's complete job flow — the scenario described in the Product Bible. Run this audit after all RW-01 through RW-06 are complete. This is the gate check before handing to beta testers.</p>
+
+<h4>The Mike Scenario (from Product Bible §3)</h4>
+<p>Mike is an HVAC tech at a residential property. He has 10 minutes at the customer's equipment. Walk through every step:</p>
+
+<div class="tw"><table>
+  <tr><th>Step</th><th>Action</th><th>Expected Result</th><th>File / Screen</th></tr>
+  <tr>
+    <td>1</td>
+    <td>Open app on phone (390px viewport). Navigate to new assessment using bottom nav camera tab.</td>
+    <td>Bottom nav visible. Camera tab tapped. Capture screen opens.</td>
+    <td><code>BottomNav.tsx</code> → <code>/assess</code></td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>Enter property address. See autocomplete suggestions from prior jobs.</td>
+    <td>Address autocomplete works. Property selected pre-fills homeowner name/phone.</td>
+    <td><code>assess/page.tsx</code></td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td>Tap camera button. Device rear camera opens. Take 2 photos of the AC unit.</td>
+    <td>Native camera opens (not file picker). Photos appear in grid.</td>
+    <td><code>assess/page.tsx</code> — capture phase</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>Tap "Analyze Equipment →". Watch uploading + analyzing screens.</td>
+    <td>Progress screens show with correct messages. No blank screen.</td>
+    <td>uploading → analyzing phases</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td>AI returns results. See equipment ID + condition + issues.</td>
+    <td>Real equipment data shown. Condition color-coded. Issues listed.</td>
+    <td>results phase</td>
+  </tr>
+  <tr>
+    <td>6</td>
+    <td>Tap "Build Estimate →". Estimate builder opens.</td>
+    <td>Three option cards (A/B/C) with real dollar amounts from seeded pricing data.</td>
+    <td><code>estimate/[id]/page.tsx</code> — Builder tab</td>
+  </tr>
+  <tr>
+    <td>7</td>
+    <td>Tap "Show line items" on Option B. Review labor/parts/fees breakdown.</td>
+    <td>Line items grouped by category. Labor shows hours × rate formula.</td>
+    <td>Builder tab — line items</td>
+  </tr>
+  <tr>
+    <td>8</td>
+    <td>Tap Output tab. Tap "Generate Documents →".</td>
+    <td>Documents generate. Contractor PDF URL appears. Homeowner report URL appears.</td>
+    <td>Output tab</td>
+  </tr>
+  <tr>
+    <td>9</td>
+    <td>Tap "🖥 Present Mode". Walk through 4 slides.</td>
+    <td>Full-screen overlay. 4 slides with real data. Swipe navigation works.</td>
+    <td>Output tab → PresentMode overlay</td>
+  </tr>
+  <tr>
+    <td>10</td>
+    <td>Close Present Mode. Tap "Send to Homeowner →". Confirm email pre-filled. Tap "Send Now →".</td>
+    <td>Email pre-filled from assessment. Send succeeds. Terminal shows email output. Success confirmation screen shows.</td>
+    <td>Send tab</td>
+  </tr>
+  <tr>
+    <td>11</td>
+    <td>Tap "Save to History →". Return to Dashboard.</td>
+    <td>Job appears in recent assessments. Status shows "Sent".</td>
+    <td>Saved screen → Dashboard</td>
+  </tr>
+  <tr>
+    <td>12</td>
+    <td>Turn off network (DevTools offline). Navigate to /dashboard.</td>
+    <td>Orange offline banner appears. Page shows graceful offline state (not blank).</td>
+    <td>OfflineBanner + offline handling</td>
+  </tr>
+</table></div>
+
+<h4>Pass Criteria</h4>
+<p>All 12 steps must complete without a blank screen, unhandled error, or broken UI. If any step fails, fix it before proceeding to beta. Document any step that shows a "Coming Soon" placeholder — those are known gaps and acceptable if not in RW-01 through RW-06.</p>
+
+<h4>Mobile Visual Audit</h4>
+<p>At 390px viewport (iPhone 14 size), verify every screen in the app:</p>
+<div class="ac"><ul>
+  <li>No horizontal scroll on any screen (run <code>document.body.scrollWidth > window.innerWidth</code> check)</li>
+  <li>All text is readable (minimum 12px, no truncation of critical data)</li>
+  <li>All tap targets are at least 44px tall</li>
+  <li>Bottom nav is visible and doesn't overlap content</li>
+  <li>No "1 error" hydration toast on any hard reload (Ctrl+Shift+R on each route)</li>
+</ul></div>
+
+<h4>Final Checklist Before Handing to Beta Testers</h4>
+<div class="ac"><ul>
+  <li>All 12 steps of Mike's scenario complete without errors</li>
+  <li>No horizontal overflow on any screen at 390px</li>
+  <li>No hydration errors on any page</li>
+  <li>Real pricing data visible in estimates (not $0 or $608 placeholder)</li>
+  <li>Bottom nav visible and functional on all mobile screens</li>
+  <li>Present Mode opens and shows all 4 slides with real data</li>
+  <li>Send flow completes and prints to dev terminal</li>
+  <li>Offline state shows graceful error (not blank screen)</li>
+  <li>Draft assessment recovery works (fill in address, refresh, see recovery bar)</li>
+  <li>CONTINUATION_PROMPT.md updated with new session context for next AI agent</li>
+</ul></div>
+</div>
+</div>
+
+<!-- Summary Table -->
+<div class="phase-div"><span>Summary</span></div>
+
+<div class="wp">
+<div class="wp-header">
+  <span class="wp-num" style="background:#555">⚡</span>
+  <span class="wp-title">Total Remaining Work — Beta MVP</span>
+</div>
+<div class="wp-body">
+<div class="tw"><table>
+  <tr>
+    <th>WP</th><th>Title</th><th>Priority</th><th>Est. Hours</th><th>Why It Matters</th>
+  </tr>
+  <tr>
+    <td><strong>RW-01</strong></td>
+    <td>Bottom Navigation Bar</td>
+    <td><span class="pri red">P0</span></td>
+    <td>3 hrs</td>
+    <td>Techs cannot navigate one-handed without it. Hardest UX blocker.</td>
+  </tr>
+  <tr>
+    <td><strong>RW-02</strong></td>
+    <td>Assessment Camera Flow Fix</td>
+    <td><span class="pri red">P0</span></td>
+    <td>2–3 hrs</td>
+    <td>The core product flow must work end-to-end on a real device.</td>
+  </tr>
+  <tr>
+    <td><strong>RW-03</strong></td>
+    <td>Present Mode (4-slide)</td>
+    <td><span class="pri orange">P1</span></td>
+    <td>4–5 hrs</td>
+    <td>The "wow" moment. Turns tech into a trusted advisor on-site.</td>
+  </tr>
+  <tr>
+    <td><strong>RW-04</strong></td>
+    <td>Send Estimate Flow Fix</td>
+    <td><span class="pri orange">P1</span></td>
+    <td>2–3 hrs</td>
+    <td>Remove the silent 501 bypass. Make delivery verifiable.</td>
+  </tr>
+  <tr>
+    <td><strong>RW-05</strong></td>
+    <td>Seed Real Pricing Data</td>
+    <td><span class="pri orange">P1</span></td>
+    <td>2–3 hrs</td>
+    <td>Estimates with $0 line items destroy trust in the product.</td>
+  </tr>
+  <tr>
+    <td><strong>RW-06</strong></td>
+    <td>Offline Error Handling</td>
+    <td><span class="pri blue">P2</span></td>
+    <td>2 hrs</td>
+    <td>Job sites have bad signal. Never show a blank screen.</td>
+  </tr>
+  <tr>
+    <td><strong>RW-07</strong></td>
+    <td>End-to-End Audit</td>
+    <td><span class="pri green">Gate</span></td>
+    <td>2 hrs</td>
+    <td>Structured 12-step Mike scenario. Gate before handing to beta.</td>
+  </tr>
+  <tr>
+    <td colspan="3"><strong>Total</strong></td>
+    <td><strong>17–21 hrs</strong></td>
+    <td>~3–4 working days for a focused AI agent</td>
+  </tr>
+</table></div>
+
+<div class="rule">
+  <strong>Steve Jobs' End-Result-First Principle applied to this SOW:</strong><br>
+  The end result is: Mike arrives at a job site, takes 2 photos, gets an AI diagnosis, builds a Good/Better/Best estimate in 3 minutes, turns his phone to show the homeowner in Present Mode, sends it with one tap, and drives to the next job. Every work package in this SOW exists to make exactly that scenario work, nothing more, nothing less.
+</div>
+
+<div class="ok">
+  <strong>What is deliberately NOT in this SOW:</strong> Cloud deployment (separate task), Stripe billing wiring (Phase 2), homeowner e-signature (Phase 2), QuickBooks sync (Phase 3), LeakSense (Phase 2), BenchmarkIQ live data (Phase 3), push notifications (Phase 2), SEO calculators (Phase 3), landing page (separate). Focus on the field experience first.
+</div>
+</div>
+</div>
+
+<div class="ft">
+  ScopeSnap — Remaining Work SOW · V1.0 · March 22, 2026<br>
+  Feed one WP at a time to an AI agent. Do not move to the next WP until all acceptance criteria pass.<br>
+  Visual law: every screen must match ScopeSnap_Prototype_Demo.html exactly.
+</div>
+
+</div>
+</body>
+</html>

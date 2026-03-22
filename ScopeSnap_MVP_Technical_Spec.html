@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopeSnap — MVP Technical Specification</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+:root {
+  --bg:#f7f7f3;--s:#fff;--s2:#f0efea;--b:#e2dfd7;--t:#1a1a18;--t2:#7a7770;
+  --g:#1a8754;--gb:#e8f5ee;--o:#c4600a;--ob:#fef3e8;--bl:#1565c0;--bb:#e3f0fd;
+  --r:#c62828;--rb:#fce8e8;--p:#6a1b9a;--pb:#f3e8f9;--gd:#e6a817;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--t);font-family:'Plus Jakarta Sans',sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+.wrap{max-width:900px;margin:0 auto;padding:32px 24px}
+h1{font-size:28px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px}
+.sub{font-size:13px;color:var(--t2);margin-bottom:24px}
+.ver{background:var(--s);border:1px solid var(--b);border-radius:10px;padding:14px 18px;font-size:11px;color:var(--t2);line-height:1.8;margin-bottom:24px}
+.ver strong{color:var(--t)}
+
+/* Sections */
+.sec{background:var(--s);border:1px solid var(--b);border-radius:14px;padding:24px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.03)}
+.sec h2{font-size:18px;font-weight:800;margin-bottom:4px;letter-spacing:-.3px}
+.sec h3{font-size:14px;font-weight:700;margin:20px 0 8px;padding-top:16px;border-top:1px solid var(--b)}
+.sec h3:first-of-type{border-top:none;padding-top:0;margin-top:12px}
+.sec h4{font-size:12px;font-weight:700;margin:12px 0 4px;color:var(--g)}
+.sec p,.sec li{font-size:12px;line-height:1.7}
+.sec ul,.sec ol{padding-left:20px;margin:8px 0}
+.sec li{margin-bottom:4px}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'IBM Plex Mono',monospace;vertical-align:middle}
+.tag-g{background:var(--gb);color:var(--g)}
+.tag-o{background:var(--ob);color:var(--o)}
+.tag-b{background:var(--bb);color:var(--bl)}
+.tag-r{background:var(--rb);color:var(--r)}
+.tag-p{background:var(--pb);color:var(--p)}
+
+/* Code blocks */
+pre{background:#1a1a18;color:#e0ddd5;border-radius:10px;padding:16px;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;overflow-x:auto;margin:10px 0;white-space:pre-wrap;word-break:break-word}
+code{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--s2);padding:1px 5px;border-radius:3px}
+pre code{background:none;padding:0}
+.kw{color:#7ec699}
+.str{color:#e6db74}
+.cm{color:#75715e}
+.num{color:#ae81ff}
+
+/* Tables */
+.tw{overflow-x:auto;margin:10px 0}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{background:var(--s2);font-weight:700;text-align:left;padding:8px 10px;border:1px solid var(--b);font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:8px 10px;border:1px solid var(--b);vertical-align:top}
+
+/* Callouts */
+.warn{background:var(--ob);border-left:3px solid var(--o);border-radius:0 8px 8px 0;padding:12px 16px;margin:12px 0;font-size:11px}
+.info{background:var(--bb);border-left:3px solid var(--bl);border-radius:0 8px 8px 0;padding:12px 16px;margin:12px 0;font-size:11px}
+.ok{background:var(--gb);border-left:3px solid var(--g);border-radius:0 8px 8px 0;padding:12px 16px;margin:12px 0;font-size:11px}
+
+/* TOC */
+.toc{background:var(--s);border:1px solid var(--b);border-radius:14px;padding:20px 24px;margin-bottom:24px}
+.toc h3{font-size:12px;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;color:var(--t2)}
+.toc a{display:block;font-size:12px;font-weight:500;color:var(--t);text-decoration:none;padding:4px 0;border-bottom:1px solid var(--b)}
+.toc a:last-child{border:none}
+.toc a:hover{color:var(--g)}
+.toc .tn{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t2);margin-right:8px}
+
+/* Diagram container */
+.diagram{background:#1a1a18;border-radius:10px;padding:20px;margin:12px 0;text-align:center;color:#e0ddd5;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:2}
+.diagram .box{display:inline-block;padding:6px 14px;border:1px solid #4a4a45;border-radius:6px;margin:4px}
+.diagram .box-g{border-color:var(--g);color:var(--g)}
+.diagram .box-b{border-color:var(--bl);color:var(--bl)}
+.diagram .box-o{border-color:var(--o);color:var(--o)}
+.diagram .arrow{color:#5a5a55;margin:0 4px}
+
+.ft{text-align:center;padding:24px;font-size:10px;color:var(--t2);line-height:1.8}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>ScopeSnap — MVP Technical Specification</h1>
+<p class="sub">The bridge from prototype to production code. Every API endpoint, every database table, every AI prompt.</p>
+
+<div class="ver">
+<strong>VERSION:</strong> V1.1 — March 21, 2026<br>
+<strong>STATUS:</strong> Draft — Pre-development<br>
+<strong>COMPANION FILES:</strong> ScopeSnap_Product_Bible.html (strategy), ScopeSnap_Prototype_Demo.html (tech app), ScopeSnap_Owner_Dashboard.html (owner dashboard), ScopeSnap_Homeowner_Report.html (homeowner report)<br>
+<strong>SCOPE:</strong> MVP (Days 1-30) + P1 Features (Days 31-60). Does NOT cover LeakSense (Phase 2) or BenchmarkIQ (Phase 3) — those have separate specs when ready.<br>
+<strong>PRINCIPLE:</strong> Deterministic for execution, AI for interpretation. Never use an LLM for something a SQL query or formula can answer.<br>
+<strong>INFRASTRUCTURE PRINCIPLE:</strong> Build locally first, deploy to cloud when ready. $0/month until first paying customer. Scale on Google Cloud Run — pays per request, not per hour.
+</div>
+
+<!-- TOC -->
+<div class="toc">
+<h3>Table of Contents</h3>
+<a href="#s0"><span class="tn">00</span> Development Strategy — Local First, Cloud When Ready</a>
+<a href="#s1"><span class="tn">01</span> System Architecture Overview</a>
+<a href="#s2"><span class="tn">02</span> Database Schema</a>
+<a href="#s3"><span class="tn">03</span> API Endpoints</a>
+<a href="#s4"><span class="tn">04</span> Vision AI — Prompt Engineering</a>
+<a href="#s5"><span class="tn">05</span> Estimate Generation Pipeline</a>
+<a href="#s6"><span class="tn">06</span> Homeowner Report Generation</a>
+<a href="#s7"><span class="tn">07</span> Equipment Database — Seed Data Architecture</a>
+<a href="#s8"><span class="tn">08</span> File Storage & Media Pipeline</a>
+<a href="#s9"><span class="tn">09</span> Authentication & Multi-Tenancy</a>
+<a href="#s10"><span class="tn">10</span> Stripe Billing Integration</a>
+<a href="#s11"><span class="tn">11</span> Email & Follow-Up Automation</a>
+<a href="#s12"><span class="tn">12</span> Week-by-Week Build Plan</a>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 0: LOCAL DEVELOPMENT STRATEGY -->
+<!-- ============================================================ -->
+<div class="sec" id="s0">
+<h2>00 — Development Strategy: Local First, Cloud When Ready</h2>
+<p>Build everything on your laptop. Test everything on your laptop. Deploy to cloud only when the product is ready for real contractors. This saves money AND makes iteration faster.</p>
+
+<h3>The Two-Phase Approach</h3>
+<p><strong>Phase A: Local Development (Weeks 1-4)</strong> — Everything runs on your laptop. PostgreSQL installed locally. FastAPI runs with <code>uvicorn</code>. Next.js runs with <code>npm run dev</code>. Photos saved to a local folder. The only external service is Gemini API (free tier — 1,000 requests/day). Total cost: <strong>$0/month.</strong></p>
+<p><strong>Phase B: Cloud Deployment (Week 5+)</strong> — When ready for beta testers, deploy to managed services. Every service starts on free tier. Total cost: <strong>$0/month</strong> until revenue starts.</p>
+
+<h3>Local Development Setup</h3>
+<p>Run these commands once to set up your development environment. Everything runs locally — no cloud accounts needed yet.</p>
+
+<h4>1. PostgreSQL (Local Database)</h4>
+<pre><code><span class="cm"># macOS</span>
+brew install postgresql@16
+brew services start postgresql@16
+createdb scopesnap_dev
+
+<span class="cm"># Windows (download installer from postgresql.org)</span>
+<span class="cm"># Or use Docker:</span>
+docker run -d --name scopesnap-db \
+  -e POSTGRES_DB=scopesnap_dev \
+  -e POSTGRES_PASSWORD=devpass \
+  -p 5432:5432 postgres:16
+
+<span class="cm"># Connection string for .env:</span>
+DATABASE_URL=postgresql://postgres:devpass@localhost:5432/scopesnap_dev</code></pre>
+
+<h4>2. FastAPI Backend</h4>
+<pre><code><span class="cm"># Create project</span>
+mkdir scopesnap-api && cd scopesnap-api
+python -m venv venv
+source venv/bin/activate  <span class="cm"># Windows: venv\Scripts\activate</span>
+
+<span class="cm"># Install dependencies</span>
+pip install fastapi uvicorn[standard] sqlalchemy[asyncio] asyncpg \
+  python-multipart pillow weasyprint httpx pydantic-settings \
+  google-generativeai stripe resend python-jose
+
+<span class="cm"># Create .env file</span>
+DATABASE_URL=postgresql://postgres:devpass@localhost:5432/scopesnap_dev
+GEMINI_API_KEY=your_free_api_key_from_ai_google_dev
+UPLOAD_DIR=./uploads  <span class="cm"># Local folder instead of R2</span>
+ENVIRONMENT=development
+
+<span class="cm"># Run</span>
+uvicorn main:app --reload --port 8000</code></pre>
+
+<h4>3. Next.js Frontend</h4>
+<pre><code>npx create-next-app@latest scopesnap-web --typescript --tailwind --app
+cd scopesnap-web
+
+<span class="cm"># Create .env.local</span>
+NEXT_PUBLIC_API_URL=http://localhost:8000
+
+<span class="cm"># Run</span>
+npm run dev  <span class="cm"># Runs on localhost:3000</span></code></pre>
+
+<h4>4. Local File Storage (Instead of R2)</h4>
+<pre><code><span class="cm"># In FastAPI, use a simple storage abstraction:</span>
+<span class="kw">class</span> LocalStorage:
+    <span class="kw">def</span> __init__(self, base_dir=<span class="str">"./uploads"</span>):
+        self.base_dir = Path(base_dir)
+        self.base_dir.mkdir(parents=<span class="kw">True</span>, exist_ok=<span class="kw">True</span>)
+    
+    <span class="kw">async def</span> upload(self, file_bytes, path):
+        full_path = self.base_dir / path
+        full_path.parent.mkdir(parents=<span class="kw">True</span>, exist_ok=<span class="kw">True</span>)
+        full_path.write_bytes(file_bytes)
+        <span class="kw">return</span> f<span class="str">"http://localhost:8000/files/{path}"</span>
+    
+    <span class="kw">async def</span> get_url(self, path):
+        <span class="kw">return</span> f<span class="str">"http://localhost:8000/files/{path}"</span>
+
+<span class="cm"># When deploying to cloud, swap to:</span>
+<span class="kw">class</span> R2Storage:
+    <span class="cm"># Same interface, different backend — R2/S3 boto3 calls</span>
+    ...
+
+<span class="cm"># Use dependency injection to swap:</span>
+storage = LocalStorage() <span class="kw">if</span> ENVIRONMENT == <span class="str">"development"</span> <span class="kw">else</span> R2Storage()</code></pre>
+
+<h4>5. Gemini API Key (Free — Only External Service During Dev)</h4>
+<pre><code><span class="cm"># 1. Go to ai.google.dev → Get API Key → Create (no credit card needed)</span>
+<span class="cm"># 2. Free tier: 1,000 requests/day, 15 requests/minute</span>
+<span class="cm"># 3. That's ~30 requests/hour — more than enough for development</span>
+<span class="cm"># 4. Use Gemini 2.5 Flash — best cost/quality for vision tasks</span>
+
+<span class="kw">import</span> google.generativeai <span class="kw">as</span> genai
+genai.configure(api_key=os.getenv(<span class="str">"GEMINI_API_KEY"</span>))
+model = genai.GenerativeModel(<span class="str">"gemini-2.5-flash"</span>)</code></pre>
+
+<div class="ok"><strong>LOCAL DEV COST SUMMARY:</strong> PostgreSQL (local = $0), FastAPI (local = $0), Next.js (local = $0), Photos (local folder = $0), Gemini (free tier = $0). Total: <strong>$0/month</strong>. The only thing you can't test locally is Stripe payments — use Stripe test mode with fake card numbers (no account needed, completely free).</div>
+
+<h3>What Changes When You Deploy to Cloud</h3>
+<p>The code stays the same. Only the configuration changes:</p>
+<div class="tw">
+<table>
+<thead><tr><th>Component</th><th>Local (Development)</th><th>Cloud (Production)</th><th>Code Change Needed</th></tr></thead>
+<tbody>
+<tr><td><strong>Database</strong></td><td>localhost PostgreSQL</td><td>Neon (free tier)</td><td>Change DATABASE_URL in .env only</td></tr>
+<tr><td><strong>Backend</strong></td><td>uvicorn on localhost:8000</td><td>Google Cloud Run (free tier)</td><td>Add Dockerfile (5 lines), deploy with gcloud CLI</td></tr>
+<tr><td><strong>Frontend</strong></td><td>localhost:3000</td><td>Vercel (free tier)</td><td>Connect GitHub repo, auto-deploys</td></tr>
+<tr><td><strong>Photos</strong></td><td>./uploads/ folder</td><td>Cloudflare R2 (free tier)</td><td>Swap LocalStorage → R2Storage (same interface)</td></tr>
+<tr><td><strong>Vision AI</strong></td><td>Gemini free tier</td><td>Gemini free tier (same)</td><td>None — same API key works</td></tr>
+<tr><td><strong>Auth</strong></td><td>Clerk dev mode</td><td>Clerk production (free tier)</td><td>Change Clerk keys in .env only</td></tr>
+<tr><td><strong>Email</strong></td><td>Console log (skip sending)</td><td>Resend (free tier)</td><td>Swap ConsoleSender → ResendSender</td></tr>
+</tbody>
+</table>
+</div>
+<div class="warn"><strong>DESIGN PRINCIPLE:</strong> Every external service (storage, email, database) must be behind an abstraction interface. LocalStorage / R2Storage. ConsoleSender / ResendSender. LocalDB / NeonDB. This means switching from local to cloud is a config change, not a rewrite. Build this abstraction from Day 1 — it takes 30 minutes and saves days of refactoring later.</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: SYSTEM ARCHITECTURE -->
+<!-- ============================================================ -->
+<div class="sec" id="s1">
+<h2>01 — System Architecture Overview</h2>
+<p>Hybrid managed stack. Google Cloud Run for compute (pay-per-request, scales to zero), specialized free-tier services for everything else. $0/month at launch, scales to $75/month at 500 users.</p>
+
+<h3>Why This Stack, Not AWS/GCP-Everything/Azure</h3>
+<p><strong>We evaluated three approaches:</strong> (1) All-AWS (EC2 + RDS + S3 + SES + Cognito), (2) All-Google-Cloud (Cloud Run + Cloud SQL + Cloud Storage + Firebase Auth), (3) Hybrid — best-of-breed free tier per service. <strong>Hybrid wins decisively</strong> for a bootstrapped solo founder. Here's why:</p>
+<ul>
+<li><strong>AWS/Azure</strong> — Free tier expires after 12 months on most services. EC2/RDS run 24/7 even with zero traffic = paying for idle time. Setting up VPC, security groups, IAM policies, and load balancers takes 2-3 days of DevOps that should be spent building the product. Unpredictable bills (a misconfigured NAT gateway = surprise $30/month).</li>
+<li><strong>All-Google-Cloud</strong> — Cloud Run is excellent (free tier never expires, pay-per-request). But Cloud SQL has NO free tier (starts ~$7/month even idle). Cloud Storage charges $0.12/GB egress (photos served to homeowners = real cost). Firebase Auth lacks multi-tenant organizations out of the box.</li>
+<li><strong>Hybrid (our choice)</strong> — Cloud Run for compute (best serverless free tier + pay-per-request at scale). Neon for PostgreSQL (free forever, scale-to-zero). R2 for photos (zero egress fees). Clerk for auth (multi-tenant built-in). Each service is best-in-class for its job AND has the best free tier.</li>
+</ul>
+
+<h3>Production Architecture</h3>
+<div class="diagram">
+<span class="box box-g">Next.js Frontend (Vercel)</span>
+<span class="arrow">→</span>
+<span class="box box-b">FastAPI Backend (Google Cloud Run)</span>
+<span class="arrow">→</span>
+<span class="box box-o">PostgreSQL (Neon)</span>
+<br>
+<span class="box box-b">Cloud Run Backend</span>
+<span class="arrow">→</span>
+<span class="box">Gemini 2.5 Flash Vision (Google AI Studio)</span>
+<br>
+<span class="box box-b">Cloud Run Backend</span>
+<span class="arrow">→</span>
+<span class="box">Cloudflare R2 (photos)</span>
+<span class="arrow">|</span>
+<span class="box">Stripe</span>
+<span class="arrow">|</span>
+<span class="box">Resend</span>
+</div>
+
+<h3>Technology Stack (Final)</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Layer</th><th>Technology</th><th>Why This, Not That</th><th>Free Tier</th><th>Cost at 500 Users</th></tr></thead>
+<tbody>
+<tr><td><strong>Frontend</strong></td><td>Next.js 14 + Tailwind CSS</td><td>SSR for SEO (landing pages, calculators). App routes for the dashboard. PWA for mobile tech experience.</td><td>Vercel Hobby: 100GB bandwidth, 150K function calls</td><td>$0 → $20/mo</td></tr>
+<tr><td><strong>Backend API</strong></td><td>Python FastAPI on <strong>Google Cloud Run</strong></td><td>Pay-per-request, scales to zero. 2M requests/mo free. HVAC contractors use it 7am-6pm — Cloud Run costs $0 during the 12 hours nobody's using it. Railway/EC2 charge 24/7.</td><td>2M requests, 360K GB-sec, 180K vCPU-sec</td><td>$0 (still under free tier at 500 users)</td></tr>
+<tr><td><strong>Database</strong></td><td>PostgreSQL on <strong>Neon</strong></td><td>Scale-to-zero serverless Postgres. Free forever (not a trial). 0.5GB storage, 192 compute hours. Cloud SQL has no free tier.</td><td>0.5GB, 192 compute hrs, 10 branches</td><td>$19/mo (Launch plan)</td></tr>
+<tr><td><strong>Vision AI</strong></td><td><strong>Gemini 2.5 Flash</strong> (Google AI Studio)</td><td>$0.30/1M input tokens. Free tier: 1,000 RPD, 15 RPM. Best cost/quality for equipment photo analysis. GPT-4o as fallback only for edge cases.</td><td>1,000 requests/day, 15/min</td><td>$9-15/mo</td></tr>
+<tr><td><strong>LLM (Narrative)</strong></td><td>Gemini 2.5 Flash-Lite</td><td>2-3 sentences of homeowner explanation per estimate. $0.10/1M tokens. Keeping everything in Google ecosystem simplifies billing.</td><td>Covered by same free tier</td><td>~$1-2/mo</td></tr>
+<tr><td><strong>Object Storage</strong></td><td><strong>Cloudflare R2</strong></td><td>S3-compatible. <strong>Zero egress fees</strong> — critical for image-heavy app. Cloud Storage charges $0.12/GB egress. At 500 users viewing reports with photos, R2 saves $20-50/mo in egress alone.</td><td>10GB storage, 1M class A ops, 10M class B ops</td><td>$0.23/mo</td></tr>
+<tr><td><strong>Auth</strong></td><td><strong>Clerk</strong></td><td>Multi-tenant organizations built-in (company = org, tech = member). Firebase Auth can't do this without custom code. 10K MAU free.</td><td>10K MAU, unlimited orgs</td><td>$0</td></tr>
+<tr><td><strong>Payments</strong></td><td>Stripe Billing</td><td>Subscriptions, usage metering, customer portal. No monthly fee.</td><td>No monthly fee</td><td>2.9% + $0.30/txn</td></tr>
+<tr><td><strong>Email</strong></td><td>Resend</td><td>100 emails/day free. React Email templates (same stack as frontend).</td><td>100 emails/day (3,000/mo)</td><td>$20/mo</td></tr>
+<tr><td><strong>PDF</strong></td><td>WeasyPrint (Python)</td><td>HTML → PDF. Runs inside Cloud Run container. Zero API cost.</td><td>N/A (runs locally)</td><td>$0</td></tr>
+<tr><td><strong>CDN / DNS</strong></td><td>Cloudflare (free)</td><td>CDN, DDoS protection, SSL. R2 integration.</td><td>Unlimited</td><td>$0</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Cost At Every Stage — Verified With Real Pricing (March 2026)</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Stage</th><th>Users</th><th>Estimates/mo</th><th>Monthly Cost</th><th>Monthly Revenue</th><th>Margin</th></tr></thead>
+<tbody>
+<tr style="background:rgba(0,229,160,.08)"><td><strong>Local Development</strong></td><td>Just you</td><td>Testing only</td><td><strong>$0</strong></td><td>$0</td><td>—</td></tr>
+<tr style="background:rgba(0,229,160,.08)"><td><strong>Beta (1-5 testers)</strong></td><td>5</td><td>~500 total</td><td><strong>$0</strong></td><td>$0</td><td>—</td></tr>
+<tr style="background:rgba(0,229,160,.05)"><td><strong>Early Bird launch</strong></td><td>50</td><td>1,500</td><td><strong>$0-5</strong></td><td>$500</td><td>99%</td></tr>
+<tr><td><strong>Growth</strong></td><td>200</td><td>6,000</td><td><strong>$20-40</strong></td><td>$2,000</td><td>98%</td></tr>
+<tr><td><strong>Scaling</strong></td><td>500</td><td>15,000</td><td><strong>$48-75</strong></td><td>$4,995</td><td>98.5%</td></tr>
+<tr><td><strong>Mature</strong></td><td>2,000</td><td>60,000</td><td><strong>$170-185</strong></td><td>$20,000+</td><td>99%</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="ok"><strong>KEY INSIGHT:</strong> Cloud Run is the reason this stack stays cheap at scale. HVAC contractors use ScopeSnap during business hours (7am-6pm). Cloud Run scales to zero during the 12+ hours of dead time. Railway, EC2, and traditional hosting charge 24/7. At 2,000 users, Cloud Run's per-request model saves ~$50-100/month vs always-on alternatives. The saving grows as you scale because dead-hours traffic never increases proportionally.</div>
+
+<h3>Cloud Run Deployment (When Ready)</h3>
+<pre><code><span class="cm"># Dockerfile for FastAPI (this is all you need)</span>
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+
+<span class="cm"># Deploy (one command):</span>
+gcloud run deploy scopesnap-api \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars DATABASE_URL=$NEON_URL,GEMINI_API_KEY=$KEY \
+  --memory 512Mi \
+  --cpu 1 \
+  --min-instances 0 \
+  --max-instances 10
+
+<span class="cm"># That's it. Auto-scales 0→10 instances. Scales to zero when idle.</span>
+<span class="cm"># Set billing alert at $1 to catch any surprises:</span>
+gcloud billing budgets create --billing-account=ACCT_ID \
+  --display-name="ScopeSnap Alert" \
+  --budget-amount=1.00USD</code></pre>
+
+<div class="warn"><strong>BILLING SAFETY:</strong> Google Cloud requires a credit card even for free tier. Set up a $1 billing alert immediately after creating the account. Cloud Run's free tier is permanent (not a trial), but a billing alert catches any unexpected overages from misconfiguration. Also: disable any services you're not using (Cloud SQL, Compute Engine, etc.) to avoid accidental charges.</div>
+
+<h3>Request Flow — A Single Estimate (End to End)</h3>
+<p>This is what happens when Mike photographs Sarah's AC unit. Every step mapped to an API call:</p>
+<ol>
+<li><strong>Mike opens app</strong> → <code>GET /api/jobs/today</code> (from Jobber webhook or manual) → Home screen renders</li>
+<li><strong>Mike taps "New Assessment"</strong> → <code>GET /api/properties/search?address=4215+Oakwood</code> → Returns property history (or empty for new address)</li>
+<li><strong>Mike takes 2 photos</strong> → <code>POST /api/assessments/upload</code> (multipart, 2 images) → Photos uploaded to R2, returns <code>assessment_id</code></li>
+<li><strong>Mike taps "Analyze"</strong> → <code>POST /api/assessments/{id}/analyze</code> → Cloud Run calls Gemini Vision API → Returns equipment identification + condition + issues</li>
+<li><strong>App shows Intelligence Results</strong> → Data from step 4. Backend also runs <code>GET /api/equipment/lookup?brand=Carrier&model=24ACC636</code> to enrich with lifecycle data</li>
+<li><strong>Mike taps "Generate Estimate"</strong> → <code>POST /api/estimates/generate</code> (assessment_id + job_type + adjustments) → Backend calculates Good/Better/Best from pricing DB → Returns estimate with line items</li>
+<li><strong>Mike reviews, adjusts markup slider</strong> → <code>PATCH /api/estimates/{id}</code> (updated line items / markup)</li>
+<li><strong>Mike taps "Generate Documents"</strong> → <code>POST /api/estimates/{id}/documents</code> → Backend generates contractor PDF + homeowner report HTML → Stores in R2 → Returns URLs</li>
+<li><strong>Mike shows homeowner report on phone</strong> → Loads <code>report.scopesnap.com/{company_slug}/rpt-{id}</code> (public, no auth)</li>
+<li><strong>Mike taps "Send to Customer"</strong> → <code>POST /api/estimates/{id}/send</code> (phone + email) → Sends SMS via Twilio + email via Resend → Schedules follow-ups (24h, 48h, 7d)</li>
+<li><strong>Sarah opens report, approves</strong> → <code>POST /api/reports/{token}/approve</code> (selected_option + signature) → Triggers Stripe payment link</li>
+<li><strong>Sarah pays deposit</strong> → Stripe webhook → <code>POST /api/webhooks/stripe</code> → Updates estimate status to "approved + deposit paid"</li>
+<li><strong>Estimate saved to history</strong> → <code>POST /api/assessments/{id}/complete</code> → Updates property record, equipment record, tech accuracy baseline</li>
+</ol>
+
+<div class="warn"><strong>CRITICAL DESIGN RULE:</strong> Steps 4 and 6 are the only steps that touch AI APIs. Everything else is database queries, file generation, and HTTP calls to third-party services. The AI cost is exactly 1 vision call + 1 tiny LLM call per estimate. If you find yourself making more AI calls than that, you're doing it wrong.</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: DATABASE SCHEMA -->
+<!-- ============================================================ -->
+<div class="sec" id="s2">
+<h2>02 — Database Schema</h2>
+<p>PostgreSQL. 12 tables for MVP. Every table explained with columns, types, relationships, and why it exists.</p>
+
+<h3>Entity Relationship Summary</h3>
+<div class="diagram">
+<span class="box box-g">companies</span> <span class="arrow">1→N</span> <span class="box box-g">users</span><br>
+<span class="box box-g">companies</span> <span class="arrow">1→N</span> <span class="box box-b">assessments</span> <span class="arrow">1→1</span> <span class="box box-b">estimates</span><br>
+<span class="box box-b">assessments</span> <span class="arrow">N→1</span> <span class="box box-o">properties</span> <span class="arrow">1→N</span> <span class="box box-o">equipment_instances</span><br>
+<span class="box box-o">equipment_instances</span> <span class="arrow">N→1</span> <span class="box">equipment_models</span> <span class="arrow">(global reference)</span><br>
+<span class="box box-b">estimates</span> <span class="arrow">1→N</span> <span class="box">estimate_line_items</span><br>
+<span class="box box-b">estimates</span> <span class="arrow">1→N</span> <span class="box">estimate_documents</span><br>
+<span class="box box-b">estimates</span> <span class="arrow">1→N</span> <span class="box">follow_ups</span><br>
+<span class="box box-g">companies</span> <span class="arrow">1→N</span> <span class="box box-o">pricing_rules</span>
+</div>
+
+<h3>Table: <code>companies</code></h3>
+<p>Multi-tenant root. Every data record belongs to a company. Dave's "ABC HVAC Services" is one company.</p>
+<div class="tw">
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>uuid PK DEFAULT gen_random_uuid()</td><td></td></tr>
+<tr><td>name</td><td>varchar(200) NOT NULL</td><td>"ABC HVAC Services"</td></tr>
+<tr><td>slug</td><td>varchar(100) UNIQUE NOT NULL</td><td>"abc-hvac" — used in report URLs</td></tr>
+<tr><td>logo_url</td><td>text</td><td>R2 URL. Shown on estimates + homeowner reports</td></tr>
+<tr><td>phone</td><td>varchar(20)</td><td>Shown on homeowner report</td></tr>
+<tr><td>email</td><td>varchar(200)</td><td>Reply-to for estimate emails</td></tr>
+<tr><td>license_number</td><td>varchar(100)</td><td>"TACLA12345" — required on TX contractor docs</td></tr>
+<tr><td>address_line1</td><td>varchar(200)</td><td></td></tr>
+<tr><td>city</td><td>varchar(100)</td><td></td></tr>
+<tr><td>state</td><td>varchar(2)</td><td>Used for regional pricing lookups</td></tr>
+<tr><td>zip</td><td>varchar(10)</td><td>Used for regional pricing lookups</td></tr>
+<tr><td>stripe_customer_id</td><td>varchar(100)</td><td>From Stripe</td></tr>
+<tr><td>stripe_subscription_id</td><td>varchar(100)</td><td></td></tr>
+<tr><td>plan</td><td>varchar(20) DEFAULT 'free'</td><td>'free' | 'early_bird' | 'pro' | 'team'</td></tr>
+<tr><td>monthly_estimate_count</td><td>int DEFAULT 0</td><td>Resets on billing cycle. Enforces tier limits.</td></tr>
+<tr><td>monthly_estimate_limit</td><td>int DEFAULT 5</td><td>5 (free), 50 (early_bird), NULL (pro/team)</td></tr>
+<tr><td>settings</td><td>jsonb DEFAULT '{}'</td><td>Default markup %, follow-up schedule, etc.</td></tr>
+<tr><td>created_at</td><td>timestamptz DEFAULT now()</td><td></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Table: <code>users</code></h3>
+<p>Technicians and owners. Clerk handles auth — we store the Clerk user ID and our own role/permissions.</p>
+<div class="tw">
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>uuid PK</td><td></td></tr>
+<tr><td>company_id</td><td>uuid FK → companies.id NOT NULL</td><td></td></tr>
+<tr><td>clerk_user_id</td><td>varchar(100) UNIQUE NOT NULL</td><td>From Clerk JWT</td></tr>
+<tr><td>name</td><td>varchar(200) NOT NULL</td><td>"Mike Rodriguez"</td></tr>
+<tr><td>email</td><td>varchar(200)</td><td></td></tr>
+<tr><td>phone</td><td>varchar(20)</td><td></td></tr>
+<tr><td>role</td><td>varchar(20) DEFAULT 'tech'</td><td>'owner' | 'tech' | 'admin'</td></tr>
+<tr><td>accuracy_score</td><td>decimal(5,2)</td><td>Running average. NULL until 5+ completed estimates</td></tr>
+<tr><td>total_estimates</td><td>int DEFAULT 0</td><td></td></tr>
+<tr><td>avatar_url</td><td>text</td><td></td></tr>
+<tr><td>created_at</td><td>timestamptz DEFAULT now()</td><td></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Table: <code>properties</code></h3>
+<p>Physical addresses. One property can have many visits (assessments) and many equipment instances. This is the "Property History" feature — every time any tech visits 4215 Oakwood Dr, data accumulates.</p>
+<div class="tw">
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>uuid PK</td><td></td></tr>
+<tr><td>company_id</td><td>uuid FK → companies.id</td><td>Properties are company-scoped (different companies may visit same address)</td></tr>
+<tr><td>address_line1</td><td>varchar(200) NOT NULL</td><td></td></tr>
+<tr><td>city</td><td>varchar(100)</td><td></td></tr>
+<tr><td>state</td><td>varchar(2)</td><td></td></tr>
+<tr><td>zip</td><td>varchar(10)</td><td></td></tr>
+<tr><td>customer_name</td><td>varchar(200)</td><td>"Sarah Johnson"</td></tr>
+<tr><td>customer_email</td><td>varchar(200)</td><td></td></tr>
+<tr><td>customer_phone</td><td>varchar(20)</td><td></td></tr>
+<tr><td>visit_count</td><td>int DEFAULT 1</td><td>Denormalized for quick display</td></tr>
+<tr><td>last_visit_at</td><td>timestamptz</td><td></td></tr>
+<tr><td>notes</td><td>text</td><td>Tech notes from visits</td></tr>
+<tr><td>created_at</td><td>timestamptz DEFAULT now()</td><td></td></tr>
+</tbody>
+</table>
+</div>
+<div class="info"><strong>UNIQUE CONSTRAINT:</strong> <code>(company_id, address_line1, zip)</code> — prevents duplicate properties per company. When a tech types "4215 Oakwood Dr" and the zip matches, we return the existing property with its full history.</div>
+
+<h3>Table: <code>equipment_instances</code></h3>
+<p>A specific piece of equipment at a specific property. "Sarah's Carrier 24ACC636 installed in 2016." Links to the global <code>equipment_models</code> reference table for lifecycle data.</p>
+<div class="tw">
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>uuid PK</td><td></td></tr>
+<tr><td>property_id</td><td>uuid FK → properties.id</td><td></td></tr>
+<tr><td>equipment_model_id</td><td>uuid FK → equipment_models.id NULLABLE</td><td>NULL if AI couldn't match to known model</td></tr>
+<tr><td>equipment_type</td><td>varchar(50) NOT NULL</td><td>'ac_unit' | 'furnace' | 'heat_pump' | 'water_heater' | 'thermostat'</td></tr>
+<tr><td>brand</td><td>varchar(100)</td><td>"Carrier" — from AI or manual</td></tr>
+<tr><td>model_number</td><td>varchar(100)</td><td>"24ACC636A003" — from AI OCR</td></tr>
+<tr><td>serial_number</td><td>varchar(100)</td><td>From AI OCR if visible</td></tr>
+<tr><td>install_year</td><td>int</td><td>From serial decode or tech estimate</td></tr>
+<tr><td>condition</td><td>varchar(20)</td><td>'excellent' | 'good' | 'fair' | 'poor' | 'critical'</td></tr>
+<tr><td>condition_details</td><td>jsonb</td><td>Structured: {"coil":"moderate_corrosion","fins":"minor_bending","compressor":"normal"}</td></tr>
+<tr><td>photo_urls</td><td>text[]</td><td>Array of R2 URLs for this specific equipment</td></tr>
+<tr><td>ai_confidence</td><td>decimal(5,2)</td><td>0-100. Vision API confidence in identification</td></tr>
+<tr><td>last_assessed_at</td><td>timestamptz</td><td></td></tr>
+<tr><td>created_at</td><td>timestamptz DEFAULT now()</td><td></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Table: <code>equipment_models</code> <span class="tag tag-p">GLOBAL — NOT COMPANY-SCOPED</span></h3>
+<p>The reference database. Every known HVAC equipment model with lifecycle data, failure patterns, and recalls. This is the moat — seeded from manufacturer data, enriched by every assessment across all companies.</p>
+<div class="tw">
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>uuid PK</td><td></td></tr>
+<tr><td>brand</td><td>varchar(100) NOT NULL</td><td>"Carrier"</td></tr>
+<tr><td>model_series</td><td>varchar(100) NOT NULL</td><td>"24ACC6" (the series, not the full model#)</td></tr>
+<tr><td>model_pattern</td><td>varchar(200)</td><td>Regex to match full model numbers: "24ACC6\d{2}[A-Z]\d{3}"</td></tr>
+<tr><td>equipment_type</td><td>varchar(50)</td><td>'ac_unit' | 'furnace' | etc.</td></tr>
+<tr><td>seer_rating</td><td>decimal(4,1)</td><td>16.0</td></tr>
+<tr><td>tonnage_range</td><td>varchar(20)</td><td>"2-5" (tons)</td></tr>
+<tr><td>manufacture_years</td><td>int4range</td><td>[2014, 2022) — PostgreSQL range type</td></tr>
+<tr><td>avg_lifespan_years</td><td>int</td><td>15</td></tr>
+<tr><td>known_issues</td><td>jsonb</td><td>[{"component":"evap_coil","issue":"corrosion","onset_year":7,"frequency":"34%","regions":["gulf_coast","southeast"]}]</td></tr>
+<tr><td>recalls</td><td>jsonb</td><td>[{"id":"CPSC-2023-xxx","component":"compressor","status":"active"}]</td></tr>
+<tr><td>serial_decode_pattern</td><td>jsonb</td><td>{"year_chars":[0,1],"year_map":{"A":"2020","B":"2021"},"week_chars":[2,3]}</td></tr>
+<tr><td>replacement_models</td><td>text[]</td><td>Suggested replacement model numbers</td></tr>
+<tr><td>total_assessments</td><td>int DEFAULT 0</td><td>How many times this model has been assessed across ALL companies (aggregate counter for the moat)</td></tr>
+<tr><td>created_at</td><td>timestamptz DEFAULT now()</td><td></td></tr>
+<tr><td>updated_at</td><td>timestamptz DEFAULT now()</td><td></td></tr>
+</tbody>
+</table>
+</div>
+<div class="warn"><strong>THIS TABLE IS THE MOAT.</strong> MVP: seed with top 5 brands × top 10 models each = ~50 models. By month 6 with 500 users: thousands of models with real field data enrichment. Nobody can replicate this without the user base generating the data. Protect this table — NEVER expose it through any integration API.</div>
+
+<h3>Table: <code>assessments</code></h3>
+<p>A single site visit where a tech photographs equipment. One assessment produces one estimate.</p>
+<div class="tw">
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>uuid PK</td><td></td></tr>
+<tr><td>company_id</td><td>uuid FK → companies.id</td><td></td></tr>
+<tr><td>user_id</td><td>uuid FK → users.id</td><td>The tech who did the assessment</td></tr>
+<tr><td>property_id</td><td>uuid FK → properties.id</td><td></td></tr>
+<tr><td>equipment_instance_id</td><td>uuid FK → equipment_instances.id</td><td>Set after AI analysis links/creates equipment</td></tr>
+<tr><td>photo_urls</td><td>text[] NOT NULL</td><td>1-5 R2 URLs</td></tr>
+<tr><td>voice_note_url</td><td>text</td><td>P1 feature — optional voice note R2 URL</td></tr>
+<tr><td>ai_analysis</td><td>jsonb NOT NULL</td><td>Full Vision API response stored verbatim (for debugging and model improvement)</td></tr>
+<tr><td>ai_equipment_id</td><td>jsonb</td><td>Structured: {"brand":"Carrier","model":"24ACC636A003","confidence":94.2,"serial":"...","install_year":2016}</td></tr>
+<tr><td>ai_condition</td><td>jsonb</td><td>Structured: {"overall":"fair","components":[{"name":"evap_coil","condition":"moderate_corrosion","severity":"high"}]}</td></tr>
+<tr><td>ai_issues</td><td>jsonb</td><td>[{"component":"evap_coil","issue":"corrosion","severity":"high","description":"Green oxide buildup..."}]</td></tr>
+<tr><td>tech_overrides</td><td>jsonb DEFAULT '{}'</td><td>Any fields the tech manually corrected. Used to train better prompts.</td></tr>
+<tr><td>status</td><td>varchar(20) DEFAULT 'pending'</td><td>'pending' | 'analyzed' | 'estimated' | 'sent' | 'approved' | 'completed'</td></tr>
+<tr><td>created_at</td><td>timestamptz DEFAULT now()</td><td></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Table: <code>estimates</code></h3>
+<p>The pricing output from an assessment. Contains the Good/Better/Best options and status tracking.</p>
+<div class="tw">
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>uuid PK</td><td></td></tr>
+<tr><td>assessment_id</td><td>uuid FK → assessments.id UNIQUE</td><td>1:1 relationship</td></tr>
+<tr><td>company_id</td><td>uuid FK → companies.id</td><td>Denormalized for faster queries</td></tr>
+<tr><td>report_token</td><td>varchar(32) UNIQUE NOT NULL</td><td>Random token for public report URL. NOT the UUID — never expose internal IDs.</td></tr>
+<tr><td>report_short_id</td><td>varchar(10) UNIQUE NOT NULL</td><td>Human-readable: "rpt-0847". For display in SMS/email.</td></tr>
+<tr><td>options</td><td>jsonb NOT NULL</td><td>Array of 2-3 options: [{"tier":"good","name":"Clean & Treat","total":450,"line_items":[...]}, ...]</td></tr>
+<tr><td>selected_option</td><td>varchar(20)</td><td>'good' | 'better' | 'best' — set when customer approves</td></tr>
+<tr><td>total_amount</td><td>decimal(10,2)</td><td>Of selected option</td></tr>
+<tr><td>deposit_amount</td><td>decimal(10,2)</td><td>Usually 20% of total</td></tr>
+<tr><td>markup_percent</td><td>decimal(5,2) DEFAULT 35.0</td><td>Company default, tech can override</td></tr>
+<tr><td>status</td><td>varchar(20) DEFAULT 'draft'</td><td>'draft' | 'sent' | 'viewed' | 'approved' | 'deposit_paid' | 'completed' | 'expired'</td></tr>
+<tr><td>viewed_at</td><td>timestamptz</td><td>Set when homeowner first opens report link</td></tr>
+<tr><td>approved_at</td><td>timestamptz</td><td></td></tr>
+<tr><td>stripe_payment_intent_id</td><td>varchar(100)</td><td></td></tr>
+<tr><td>contractor_pdf_url</td><td>text</td><td>R2 URL</td></tr>
+<tr><td>homeowner_report_url</td><td>text</td><td>Public URL: report.scopesnap.com/{slug}/rpt-{short_id}</td></tr>
+<tr><td>sent_via</td><td>varchar(20)</td><td>'email' | 'sms' | 'both'</td></tr>
+<tr><td>sent_at</td><td>timestamptz</td><td></td></tr>
+<tr><td>actual_cost</td><td>decimal(10,2)</td><td>Entered after job completion — for accuracy tracking (Phase 2 bridge)</td></tr>
+<tr><td>accuracy_score</td><td>decimal(5,2)</td><td>Calculated: 100 - abs(estimate - actual) / actual * 100</td></tr>
+<tr><td>created_at</td><td>timestamptz DEFAULT now()</td><td></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Table: <code>estimate_line_items</code></h3>
+<div class="tw">
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>uuid PK</td><td></td></tr>
+<tr><td>estimate_id</td><td>uuid FK → estimates.id</td><td></td></tr>
+<tr><td>option_tier</td><td>varchar(20) NOT NULL</td><td>'good' | 'better' | 'best'</td></tr>
+<tr><td>category</td><td>varchar(50)</td><td>'parts' | 'labor' | 'permits' | 'disposal' | 'refrigerant'</td></tr>
+<tr><td>description</td><td>varchar(300)</td><td>"Carrier evaporator coil — 24ACC636 compatible"</td></tr>
+<tr><td>quantity</td><td>decimal(8,2) DEFAULT 1</td><td></td></tr>
+<tr><td>unit_cost</td><td>decimal(10,2)</td><td>From pricing DB or tech override</td></tr>
+<tr><td>total</td><td>decimal(10,2)</td><td>quantity × unit_cost</td></tr>
+<tr><td>source</td><td>varchar(20) DEFAULT 'ai'</td><td>'ai' | 'pricing_db' | 'tech_override' — track where each line came from</td></tr>
+<tr><td>sort_order</td><td>int DEFAULT 0</td><td></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Table: <code>pricing_rules</code></h3>
+<p>Company-specific or regional pricing. This is what the Team tier ($349/mo) unlocks — custom pricing per company instead of our defaults.</p>
+<div class="tw">
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>uuid PK</td><td></td></tr>
+<tr><td>company_id</td><td>uuid FK → companies.id NULLABLE</td><td>NULL = global default. Non-null = company-specific override.</td></tr>
+<tr><td>equipment_type</td><td>varchar(50)</td><td>'ac_unit'</td></tr>
+<tr><td>job_type</td><td>varchar(50)</td><td>'coil_replacement' | 'full_system' | 'repair' | 'maintenance'</td></tr>
+<tr><td>region</td><td>varchar(20)</td><td>'houston_metro' | 'national' — state or metro level</td></tr>
+<tr><td>parts_cost</td><td>jsonb</td><td>{"min":1200,"max":2200,"avg":1850,"source":"manufacturer_list"}</td></tr>
+<tr><td>labor_hours</td><td>jsonb</td><td>{"min":3,"max":6,"avg":4.5}</td></tr>
+<tr><td>labor_rate</td><td>decimal(8,2)</td><td>$/hour — company sets this</td></tr>
+<tr><td>permit_cost</td><td>decimal(8,2)</td><td>Regional average</td></tr>
+<tr><td>refrigerant_cost_per_lb</td><td>decimal(8,2)</td><td>Current market rate — needs periodic update</td></tr>
+<tr><td>additional_costs</td><td>jsonb</td><td>{"disposal_fee":75,"crane_if_rooftop":500}</td></tr>
+<tr><td>updated_at</td><td>timestamptz DEFAULT now()</td><td></td></tr>
+</tbody>
+</table>
+</div>
+<div class="info"><strong>PRICING LOOKUP ORDER:</strong> Company-specific rule → Regional default → National default. Always cascade. If Dave has set his own coil replacement price, use that. If not, use Houston metro average. If no metro data, use national average. This means the system works from day 1 with just national defaults, and gets more accurate as companies and regions fill in.</div>
+
+<h3>Table: <code>follow_ups</code></h3>
+<div class="tw">
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>uuid PK</td><td></td></tr>
+<tr><td>estimate_id</td><td>uuid FK → estimates.id</td><td></td></tr>
+<tr><td>type</td><td>varchar(20)</td><td>'email' | 'sms'</td></tr>
+<tr><td>scheduled_at</td><td>timestamptz NOT NULL</td><td></td></tr>
+<tr><td>sent_at</td><td>timestamptz</td><td>NULL until sent</td></tr>
+<tr><td>cancelled</td><td>boolean DEFAULT false</td><td>Cancelled if estimate approved before follow-up fires</td></tr>
+<tr><td>template</td><td>varchar(50)</td><td>'24h_reminder' | '48h_reminder' | '7d_last_chance'</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Table: <code>assessment_photos</code></h3>
+<p>Individual photos within an assessment with their AI annotations. Needed for the annotated photo feature in the homeowner report.</p>
+<div class="tw">
+<table>
+<thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>id</td><td>uuid PK</td><td></td></tr>
+<tr><td>assessment_id</td><td>uuid FK → assessments.id</td><td></td></tr>
+<tr><td>photo_url</td><td>text NOT NULL</td><td>R2 URL — original photo</td></tr>
+<tr><td>annotated_photo_url</td><td>text</td><td>R2 URL — photo with AI annotations overlaid</td></tr>
+<tr><td>annotations</td><td>jsonb</td><td>[{"type":"circle","x":125,"y":85,"r":30,"color":"red","label":"CORROSION","description":"Green oxide..."}]</td></tr>
+<tr><td>ai_raw_response</td><td>jsonb</td><td>Full vision API response for this specific photo</td></tr>
+<tr><td>sort_order</td><td>int DEFAULT 0</td><td></td></tr>
+<tr><td>created_at</td><td>timestamptz DEFAULT now()</td><td></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Indexes (MVP)</h3>
+<pre><code><span class="cm">-- Multi-tenant: every query filters by company_id</span>
+CREATE INDEX idx_assessments_company ON assessments(company_id, created_at DESC);
+CREATE INDEX idx_estimates_company ON estimates(company_id, status, created_at DESC);
+CREATE INDEX idx_properties_company_address ON properties(company_id, address_line1, zip);
+CREATE INDEX idx_equipment_instances_property ON equipment_instances(property_id);
+CREATE INDEX idx_equipment_models_brand ON equipment_models(brand, model_series);
+CREATE INDEX idx_estimates_report_token ON estimates(report_token);
+CREATE INDEX idx_follow_ups_scheduled ON follow_ups(scheduled_at) WHERE sent_at IS NULL AND cancelled = false;
+CREATE INDEX idx_pricing_rules_lookup ON pricing_rules(company_id, equipment_type, job_type, region);</code></pre>
+
+<h3>Row-Level Security (Multi-Tenancy)</h3>
+<pre><code><span class="cm">-- Every query MUST include company_id. Enforce at DB level.</span>
+ALTER TABLE assessments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY company_isolation ON assessments
+  USING (company_id = current_setting('app.current_company_id')::uuid);
+<span class="cm">-- Repeat for: estimates, properties, equipment_instances, users, pricing_rules, follow_ups</span>
+<span class="cm">-- equipment_models is GLOBAL — no RLS (read-only for all, write-only for admin)</span></code></pre>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: API ENDPOINTS -->
+<!-- ============================================================ -->
+<div class="sec" id="s3">
+<h2>03 — API Endpoints</h2>
+<p>FastAPI. All endpoints return JSON. Auth via Clerk JWT (Bearer token). Company ID extracted from JWT claims.</p>
+
+<h3>Authentication Middleware</h3>
+<pre><code><span class="cm"># Every request passes through this</span>
+<span class="kw">async def</span> get_current_user(authorization: str = Header(...)):
+    token = authorization.replace("Bearer ", "")
+    claims = clerk.verify_token(token)
+    user = <span class="kw">await</span> db.users.get(clerk_user_id=claims["sub"])
+    <span class="kw">if not</span> user:
+        <span class="kw">raise</span> HTTPException(<span class="num">401</span>)
+    <span class="cm"># Set company_id for RLS</span>
+    <span class="kw">await</span> db.execute(f"SET app.current_company_id = '{user.company_id}'")
+    <span class="kw">return</span> user</code></pre>
+
+<h3>Endpoint Reference</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Method</th><th>Path</th><th>Auth</th><th>Purpose</th><th>Prototype Screen</th></tr></thead>
+<tbody>
+<tr><td>POST</td><td>/api/auth/setup</td><td>Clerk</td><td>First login — create company + user if not exists</td><td>Onboarding</td></tr>
+<tr><td>GET</td><td>/api/dashboard</td><td>✓</td><td>Home screen stats: today's jobs, accuracy score, recent estimates</td><td>Home</td></tr>
+<tr><td>GET</td><td>/api/properties/search?q=</td><td>✓</td><td>Address autocomplete + property history lookup</td><td>Capture</td></tr>
+<tr><td>POST</td><td>/api/assessments</td><td>✓</td><td>Create assessment with photo uploads (multipart)</td><td>Capture → Analyzing</td></tr>
+<tr><td>POST</td><td>/api/assessments/{id}/analyze</td><td>✓</td><td>Trigger Vision AI analysis. Returns equipment ID + condition.</td><td>Analyzing → Results</td></tr>
+<tr><td>PATCH</td><td>/api/assessments/{id}</td><td>✓</td><td>Tech overrides AI results (corrects brand, model, condition)</td><td>Results</td></tr>
+<tr><td>POST</td><td>/api/estimates/generate</td><td>✓</td><td>Generate Good/Better/Best from assessment + pricing DB</td><td>Estimate Builder</td></tr>
+<tr><td>PATCH</td><td>/api/estimates/{id}</td><td>✓</td><td>Tech adjusts line items, markup, options</td><td>Estimate Builder</td></tr>
+<tr><td>POST</td><td>/api/estimates/{id}/documents</td><td>✓</td><td>Generate contractor PDF + homeowner report</td><td>Output</td></tr>
+<tr><td>POST</td><td>/api/estimates/{id}/send</td><td>✓</td><td>Send estimate via email/SMS + schedule follow-ups</td><td>Send</td></tr>
+<tr><td>POST</td><td>/api/estimates/{id}/complete</td><td>✓</td><td>Mark job complete, enter actual cost, update accuracy</td><td>Save to History</td></tr>
+<tr><td>GET</td><td>/api/estimates</td><td>✓</td><td>List estimates with filters (status, tech, date)</td><td>Owner Dashboard</td></tr>
+<tr><td>GET</td><td>/api/estimates/{id}</td><td>✓</td><td>Full estimate detail</td><td>Estimate detail</td></tr>
+<tr><td>GET</td><td>/api/techs/accuracy</td><td>✓ owner</td><td>Tech accuracy leaderboard</td><td>Owner Dashboard</td></tr>
+<tr><td>GET</td><td>/api/equipment/aging-alerts</td><td>✓ owner</td><td>Equipment past expected lifespan</td><td>Owner Dashboard</td></tr>
+</tbody>
+</table>
+</div>
+
+<h4>Public Endpoints (No Auth — Customer Facing)</h4>
+<div class="tw">
+<table>
+<thead><tr><th>Method</th><th>Path</th><th>Purpose</th><th>Prototype Screen</th></tr></thead>
+<tbody>
+<tr><td>GET</td><td>/r/{company_slug}/{report_short_id}</td><td>Homeowner report (HTML). Sets estimate.viewed_at on first load.</td><td>Homeowner Report</td></tr>
+<tr><td>POST</td><td>/api/reports/{report_token}/approve</td><td>Customer approves option + signature</td><td>Approve button</td></tr>
+<tr><td>POST</td><td>/api/reports/{report_token}/payment</td><td>Create Stripe Checkout session for deposit</td><td>Pay deposit</td></tr>
+<tr><td>POST</td><td>/api/webhooks/stripe</td><td>Handle payment success, subscription events</td><td>—</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Key Endpoint Detail: <code>POST /api/assessments/{id}/analyze</code></h3>
+<p>This is the core AI endpoint. Here's exactly what happens:</p>
+<pre><code><span class="kw">async def</span> analyze_assessment(id: UUID, user: User = Depends(get_current_user)):
+    assessment = <span class="kw">await</span> db.assessments.get(id)
+    
+    <span class="cm"># 1. Call Vision API with structured prompt (see Section 4)</span>
+    photos = [load_image(url) <span class="kw">for</span> url <span class="kw">in</span> assessment.photo_urls]
+    vision_result = <span class="kw">await</span> vision_api.analyze(
+        photos=photos,
+        prompt=EQUIPMENT_ANALYSIS_PROMPT,  <span class="cm"># See Section 4</span>
+        response_format=<span class="str">"json"</span>
+    )
+    
+    <span class="cm"># 2. Match against equipment_models DB</span>
+    match = <span class="kw">await</span> equipment_db.find_model(
+        brand=vision_result.brand,
+        model_hint=vision_result.model_number
+    )
+    
+    <span class="cm"># 3. Decode serial number for install year</span>
+    install_year = <span class="kw">None</span>
+    <span class="kw">if</span> match <span class="kw">and</span> vision_result.serial_number:
+        install_year = decode_serial(
+            vision_result.serial_number,
+            match.serial_decode_pattern
+        )
+    
+    <span class="cm"># 4. Check for known issues based on model + age + region</span>
+    known_issues = []
+    <span class="kw">if</span> match:
+        known_issues = check_known_issues(
+            model=match,
+            age=current_year - install_year <span class="kw">if</span> install_year <span class="kw">else None</span>,
+            region=user.company.state
+        )
+    
+    <span class="cm"># 5. Check recalls</span>
+    recalls = match.recalls <span class="kw">if</span> match <span class="kw">else</span> []
+    
+    <span class="cm"># 6. Create/update equipment instance at property</span>
+    equipment = <span class="kw">await</span> upsert_equipment_instance(
+        property_id=assessment.property_id,
+        brand=vision_result.brand,
+        model_number=vision_result.model_number,
+        equipment_model_id=match.id <span class="kw">if</span> match <span class="kw">else None</span>,
+        install_year=install_year,
+        condition=vision_result.overall_condition,
+        condition_details=vision_result.components,
+        ai_confidence=vision_result.confidence
+    )
+    
+    <span class="cm"># 7. Store photo annotations</span>
+    <span class="kw">for</span> i, photo <span class="kw">in</span> enumerate(vision_result.photo_annotations):
+        <span class="kw">await</span> db.assessment_photos.create(
+            assessment_id=id,
+            photo_url=assessment.photo_urls[i],
+            annotations=photo.annotations,
+            ai_raw_response=photo.raw
+        )
+    
+    <span class="cm"># 8. Update assessment with results</span>
+    <span class="kw">await</span> db.assessments.update(id,
+        ai_analysis=vision_result.raw,
+        ai_equipment_id=vision_result.equipment_id_structured,
+        ai_condition=vision_result.condition_structured,
+        ai_issues=vision_result.issues,
+        equipment_instance_id=equipment.id,
+        status=<span class="str">"analyzed"</span>
+    )
+    
+    <span class="cm"># 9. Increment global model counter (feeds the moat)</span>
+    <span class="kw">if</span> match:
+        <span class="kw">await</span> db.equipment_models.increment_assessment_count(match.id)
+    
+    <span class="kw">return</span> AnalysisResponse(
+        equipment=equipment,
+        known_model=match,
+        known_issues=known_issues,
+        recalls=recalls,
+        property_history=<span class="kw">await</span> get_property_history(assessment.property_id)
+    )</code></pre>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 4: VISION AI PROMPT ENGINEERING -->
+<!-- ============================================================ -->
+<div class="sec" id="s4">
+<h2>04 — Vision AI — Prompt Engineering</h2>
+<p>The single most important piece of code in the entire product. This prompt determines whether ScopeSnap identifies "Carrier 24ACC636" or returns "air conditioner."</p>
+
+<div class="warn"><strong>PROMPT ENGINEERING IS ITERATIVE.</strong> These are V1 prompts. They WILL need tuning after real field testing. The structure and approach are right; the specific instructions will evolve. Every prompt change should be A/B tested against a labeled dataset of at least 50 equipment photos.</div>
+
+<h3>Primary Equipment Analysis Prompt</h3>
+<p>Sent to Gemini 1.5 Flash with 1-5 photos. The prompt forces structured JSON output so we can parse it deterministically.</p>
+<pre><code><span class="str">EQUIPMENT_ANALYSIS_PROMPT = """
+You are an expert HVAC equipment identification system. Analyze the provided
+photo(s) of HVAC equipment and return a structured JSON assessment.
+
+TASK: Identify the equipment and assess its visible condition.
+
+IDENTIFICATION RULES:
+1. Look for the DATA PLATE first — it contains brand, model, serial, specs.
+   Data plates are usually metal/sticker, found on the side or inside panel.
+2. If no data plate visible, identify by:
+   - Cabinet shape, color, and design (each brand has distinct aesthetics)
+   - Fan grille pattern (Carrier = round, Trane = rectangular, etc.)
+   - Logo placement and style
+   - Size relative to surroundings
+3. For model numbers: extract the COMPLETE string including all suffixes.
+   Example: "24ACC636A003" not just "24ACC636"
+4. For serial numbers: extract the COMPLETE string. This encodes manufacture date.
+5. NEVER guess a model number. If you cannot read it clearly, set confidence
+   below 70 and explain what you CAN see.
+
+CONDITION ASSESSMENT RULES:
+1. Assess each visible component separately:
+   - Evaporator coil: look for corrosion (green/white deposits), ice formation, dirt
+   - Condenser coil/fins: look for bending, crushing, debris, corrosion
+   - Compressor: look for rust, oil stains (leak indicator), physical damage
+   - Refrigerant lines: look for frost patterns, insulation damage
+   - Electrical: look for burn marks, frayed wires, corrosion on connections
+   - Cabinet: look for rust, dents, panel fit
+2. Rate each component: "normal" | "minor_issue" | "moderate_issue" | "severe_issue"
+3. For each issue found, describe it in PLAIN ENGLISH that a homeowner would
+   understand. No jargon. Instead of "evaporator coil oxidation" say
+   "green corrosion buildup on the indoor cooling coil."
+
+ANNOTATION RULES:
+For each photo, identify regions that need annotation:
+1. Issues: provide bounding box coordinates (x, y, width, height as % of image)
+   and a color: "red" for severe, "orange" for moderate, "green" for normal/identified
+2. Equipment identification: mark the data plate location with a green box
+3. Each annotation needs: type (circle/rectangle), coordinates, color, label, description
+
+RESPOND WITH ONLY THIS JSON STRUCTURE — no other text:
+{
+  "brand": "string or null",
+  "model_number": "string or null",
+  "serial_number": "string or null",
+  "equipment_type": "ac_unit|furnace|heat_pump|water_heater|thermostat|unknown",
+  "confidence": 0-100,
+  "confidence_reasoning": "what evidence supports the identification",
+  "overall_condition": "excellent|good|fair|poor|critical",
+  "estimated_age_years": number or null,
+  "components": [
+    {
+      "name": "string (e.g., evaporator_coil)",
+      "condition": "normal|minor_issue|moderate_issue|severe_issue",
+      "description_technical": "string — for contractor",
+      "description_plain": "string — for homeowner, no jargon",
+      "urgency": "none|monitor|soon|immediate"
+    }
+  ],
+  "photo_annotations": [
+    {
+      "photo_index": 0,
+      "annotations": [
+        {
+          "type": "circle|rectangle",
+          "x_pct": 0-100,
+          "y_pct": 0-100,
+          "width_pct": 0-100,
+          "height_pct": 0-100,
+          "color": "red|orange|green",
+          "label": "SHORT LABEL",
+          "description": "Plain English description"
+        }
+      ]
+    }
+  ],
+  "specs_visible": {
+    "seer_rating": number or null,
+    "tonnage": number or null,
+    "btu": number or null,
+    "refrigerant_type": "string or null",
+    "voltage": "string or null"
+  }
+}
+"""</span></code></pre>
+
+<h3>Homeowner Narrative Prompt</h3>
+<p>Sent to Claude Haiku or GPT-4o-mini AFTER the equipment analysis. Generates 2-3 sentences of plain-English explanation for the homeowner report. This is the ONLY non-vision LLM call in the entire pipeline.</p>
+<pre><code><span class="str">HOMEOWNER_NARRATIVE_PROMPT = """
+You are writing for a homeowner who knows nothing about HVAC. Be warm,
+clear, and honest. No jargon. No scare tactics. No sales pressure.
+
+Equipment: {brand} {model}, installed {install_year} ({age} years old).
+Condition: {overall_condition}.
+Issues found: {issues_plain_english}
+
+Write exactly 2 sentences:
+1. What the equipment is and its general health (think "doctor visit summary")
+2. The most important thing they should know right now
+
+Keep it under 40 words total. Use "your" not "the". Be specific not vague.
+
+Example good output: "Your Carrier AC is 9 years old and in fair condition.
+The indoor coil has corrosion that's reducing your cooling efficiency by
+about 15-20% — worth addressing before summer."
+
+Example bad output: "Your HVAC system has been assessed and some issues
+were found that may require attention in the near future."
+"""</span></code></pre>
+
+<h3>Prompt Testing & Improvement Protocol</h3>
+<ol>
+<li><strong>Build a labeled test set:</strong> Collect 50+ equipment photos from Upwork HVAC clients, Google Images, contractor forums. Label each with: brand, model, condition, visible issues. This is the ground truth.</li>
+<li><strong>Run against both models:</strong> Gemini Flash and GPT-4o. Score each on: brand accuracy, model number accuracy, condition accuracy, annotation quality.</li>
+<li><strong>Track metrics:</strong> Store every AI call result + tech overrides in <code>assessments.ai_analysis</code> and <code>assessments.tech_overrides</code>. When a tech corrects the AI, that's labeled training data for free.</li>
+<li><strong>Monthly prompt review:</strong> Look at the 20 lowest-confidence assessments and the 20 most-overridden assessments. What patterns does the AI miss? Update the prompt.</li>
+<li><strong>Model-specific tuning:</strong> Gemini Flash and GPT-4o respond differently to the same prompt. Maintain model-specific prompt variants if needed (e.g., Gemini needs more explicit JSON formatting instructions).</li>
+</ol>
+
+<div class="ok"><strong>THE FEEDBACK LOOP:</strong> Every tech override makes the AI smarter. Not through fine-tuning (too expensive and fragile) — through better prompts, better equipment DB matching, and better known-issue patterns. At 10,000 assessments, we have 10,000 labeled examples of what the AI got right and wrong. That's a competitive advantage no new entrant can replicate.</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 5: ESTIMATE GENERATION PIPELINE -->
+<!-- ============================================================ -->
+<div class="sec" id="s5">
+<h2>05 — Estimate Generation Pipeline</h2>
+<p>Zero AI cost. This is pure math + database lookups + template rendering.</p>
+
+<h3>Pipeline Steps</h3>
+<ol>
+<li><strong>Get AI analysis results</strong> from assessment (already stored in DB)</li>
+<li><strong>Determine job types:</strong> Map condition → recommended job types. If coil is moderate_corrosion → offer [clean_treat, coil_replacement, full_system]. This mapping is a simple lookup table, not an AI call.</li>
+<li><strong>Look up pricing:</strong> For each job type, query <code>pricing_rules</code> with cascade: company → region → national.</li>
+<li><strong>Calculate line items:</strong> Parts cost + (labor_hours × labor_rate) + permit + refrigerant + disposal. Pure arithmetic.</li>
+<li><strong>Apply markup:</strong> Company default or tech override. (unit_cost × (1 + markup_percent / 100)).</li>
+<li><strong>Calculate energy savings:</strong> If recommending system replacement, compare current SEER vs new SEER. Formula: annual_savings = annual_cooling_cost × (1 - current_seer / new_seer). Use EIA average for annual cooling cost by state.</li>
+<li><strong>Check rebate eligibility:</strong> Query DSIRE database (or our cached copy) for state/utility rebates on high-efficiency equipment. Include in "best" tier.</li>
+<li><strong>Build options array:</strong> 2-3 tiers with all line items, totals, savings, and descriptions.</li>
+<li><strong>Calculate 5-year total cost:</strong> For each option: upfront + (annual_energy × 5) + likely_future_repairs. This powers the comparison chart in the homeowner report.</li>
+</ol>
+
+<h3>Job Type → Options Mapping</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Condition</th><th>Good (Budget)</th><th>Better (Recommended)</th><th>Best (Premium)</th></tr></thead>
+<tbody>
+<tr><td>Coil: moderate corrosion</td><td>Clean + anti-corrosion coating</td><td>Replace coil</td><td>Full system replacement</td></tr>
+<tr><td>Coil: severe corrosion</td><td>Replace coil</td><td>Full system replacement (same SEER)</td><td>Full system replacement (high SEER)</td></tr>
+<tr><td>Compressor: failing</td><td>Compressor replacement</td><td>Full system (same SEER)</td><td>Full system (high SEER + heat pump)</td></tr>
+<tr><td>Refrigerant: low/leak</td><td>Recharge + leak seal</td><td>Find & fix leak + recharge</td><td>Replace coil/system if R-22</td></tr>
+<tr><td>General maintenance</td><td>Basic tune-up</td><td>Full maintenance + cleaning</td><td>Maintenance + minor repairs</td></tr>
+</tbody>
+</table>
+</div>
+<div class="info">This mapping is stored as a configuration file, not hardcoded. It's the "intelligence" layer that EstimationPro doesn't have — they let the contractor build from scratch. We recommend the right options based on what the AI found.</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 6: HOMEOWNER REPORT -->
+<!-- ============================================================ -->
+<div class="sec" id="s6">
+<h2>06 — Homeowner Report Generation</h2>
+<p>The key differentiator. A public HTML page (no auth required) that's responsive, beautiful, and designed to close deals.</p>
+
+<h3>Architecture</h3>
+<ul>
+<li><strong>Template:</strong> Next.js page at <code>/r/[company_slug]/[report_short_id]</code>. Server-side rendered. No JavaScript required to view (works in any browser, any device).</li>
+<li><strong>Data:</strong> Fetched server-side from <code>estimates</code> + <code>assessments</code> + <code>assessment_photos</code> + <code>companies</code>. Single DB query with joins.</li>
+<li><strong>Annotations:</strong> Rendered as SVG overlays on top of the equipment photo. Coordinates from <code>assessment_photos.annotations</code>. Animated dashed circles for issues (CSS only, no JS).</li>
+<li><strong>Options:</strong> Interactive (client-side JS). Tapping an option updates the "Approve" button text. Selected option stored in URL state or local variable.</li>
+<li><strong>Approval flow:</strong> "Approve" button → captures e-signature (canvas) → POST to <code>/api/reports/{token}/approve</code> → redirects to Stripe Checkout for deposit.</li>
+<li><strong>Tracking:</strong> First page load sets <code>estimates.viewed_at</code>. Subsequent loads don't overwrite. This tells the tech "Sarah opened your estimate at 7:34 PM."</li>
+</ul>
+
+<h3>Annotated Photo Rendering</h3>
+<pre><code><span class="cm">// Convert AI annotation coordinates to SVG overlay</span>
+<span class="kw">function</span> renderAnnotations(photo, annotations) {
+  <span class="kw">return</span> (
+    &lt;div style={{position: <span class="str">'relative'</span>}}&gt;
+      &lt;img src={photo.url} style={{width: <span class="str">'100%'</span>}} /&gt;
+      &lt;svg viewBox=<span class="str">"0 0 100 100"</span> style={{
+        position: <span class="str">'absolute'</span>, top: <span class="num">0</span>, left: <span class="num">0</span>,
+        width: <span class="str">'100%'</span>, height: <span class="str">'100%'</span>
+      }}&gt;
+        {annotations.map(a =&gt; (
+          a.type === <span class="str">'circle'</span> ? (
+            &lt;circle
+              cx={a.x_pct} cy={a.y_pct}
+              r={a.width_pct / <span class="num">2</span>}
+              fill=<span class="str">"none"</span>
+              stroke={COLORS[a.color]}
+              strokeWidth=<span class="str">"0.8"</span>
+              strokeDasharray=<span class="str">"2,1"</span>
+            &gt;
+              &lt;animate attributeName=<span class="str">"stroke-dashoffset"</span>
+                from=<span class="str">"0"</span> to=<span class="str">"6"</span> dur=<span class="str">"2s"</span>
+                repeatCount=<span class="str">"indefinite"</span> /&gt;
+            &lt;/circle&gt;
+          ) : (
+            &lt;rect ... /&gt;
+          )
+        ))}
+      &lt;/svg&gt;
+      {<span class="cm">/* Callout labels positioned outside the photo */</span>}
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+<h3>Report URL Security</h3>
+<ul>
+<li><strong>Public URL:</strong> <code>report.scopesnap.com/abc-hvac/rpt-0847</code> — human-readable, shareable</li>
+<li><strong>Token:</strong> 32-character random string stored in <code>estimates.report_token</code>. The short ID maps to the token server-side. The token is used for API calls (approve, pay).</li>
+<li><strong>No auth required to VIEW.</strong> Anyone with the URL can see the report. This is intentional — the homeowner forwards it to spouse, landlord, insurance. Every forward is marketing.</li>
+<li><strong>Auth required to APPROVE + PAY.</strong> The approve endpoint validates the token. Stripe Checkout handles payment security.</li>
+<li><strong>Reports expire:</strong> After 90 days, report returns "This estimate has expired. Contact ABC HVAC at (713) 555-0142 for a new quote."</li>
+</ul>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 7: EQUIPMENT DATABASE -->
+<!-- ============================================================ -->
+<div class="sec" id="s7">
+<h2>07 — Equipment Database — Seed Data Architecture</h2>
+<p>The moat starts with manual seed data and grows with every assessment. Here's exactly what to seed and where to get it.</p>
+
+<h3>MVP Seed: Top 5 Brands × Top Models</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Brand</th><th>Market Share</th><th>Top Models to Seed</th><th>Data Source</th></tr></thead>
+<tbody>
+<tr><td><strong>Carrier</strong></td><td>~17%</td><td>24ACC6, 24ANB6, 25HBC6, 50XC (coils), 59SC (furnaces)</td><td>carrier.com/residential + AHRI directory</td></tr>
+<tr><td><strong>Trane</strong></td><td>~16%</td><td>XR13, XR15, XV18, XR80 (furnaces), 4TTA (heat pumps)</td><td>trane.com + AHRI</td></tr>
+<tr><td><strong>Lennox</strong></td><td>~12%</td><td>XC16, XC21, EL16XC1, SL297NV (furnaces)</td><td>lennox.com + AHRI</td></tr>
+<tr><td><strong>Goodman/Daikin</strong></td><td>~15%</td><td>GSX13, GSX16, GSXC18, GMS8 (furnaces), GSZC18 (heat pumps)</td><td>goodmanmfg.com + AHRI</td></tr>
+<tr><td><strong>Rheem/Ruud</strong></td><td>~12%</td><td>RA14AZ, RA17AZ, R801T (furnaces), RP17AZ (heat pumps)</td><td>rheem.com + AHRI</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Per-Model Data to Collect</h3>
+<ul>
+<li><strong>Model number pattern</strong> (regex for matching Vision API output)</li>
+<li><strong>Serial number decode</strong> (manufacturer-specific — published in installation manuals)</li>
+<li><strong>SEER/AFUE rating</strong> (from AHRI directory — ahridirectory.org)</li>
+<li><strong>Tonnage range</strong> (from model number encoding — e.g., Carrier: "36" in model = 3 ton)</li>
+<li><strong>Manufacture years</strong> (from serial decode patterns)</li>
+<li><strong>Expected lifespan</strong> (ENERGY STAR: AC 15-20yr, furnace 15-30yr, heat pump 10-15yr)</li>
+<li><strong>Known issues by region</strong> (from contractor forums, HVAC-Talk, manufacturer bulletins)</li>
+<li><strong>Recall data</strong> (CPSC.gov — freely available via API)</li>
+<li><strong>Replacement model suggestions</strong> (current equivalent from same brand)</li>
+</ul>
+
+<div class="ok"><strong>Build time estimate:</strong> ~50 models × 30 min each = ~25 hours of manual research. A focused week of work. After that, every AI assessment that matches a seeded model gets enriched automatically. Models that don't match get flagged for manual addition — the database grows organically.</div>
+
+<h3>Serial Number Decoding (Example: Carrier)</h3>
+<pre><code><span class="cm"># Carrier serial: First 2 chars = year code, chars 3-4 = week</span>
+<span class="cm"># Example: "3920E12345" → year code "39" → 2020, week "20"</span>
+CARRIER_YEAR_MAP = {
+    <span class="str">"29"</span>: <span class="num">2010</span>, <span class="str">"30"</span>: <span class="num">2011</span>, <span class="str">"31"</span>: <span class="num">2012</span>,
+    <span class="str">"32"</span>: <span class="num">2013</span>, <span class="str">"33"</span>: <span class="num">2014</span>, <span class="str">"34"</span>: <span class="num">2015</span>,
+    <span class="str">"35"</span>: <span class="num">2016</span>, <span class="str">"36"</span>: <span class="num">2017</span>, <span class="str">"37"</span>: <span class="num">2018</span>,
+    <span class="str">"38"</span>: <span class="num">2019</span>, <span class="str">"39"</span>: <span class="num">2020</span>, <span class="str">"40"</span>: <span class="num">2021</span>,
+    <span class="str">"41"</span>: <span class="num">2022</span>, <span class="str">"42"</span>: <span class="num">2023</span>, <span class="str">"43"</span>: <span class="num">2024</span>,
+    <span class="str">"44"</span>: <span class="num">2025</span>, <span class="str">"45"</span>: <span class="num">2026</span>,
+}
+
+<span class="kw">def</span> decode_carrier_serial(serial: str) -> dict:
+    year_code = serial[:<span class="num">2</span>]
+    week = serial[<span class="num">2</span>:<span class="num">4</span>]
+    <span class="kw">return</span> {
+        <span class="str">"year"</span>: CARRIER_YEAR_MAP.get(year_code),
+        <span class="str">"week"</span>: int(week) <span class="kw">if</span> week.isdigit() <span class="kw">else None</span>
+    }
+<span class="cm"># Each brand has its own decode pattern — stored in equipment_models.serial_decode_pattern</span></code></pre>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 8: FILE STORAGE -->
+<!-- ============================================================ -->
+<div class="sec" id="s8">
+<h2>08 — File Storage & Media Pipeline</h2>
+
+<h3>Cloudflare R2 Bucket Structure</h3>
+<pre><code>scopesnap-media/
+  {company_id}/
+    assessments/
+      {assessment_id}/
+        photo-1-original.jpg     <span class="cm"># As uploaded from phone</span>
+        photo-1-compressed.jpg   <span class="cm"># 1200px wide, 80% quality (~200KB)</span>
+        photo-1-thumb.jpg        <span class="cm"># 400px wide (~40KB)</span>
+        photo-2-original.jpg
+        photo-2-compressed.jpg
+        photo-2-thumb.jpg
+    estimates/
+      {estimate_id}/
+        contractor-estimate.pdf  <span class="cm"># Generated by WeasyPrint</span>
+    logos/
+      company-logo.png           <span class="cm"># Uploaded during onboarding</span></code></pre>
+
+<h3>Photo Upload Pipeline</h3>
+<ol>
+<li><strong>Client-side:</strong> Compress to max 1600px wide before upload (reduces upload time on cellular). Use browser canvas API.</li>
+<li><strong>Upload:</strong> Multipart POST to <code>/api/assessments</code>. FastAPI receives file, generates UUID filename.</li>
+<li><strong>Server-side processing:</strong> Pillow (Python) creates compressed (1200px) and thumbnail (400px) variants. Original preserved.</li>
+<li><strong>Storage:</strong> Upload all 3 variants to R2 via S3-compatible API. Store URLs in <code>assessment_photos.photo_url</code>.</li>
+<li><strong>Vision API:</strong> Send compressed version (1200px) — optimal for cost/quality trade-off.</li>
+</ol>
+
+<div class="info"><strong>Storage cost math:</strong> Average assessment = 2 photos × 3 variants × ~150KB avg = ~900KB. At 15,000 assessments/month (500 users × 30 estimates): ~13GB/month. R2 free tier = 10GB, then $0.015/GB. Cost: ~$0.20/month. Negligible.</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 9: AUTH -->
+<!-- ============================================================ -->
+<div class="sec" id="s9">
+<h2>09 — Authentication & Multi-Tenancy</h2>
+
+<h3>Clerk Setup</h3>
+<ul>
+<li><strong>Organizations = Companies.</strong> When Dave signs up, he creates an organization "ABC HVAC Services." When Mike joins, he joins Dave's organization.</li>
+<li><strong>Roles:</strong> "owner" (full access), "admin" (manage techs + pricing), "tech" (create estimates only).</li>
+<li><strong>Sign-up flow:</strong> Email + password (contractors don't use Google/GitHub SSO). Phone verification optional.</li>
+<li><strong>JWT claims include:</strong> <code>user_id</code>, <code>org_id</code> (= company_id), <code>role</code>.</li>
+</ul>
+
+<h3>Multi-Tenant Data Isolation</h3>
+<pre><code><span class="cm"># Middleware sets company context on every request</span>
+<span class="kw">@app</span>.middleware(<span class="str">"http"</span>)
+<span class="kw">async def</span> set_tenant_context(request, call_next):
+    <span class="kw">if</span> request.url.path.startswith(<span class="str">"/api/"</span>) <span class="kw">and not</span> is_public_endpoint(request.url.path):
+        user = <span class="kw">await</span> get_current_user(request)
+        <span class="cm"># PostgreSQL RLS handles the rest — queries physically cannot</span>
+        <span class="cm"># return data from other companies</span>
+        <span class="kw">await</span> db.execute(
+            <span class="str">f"SET app.current_company_id = '{user.company_id}'"</span>
+        )
+    <span class="kw">return await</span> call_next(request)</code></pre>
+
+<div class="warn"><strong>SECURITY RULE:</strong> Even if a bug in application code omits a WHERE clause, PostgreSQL RLS prevents data leakage. Defense in depth. The <code>equipment_models</code> table is the exception — it's global and read-only for authenticated users.</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 10: STRIPE -->
+<!-- ============================================================ -->
+<div class="sec" id="s10">
+<h2>10 — Stripe Billing Integration</h2>
+
+<h3>Products & Prices</h3>
+<pre><code><span class="cm"># Create in Stripe Dashboard (one-time setup)</span>
+Product: ScopeSnap
+  Price: Free         — $0/mo  (no Stripe subscription, just count in DB)
+  Price: Early Bird   — $9.99/mo  (stripe_price_id: price_early_bird_monthly)
+  Price: Pro          — $149/mo   (stripe_price_id: price_pro_monthly)
+  Price: Team         — $349/mo   (stripe_price_id: price_team_monthly)
+
+<span class="cm"># Deposit payments (one-time, per estimate)</span>
+Product: Estimate Deposit
+  <span class="cm"># Dynamic pricing — create PaymentIntent per estimate</span></code></pre>
+
+<h3>Key Flows</h3>
+<ul>
+<li><strong>Free → Paid conversion:</strong> When user hits 5 estimates/month limit, show upgrade modal. "Unlock 50 estimates/month for $9.99" → Stripe Checkout → webhook updates <code>companies.plan</code> and <code>monthly_estimate_limit</code>.</li>
+<li><strong>Estimate deposit:</strong> Homeowner taps "Approve + Pay Deposit" → POST to <code>/api/reports/{token}/payment</code> → creates Stripe Checkout session with <code>deposit_amount</code> → homeowner pays → webhook updates <code>estimates.status = 'deposit_paid'</code> + notifies contractor via email.</li>
+<li><strong>Monthly reset:</strong> Stripe subscription webhook fires on renewal → reset <code>companies.monthly_estimate_count = 0</code>.</li>
+</ul>
+
+<h3>Webhook Handler</h3>
+<pre><code><span class="kw">@app</span>.post(<span class="str">"/api/webhooks/stripe"</span>)
+<span class="kw">async def</span> stripe_webhook(request):
+    event = stripe.Webhook.construct_event(
+        payload=<span class="kw">await</span> request.body(),
+        sig_header=request.headers[<span class="str">"stripe-signature"</span>],
+        secret=STRIPE_WEBHOOK_SECRET
+    )
+    
+    <span class="kw">if</span> event.type == <span class="str">"checkout.session.completed"</span>:
+        session = event.data.object
+        <span class="kw">if</span> session.metadata.get(<span class="str">"type"</span>) == <span class="str">"subscription"</span>:
+            <span class="kw">await</span> activate_subscription(session)
+        <span class="kw">elif</span> session.metadata.get(<span class="str">"type"</span>) == <span class="str">"deposit"</span>:
+            <span class="kw">await</span> process_deposit_payment(session)
+    
+    <span class="kw">elif</span> event.type == <span class="str">"invoice.paid"</span>:
+        <span class="cm"># Monthly renewal — reset estimate count</span>
+        <span class="kw">await</span> reset_monthly_estimate_count(event.data.object)
+    
+    <span class="kw">elif</span> event.type == <span class="str">"customer.subscription.deleted"</span>:
+        <span class="kw">await</span> downgrade_to_free(event.data.object)</code></pre>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 11: EMAIL -->
+<!-- ============================================================ -->
+<div class="sec" id="s11">
+<h2>11 — Email & Follow-Up Automation</h2>
+
+<h3>Email Templates (Resend + React Email)</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Template</th><th>Trigger</th><th>From</th><th>Subject</th></tr></thead>
+<tbody>
+<tr><td>estimate_sent</td><td>Tech taps "Send"</td><td>ABC HVAC via ScopeSnap</td><td>Your AC Equipment Health Report — {address}</td></tr>
+<tr><td>reminder_24h</td><td>Scheduled (24h after send)</td><td>ABC HVAC via ScopeSnap</td><td>Quick follow-up: Your AC report for {address}</td></tr>
+<tr><td>reminder_48h</td><td>Scheduled (48h after send)</td><td>ABC HVAC via ScopeSnap</td><td>Your options are still available — {address}</td></tr>
+<tr><td>reminder_7d</td><td>Scheduled (7d after send)</td><td>ABC HVAC via ScopeSnap</td><td>Last chance: Your AC estimate expires soon</td></tr>
+<tr><td>deposit_receipt</td><td>Stripe payment success</td><td>ABC HVAC via ScopeSnap</td><td>Deposit received — {company} will schedule your {job_type}</td></tr>
+<tr><td>tech_notification</td><td>Customer views/approves</td><td>ScopeSnap</td><td>Sarah Johnson viewed your estimate / approved Option B</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Follow-Up Scheduler</h3>
+<pre><code><span class="cm"># When estimate is sent, schedule follow-ups</span>
+<span class="kw">async def</span> schedule_follow_ups(estimate_id, sent_at):
+    schedule = [
+        (<span class="str">"24h_reminder"</span>, timedelta(hours=<span class="num">24</span>)),
+        (<span class="str">"48h_reminder"</span>, timedelta(hours=<span class="num">48</span>)),
+        (<span class="str">"7d_last_chance"</span>, timedelta(days=<span class="num">7</span>)),
+    ]
+    <span class="kw">for</span> template, delay <span class="kw">in</span> schedule:
+        <span class="kw">await</span> db.follow_ups.create(
+            estimate_id=estimate_id,
+            template=template,
+            scheduled_at=sent_at + delay
+        )
+
+<span class="cm"># Cron job (every 15 min) sends due follow-ups</span>
+<span class="kw">async def</span> process_follow_ups():
+    due = <span class="kw">await</span> db.follow_ups.get_due()  <span class="cm"># WHERE scheduled_at <= now() AND sent_at IS NULL AND cancelled = false</span>
+    <span class="kw">for</span> fu <span class="kw">in</span> due:
+        estimate = <span class="kw">await</span> db.estimates.get(fu.estimate_id)
+        <span class="kw">if</span> estimate.status <span class="kw">in</span> (<span class="str">"approved"</span>, <span class="str">"deposit_paid"</span>, <span class="str">"completed"</span>):
+            <span class="kw">await</span> db.follow_ups.cancel(fu.id)  <span class="cm"># Don't nag after approval</span>
+            <span class="kw">continue</span>
+        <span class="kw">await</span> send_email(fu.template, estimate)
+        <span class="kw">await</span> db.follow_ups.mark_sent(fu.id)</code></pre>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 12: BUILD PLAN -->
+<!-- ============================================================ -->
+<div class="sec" id="s12">
+<h2>12 — Week-by-Week Build Plan</h2>
+<p>Maps to the 90-day plan from the Product Bible. Every week has a deliverable. Ship something every Friday.</p>
+
+<h3>Phase 1: Core MVP (Days 1-30)</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Week</th><th>Deliverable</th><th>Details</th><th>Done When</th></tr></thead>
+<tbody>
+<tr><td><strong>Week 1</strong></td><td>Project setup + Photo → AI analysis</td><td>Next.js + FastAPI repos. Clerk auth. R2 bucket. DB schema migration. Single endpoint: upload photos → call Gemini Flash → return JSON. Test with 20 equipment photos.</td><td>Upload 2 photos, get structured JSON with brand/model/condition back in &lt;10 seconds.</td></tr>
+<tr><td><strong>Week 2</strong></td><td>Equipment DB + Estimate generation</td><td>Seed 50 equipment models (5 brands × 10). Build serial decode for all 5 brands. Pricing rules table with national defaults. Estimate generation pipeline: AI results → pricing lookup → Good/Better/Best options.</td><td>For a Carrier 24ACC636 photo, system returns 3 priced options with correct line items.</td></tr>
+<tr><td><strong>Week 3</strong></td><td>Homeowner report + Contractor PDF</td><td>Build the homeowner report page (Next.js SSR). SVG annotation overlay on photos. Three option cards with selection. WeasyPrint contractor PDF. Report URL generation.</td><td>Open report.scopesnap.com/test/rpt-001 on phone — see annotated photo, health gauge, 3 options.</td></tr>
+<tr><td><strong>Week 4</strong></td><td>Complete tech workflow + Send</td><td>Mobile PWA with all screens: Home → Capture → Analyze → Results → Estimate → Output → Send. Resend email integration. SMS via Twilio. Follow-up scheduler. Stripe deposit payment.</td><td>End-to-end: take photo → get estimate → send to customer → customer opens report → approves → pays deposit. Complete loop.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Phase 2: Validate + Polish (Days 31-60)</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Week</th><th>Deliverable</th><th>Details</th><th>Done When</th></tr></thead>
+<tbody>
+<tr><td><strong>Week 5</strong></td><td>Beta test with 5 HVAC contractors</td><td>Recruit from Upwork network. Free access. Watch them use it live (screen share). Document every failure, confusion, and feature request. Fix top 3 blockers.</td><td>5 contractors have each created at least 3 real estimates on real job sites.</td></tr>
+<tr><td><strong>Week 6</strong></td><td>Owner dashboard (V1)</td><td>Build basic owner view: estimate list, status tracking, per-tech counts. Not the full BenchmarkIQ dashboard — just the essentials an owner needs to see what's happening.</td><td>Dave can log in and see all estimates across his 4 techs with status filters.</td></tr>
+<tr><td><strong>Week 7</strong></td><td>Stripe billing + Plan limits</td><td>Implement free tier (5/mo limit), Early Bird ($9.99/50), upgrade flow. Monthly reset. Stripe Customer Portal for self-service. Usage metering.</td><td>Free user hits limit → sees upgrade modal → pays $9.99 → limit increases to 50.</td></tr>
+<tr><td><strong>Week 8</strong></td><td>Landing page + First 5 SEO calculators</td><td>Build scopesnap.com landing page (conversion-focused). SEER savings calculator, AC replacement cost calculator, equipment age checker, repair vs replace, HVAC load calculator. Each is a standalone page that ranks for long-tail keywords.</td><td>Landing page live. 5 calculators indexed. Google Ads campaign approved and paused (ready to go).</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Phase 3: Launch + Acquire (Days 61-90)</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Week</th><th>Deliverable</th><th>Details</th><th>Done When</th></tr></thead>
+<tbody>
+<tr><td><strong>Week 9</strong></td><td>Google Ads launch</td><td>Turn on campaigns. $30-50/day budget. Monitor CPA. A/B test landing page headlines. Track: impression → click → signup → estimate → paid conversion.</td><td>Ads running. First organic signups arriving from SEO calculators.</td></tr>
+<tr><td><strong>Week 10</strong></td><td>Community seeding + Content</td><td>First posts on HVAC-Talk, Reddit r/HVAC. Publish first 3 blog posts. First YouTube demo video. Upwork network warm outreach (5-10 emails to past HVAC clients).</td><td>Active presence in 2+ HVAC communities. 3 blog posts live. 1 YouTube video.</td></tr>
+<tr><td><strong>Week 11</strong></td><td>Iterate based on real usage data</td><td>Analyze: which equipment models is the AI getting wrong? Which pricing is off? What do techs override most? Update prompts, pricing defaults, and equipment DB based on real data.</td><td>AI accuracy improved by measurable amount (tracked via tech_overrides reduction).</td></tr>
+<tr><td><strong>Week 12</strong></td><td>Hit 3-5 paying customers</td><td>This is the milestone. Not 50. Not 100. Just 3-5 real HVAC contractors paying $9.99/month and using ScopeSnap on real jobs. If we have this, the product has legs.</td><td>3+ paying customers. 50+ real estimates generated. First homeowner report approved + deposit paid through the system.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="ok"><strong>SUCCESS CRITERIA AT DAY 90:</strong> 3-5 paying customers, 50+ real estimates, AI accuracy above 70% on equipment identification (measured by tech override rate), at least 1 homeowner deposit payment processed through the system, and a clear list of the top 10 things to fix for V2. That's it. Everything else is gravy.</div>
+</div>
+
+<!-- FOOTER -->
+<div class="ft">
+ScopeSnap MVP Technical Specification — V1.1 — March 21, 2026<br>
+Mainnov Tech — Confidential — For internal development use only<br>
+Companion to: ScopeSnap Product Bible V1.9<br>
+<strong style="color:var(--g)">BUILD PRINCIPLE:</strong> Develop locally. Deploy to cloud when ready. $0/month until revenue. Ship something every Friday.
+</div>
+
+</div>
+</body>
+</html>

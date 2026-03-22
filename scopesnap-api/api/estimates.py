@@ -1,0 +1,874 @@
+"""
+ScopeSnap — Estimate API Endpoints
+WP-04: Full estimate generation pipeline + CRUD
+WP-05: Document generation + sending (placeholders)
+"""
+
+import copy
+import secrets
+import string
+from datetime import datetime, timezone, timedelta
+from decimal import Decimal
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from sqlalchemy.orm.attributes import flag_modified
+
+from db.database import get_db
+from db.models import Assessment, Company, Estimate, EstimateLineItem, FollowUp, Property
+from api.auth import get_current_user, AuthContext
+from services.estimate_engine import generate_estimate as run_estimate_engine, calculate_line_items, apply_markup, get_pricing_rule
+
+router = APIRouter(prefix="/api/estimates", tags=["estimates"])
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _make_report_token(n: int = 32) -> str:
+    """Generates a cryptographically random URL-safe token."""
+    return secrets.token_urlsafe(n)[:n]
+
+
+def _make_report_short_id() -> str:
+    """Generates human-readable short ID like 'rpt-0847'."""
+    digits = "".join(secrets.choice(string.digits) for _ in range(4))
+    return f"rpt-{digits}"
+
+
+def _estimate_to_dict(estimate: Estimate) -> dict:
+    """Serializes an Estimate ORM record to a response dict."""
+    return {
+        "id": str(estimate.id),
+        "assessment_id": str(estimate.assessment_id),
+        "company_id": str(estimate.company_id),
+        "report_token": estimate.report_token,
+        "report_short_id": estimate.report_short_id,
+        "options": estimate.options,
+        "selected_option": estimate.selected_option,
+        "total_amount": float(estimate.total_amount) if estimate.total_amount else None,
+        "deposit_amount": float(estimate.deposit_amount) if estimate.deposit_amount else None,
+        "markup_percent": float(estimate.markup_percent),
+        "status": estimate.status,
+        "viewed_at": estimate.viewed_at.isoformat() if estimate.viewed_at else None,
+        "approved_at": estimate.approved_at.isoformat() if estimate.approved_at else None,
+        "contractor_pdf_url": estimate.contractor_pdf_url,
+        "homeowner_report_url": estimate.homeowner_report_url,
+        "sent_via": estimate.sent_via,
+        "sent_at": estimate.sent_at.isoformat() if estimate.sent_at else None,
+        "created_at": estimate.created_at.isoformat() if estimate.created_at else None,
+    }
+
+
+# ── Request Models ────────────────────────────────────────────────────────────
+
+class GenerateEstimateRequest(BaseModel):
+    assessment_id: str
+    markup_percent: Optional[float] = Field(None, ge=0, le=200)
+    # If not provided, uses company default (usually 35%)
+
+
+class UpdateEstimateRequest(BaseModel):
+    markup_percent: Optional[float] = Field(None, ge=0, le=200)
+    selected_option: Optional[str] = Field(None, pattern="^(good|better|best)$")
+    # Tech can manually choose recommended option
+
+
+# ── POST /api/estimates/generate ─────────────────────────────────────────────
+
+@router.post("/generate", status_code=status.HTTP_201_CREATED)
+async def generate_estimate(
+    body: GenerateEstimateRequest,
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Generates Good/Better/Best estimate options from assessment AI results.
+
+    9-step pipeline (Tech Spec §05) — pure math + DB lookups, zero AI cost:
+    1. Load assessment + AI analysis
+    2. Determine job types from condition → options mapping
+    3. Look up pricing (cascade: company → region → national)
+    4. Calculate line items (parts, labor, permits, disposal, refrigerant)
+    5. Apply markup percentage
+    6. Calculate energy savings (SEER comparison formula)
+    7. Check rebate eligibility
+    8. Build Good/Better/Best options array
+    9. Calculate 5-year total cost per option
+    """
+    # ── Load assessment ───────────────────────────────────────────────────────
+    result = await db.execute(
+        select(Assessment).where(
+            Assessment.id == body.assessment_id,
+            Assessment.company_id == auth.company_id,
+        )
+    )
+    assessment = result.scalar_one_or_none()
+    if not assessment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assessment not found",
+        )
+
+    if not assessment.ai_analysis:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Assessment has not been analyzed yet. Run POST /api/assessments/{id}/analyze first.",
+        )
+
+    # ── Check for existing estimate ───────────────────────────────────────────
+    existing_result = await db.execute(
+        select(Estimate).where(Estimate.assessment_id == body.assessment_id)
+    )
+    existing = existing_result.scalar_one_or_none()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Estimate already exists for this assessment. Use PATCH /api/estimates/{existing.id} to update.",
+        )
+
+    # ── Get company for settings ──────────────────────────────────────────────
+    company_result = await db.execute(
+        select(Company).where(Company.id == auth.company_id)
+    )
+    company = company_result.scalar_one_or_none()
+    if not company:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
+
+    # Determine markup: request body > company default > 35%
+    markup_percent = body.markup_percent
+    if markup_percent is None:
+        company_settings = company.settings or {}
+        markup_percent = company_settings.get("default_markup_percent", 35.0)
+
+    company_state = company.state
+
+    # ── Run engine ────────────────────────────────────────────────────────────
+    engine_result = await run_estimate_engine(
+        assessment_id=body.assessment_id,
+        assessment=assessment,
+        company_id=auth.company_id,
+        company_state=company_state,
+        markup_percent=markup_percent,
+        db=db,
+    )
+
+    # ── Create Estimate record ────────────────────────────────────────────────
+    # Ensure unique short IDs with retry
+    for _ in range(10):
+        short_id = _make_report_short_id()
+        exists_check = await db.execute(
+            select(Estimate).where(Estimate.report_short_id == short_id)
+        )
+        if not exists_check.scalar_one_or_none():
+            break
+
+    estimate = Estimate(
+        assessment_id=body.assessment_id,
+        company_id=auth.company_id,
+        report_token=_make_report_token(),
+        report_short_id=short_id,
+        options=engine_result["options"],
+        markup_percent=markup_percent,
+        status="draft",
+    )
+    db.add(estimate)
+    await db.flush()  # Get ID without full commit
+
+    # ── Create EstimateLineItem records ───────────────────────────────────────
+    for sort_idx, option in enumerate(engine_result["options"]):
+        tier = option["tier"]
+        for item_idx, item in enumerate(option.get("line_items", [])):
+            line_item = EstimateLineItem(
+                estimate_id=estimate.id,
+                option_tier=tier,
+                category=item.get("category", "parts"),
+                description=item.get("description", ""),
+                quantity=item.get("quantity", 1.0),
+                unit_cost=item.get("unit_cost", 0.0),
+                total=item.get("total", 0.0),
+                source=item.get("source", "pricing_db"),
+                sort_order=(sort_idx * 100) + item_idx,
+            )
+            db.add(line_item)
+
+    # ── Update assessment status ──────────────────────────────────────────────
+    assessment.status = "estimated"
+
+    # ── Increment company estimate count ─────────────────────────────────────
+    company.monthly_estimate_count = (company.monthly_estimate_count or 0) + 1
+
+    await db.commit()
+    await db.refresh(estimate)
+
+    return {
+        "id": str(estimate.id),
+        "assessment_id": str(estimate.assessment_id),
+        "report_token": estimate.report_token,
+        "report_short_id": estimate.report_short_id,
+        "markup_percent": float(estimate.markup_percent),
+        "status": estimate.status,
+        "equipment_type": engine_result["equipment_type"],
+        "overall_condition": engine_result["overall_condition"],
+        "estimated_age_years": engine_result["estimated_age_years"],
+        "options": estimate.options,
+        "created_at": estimate.created_at.isoformat() if estimate.created_at else None,
+    }
+
+
+# ── GET /api/estimates/process-followups (WP-09 cron) — MUST BE BEFORE /{id} ─
+
+@router.get("/process-followups")
+async def process_followups_early(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    WP-09: Cron endpoint — processes due follow-up emails.
+    Registered here (before /{estimate_id}) so FastAPI matches it correctly.
+    """
+    from services.email import get_email_sender
+    from sqlalchemy import and_
+
+    now = datetime.now(timezone.utc)
+    sender = get_email_sender()
+    sent_count = 0
+    cancelled_count = 0
+    errors = []
+
+    due_result = await db.execute(
+        select(FollowUp).where(
+            and_(
+                FollowUp.scheduled_at <= now,
+                FollowUp.sent_at.is_(None),
+                FollowUp.cancelled == False,
+            )
+        )
+    )
+    due_followups = due_result.scalars().all()
+
+    for fu in due_followups:
+        est_result = await db.execute(
+            select(Estimate).where(Estimate.id == fu.estimate_id)
+        )
+        estimate = est_result.scalar_one_or_none()
+        if not estimate:
+            fu.cancelled = True
+            cancelled_count += 1
+            continue
+
+        if estimate.status in ("approved", "completed"):
+            fu.cancelled = True
+            cancelled_count += 1
+            continue
+
+        assessment = None
+        property_record = None
+        if estimate.assessment_id:
+            assess_result = await db.execute(
+                select(Assessment).where(Assessment.id == estimate.assessment_id)
+            )
+            assessment = assess_result.scalar_one_or_none()
+        if assessment and assessment.property_id:
+            prop_result = await db.execute(
+                select(Property).where(Property.id == assessment.property_id)
+            )
+            property_record = prop_result.scalar_one_or_none()
+
+        company_result = await db.execute(
+            select(Company).where(Company.id == estimate.company_id)
+        )
+        company = company_result.scalar_one_or_none()
+        company_name = company.name if company else "ScopeSnap HVAC"
+        base_url = "http://localhost:3000"
+
+        to_email = (property_record.customer_email if property_record else None) or "homeowner@example.com"
+        customer_name = (property_record.customer_name if property_record else None) or "Valued Customer"
+
+        if estimate.homeowner_report_url:
+            report_url = (
+                estimate.homeowner_report_url
+                if estimate.homeowner_report_url.startswith("http")
+                else f"{base_url}{estimate.homeowner_report_url}"
+            )
+        else:
+            slug = company.slug if company else "hvac"
+            report_url = f"{base_url}/r/{slug}/{estimate.report_short_id}"
+
+        try:
+            await sender.send_follow_up(
+                to=to_email, company_name=company_name, report_url=report_url,
+                template=fu.template, customer_name=customer_name,
+            )
+            fu.sent_at = now
+            sent_count += 1
+        except Exception as e:
+            errors.append({"follow_up_id": str(fu.id), "error": str(e)})
+
+    await db.commit()
+
+    return {
+        "processed_at": now.isoformat(),
+        "due_found": len(due_followups),
+        "sent": sent_count,
+        "cancelled": cancelled_count,
+        "errors": errors,
+    }
+
+
+# ── GET /api/estimates/{id} ───────────────────────────────────────────────────
+
+@router.get("/{estimate_id}")
+async def get_estimate(
+    estimate_id: str,
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Returns full estimate including all Good/Better/Best options and line items."""
+    result = await db.execute(
+        select(Estimate).where(
+            Estimate.id == estimate_id,
+            Estimate.company_id == auth.company_id,
+        )
+    )
+    estimate = result.scalar_one_or_none()
+    if not estimate:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Estimate not found")
+
+    return _estimate_to_dict(estimate)
+
+
+# ── PATCH /api/estimates/{id} ─────────────────────────────────────────────────
+
+@router.patch("/{estimate_id}")
+async def update_estimate(
+    estimate_id: str,
+    body: UpdateEstimateRequest,
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Tech adjusts estimate details. Recalculates totals when markup changes.
+
+    - markup_percent: recalculates all option totals and line items
+    - selected_option: sets recommended option (good/better/best)
+    """
+    result = await db.execute(
+        select(Estimate).where(
+            Estimate.id == estimate_id,
+            Estimate.company_id == auth.company_id,
+        )
+    )
+    estimate = result.scalar_one_or_none()
+    if not estimate:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Estimate not found")
+
+    updated_fields = []
+
+    # ── Update markup + recalculate ───────────────────────────────────────────
+    if body.markup_percent is not None and body.markup_percent != float(estimate.markup_percent):
+        old_markup = float(estimate.markup_percent)
+        new_markup = body.markup_percent
+        estimate.markup_percent = new_markup
+
+        # Recalculate option totals in the stored options JSONB
+        # Deep copy required: SQLAlchemy doesn't track mutations on nested JSON objects
+        updated_options = copy.deepcopy(estimate.options)
+        for option in updated_options:
+            subtotal = Decimal(str(option.get("subtotal", 0)))
+
+            new_total = apply_markup(subtotal, new_markup)
+            option["total"] = float(new_total)
+            option["markup_percent"] = new_markup
+            option["total_after_rebate"] = float(new_total) - option.get("rebate_available", 0)
+
+            # Recalculate 5-year total:
+            # 5yr = upfront + annual_energy*5 + future_repairs
+            # Extract annual_energy*5 + future_repairs by subtracting old upfront
+            old_upfront = float(subtotal) * (1 + old_markup / 100)
+            old_five_yr = option.get("five_year_total", old_upfront)
+            running_costs = old_five_yr - old_upfront  # energy + repairs component
+            option["five_year_total"] = round(float(new_total) + running_costs, 2)
+            # NOTE: do NOT append here — options are mutated in-place on the deepcopy
+
+        estimate.options = updated_options
+        # Force SQLAlchemy to detect the JSON mutation
+        flag_modified(estimate, "options")
+        updated_fields.append("markup_percent")
+
+    if body.selected_option is not None:
+        estimate.selected_option = body.selected_option
+        # Set total_amount from selected option
+        for option in estimate.options:
+            if option["tier"] == body.selected_option:
+                estimate.total_amount = option["total"]
+                estimate.deposit_amount = round(option["total"] * 0.20, 2)
+                break
+        updated_fields.append("selected_option")
+
+    if not updated_fields:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No valid fields provided to update",
+        )
+
+    await db.commit()
+    await db.refresh(estimate)
+    return _estimate_to_dict(estimate)
+
+
+# ── GET /api/estimates/ ───────────────────────────────────────────────────────
+
+@router.get("/")
+async def list_estimates(
+    limit: int = 20,
+    offset: int = 0,
+    status_filter: Optional[str] = None,
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Lists all estimates for the current company, most recent first."""
+    query = select(Estimate).where(Estimate.company_id == auth.company_id)
+
+    if status_filter:
+        query = query.where(Estimate.status == status_filter)
+
+    query = query.order_by(Estimate.created_at.desc()).offset(offset).limit(limit)
+    result = await db.execute(query)
+    estimates = result.scalars().all()
+
+    return {
+        "items": [_estimate_to_dict(e) for e in estimates],
+        "count": len(estimates),
+        "offset": offset,
+        "limit": limit,
+    }
+
+
+# ── POST /api/estimates/{id}/documents ───────────────────────────────────────
+
+@router.post("/{estimate_id}/documents")
+async def generate_documents(
+    estimate_id: str,
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    WP-07: Generates contractor PDF estimate.
+    - Loads estimate + related data from DB
+    - Renders HTML template via Jinja2
+    - Converts to PDF via WeasyPrint
+    - Saves to LocalStorage (/tmp/scopesnap_uploads/pdfs/)
+    - Updates estimate.contractor_pdf_url
+    - Returns {contractor_pdf_url, homeowner_report_url, report_short_id}
+    """
+    import os
+    import logging as _logging
+    from config import get_settings
+
+    # Import pdf_generator lazily — WeasyPrint's module-level imports may fail
+    # in some Docker environments (missing Cairo/Pango libs). We catch that here
+    # so the endpoint still returns a valid HTTP response instead of closing the connection.
+    try:
+        from services.pdf_generator import generate_contractor_pdf
+        _pdf_available = True
+    except Exception as _import_err:
+        _logging.warning(f"pdf_generator import failed: {_import_err}")
+        generate_contractor_pdf = None  # type: ignore
+        _pdf_available = False
+
+    # Load estimate
+    result = await db.execute(
+        select(Estimate).where(
+            Estimate.id == estimate_id,
+            Estimate.company_id == auth.company_id,
+        )
+    )
+    estimate = result.scalar_one_or_none()
+    if not estimate:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Estimate not found.")
+
+    # Load assessment
+    assessment_result = await db.execute(
+        select(Assessment).where(Assessment.id == estimate.assessment_id)
+    )
+    assessment = assessment_result.scalar_one_or_none()
+
+    # Load company
+    from db.models import Company, Property, EquipmentInstance
+    company_result = await db.execute(select(Company).where(Company.id == auth.company_id))
+    company = company_result.scalar_one_or_none()
+
+    # Load property
+    property_data = {}
+    if assessment and assessment.property_id:
+        from db.models import Property
+        prop_result = await db.execute(
+            select(Property).where(Property.id == assessment.property_id)
+        )
+        prop = prop_result.scalar_one_or_none()
+        if prop:
+            property_data = {
+                "address_line1": prop.address_line1,
+                "city": prop.city,
+                "state": prop.state,
+                "zip": prop.zip,
+                "customer_name": prop.customer_name,
+                "customer_phone": prop.customer_phone,
+            }
+
+    # Load equipment
+    equipment_data = {}
+    if assessment and assessment.equipment_instance_id:
+        from db.models import EquipmentInstance
+        eq_result = await db.execute(
+            select(EquipmentInstance).where(
+                EquipmentInstance.id == assessment.equipment_instance_id
+            )
+        )
+        eq = eq_result.scalar_one_or_none()
+        if eq:
+            equipment_data = {
+                "brand": eq.brand,
+                "model_number": eq.model_number,
+                "install_year": eq.install_year,
+                "condition": eq.condition,
+            }
+
+    # Build AI issues for the PDF
+    issues_data = []
+    if assessment and assessment.ai_issues:
+        raw_issues = assessment.ai_issues
+        if isinstance(raw_issues, list):
+            for issue in raw_issues:
+                severity = issue.get("severity", "medium")
+                color_map = {"high": "red", "critical": "red", "medium": "orange", "low": "green"}
+                issues_data.append({
+                    "component": issue.get("component", ""),
+                    "issue": issue.get("issue", ""),
+                    "severity": severity,
+                    "color": color_map.get(severity, "orange"),
+                    "description_plain": issue.get("description_plain", issue.get("description", "")),
+                })
+
+    # Assemble data for the PDF generator
+    estimate_context = {
+        "report_short_id": estimate.report_short_id,
+        "report_token": estimate.report_token,
+        "assessment_id": str(estimate.assessment_id),
+        "company": {
+            "name": company.name if company else "",
+            "phone": company.phone if company else "",
+            "email": company.email if company else "",
+            "license_number": company.license_number if company else "",
+        },
+        "property": property_data,
+        "equipment": equipment_data,
+        "issues": issues_data,
+        "options": estimate.options or [],
+    }
+
+    # Generate PDF in a thread (WeasyPrint is sync)
+    import asyncio
+    import logging
+    settings = get_settings()
+    pdf_dir = os.path.join(settings.upload_dir, "pdfs")
+
+    pdf_url = None
+    pdf_size_kb = 0
+    pdf_error = None
+
+    try:
+        if not _pdf_available or generate_contractor_pdf is None:
+            raise RuntimeError("WeasyPrint / pdf_generator not available in this environment")
+        loop = asyncio.get_event_loop()
+        pdf_path = await loop.run_in_executor(
+            None,
+            lambda: generate_contractor_pdf(
+                estimate_data=estimate_context,
+                output_dir=pdf_dir,
+                filename=f"estimate-{estimate.report_short_id}.pdf",
+            )
+        )
+        pdf_filename = os.path.basename(pdf_path)
+        pdf_url = f"/files/pdfs/{pdf_filename}"
+        pdf_size_kb = round(os.path.getsize(pdf_path) / 1024, 1)
+    except Exception as exc:
+        # WeasyPrint may fail due to missing system libs in some environments.
+        # We log the error but do NOT block the flow — the homeowner report URL
+        # is still set so the Send tab remains accessible.
+        pdf_error = str(exc)
+        logging.warning(f"PDF generation failed for {estimate.report_short_id}: {exc}")
+        # Dev fallback: stub URL that signals PDF is unavailable
+        pdf_url = f"/files/pdfs/estimate-{estimate.report_short_id}-unavailable.pdf"
+
+    # Build homeowner report URL (always generated, regardless of PDF success)
+    homeowner_url = f"/r/{company.slug if company else 'hvac'}/{estimate.report_short_id}"
+
+    # Update estimate record
+    estimate.contractor_pdf_url = pdf_url
+    estimate.homeowner_report_url = homeowner_url
+    await db.commit()
+
+    response = {
+        "contractor_pdf_url": pdf_url,
+        "homeowner_report_url": homeowner_url,
+        "report_short_id": estimate.report_short_id,
+        "pdf_size_kb": pdf_size_kb,
+    }
+    if pdf_error:
+        response["pdf_warning"] = f"PDF rendering unavailable in this environment: {pdf_error}"
+    return response
+
+
+# ── POST /api/estimates/{id}/send (WP-09) ────────────────────────────────────
+
+class SendEstimateRequest(BaseModel):
+    homeowner_email: Optional[str] = None
+    homeowner_phone: Optional[str] = None
+    # If omitted, uses property customer_email / customer_phone from DB
+
+
+@router.post("/{estimate_id}/send")
+async def send_estimate(
+    estimate_id: str,
+    body: SendEstimateRequest = SendEstimateRequest(),
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    WP-09: Sends estimate to homeowner via email.
+    - Emails via ConsoleSender (dev) or ResendSender (prod)
+    - Creates 3 FollowUp records: 24h, 48h, 7d
+    - Updates estimate.status = 'sent'
+    """
+    from services.email import get_email_sender
+
+    # ── Load estimate ─────────────────────────────────────────────────────────
+    result = await db.execute(
+        select(Estimate).where(
+            Estimate.id == estimate_id,
+            Estimate.company_id == auth.company_id,
+        )
+    )
+    estimate = result.scalar_one_or_none()
+    if not estimate:
+        raise HTTPException(status_code=404, detail="Estimate not found.")
+
+    # ── Load assessment + property ────────────────────────────────────────────
+    assessment = None
+    property_record = None
+    if estimate.assessment_id:
+        assess_result = await db.execute(
+            select(Assessment).where(Assessment.id == estimate.assessment_id)
+        )
+        assessment = assess_result.scalar_one_or_none()
+    if assessment and assessment.property_id:
+        prop_result = await db.execute(
+            select(Property).where(Property.id == assessment.property_id)
+        )
+        property_record = prop_result.scalar_one_or_none()
+
+    # ── Load company ──────────────────────────────────────────────────────────
+    company_result = await db.execute(
+        select(Company).where(Company.id == auth.company_id)
+    )
+    company = company_result.scalar_one_or_none()
+    company_name = company.name if company else "ScopeSnap HVAC"
+    base_url = "http://localhost:3000"  # dev default
+
+    # ── Resolve recipient email ───────────────────────────────────────────────
+    to_email = (
+        body.homeowner_email
+        or (property_record.customer_email if property_record else None)
+        or "homeowner@example.com"   # dev fallback
+    )
+    customer_name = (
+        (property_record.customer_name if property_record else None)
+        or "Valued Customer"
+    )
+
+    # ── Build report URL ──────────────────────────────────────────────────────
+    # Ensure documents are generated first (homeowner_report_url may already be set)
+    if estimate.homeowner_report_url:
+        # Absolute URL for email
+        report_url = (
+            estimate.homeowner_report_url
+            if estimate.homeowner_report_url.startswith("http")
+            else f"{base_url}{estimate.homeowner_report_url}"
+        )
+    else:
+        slug = company.slug if company else "hvac"
+        report_url = f"{base_url}/r/{slug}/{estimate.report_short_id}"
+
+    # ── Send email ────────────────────────────────────────────────────────────
+    sender = get_email_sender()
+    # options is a list: [{tier: 'good', total: ...}, ...]
+    options_list = estimate.options if isinstance(estimate.options, list) else []
+    best_option = next((o for o in options_list if o.get("tier") == "best"), {})
+    estimate_total = float(estimate.total_amount or best_option.get("total", 0) or 0)
+
+    await sender.send_estimate(
+        to=to_email,
+        company_name=company_name,
+        report_url=report_url,
+        report_short_id=estimate.report_short_id,
+        customer_name=customer_name,
+        estimate_total=estimate_total,
+    )
+
+    # ── Create 3 follow-up records ────────────────────────────────────────────
+    now = datetime.now(timezone.utc)
+    follow_up_schedule = [
+        ("24h_reminder",  now + timedelta(hours=24)),
+        ("48h_reminder",  now + timedelta(hours=48)),
+        ("7d_last_chance", now + timedelta(days=7)),
+    ]
+    for template, scheduled_at in follow_up_schedule:
+        fu = FollowUp(
+            estimate_id=estimate.id,
+            type="email",
+            scheduled_at=scheduled_at,
+            template=template,
+            cancelled=False,
+        )
+        db.add(fu)
+
+    # ── Update estimate status ────────────────────────────────────────────────
+    estimate.status = "sent"
+    estimate.sent_at = now
+    estimate.sent_via = "email"
+
+    await db.commit()
+
+    return {
+        "success": True,
+        "sent_to": to_email,
+        "report_url": report_url,
+        "report_short_id": estimate.report_short_id,
+        "follow_ups_created": 3,
+        "follow_up_schedule": [
+            {"template": t, "scheduled_at": s.isoformat()}
+            for t, s in follow_up_schedule
+        ],
+        "status": "sent",
+    }
+
+
+# ── GET /api/estimates/process-followups (WP-09 cron) ────────────────────────
+
+@router.get("/process-followups")
+async def process_followups(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    WP-09: Cron endpoint — processes due follow-up emails.
+    Call this endpoint on a schedule (e.g., every hour via cron or a task queue).
+
+    - Finds follow-ups where scheduled_at <= now AND sent_at IS NULL AND cancelled = False
+    - Cancels follow-ups for already-approved estimates
+    - Sends remaining due follow-ups
+    """
+    from services.email import get_email_sender
+    from sqlalchemy import and_
+
+    now = datetime.now(timezone.utc)
+    sender = get_email_sender()
+    sent_count = 0
+    cancelled_count = 0
+    errors = []
+
+    # Find all due follow-ups (not yet sent, not cancelled, scheduled in the past)
+    due_result = await db.execute(
+        select(FollowUp).where(
+            and_(
+                FollowUp.scheduled_at <= now,
+                FollowUp.sent_at.is_(None),
+                FollowUp.cancelled == False,
+            )
+        )
+    )
+    due_followups = due_result.scalars().all()
+
+    for fu in due_followups:
+        # Load estimate
+        est_result = await db.execute(
+            select(Estimate).where(Estimate.id == fu.estimate_id)
+        )
+        estimate = est_result.scalar_one_or_none()
+        if not estimate:
+            fu.cancelled = True
+            cancelled_count += 1
+            continue
+
+        # Cancel if already approved
+        if estimate.status in ("approved", "completed"):
+            fu.cancelled = True
+            cancelled_count += 1
+            continue
+
+        # Load property for recipient info
+        assessment = None
+        property_record = None
+        if estimate.assessment_id:
+            assess_result = await db.execute(
+                select(Assessment).where(Assessment.id == estimate.assessment_id)
+            )
+            assessment = assess_result.scalar_one_or_none()
+        if assessment and assessment.property_id:
+            prop_result = await db.execute(
+                select(Property).where(Property.id == assessment.property_id)
+            )
+            property_record = prop_result.scalar_one_or_none()
+
+        # Load company
+        company_result = await db.execute(
+            select(Company).where(Company.id == estimate.company_id)
+        )
+        company = company_result.scalar_one_or_none()
+        company_name = company.name if company else "ScopeSnap HVAC"
+
+        to_email = (
+            (property_record.customer_email if property_record else None)
+            or "homeowner@example.com"
+        )
+        customer_name = (
+            (property_record.customer_name if property_record else None)
+            or "Valued Customer"
+        )
+
+        base_url = "http://localhost:3000"
+        if estimate.homeowner_report_url:
+            report_url = (
+                estimate.homeowner_report_url
+                if estimate.homeowner_report_url.startswith("http")
+                else f"{base_url}{estimate.homeowner_report_url}"
+            )
+        else:
+            slug = company.slug if company else "hvac"
+            report_url = f"{base_url}/r/{slug}/{estimate.report_short_id}"
+
+        try:
+            await sender.send_follow_up(
+                to=to_email,
+                company_name=company_name,
+                report_url=report_url,
+                template=fu.template,
+                customer_name=customer_name,
+            )
+            fu.sent_at = now
+            sent_count += 1
+        except Exception as e:
+            errors.append({"follow_up_id": str(fu.id), "error": str(e)})
+
+    await db.commit()
+
+    return {
+        "processed_at": now.isoformat(),
+        "due_found": len(due_followups),
+        "sent": sent_count,
+        "cancelled": cancelled_count,
+        "errors": errors,
+    }

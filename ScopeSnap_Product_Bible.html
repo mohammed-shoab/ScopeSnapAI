@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScopeSnap Product Bible — Mainnov Tech</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&family=Fraunces:wght@700;900&display=swap');
+:root{--bg:#0a0a0f;--s:#12121a;--s2:#1a1a26;--bdr:#2a2a3a;--tx:#e8e8f0;--dim:#8888a0;--g:#00e5a0;--b:#00b8ff;--r:#ff4466;--w:#ffaa00;--p:#a855f7;--teal:#00bfa5}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+.c{max-width:1280px;margin:0 auto;padding:32px 20px}
+
+/* Hero */
+.hero{text-align:center;padding:60px 0 30px;position:relative}
+.hero::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(circle,rgba(0,229,160,.06) 0%,transparent 70%);pointer-events:none}
+.hero .badge{display:inline-block;padding:5px 14px;background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.2);border-radius:20px;font-size:12px;color:var(--g);font-family:'JetBrains Mono',monospace;margin-bottom:16px}
+.hero h1{font-family:'Fraunces',serif;font-size:clamp(28px,4.5vw,48px);font-weight:900;line-height:1.15;margin-bottom:12px;background:linear-gradient(135deg,#fff 30%,var(--g));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{color:var(--dim);font-size:15px;max-width:800px;margin:0 auto}
+
+/* TOC */
+.toc{background:var(--s);border:1px solid var(--bdr);border-radius:12px;padding:24px 28px;margin:30px 0 50px;columns:2;column-gap:32px}
+.toc h3{font-family:'Fraunces',serif;font-size:18px;margin-bottom:12px;color:var(--g);column-span:all}
+.toc a{display:block;color:var(--dim);text-decoration:none;font-size:13px;padding:3px 0;transition:color .2s}
+.toc a:hover{color:var(--g)}
+.toc a .tn{color:var(--g);font-family:'JetBrains Mono',monospace;font-size:11px;margin-right:6px}
+.toc .toc-sep{break-before:column}
+
+/* Sections */
+.sec{margin-bottom:56px}
+.sec-h{margin-bottom:24px;padding-bottom:12px;border-bottom:1px solid var(--bdr)}
+.sec-h h2{font-family:'Fraunces',serif;font-size:24px;font-weight:700;margin-bottom:4px}
+.sec-h .n{font-family:'JetBrains Mono',monospace;color:var(--g);font-size:13px;display:block;margin-bottom:3px}
+.sec-h p{color:var(--dim);font-size:13px}
+
+/* Cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:20px}
+.card{background:var(--s);border:1px solid var(--bdr);border-radius:10px;padding:18px}
+.card h3{font-size:14px;font-weight:700;margin-bottom:5px;color:#fff}
+.card p,.card li{font-size:12px;color:var(--dim);line-height:1.7}
+.card ul{padding-left:16px;margin-top:4px}
+.card.green{border-left:3px solid var(--g)}
+.card.blue{border-left:3px solid var(--b)}
+.card.red{border-left:3px solid var(--r)}
+.card.orange{border-left:3px solid var(--w)}
+.card.purple{border-left:3px solid var(--p)}
+.card.teal{border-left:3px solid var(--teal)}
+.card .num{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--g);margin-bottom:4px}
+
+/* Tables */
+.tw{overflow-x:auto;margin:16px 0;border-radius:10px;border:1px solid var(--bdr)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead{background:var(--s2)}
+th{padding:10px 12px;text-align:left;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--g);font-family:'JetBrains Mono',monospace;border-bottom:1px solid var(--bdr);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--bdr);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(0,229,160,.02)}
+td strong{color:#fff}
+
+/* Tags */
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;font-family:'JetBrains Mono',monospace;margin:1px}
+.tag-g{background:rgba(0,229,160,.15);color:var(--g)}
+.tag-b{background:rgba(0,184,255,.15);color:var(--b)}
+.tag-r{background:rgba(255,68,102,.15);color:var(--r)}
+.tag-w{background:rgba(255,170,0,.15);color:var(--w)}
+.tag-p{background:rgba(168,85,247,.15);color:var(--p)}
+
+/* Advice boxes */
+.ab{background:var(--s);border:1px solid var(--bdr);border-radius:10px;padding:20px;margin-bottom:14px}
+.ab h3{font-size:15px;font-weight:700;margin-bottom:8px;color:#fff}
+.ab p,.ab li{font-size:12px;color:var(--dim);line-height:1.8}
+.ab ul{padding-left:16px;margin-top:4px}
+.ab .co{background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.15);border-radius:8px;padding:10px 14px;margin-top:12px;font-size:11px;color:var(--g);font-family:'JetBrains Mono',monospace;line-height:1.6}
+.ab .warn{background:rgba(255,68,102,.06);border:1px solid rgba(255,68,102,.15);border-radius:8px;padding:10px 14px;margin-top:12px;font-size:11px;color:var(--r);font-family:'JetBrains Mono',monospace;line-height:1.6}
+.ab .info{background:rgba(0,184,255,.06);border:1px solid rgba(0,184,255,.15);border-radius:8px;padding:10px 14px;margin-top:12px;font-size:11px;color:var(--b);font-family:'JetBrains Mono',monospace;line-height:1.6}
+
+/* Decision log */
+.dl{border-left:3px solid var(--g);padding:12px 16px;margin:10px 0;background:var(--s);border-radius:0 8px 8px 0}
+.dl .dt{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--g);margin-bottom:2px}
+.dl .dd{font-size:13px;color:#fff;font-weight:700;margin-bottom:2px}
+.dl .dr{font-size:11px;color:var(--dim)}
+
+.dl.pending{border-left-color:var(--w)}
+.dl.pending .dt{color:var(--w)}
+
+/* Phase cards */
+.phase-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:16px 0}
+.pc{background:var(--s);border:1px solid var(--bdr);border-radius:12px;padding:20px;position:relative;overflow:hidden}
+.pc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.pc.p1::before{background:var(--g)}
+.pc.p2::before{background:var(--b)}
+.pc.p3::before{background:var(--w)}
+.pc .ph{font-family:'JetBrains Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
+.pc.p1 .ph{color:var(--g)}.pc.p2 .ph{color:var(--b)}.pc.p3 .ph{color:var(--w)}
+.pc .pname{font-family:'Fraunces',serif;font-size:16px;font-weight:700;color:#fff;margin-bottom:3px}
+.pc .ptime{font-size:11px;color:var(--dim);margin-bottom:6px}
+.pc p{font-size:11px;color:var(--dim);line-height:1.6}
+.pc .pm{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;margin-top:8px;padding-top:8px;border-top:1px solid var(--bdr)}
+.pc.p1 .pm{color:var(--g)}.pc.p2 .pm{color:var(--b)}.pc.p3 .pm{color:var(--w)}
+
+/* Competitor card */
+.comp{background:var(--s);border:1px solid var(--bdr);border-radius:10px;padding:18px;margin-bottom:10px}
+.comp h3{font-size:15px;font-weight:700;color:#fff;margin-bottom:2px}
+.comp .threat{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:4px;display:inline-block;margin-bottom:8px}
+.comp .threat.high{background:rgba(255,68,102,.15);color:var(--r)}
+.comp .threat.med{background:rgba(255,170,0,.15);color:var(--w)}
+.comp .threat.low{background:rgba(0,229,160,.15);color:var(--g)}
+.comp p,.comp li{font-size:12px;color:var(--dim);line-height:1.7}
+.comp ul{padding-left:16px;margin-top:4px}
+
+/* Footer */
+.ft{text-align:center;padding:24px 0;color:var(--dim);font-size:11px;border-top:1px solid var(--bdr);margin-top:32px}
+
+/* Version banner */
+.vb{background:linear-gradient(135deg,rgba(0,229,160,.08),rgba(0,184,255,.06));border:1px solid rgba(0,229,160,.15);border-radius:10px;padding:16px 20px;margin:20px 0;font-size:12px;color:var(--dim)}
+.vb strong{color:var(--g)}
+
+@media(max-width:768px){.toc{columns:1}.phase-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="c">
+
+<!-- ======== HERO ======== -->
+<div class="hero">
+<div class="badge">SCOPESNAP PRODUCT BIBLE — V1.0 — MARCH 2026</div>
+<h1>ScopeSnap Product Bible</h1>
+<p>The single source of truth for building ScopeSnap AI. Every decision, every data point, every competitive insight — documented with reasoning. Built using Kaizen: this document grows incrementally with every conversation, every customer interview, every competitor move.</p>
+</div>
+
+<div class="vb">
+<strong>VERSION HISTORY</strong><br>
+<strong>V1.0 — March 20, 2026:</strong> Initial creation. Consolidates all research from: US SMB Software Market Analysis, Cross-Model Verification (4 AI models × 2 rounds), Trust Barrier Analysis, Expert-Weighted Product Scoring (3 iterations), ScopeSnap Vertical Prioritization, Competitive Intelligence (ServiceTitan deep-dive + EstimationPro teardown), Integration Strategy, Workflow Positioning. Source: ~7,000 lines of conversation transcript + 15 deliverable documents.<br>
+<strong>V1.1 — March 20, 2026:</strong> Major update to §8 (Integration & Workflow Strategy). Added: ServiceTitan complete feature audit (15 product categories), 5 anti-copy protection rules with specific examples, per-platform integration playbook (QuickBooks, Jobber, Housecall Pro, ServiceTitan) with API notes and risk ratings, expanded Lotus 1-2-3 analysis with shallow-copy defense strategy, detailed user archetypes with data flow descriptions.<br>
+<strong>V1.2 — March 20, 2026:</strong> Major update to §7 (Pricing). Added: full unit economics breakdown ($0.01-$0.02/estimate), Early Bird pricing strategy ($9.99/mo for first 500 users — 87% cheaper than EstimationPro), margin analysis by tier, Early Bird exit strategy, and the reasoning for why aggressive pricing is the right launch move for a no-name startup.<br>
+<strong>V1.3 — March 20, 2026:</strong> Refined §7 Early Bird strategy. Key changes: (1) Price displayed as $39 slashed → $9.99 (anchors value at $39), (2) "500 users" is flexible marketing language — we control when Early Bird ends based on product readiness and data density, not a hard counter, (3) Added "three hard truths" — V1 will be mediocre (need forgiving users), without data we have no moat (data IS the product), and we're extremely vulnerable to competition until data density is achieved. (4) Added three-phase pricing evolution from Early Bird through transition.<br>
+<strong>V1.4 — March 20, 2026:</strong> Added §10 (Go-to-Market Strategy). 8 acquisition channels with detailed playbooks: Google Search Ads (day 1 revenue engine), HVAC-specific SEO calculators (EstimationPro counter — 15 tools), HVAC community infiltration (HVAC-Talk, Reddit, Facebook — the slow burn), Upwork network leveraging (our secret weapon), content marketing ("HVAC estimation expert" positioning), YouTube demos, HVAC trade influencers (Tommy Mello, HVAC School), and the homeowner report viral loop. Includes 90-day GTM execution timeline and metrics framework.<br>
+<strong>V1.5 — March 20, 2026:</strong> Expanded §10 Channel 2 (SEO Calculators) with complete data source audit for all 15 calculators. Key finding: ALL can be built with free public data (EIA.gov, ACCA Manual J/D, ENERGY STAR, DSIRE, manufacturer websites, HomeAdvisor/Angi). Each calculator has documented: data source, core formula/logic, and build time estimate. Added 3-tier build sequence and "Data Evolution" strategy showing how calculators upgrade from public data → ScopeSnap proprietary aggregate data over time. Total build effort: ~25-30 days across 6 months.<br>
+<strong>V1.6 — March 20, 2026:</strong> Expanded §10 Channel 5 (Content Marketing) with complete distribution strategy. Added: 8 free distribution platforms with do's/don'ts. Added content-to-platform distribution matrix. Added content repurposing system: write once → distribute 5+ ways. All free.<br>
+<strong>V1.7 — March 20, 2026:</strong> Added §3 (Product Vision — Working Backwards). Steve Jobs method: designed the complete user experience at month 12 before working backwards to MVP. Three acts following real personas: Act 1 — Mike the tech (photo → AI equipment ID → estimate + homeowner report in 5 minutes), Act 2 — Dave the owner (accuracy tracker, BenchmarkIQ, services flywheel activation), Act 3 — Sarah the homeowner (visual report shared with husband, viral loop to neighbor). Includes complete platform view and "working backwards" framing. All sections renumbered (now 12 sections).<br>
+<strong>V1.8 — March 20, 2026:</strong> Added interactive prototype references to §3. Three clickable HTML prototypes now exist as companion files: (1) Tech Mobile App — 9-screen clickable prototype showing Mike's complete workflow from home screen through capture, AI analysis, estimate builder, output generation, present mode with annotated photo slideshow, send to customer, and save to history. (2) Owner Dashboard — Full laptop-width prototype showing Dave's Friday afternoon view: $70K annual leak hero metric, 4 stat cards, tech accuracy scores with AI coaching suggestions, BenchmarkIQ comparisons vs 287 Houston HVAC companies, top profit leaks with dollar amounts, equipment aging alerts with replacement campaign opportunity, and recent estimates table. (3) Homeowner Report — Three-part experience: text message + email notification with annotated photo preview, mobile report (Sarah's phone) with scrolling visual report including health gauge, annotated equipment photo with animated callouts, three selectable options with dynamic approve button, 5-year cost comparison, and Stripe deposit payment, desktop report (Mark's laptop) with responsive two-column layout optimized for the "show my spouse" moment. All prototypes use Steve Jobs design principles: answer the most important question in 3 seconds, then layer detail. New decision log entry added.<br>
+<strong>V1.9 — March 21, 2026:</strong> MVP Technical Specification completed as companion document (ScopeSnap_MVP_Technical_Spec.html). 12 sections covering: system architecture, complete database schema (12 tables), all API endpoints mapped to prototype screens, Vision AI prompt engineering with exact prompts, estimate generation pipeline, homeowner report architecture, equipment database seed plan, file storage, authentication, Stripe billing, email automation, and 12-week build plan. Decision log updated: MVP spec moved from PENDING to COMPLETED.<br>
+<strong>V2.0 — March 21, 2026:</strong> Major infrastructure revision. After cost analysis comparing AWS, GCP, Azure, and hybrid managed services: replaced Railway ($5/mo) with Google Cloud Run (free tier — 2M requests/mo, scales to zero). Replaced Supabase with Neon for PostgreSQL (free tier, scale-to-zero). Confirmed Cloudflare R2 over Cloud Storage (zero egress fees). Finalized "Local First, Cloud When Ready" development strategy — build everything on laptop, deploy to cloud only when product is ready for beta testers. Added complete local development setup guide to tech spec. Verified cost at every stage: $0/month through beta, $0-5 at 50 users, $48-75 at 500 users, $170-185 at 2,000 users. Infrastructure margins 98-99% at all stages. Tech stack section in §10 updated to match. Tech spec updated to V1.1.<br>
+<strong>V2.1 — March 21, 2026:</strong> Added "One App, Trade-Specific Configuration" decision to §05 (Vertical Strategy). Confirmed: build ONE ScopeSnap app with trade selection at onboarding (one screen, one tap, one time), NOT separate apps per trade. Trade stored in companies.trade column, configures equipment DB, pricing, terminology, and AI prompts per trade. Zero extra clicks in daily workflow. Marketing uses trade-specific landing pages (scopesnap.com/hvac, /plumbing, /electrical) pointing to same product. Expansion per trade: ~2 weeks (seed equipment + pricing + prompts), not months. Multi-trade companies deferred to V2. Evidence: Salesforce Industry Clouds, Shopify themes, Jobber/Housecall Pro all use one-platform-multi-vertical approach. Separate apps fragment data moat and multiply maintenance by N.<br>
+<strong>HOW TO UPDATE:</strong> Every new conversation about ScopeSnap should end with "update the Product Bible" — Claude will add a new version entry and update relevant sections. Small updates go in the Decision Log (§10). Large updates get their own sections.
+</div>
+
+<!-- ======== TABLE OF CONTENTS ======== -->
+<div class="toc">
+<h3>Table of Contents</h3>
+<a href="#s1"><span class="tn">01</span> Market Intelligence — The $72B Opportunity</a>
+<a href="#s2"><span class="tn">02</span> Product Strategy — The Three-Phase Platform</a>
+<a href="#s3"><span class="tn">03</span> The Product Vision — Working Backwards (Steve Jobs Method)</a>
+<a href="#s4"><span class="tn">04</span> ScopeSnap Deep Dive — What to Build First</a>
+<a href="#s5"><span class="tn">05</span> Vertical Strategy — HVAC First, Then Expand</a>
+<a href="#s6"><span class="tn">06</span> Competitive Intelligence — Who We're Fighting</a>
+<div class="toc-sep"></div>
+<a href="#s7"><span class="tn">07</span> Unique Differentiators — Why We Win</a>
+<a href="#s8"><span class="tn">08</span> Positioning & Pricing — How We Sell</a>
+<a href="#s9"><span class="tn">09</span> Integration & Workflow Strategy</a>
+<a href="#s10"><span class="tn">10</span> Technical Architecture & Build Plan</a>
+<a href="#s11"><span class="tn">11</span> Go-to-Market Strategy — How We Get HVAC Customers</a>
+<a href="#s12"><span class="tn">12</span> Decision Log — The Kaizen Record</a>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: MARKET INTELLIGENCE -->
+<!-- ============================================================ -->
+<div class="sec" id="s1">
+<div class="sec-h">
+<span class="n">01</span>
+<h2>Market Intelligence — The $72B Opportunity</h2>
+<p>Cross-model verified research from Mordor Intelligence, Gartner, IDC, SBA, and 4 independent AI analyses.</p>
+</div>
+
+<div class="grid">
+<div class="card green"><div class="num">$72.35B</div><h3>Total US SMB Software Market</h3><p>Mordor Intelligence, January 2026. This is the correct denominator. Models that used $300-400B were including enterprise/cloud infrastructure — a 4-5x overcount.</p></div>
+<div class="card green"><div class="num">26.3%</div><h3>Accounting & Finance Share</h3><p>#1 category by value. Not CRM, not Marketing, not Security. Two of four AI models missed this because they applied enterprise patterns to SMB markets.</p></div>
+<div class="card blue"><div class="num">92%</div><h3>SMB Cloud Adoption</h3><p>US SBA 2024: 92% of SMEs adopted at least one cloud-based or digital management software. QuickBooks/Xero near-universal.</p></div>
+<div class="card orange"><div class="num">15%</div><h3>Standalone BI Adoption</h3><p>Only 15% of SMBs buy standalone analytics tools. This is the most strategically important insight: don't sell "analytics" — sell outcomes.</p></div>
+</div>
+
+<div class="ab">
+<h3>The Seven Strategic Implications</h3>
+<ul>
+<li><strong>Don't sell "analytics"</strong> — sell leak detection. Only 15% buy BI tools. 92% buy accounting software. Position as financial health tool.</li>
+<li><strong>Accounting is the gateway integration.</strong> 92% adoption, 95%+ renewal. QuickBooks Online API is the MVP integration for Phase 2.</li>
+<li><strong>Vertical software is the unfair advantage.</strong> 42% adoption but 88% retention (highest of any category). Build here.</li>
+<li><strong>CRM integration is optional, not required.</strong> Only ~50% of SMBs use CRM. Making it required cuts addressable market in half.</li>
+<li><strong>Marketing/collab tools are being disrupted</strong> — consume their data, never replace their function.</li>
+<li><strong>CRM buyers spend more per purchase</strong> but fewer buy. CRM integration justifies higher price tier ($349/mo vs $149/mo).</li>
+<li><strong>Your ICP juggles 9 tools on average</strong> — they're drowning. "You have 9 tools. None talk to each other. We connect them."</li>
+</ul>
+<div class="co">CONFIDENCE: HIGH for categories anchored in Mordor's SMB-specific report (Accounting 26.3%, Security CAGR 15.98%, total $72.35B). MEDIUM for derived categories. LOW for Marketing (highest cross-model disagreement: 6.6% to 15%).</div>
+</div>
+
+<div class="ab">
+<h3>Reconciled Market Tables (Companion Data)</h3>
+<p>Full numerical tables with dollar values, adoption rates, and confidence levels are in the Excel companion files:</p>
+<ul>
+<li><strong>Table 1 (By Market Value):</strong> 9 categories ranked by share of $72B — see <em>SMB_Software_Market_Analysis_Mainnov.xlsx</em></li>
+<li><strong>Table 2 (By Adoption/Quantity):</strong> 10 categories ranked by % of SMBs that purchase — see same file</li>
+<li><strong>Cross-Model Verification:</strong> 4-model accuracy scorecard — see <em>Mainnov_SMB_Software_Market_CrossModel_Verification.docx</em></li>
+</ul>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: PRODUCT STRATEGY -->
+<!-- ============================================================ -->
+<div class="sec" id="s2">
+<div class="sec-h">
+<span class="n">02</span>
+<h2>Product Strategy — The Three-Phase Platform</h2>
+<p>ScopeSnap → LeakSense → BenchmarkIQ. Validated through SaaSpocalypse filtering, 3 iterations of expert-weighted scoring, and trust barrier analysis across 4 external AI models.</p>
+</div>
+
+<div class="ab">
+<h3>The SaaSpocalypse Filter — What Kills vs. What Survives</h3>
+<p>Based on Bain, Forrester, Bessemer, HarbourVest research and the Feb 2026 $2T SaaS selloff.</p>
+<div class="grid" style="margin-top:12px">
+<div class="card red"><h3>✕ Thin AI Wrapper</h3><p>ChatGPT API on a CRUD database. Zero moat. #1 killer of 2025-era AI SaaS.</p></div>
+<div class="card red"><h3>✕ Probabilistic-Only Output</h3><p>Core value relies on LLM text that's 95% right. Businesses won't trust it for financial decisions.</p></div>
+<div class="card red"><h3>✕ Per-Seat on UI Tools</h3><p>AI agents make per-seat collapse. One AI user does work of five.</p></div>
+<div class="card red"><h3>✕ Generic Horizontal</h3><p>Project management, basic CRM, report generation — AI agents replicate these fully.</p></div>
+<div class="card green"><h3>✓ Deterministic Core</h3><p>ScopeSnap: vision AI + pricing DB. LeakSense: mathematical anomaly detection. AI narrates; math decides.</p></div>
+<div class="card green"><h3>✓ Proprietary Data Flywheel</h3><p>BenchmarkIQ gets more valuable with every customer. Aggregate pricing = unreplicable data asset.</p></div>
+<div class="card green"><h3>✓ Embedded in Workflow</h3><p>ScopeSnap becomes how techs estimate. Removing it breaks the business process.</p></div>
+<div class="card green"><h3>✓ Multimodal + Physical</h3><p>ScopeSnap = camera + domain knowledge + structured output. The 2025+ frontier.</p></div>
+</div>
+</div>
+
+<div class="phase-grid">
+<div class="pc p1">
+<div class="ph">Phase 1 — Months 1–4</div>
+<div class="pname">ScopeSnap AI</div>
+<div class="ptime">Score: 7.82 | Entry product | Zero trust barrier</div>
+<p><strong>What:</strong> Photo → estimate/scope-of-work for HVAC/plumbing. Equipment identification, lifecycle intelligence, customer-facing visual reports.</p>
+<p style="margin-top:4px"><strong>Why first:</strong> Zero trust barrier (just photos). Zero cold start. Fastest to revenue (6-8 wk MVP). Highest novelty (10/10). Longest competitive runway.</p>
+<p style="margin-top:4px"><strong>Revenue:</strong> Free: 5 docs/mo. Early Bird: $9.99/mo (first 500 users, 50 docs). Pro: $149/mo unlimited. Team: $349/mo.</p>
+<div class="pm">Target: 100–200 paying customers by month 4</div>
+</div>
+<div class="pc p2">
+<div class="ph">Phase 2 — Months 5–8</div>
+<div class="pname">LeakSense AI</div>
+<div class="ptime">Score: 7.80 | Trust-earned upgrade</div>
+<p><strong>What:</strong> Connect QuickBooks → estimate accuracy analysis → job margin tracking → labor cost leak detection.</p>
+<p style="margin-top:4px"><strong>Why second:</strong> Trust earned through ScopeSnap. Natural upgrade: "Your estimates are 18% below actual cost. Connect QB to see where the $650 gap leaks."</p>
+<p style="margin-top:4px"><strong>Revenue:</strong> $249/mo upgrade or $399/mo bundle. Services upsell: $5K–$25K projects.</p>
+<div class="pm">Target: 40–60% upgrade rate from ScopeSnap users</div>
+</div>
+<div class="pc p3">
+<div class="ph">Phase 3 — Months 9–12</div>
+<div class="pname">BenchmarkIQ</div>
+<div class="ptime">Score: 7.86 | Network effect engine</div>
+<p><strong>What:</strong> Anonymous benchmarks across 200+ firms. Estimation accuracy, revenue/truck, labor %, average ticket.</p>
+<p style="margin-top:4px"><strong>Why third:</strong> By month 9, you have 200+ ScopeSnap users + 80-100 with LeakSense. No cold start. Benchmarks meaningful.</p>
+<p style="margin-top:4px"><strong>Revenue:</strong> Free tier in platform. Premium: $99/mo add-on. Viral: "see how you rank."</p>
+<div class="pm">Target: Viral coefficient >1.2</div>
+</div>
+</div>
+
+<div class="ab">
+<h3>Expert-Weighted Scoring (Final V3)</h3>
+<p>10 criteria, 3 iterations with founder pushback. Top 3 within 0.06 points — they're phases of ONE platform.</p>
+<ul>
+<li><strong>BenchmarkIQ 7.86</strong> (#1 by score, Phase 3 due to cold start)</li>
+<li><strong>ScopeSnap 7.82</strong> (#2 by score, Phase 1 due to zero trust barrier)</li>
+<li><strong>LeakSense 7.80</strong> (#3 by score, Phase 2 — services flywheel activator)</li>
+<li>VoiceOps 7.40 (Future) | ComplianceGhost 6.71 (Future)</li>
+</ul>
+<div class="info">SCORING DETAILS: Full weighted scoring tables with all 10 criteria, weights, and per-product scores are in <em>ScopeSnap_CrossModel_Vertical_Analysis.xlsx → "Scoring Comparison" tab</em></div>
+</div>
+
+<div class="ab">
+<h3>The Services Flywheel</h3>
+<p><strong>ScopeSnap finds a problem</strong> ("you're losing $180K/year") → <strong>Owner pays $5K–$25K</strong> for custom dashboard to fix it → <strong>Dashboard connects more data</strong> → discovers more issues → <strong>SaaS becomes more valuable</strong> → happy customer tells peers → <strong>new SaaS signup</strong> → repeat.</p>
+<div class="co">TIMING: Flywheel activates in Phase 2 (month 5-6) when LeakSense connects to QuickBooks. ScopeSnap alone doesn't create the "shocking discovery." But ScopeSnap revenue ($149/mo × 100+ customers = $15K+ MRR) funds the LeakSense build.</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: THE PRODUCT VISION — WORKING BACKWARDS -->
+<!-- ============================================================ -->
+<div class="sec" id="s3">
+<div class="sec-h">
+<span class="n">03</span>
+<h2>The Product Vision — Working Backwards from the Perfect Experience</h2>
+<p>Steve Jobs designed the experience first, then figured out the technology. This section describes the FINISHED product — what ScopeSnap looks like at month 12 with all features shipped. We build backwards from this vision.</p>
+</div>
+
+<div class="ab">
+<h3>The Cast — Who Uses ScopeSnap</h3>
+<ul>
+<li><strong>Mike (HVAC Technician):</strong> 8 years experience. Does 4-6 service calls/day in Houston. Good at diagnosing problems, hates writing estimates. Currently takes 30-45 minutes per estimate using a paper form and calculator. His truck has a tablet mount.</li>
+<li><strong>Dave (Owner, 10-tech shop):</strong> Started as a tech 20 years ago. Now manages the business. Uses Jobber for scheduling. QuickBooks for accounting. Knows his techs under-price jobs but can't prove it. Spends Friday afternoons reconciling estimates vs invoices in Excel. His biggest fear: "We're busy but are we actually making money?"</li>
+<li><strong>Sarah (Homeowner):</strong> Her AC died on a 98°F Saturday. She called two HVAC companies. She wants to understand what's wrong, see the options clearly, and share the information with her husband before spending $8,000. She's comparing two contractors and will hire whoever makes her feel most confident.</li>
+</ul>
+</div>
+
+<div class="ab">
+<h3>ACT 1: Mike's Morning — The ScopeSnap Experience (What the Tech Sees)</h3>
+
+<p><strong>7:15 AM — Mike opens the app on his phone</strong></p>
+<p>He sees his dashboard. Simple. Three things:</p>
+<ul>
+<li>Today's jobs (pulled from Jobber integration): 5 scheduled calls with addresses and customer names</li>
+<li>His accuracy score: "92.4% — Top 15% of Houston HVAC techs on ScopeSnap." This is a point of pride. He's been improving since he started using the app 4 months ago.</li>
+<li>A notification: "2 homeowners from last week's estimates haven't responded. Auto follow-up sent."</li>
+</ul>
+<p>Mike taps his first job. The app shows the customer name, address, and — this is key — <strong>the property history.</strong> "Last visit: March 2025 by Tech Brian. Carrier 24ACC636 installed 2016. Noted: evaporator coil showing early signs of corrosion. Recommended coil cleaning in 6 months." Mike now arrives at the home knowing more about this customer's equipment than the customer does. He's already 10 steps ahead of any competitor who walks in blind.</p>
+
+<p style="margin-top:16px"><strong>8:30 AM — Mike arrives at the first call. AC not cooling.</strong></p>
+<p>He walks to the outdoor unit. Opens ScopeSnap. Taps the big green "New Assessment" button. Takes 3 photos:</p>
+<ul>
+<li>Photo 1: The outdoor condenser unit — full view showing the Carrier nameplate and overall condition</li>
+<li>Photo 2: Close-up of the nameplate — model number and serial number visible</li>
+<li>Photo 3: The evaporator coil inside the air handler — showing the corrosion Brian noted last year, now significantly worse</li>
+</ul>
+
+<p>He taps "Analyze." In 15 seconds, the screen fills with information:</p>
+
+<div class="grid" style="margin-top:12px">
+<div class="card green">
+<h3>Equipment Identified</h3>
+<p><strong>Carrier 24ACC636A003</strong><br>
+3-ton, SEER 16, R-410A refrigerant<br>
+Manufactured: June 2016 (9 years old)<br>
+Expected lifespan: 15-20 years<br>
+<strong>Remaining life estimate: 6-11 years</strong></p>
+</div>
+<div class="card orange">
+<h3>Condition Assessment</h3>
+<p><strong>Evaporator coil: MODERATE corrosion</strong> (worsened since March 2025 visit)<br>
+Condenser fins: Minor bending, 15% blocked<br>
+Overall condition: Fair — functional but declining<br>
+<strong>⚠️ Known issue:</strong> Carrier 24ACC6 series coils in Gulf Coast humidity show accelerated corrosion after year 7. 34% of units in Houston metro needed coil replacement by year 10.</p>
+</div>
+<div class="card blue">
+<h3>Recall & Safety Check</h3>
+<p>✅ No active recalls for this model<br>
+✅ No safety advisories<br>
+ℹ️ Carrier Technical Bulletin TB-2023-08: Updated coil coating recommended for Gulf Coast installations</p>
+</div>
+</div>
+
+<p>Mike didn't type a single word. The AI identified the equipment from the photos, pulled its history from the property record, cross-referenced against the equipment lifecycle database, and checked for recalls. In 15 seconds.</p>
+
+<p style="margin-top:16px"><strong>8:32 AM — Mike taps "Generate Estimate"</strong></p>
+<p>The app shows a configuration screen — pre-filled based on the AI analysis but Mike can adjust:</p>
+<ul>
+<li>Job type: [Coil replacement] [System replacement] [Repair only] — AI suggests "Coil replacement" based on condition, but shows all three because this is the tech's call, not the AI's</li>
+<li>Pricing: Pre-filled from the company's custom pricing database (Dave set this up). Carrier coil for this model: $1,850 parts. Labor: $680 (Dave's rate for coil replacement). If Mike disagrees, he adjusts. The AI learns from his adjustments.</li>
+<li>Good / Better / Best: Auto-generated:
+<ul>
+<li><strong>Good:</strong> Clean coil + anti-corrosion treatment — $450 (buys 1-2 years)</li>
+<li><strong>Better:</strong> Replace evaporator coil — $2,530 (extends system life 5-8 years)</li>
+<li><strong>Best:</strong> Full system replacement (Carrier 24ACC648, SEER 20) — $8,400 (15-20 year life, saves ~$600/year in energy vs current SEER 16)</li>
+</ul></li>
+</ul>
+<p>Mike reviews for 30 seconds. Everything looks right. He taps "Generate Documents."</p>
+
+<p style="margin-top:16px"><strong>8:33 AM — Two documents appear. This is the magic moment.</strong></p>
+
+<p><strong>Document 1: Contractor Estimate (Mike's document)</strong></p>
+<p>Professional PDF with Dave's company logo, license number, and branding. Line items for each tier. Material costs, labor, markups, totals. Warranty terms. This is what EstimationPro does. Table stakes.</p>
+
+<p><strong>Document 2: Homeowner Visual Condition Report (Sarah's document)</strong></p>
+<p>This is what NO competitor produces. A beautifully designed visual report that shows:</p>
+<ul>
+<li>Annotated photos — arrows pointing to the corroded coil with plain-English labels: "This is your evaporator coil. The green discoloration is corrosion caused by Houston humidity. It's reducing your AC efficiency by approximately 15-20%."</li>
+<li>Equipment "health card" — like a doctor's report: "Your system: Carrier, installed 2016, 9 years old. Condition: Fair. Expected remaining life with current issue: 2-4 years without repair. With coil replacement: 6-11 years."</li>
+<li>Side-by-side comparison — Repair ($450) vs Replace Coil ($2,530) vs New System ($8,400) with 5-year total cost including energy savings. A clear visual chart, not a wall of numbers.</li>
+<li>Energy analysis — "Your current SEER 16 system costs approximately $1,200/year to operate. A new SEER 20 system would cost approximately $600/year. The $8,400 investment pays back in energy savings alone within 14 years, but your current coil issue accelerates other failures."</li>
+<li>A note at the bottom: "This report was prepared for Sarah Johnson, 4215 Oakwood Dr, Houston TX. Assessment by Mike Rodriguez, ABC HVAC Services. Take your time with this decision — we're available to answer any questions."</li>
+</ul>
+<p>This report is designed for ONE purpose: Sarah shows it to her husband that evening. They look at the photos together. They see the corrosion. They understand the options. They make a decision without needing Mike to come back and explain it all again. The report sells for Mike when Mike isn't there.</p>
+
+<p style="margin-top:16px"><strong>8:35 AM — Mike shows Sarah the report on his phone</strong></p>
+<p>He turns his phone around. Scrolls through the visual report with Sarah standing right there. "Here's what I found. Your coil has corrosion — you can see it in these photos. You have three options." He walks her through Good/Better/Best on the screen. Sarah says, "Can you send this to me? I want to show my husband."</p>
+<p>Mike taps "Send to Customer." Sarah gets a text and email with a link to the visual report + the estimate. She can approve and pay a deposit right from her phone. The auto follow-up system handles the rest — 24h, 48h, 7-day reminders if she doesn't respond.</p>
+<p><strong>Total time from arriving at the unit to sending the estimate + visual report: 5 minutes.</strong> Without ScopeSnap, this would have been 30-45 minutes of measuring, looking up prices, writing out a proposal by hand, and hoping Sarah remembers what he said when she talks to her husband.</p>
+</div>
+
+<div class="ab">
+<h3>ACT 2: Dave's Friday — The Owner's Dashboard (What the Business Owner Sees)</h3>
+
+<p><strong>3:00 PM Friday — Dave logs into ScopeSnap on his laptop</strong></p>
+<p>He sees the owner dashboard — a different view from what the techs see. This is where ScopeSnap becomes a management tool, not just a field tool:</p>
+
+<p><strong>The Estimation Performance Panel:</strong></p>
+<ul>
+<li>This week: 47 estimates generated by his 10 techs. 29 approved by homeowners (62% close rate — up from 48% before ScopeSnap, because the homeowner reports are converting better)</li>
+<li>Average estimate value: $4,200 (up from $3,600 before Good/Better/Best tiers, because homeowners pick the middle option more often)</li>
+<li>Revenue this week from approved estimates: $121,800</li>
+</ul>
+
+<p><strong>The Accuracy Tracker (Phase 2 — LeakSense):</strong></p>
+<p>Dave connected QuickBooks 3 months ago. Now he sees something that used to take him all of Friday afternoon to figure out:</p>
+<ul>
+<li><strong>Company-wide accuracy:</strong> Estimates are 14% below actual cost on average. That's $588 lost per job on a $4,200 average. Across 120 jobs/month, that's <strong>$70,560/year in leaked profit.</strong></li>
+<li><strong>Per-tech accuracy:</strong>
+<ul>
+<li>Mike: 92.4% accurate (best on team — his estimates are only 7.6% off)</li>
+<li>Brian: 84% accurate — consistently under-prices labor hours by 2-3 hours on system replacements</li>
+<li>Javier: 78% accurate — over-estimates materials but under-estimates labor. Net result: 22% below actual cost</li>
+</ul></li>
+<li><strong>By job type:</strong> AC replacements: 11% under-estimated. Coil replacements: 23% under-estimated (THIS is where the profit is leaking — coil jobs consistently take longer than estimated). Maintenance visits: 3% over-estimated (fine — not a problem).</li>
+</ul>
+<p>Dave can now see, in one screen, that coil replacement jobs are his biggest profit leak, Brian and Javier need pricing adjustments, and Mike should be training the other techs on how he estimates so accurately.</p>
+<div class="co">THIS IS THE MOMENT: Dave stares at the screen and thinks "We're losing $70K/year on bad estimates. I've been busy all year but the money isn't there." He clicks the banner that says "Want help fixing this? Talk to our data team." He books a call with Mainnov's services team. The $15K custom dashboard project is now a warm lead that came from the SaaS product. THE SERVICES FLYWHEEL JUST ACTIVATED.</div>
+
+<p style="margin-top:16px"><strong>The BenchmarkIQ Panel (Phase 3):</strong></p>
+<p>Dave sees how his company compares to other HVAC companies in Houston (anonymized). This is addictive:</p>
+<ul>
+<li><strong>Revenue per truck:</strong> $380K/year. <span style="color:var(--w)">Houston average: $420K. Top quartile: $520K.</span> Dave is below average.</li>
+<li><strong>Average ticket:</strong> $4,200. <span style="color:var(--g)">Houston average: $3,800. Top quartile: $5,100.</span> Dave's Good/Better/Best pricing is working — he's above average here.</li>
+<li><strong>Labor cost %:</strong> 38% of revenue. <span style="color:var(--r)">Houston average: 32%. Top quartile: 28%.</span> Dave is spending too much on labor relative to revenue. Brian and Javier's under-estimating is part of this problem.</li>
+<li><strong>Estimate close rate:</strong> 62%. <span style="color:var(--g)">Houston average: 51%. Top quartile: 67%.</span> The homeowner visual report is clearly working.</li>
+</ul>
+<p>Dave now knows exactly where he stands and what to fix. He doesn't need a consultant to tell him — the data shows it. But when he wants help building a custom dashboard to track this in real-time across all 10 techs and 3 trucks? That's the $15K Mainnov project.</p>
+</div>
+
+<div class="ab">
+<h3>ACT 3: Sarah's Evening — The Homeowner Experience (Why We Win the Job)</h3>
+
+<p><strong>7:30 PM — Sarah and her husband Mark sit on the couch</strong></p>
+<p>Sarah got two estimates today. One from Mike (using ScopeSnap) and one from Joe at another HVAC company (using paper and a verbal explanation).</p>
+
+<p><strong>Joe's estimate:</strong> A text message with a price. "$2,400 for coil replacement. Call us back to schedule." No photos. No explanation of what's wrong. No options. Mark asks, "What exactly is wrong with the AC?" Sarah says, "He said something about the coil being corroded. I don't really remember the details."</p>
+
+<p><strong>Mike's estimate (via ScopeSnap):</strong> Sarah opens the link on her phone and hands it to Mark. He sees the annotated photos. "Oh, that green stuff on the coil — that's the corrosion?" He sees the equipment health card. "So it's 9 years old and has 6-11 years left if we replace the coil." He sees the three options side by side with the 5-year cost comparison. "The full replacement saves $600/year in energy... interesting." He sees the energy rebate note: "You may qualify for a $1,500 utility rebate for upgrading to SEER 20."</p>
+
+<p>Mark turns to Sarah: "This Mike guy clearly knows what he's talking about. The other guy just gave us a number." Sarah taps "Approve" on the Better option ($2,530 coil replacement) and pays the $500 deposit right from her phone. Mike gets a notification. Job booked.</p>
+
+<p><strong>The next day:</strong> Sarah's neighbor Lisa mentions her furnace is making weird noises. Sarah says, "Oh, use Mike at ABC HVAC. He sent us this amazing report showing exactly what was wrong with our AC — photos, analysis, everything. Way better than the other company." She texts Lisa the link to her report. Lisa sees the ScopeSnap "Powered by" footer. She Googles ABC HVAC, sees they use ScopeSnap, and books a service call. <strong>Viral loop complete. Zero acquisition cost.</strong></p>
+</div>
+
+<div class="ab">
+<h3>ACT 4: The Platform View — What the Finished Product Looks Like (Month 12)</h3>
+
+<p><strong>For the TECH (Mobile App — Steps 3-4 of the workflow):</strong></p>
+<div class="grid">
+<div class="card green">
+<h3>Assessment Screen</h3>
+<p>Big "New Assessment" button. Camera opens. Take 1-5 photos. Optional voice note. Tap "Analyze." AI returns equipment ID, condition, lifecycle data, recalls, and property history in 15 seconds. Tech reviews and adjusts if needed.</p>
+</div>
+<div class="card green">
+<h3>Estimate Builder</h3>
+<p>Pre-filled from AI analysis + company pricing DB. Good/Better/Best auto-generated. Tech adjusts any line item. Energy savings calculated automatically. Repair vs replace math shown. One tap to generate both documents.</p>
+</div>
+<div class="card blue">
+<h3>Customer Presentation</h3>
+<p>Show homeowner the visual report on phone/tablet right at the job site. Swipe through annotated photos, health card, options comparison. Send via text/email with one tap. Customer can approve + pay deposit from their phone.</p>
+</div>
+<div class="card blue">
+<h3>Job History</h3>
+<p>Every past estimate searchable by address, customer, date, equipment type. Property history shows all visits to any address. Tech sees their own accuracy score and improvement over time.</p>
+</div>
+</div>
+
+<p style="margin-top:16px"><strong>For the OWNER (Web Dashboard — Management Layer):</strong></p>
+<div class="grid">
+<div class="card green">
+<h3>Estimation Performance</h3>
+<p>Total estimates, close rates, average ticket, revenue from approved estimates. Filterable by tech, job type, date range, customer type. See which techs are winning the most work and which are leaving money on the table.</p>
+</div>
+<div class="card orange">
+<h3>Accuracy Tracker (LeakSense)</h3>
+<p>Estimate vs actual cost from QuickBooks data. Per-tech, per-job-type accuracy scores. AI-generated insights: "Coil replacement jobs are under-estimated by 23% — here's why." Pricing auto-correction suggestions.</p>
+</div>
+<div class="card purple">
+<h3>BenchmarkIQ</h3>
+<p>Anonymous comparison against 500+ HVAC companies. Revenue per truck, average ticket, labor %, close rate, customer satisfaction. "You're 23rd percentile on labor cost — here's what top-quartile companies do differently."</p>
+</div>
+<div class="card orange">
+<h3>Equipment Intelligence</h3>
+<p>Across all customers: which equipment brands/models are being serviced most, which are approaching end-of-life, which have recall/safety issues. Proactive replacement campaign targeting: "43 properties have AC units past 15-year mark."</p>
+</div>
+</div>
+
+<p style="margin-top:16px"><strong>For the HOMEOWNER (Received via text/email — Read-only):</strong></p>
+<div class="grid">
+<div class="card green">
+<h3>Visual Condition Report</h3>
+<p>Annotated photos with plain-English explanations. Equipment health card. Repair vs Replace comparison with 5-year total cost. Energy savings calculation. Rebate eligibility. Designed to be shared with spouse/landlord/insurance.</p>
+</div>
+<div class="card blue">
+<h3>Approve + Pay</h3>
+<p>Select which option (Good/Better/Best). E-sign approval. Pay deposit via Stripe. All from their phone. No app download, no account creation, no friction.</p>
+</div>
+</div>
+</div>
+
+<div class="ab">
+<h3>The Platform Architecture — How All Three Phases Connect</h3>
+<p>This is what makes ScopeSnap a platform, not a point tool:</p>
+<ul>
+<li><strong>ScopeSnap (Phase 1)</strong> generates equipment data + estimates → feeds into →</li>
+<li><strong>LeakSense (Phase 2)</strong> connects QuickBooks + compares estimate vs actual → reveals profit leaks → feeds into →</li>
+<li><strong>BenchmarkIQ (Phase 3)</strong> aggregates across all companies → shows where you rank → reveals what top performers do differently → drives →</li>
+<li><strong>Services Flywheel</strong> → "Fix it for me" → $5K-$25K Mainnov dashboard project → more data connected → SaaS becomes more valuable → happy customer tells peers → new signup → repeat</li>
+</ul>
+<p>Each phase creates the natural upgrade moment for the next. The tech doesn't need to be "sold" on Phase 2 — the data from Phase 1 creates the question ("why are my estimates off?") that Phase 2 answers. The owner doesn't need to be sold on Phase 3 — the data from Phase 2 creates the question ("how do I compare?") that Phase 3 answers.</p>
+<div class="warn">WORKING BACKWARDS: Everything described above is the VISION at month 12. The MVP at month 1 is just: photo → AI identifies equipment → generates estimate + homeowner report → send to customer. That's it. Every other feature builds toward this vision incrementally. The vision guides what to build; the MVP gets you to market.</div>
+</div>
+
+<div class="ab">
+<h3>Interactive Prototype Files (Companion Deliverables)</h3>
+<p>Three clickable HTML prototypes bring the product vision to life. These are the "Steve Jobs demo" — what the product looks and feels like before writing a single line of production code.</p>
+<ul>
+<li><strong>ScopeSnap_Prototype_Demo.html — Tech Mobile App (Mike's View)</strong><br>9-screen clickable prototype in a phone frame. Screens: Home (accuracy score, today's jobs from Jobber), Capture (camera viewfinder with property history alert), Analyzing (scan animation), Intelligence Results (equipment ID — Carrier 24ACC636, 94% confidence, condition assessment, lifecycle data, recall check), Estimate Builder (Good/Better/Best tiers, line items, markup slider), Output (contractor estimate tab + homeowner report tab), Present Mode (4-slide full-screen slideshow: annotated SVG photo with animated corrosion/bent fin/model callouts, equipment health card, options comparison, 5-year cost chart), Send to Customer (phone/email with auto follow-up schedule at 24h/48h/7d), Save to History (property record update, accuracy tracker, proactive maintenance alerts). Navigate via bottom tab bar. Each screen demonstrates a differentiator that EstimationPro doesn't have.</li>
+<li><strong>ScopeSnap_Owner_Dashboard.html — Owner Dashboard (Dave's View)</strong><br>Full laptop-width dashboard. Sidebar: 14 navigation items organized by Overview, Intelligence, Equipment, Team, Settings. Hero metric: $70,560 annual profit leak in dark green banner with services flywheel CTA. 4 stat cards: estimates (47), close rate (62%, ↑14pts since ScopeSnap), avg ticket ($4,200, ↑$600 since Good/Better/Best), revenue ($121.8K). Orange action card: "Coil replacement jobs under-estimated by 23%." Two-column: Tech Accuracy Scores (4 techs with colored bars, accuracy percentages, AI coaching suggestion) + BenchmarkIQ (4 metrics vs 287 Houston companies with visual bar markers for You/Avg/Top 25%). Two-column: Top Profit Leaks (4 specific leaks totaling $70.5K/yr with root causes) + Equipment Aging Alerts (43 properties past 15-year mark, $344K replacement opportunity, "Generate Campaign" button). Full-width recent estimates table with status badges and accuracy scores.</li>
+<li><strong>ScopeSnap_Homeowner_Report.html — Homeowner Experience (Sarah + Mark's View)</strong><br>Three-part scrolling demo. Part 1 — Notification: iPhone text message with link preview showing annotated equipment photo (her OWN unit with "⚠ CORROSION" callout visible in preview) + desktop email with health gauge, 3 pricing cards, green CTA. Part 2 — Mobile Report: phone browser frame with company branding, health gauge (FAIR, 6-11 years remaining), annotated SVG photo with animated red/orange/green callouts and captions, three issue explanations in plain English, three selectable option cards (tap to select, approve button updates dynamically), 5-year cost comparison bars, Stripe deposit payment with security badge, Call/Text buttons. Part 3 — Desktop Report: laptop browser frame, two-column layout (health + equipment stats), wider annotated photo, 3-column issue grid, horizontal option cards, cost comparison bars, centered approve CTA. Designed for the "Sarah forwards to Mark, they decide together" moment.</li>
+</ul>
+<div class="co">DESIGN PRINCIPLES USED (Steve Jobs): (1) Answer the most important question in 3 seconds — tech sees accuracy score, owner sees $70K leak, homeowner sees her own equipment photo with annotations. (2) Progressive disclosure — show the answer first, then let them dig deeper. (3) Every screen has exactly ONE primary action — the thing Jobs would point to and say "and you just tap this." (4) The homeowner report is designed to be forwarded — every forwarded report is viral marketing for the contractor AND for ScopeSnap.</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 4: SCOPESNAP DEEP DIVE -->
+<!-- ============================================================ -->
+<div class="sec" id="s4">
+<div class="sec-h">
+<span class="n">03</span>
+<h2>ScopeSnap Deep Dive — What to Build First</h2>
+<p>Complete feature set organized as table-stakes (must match competition) vs differentiators (what makes us unique).</p>
+</div>
+
+<div class="ab">
+<h3>Core Product Definition</h3>
+<p>A mobile-first AI tool where a field technician photographs HVAC/plumbing equipment and the AI instantly: (1) identifies the equipment brand, model, age, and condition using vision AI, (2) cross-references against a pricing database with brand-specific and regional costs, (3) generates TWO outputs — a contractor estimate AND a customer-facing visual condition report — in under 60 seconds.</p>
+<div class="warn">CRITICAL FRAMING: This is NOT "AI estimation." This is "HVAC intelligence that starts with a photo." The estimation is one output. The equipment lifecycle data, the homeowner report, the accuracy tracking — THAT is the product.</div>
+</div>
+
+<div class="ab">
+<h3>Table-Stakes Features (Must Ship to Compete with EstimationPro)</h3>
+<ul>
+<li><strong>P0 — DAY 1:</strong> Photo capture + AI analysis, instant estimate generation, branded PDF output, regional pricing database, mobile web app (no install), multi-photo per job, Good/Better/Best options, free tier (5 docs/month), Stripe billing, email delivery of estimates</li>
+<li><strong>P1 — Weeks 4-8:</strong> Voice note input, custom pricing database ($349 tier), equipment OCR scanning, estimate history dashboard, SEER rating + efficiency data, plumbing estimate templates</li>
+<li><strong>P2 — Months 3-4:</strong> Customer follow-up automation, estimate approval + e-signature, payment collection via Stripe, QuickBooks sync (Phase 2 bridge), electrical/roofing templates</li>
+</ul>
+<div class="info">FULL FEATURE MATRIX: 26 features mapped against EstimationPro, Handoff AI, and ServiceTitan with build priorities and effort estimates — see <em>ScopeSnap_CrossModel_Vertical_Analysis.xlsx → "Feature Parity" tab</em></div>
+</div>
+
+<div class="ab">
+<h3>Six Unique Differentiators (What NO Competitor Has)</h3>
+<ul>
+<li><strong>#1 Customer-Facing Visual Condition Report:</strong> Two outputs per job — contractor estimate + homeowner visual report with annotated photos, severity ratings, repair-vs-replace economics. Designed to be shared ("show this to your spouse"). Every shared report = marketing. Estimated +15-25% close rate improvement.</li>
+<li><strong>#2 Estimate Accuracy Tracker:</strong> Tracks every estimate vs actual cost. Builds per-tech, per-job-type accuracy scores. AI auto-corrects pricing over time. Natural Phase 2 bridge: "estimates are $650 off, connect QB to see why."</li>
+<li><strong>#3 Equipment Lifecycle Intelligence:</strong> AI identifies brand/model/age from photo → cross-references lifespan, failure patterns, recalls, energy efficiency. "2014 Carrier 24ACC636, 4-6 years remaining, compressor failure rate spikes at year 12." Turns service calls into replacement pipeline.</li>
+<li><strong>#4 Homeowner Property History:</strong> Every visit builds a property profile. Next visit, tech sees full equipment history. Drives proactive outreach: "AC from June needs coil cleaning before summer." After 2 years, switching = losing visual records for every home visited.</li>
+<li><strong>#5 Regional Pricing Network:</strong> Aggregate anonymized data from all users in a metro. "Your AC replacement is 12% below Houston average." Seeds BenchmarkIQ. Gets more valuable with every user. ServiceTitan has large-shop data; we have the long-tail ICP data.</li>
+<li><strong>#6 Anti-Platform Positioning:</strong> "Works without ServiceTitan." 5-minute onboarding. Transparent pricing on website. $5K-$25K services flywheel that no pure SaaS competitor has.</li>
+</ul>
+<div class="co">MOAT TIMELINE: Month 1-3: company pricing data (custom moat). Month 4-6: accuracy patterns (compounding). Month 7-9: equipment lifecycle (network). Month 10-12: regional pricing (unreplicable). By month 12, a clone needs 12 months of data to match.</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 4: VERTICAL STRATEGY -->
+<!-- ============================================================ -->
+<div class="sec" id="s5">
+<div class="sec-h">
+<span class="n">05</span>
+<h2>Vertical Strategy — HVAC First, Then Expand</h2>
+<p>Unanimous across 4 independent AI models. Cross-validated with market data.</p>
+</div>
+
+<div class="ab">
+<h3>Cross-Model Consensus (4/4 Models Agree)</h3>
+<ul>
+<li><strong>#1 Launch: Trades & Field Services</strong> — specifically HVAC residential service first. All 4 models unanimous. ~117K HVAC businesses, ICP slice 15-25K companies.</li>
+<li><strong>#2 Expand: Construction Subcontractors</strong> — change order documentation. Highest pain (10/10) but hardest sales (6/10).</li>
+<li><strong>#3 Investigate: Property Management</strong> — 3/4 models independently surfaced. Move-in/move-out inspections. ~300K PM companies.</li>
+<li><strong>AVOID: Healthcare</strong> — all 4 rank bottom 2. HIPAA, crowded incumbents, existing photo workflows.</li>
+<li><strong>WEAK: Non-Food Franchise</strong> — all 4 rank bottom 3. Pain isn't photo-based. Better for LeakSense/BenchmarkIQ.</li>
+</ul>
+</div>
+
+<div class="ab">
+<h3>HVAC Sub-Vertical Sequence</h3>
+<ul>
+<li><strong>Step 1:</strong> HVAC residential service (AC replacement, furnace repair, system maintenance) — highest ticket ($5K-$15K), equipment ID is visual, competitive gap is widest</li>
+<li><strong>Step 2:</strong> Plumbing (water heater replacement — similar visual ID pattern)</li>
+<li><strong>Step 3:</strong> Electrical (panel upgrades — needs different pricing DB)</li>
+<li><strong>Step 4:</strong> Roofing (Hover competes here but at $25-99/scan vs our $149/mo unlimited)</li>
+</ul>
+<div class="co">PRINCIPLE: "ScopeSnap for HVAC companies" not "ScopeSnap for everyone." Go deep on one vertical while EstimationPro stays shallow across 12.</div>
+</div>
+
+<div class="ab">
+<h3>One App, Trade-Specific Configuration (Not Separate Apps Per Trade)</h3>
+<p><strong>DECISION: Build ONE app called ScopeSnap with trade-specific configuration, NOT separate apps per trade (HVACSnap, PlumbSnap, etc.).</strong></p>
+<p><strong>Why not separate apps:</strong></p>
+<ul>
+<li><strong>Multiplies everything by N:</strong> 5 trade apps = 5 app store listings, 5 landing pages, 5 support queues, 5 update cycles. Unsustainable for a solo founder. Jobber, Housecall Pro, and ServiceTitan all learned this — one platform, trade-specific settings.</li>
+<li><strong>Fragments the data moat:</strong> 500 HVAC contractors in one database = strong moat. Split across 3 separate apps = three weak databases at 60-70% density each. The moat depends on concentration, not fragmentation.</li>
+<li><strong>Unnecessary cost for the same outcome:</strong> Users don't need a separate app to feel it's custom. They need their industry language, their equipment, and their pricing. That's a configuration layer, not a new product. Salesforce, Shopify, and HubSpot all proved this — one platform, vertical-specific skins.</li>
+</ul>
+<p><strong>How it works — the Steve Jobs way (minimum screens, minimum clicks):</strong></p>
+<ul>
+<li><strong>Signup (ONE extra screen, ONE time):</strong> Contractor picks their trade: HVAC / Plumbing / Electrical / Roofing / General. One tap. Never asked again. Like choosing your language when setting up an iPhone.</li>
+<li><strong>Stored in database:</strong> <code>companies.trade = 'hvac'</code>. Every tech in that company inherits it automatically. Same login works on mobile app AND desktop dashboard — trade setting follows the company, not the device.</li>
+<li><strong>What changes per trade:</strong> Equipment database shown (HVAC models vs plumbing fixtures vs electrical panels), pricing templates loaded, AI condition prompts, UI terminology ("Equipment" vs "Fixture" vs "Panel"), homeowner report language, SEO calculator topics on website.</li>
+<li><strong>What stays identical:</strong> Core codebase, database schema, AI pipeline, homeowner report template, estimate builder, auth, Stripe, email. One codebase to maintain.</li>
+<li><strong>Daily workflow:</strong> ZERO extra clicks. The trade selection at signup pre-configures everything. Actually REDUCES clicks vs a generic app — tech doesn't need to manually select "HVAC" on every assessment because it's already set.</li>
+</ul>
+<p><strong>Marketing trick (separate SEO, same product):</strong> Trade-specific landing pages (scopesnap.com/hvac, scopesnap.com/plumbing, scopesnap.com/electrical) with trade-specific screenshots, language, and testimonials. The plumber sees plumbing fixtures in screenshots, reads "built for plumbers," signs up, enters the same app configured for plumbing. This is exactly what Jobber and Housecall Pro do.</p>
+<p><strong>Multi-trade companies:</strong> V2 feature — allow selecting multiple trades at onboarding, app shows combined equipment databases. MVP: one trade per company.</p>
+<p><strong>Expansion effort per trade:</strong> Seed 50 equipment models + pricing rules + update AI prompt with trade-specific instructions. ~2 weeks of work per trade, not months of building a new app.</p>
+<div class="warn">WHAT DESERVES A SEPARATE APP: Only when the workflow is fundamentally different — not just different equipment but different user journey, different buyer, different output. Example: ScopeSnap (photo → estimate for homeowner) vs a future property inspection product (photo → compliance report for insurance). HVAC vs Plumbing vs Electrical is the SAME workflow with different equipment databases. One app.</div>
+</div>
+
+<div class="ab">
+<h3>HVAC Equipment Database (Day 1 Priority)</h3>
+<p>Top 5 brands to support at launch: <strong>Carrier, Trane, Lennox, Goodman, Rheem</strong>. For each brand: model families, typical pricing by region, common failure patterns by age, typical lifespan, SEER ratings, recall history. Start with residential AC and furnace models (the highest-ticket service work).</p>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 5: COMPETITIVE INTELLIGENCE -->
+<!-- ============================================================ -->
+<div class="sec" id="s6">
+<div class="sec-h">
+<span class="n">06</span>
+<h2>Competitive Intelligence — Who We're Fighting</h2>
+<p>Deep research conducted March 2026 including product teardowns, pricing analysis, and feature audits.</p>
+</div>
+
+<!-- EstimationPro -->
+<div class="comp">
+<h3>EstimationPro AI — #1 Direct Competitor</h3>
+<div class="threat high">THREAT: HIGH</div>
+<p><strong>What they do:</strong> Photo + voice → AI contractor estimate in 2 minutes. Regional pricing, Good/Better/Best tiers, branded PDFs, auto follow-ups, Stripe payments. Free: 3/mo, Starter: $39/mo (20 estimates), Pro: $79/mo (50 estimates), Team: $179/mo (unlimited).</p>
+<p><strong>Founded by:</strong> Third-generation carpenter, US Air Force veteran, 20+ years remodeling. "Built by a contractor" credibility.</p>
+<p><strong>Their strengths (respect these):</strong></p>
+<ul>
+<li>First mover — live, 1,000+ contractors, real testimonials, Capterra listing</li>
+<li>91 free SEO calculators generating massive organic traffic — 6-12 months to replicate</li>
+<li>"Built by a contractor" credibility — harder for a data scientist from Pakistan to match</li>
+<li>Clean product, simple onboarding, aggressive comparison content marketing</li>
+</ul>
+<p><strong>Their weaknesses (attack these):</strong></p>
+<ul>
+<li><strong>Horizontal = shallow:</strong> Serves 12+ trades generically. Can't identify specific HVAC equipment brands/models.</li>
+<li><strong>No equipment intelligence:</strong> Photos treated generically. No lifecycle data, no failure patterns, no recalls.</li>
+<li><strong>No customer-facing output:</strong> Contractor proposals only. Nothing for the homeowner to share with spouse/insurance.</li>
+<li><strong>No learning from outcomes:</strong> Generate and forget. No accuracy tracking, no pricing auto-correction.</li>
+<li><strong>No custom pricing DB:</strong> Everyone gets same AI pricing. No company-specific rates/markups.</li>
+<li><strong>No property history:</strong> Every estimate standalone. No memory of past visits.</li>
+<li><strong>No Phase 2:</strong> No QuickBooks integration, no financial leak detection, no upgrade path.</li>
+<li><strong>No services flywheel:</strong> SaaS only. Can't help fix what the software finds.</li>
+<li><strong>10-15% error rate:</strong> Self-reported. For $12K HVAC replacement, that's $1,200-$1,800 wrong.</li>
+</ul>
+<div class="co">POSITIONING: EstimationPro is a CALCULATOR. ScopeSnap is an ADVISOR. They say "here's what this costs." We say "here's what's wrong, how long it'll last, what the homeowner needs to understand, and how your pricing compares to actual costs and your market."</div>
+</div>
+
+<!-- ServiceTitan -->
+<div class="comp">
+<h3>ServiceTitan — The Gorilla (Not a Direct Competitor)</h3>
+<div class="threat med">THREAT: MEDIUM — Can't go downmarket</div>
+<p><strong>What they are:</strong> Massive enterprise FSM platform. CRM, dispatch, scheduling, invoicing, call center, marketing attribution, fleet management, inventory, accounting, financing. 100,000+ contractors. Nasdaq: TTAN.</p>
+<p><strong>Pricing:</strong> $250-500/tech/month. Implementation: $5,000-$50,000. Timeline: 3-12 months. Annual contracts. They publicly stated they're "not optimized for companies with 3 or fewer technicians."</p>
+<p><strong>Titan Intelligence AI features:</strong> Atlas AI assistant, Dispatch Pro (AI job assignment), Price Insights (regional benchmarking), Second Chance Leads (AI unbooked call detection), Field Pro (call recording + AI scoring), AI Voice Agents, Estimate Summary Enhancer, OCR Scanner.</p>
+<p><strong>What they DON'T do:</strong> No photo-to-estimate. No AI vision analysis of field conditions. No equipment lifecycle intelligence. Their estimation is pricebook-based — you build and maintain it manually.</p>
+<p><strong>Why they can't compete with us:</strong> Innovator's Dilemma. They can't offer a $149/month photo-to-estimate tool without undermining their $250-500/tech/month pricing model. Their customers are large shops (20+ techs). Our customers are the 85% who can't afford ServiceTitan.</p>
+<div class="warn">MONITOR: ServiceTitan's "Titan Intelligence" roadmap. If they add photo-to-estimate as a Field Pro feature, it only affects their existing 100K enterprise customers — not our ICP. But watch closely.</div>
+</div>
+
+<!-- Other competitors -->
+<div class="comp">
+<h3>Other Competitors (Lower Threat)</h3>
+<div class="threat low">THREAT: LOW-MEDIUM</div>
+<ul>
+<li><strong>Handoff AI</strong> ($0-99/mo) — AI estimating for remodelers/handymen with supplier-backed pricing, 60M+ SKUs. Strong but targets remodelers, not service contractors. Different ICP.</li>
+<li><strong>Contractor+ Estimatic</strong> ($0-99/mo) — AI estimating bundled with FSM platform. Pulls from user's costbook. Tied to their platform, not standalone.</li>
+<li><strong>CompanyCam</strong> ($19/user/mo) — Photo documentation for contractors. 40K+ users. No AI, no estimation. Validates photo-first workflow but stops at photos.</li>
+<li><strong>Hover</strong> ($25-99/scan) — Photo-to-3D for exterior residential (roofing/siding only). Doesn't handle HVAC, plumbing, electrical, or interior work.</li>
+<li><strong>QuoteIQ</strong> ($29.99-399.99/mo) — All-in-one FSM with AI features. Broad platform, estimation is one of many features. Not specialized.</li>
+<li><strong>Jobber / Housecall Pro</strong> ($69-169/mo) — FSM platforms. No photo-to-estimate. Scheduling, dispatch, invoicing. Potential integration partners, not competitors.</li>
+</ul>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 6: UNIQUE DIFFERENTIATORS -->
+<!-- ============================================================ -->
+<div class="sec" id="s7">
+<div class="sec-h">
+<span class="n">07</span>
+<h2>Unique Differentiators — Why We Win</h2>
+<p>Six capabilities that no competitor has. Individually cloneable — together, they create an unbeatable compound moat.</p>
+</div>
+
+<div class="grid">
+<div class="card green">
+<h3>#1 Customer-Facing Visual Report</h3>
+<p>Two outputs per job: contractor estimate + homeowner visual report. Annotated photos, severity ratings, repair-vs-replace math. Designed to be shared with spouse/insurance. Every shared report = viral marketing.</p>
+<p style="margin-top:6px"><strong>Impact:</strong> +15-25% close rate. <strong>Build:</strong> P0, 1-2 weeks.</p>
+</div>
+<div class="card green">
+<h3>#2 Estimate Accuracy Tracker</h3>
+<p>Tracks estimate vs actual cost. Per-tech, per-job-type accuracy scores. AI auto-corrects pricing. Phase 2 bridge: "estimates $650 off — connect QB to see why."</p>
+<p style="margin-top:6px"><strong>Impact:</strong> Self-improving moat. <strong>Build:</strong> P1, 2 weeks.</p>
+</div>
+<div class="card blue">
+<h3>#3 Equipment Lifecycle Intelligence</h3>
+<p>AI identifies brand/model/age → failure patterns, recalls, remaining life, energy efficiency. "2014 Carrier, 4-6 years left, compressor spikes at year 12." Every service call = replacement lead.</p>
+<p style="margin-top:6px"><strong>Impact:</strong> Consultative selling. <strong>Build:</strong> P1, 2-3 weeks.</p>
+</div>
+<div class="card blue">
+<h3>#4 Property History</h3>
+<p>Visual equipment record per address across visits. Proactive outreach: "AC from June needs coil cleaning." After 2 years, switching = losing records for every home.</p>
+<p style="margin-top:6px"><strong>Impact:</strong> Recurring revenue driver. <strong>Build:</strong> P1, 2 weeks.</p>
+</div>
+<div class="card purple">
+<h3>#5 Regional Pricing Network</h3>
+<p>Aggregated anonymized pricing across all users. "Your AC install is 12% below Houston average." Seeds BenchmarkIQ Phase 3. ServiceTitan has enterprise data; we have the long-tail.</p>
+<p style="margin-top:6px"><strong>Impact:</strong> Network moat. <strong>Build:</strong> P2, 2-3 weeks.</p>
+</div>
+<div class="card orange">
+<h3>#6 Services Flywheel</h3>
+<p>SaaS finds the problem → $5K-$25K Mainnov services team builds the fix → happy customer refers peers. No pure SaaS competitor has 80+ completed dashboard projects to bundle.</p>
+<p style="margin-top:6px"><strong>Impact:</strong> Structural advantage. <strong>Build:</strong> Already exists.</p>
+</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 7: POSITIONING & PRICING -->
+<!-- ============================================================ -->
+<div class="sec" id="s7">
+<div class="sec-h">
+<span class="n">07</span>
+<h2>Positioning & Pricing — How We Sell</h2>
+<p>Competitive pricing strategy, unit economics, and the Early Bird land-grab.</p>
+</div>
+
+<div class="ab">
+<h3>Positioning Statement</h3>
+<p><strong>"ScopeSnap: HVAC Intelligence. Estimation is just the beginning."</strong></p>
+<p>We don't sell estimation. We sell HVAC business intelligence that starts with a photo. EstimationPro is a calculator. We're an advisor. ServiceTitan is an enterprise operating system. We're the intelligence layer for everyone they don't serve.</p>
+</div>
+
+<div class="ab">
+<h3>Unit Economics — Cost Per Estimate</h3>
+<p>Our cost architecture makes aggressive pricing possible. Here's the actual cost breakdown per estimate generated:</p>
+<div class="tw">
+<table>
+<thead><tr><th>Component</th><th>What Happens</th><th>Cost (Smart Architecture)</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td><strong>Vision API (2 photos)</strong></td><td>GPT-4o Vision or Gemini Flash analyzes equipment photos</td><td>$0.005–$0.015</td><td>Biggest variable cost. Gemini Flash is cheapest. Use medium resolution.</td></tr>
+<tr><td><strong>LLM (template + fill)</strong></td><td>Structures estimate from vision output. 95% template, 5% narrative.</td><td>$0.002–$0.005</td><td>Claude Haiku or GPT-4o-mini for narrative only. All pricing/math is deterministic code.</td></tr>
+<tr><td><strong>Equipment DB lookup</strong></td><td>SQL query against PostgreSQL for brand/model/lifecycle data</td><td>$0.00</td><td>Local database read. Zero API cost.</td></tr>
+<tr><td><strong>PDF generation</strong></td><td>Puppeteer/WeasyPrint renders contractor estimate + homeowner report</td><td>~$0.0001</td><td>Server-side code, 1-3 seconds compute time.</td></tr>
+<tr><td><strong>Storage (photos + PDFs)</strong></td><td>~5.5MB per estimate (2-3 photos + 2 PDFs) on S3</td><td>~$0.001</td><td>S3 at $0.023/GB/month. Negligible at any scale.</td></tr>
+<tr><td><strong>Email delivery</strong></td><td>Send estimate + up to 3 follow-up reminders via Resend/Postmark</td><td>$0.002–$0.004</td><td>Resend: $0.40 per 1,000 emails.</td></tr>
+<tr style="background:rgba(0,229,160,.08)"><td style="color:var(--g);font-weight:700">TOTAL PER ESTIMATE</td><td></td><td style="color:var(--g);font-weight:700;font-size:14px">$0.01–$0.02</td><td>Call it $0.02 to be conservative.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="co">CRITICAL DESIGN PRINCIPLE: The vision API call is unavoidable — that IS the product. Everything else must be deterministic. Pricing lookups = SQL queries, not LLM calls. Line item calculations = math, not AI. PDF rendering = code, not generation. The only AI cost beyond vision is 2-3 sentences of narrative for the homeowner report using the cheapest model available. If you use a big model for full estimate generation instead of template+fill, cost jumps to $0.04-$0.07/estimate — that's the mistake that kills margins.</div>
+</div>
+
+<div class="ab">
+<h3>The Early Bird Pricing Strategy — Why $9.99 Beats $149 at Launch</h3>
+<p><strong>The insight:</strong> At $0.02/estimate, 50 estimates cost us $1.00. Charging $9.99 gives 90% gross margin while being 87% cheaper than EstimationPro's $79/month for the same quantity. This isn't a loss-leader — it's a profitable land-grab that competitors cannot match without destroying their revenue.</p>
+
+<p style="margin-top:12px"><strong>The three hard truths that make $9.99 the ONLY correct launch price:</strong></p>
+
+<p><strong>Truth 1: V1 will be mediocre, and that's OK at $9.99.</strong> Until real HVAC techs use ScopeSnap in real basements with real dirty equipment in bad lighting, we don't know what breaks. The vision AI will misidentify equipment. The pricing will be wrong for certain regions. The homeowner report will need 10 iterations. Charging $149/month for a mediocre V1 means 20 users who all churn and leave angry reviews. Charging $9.99 means 500 users who tolerate imperfection because the price is too low to complain about. They'll give feedback instead of demanding refunds. We're paying them $29/month (the difference between $39 and $9.99) to be our beta testers.</p>
+
+<p><strong>Truth 2: Without data, we have no moat — and honestly, no product.</strong> ScopeSnap's "HVAC equipment intelligence" is currently theoretical. We don't HAVE a database of Carrier failure patterns from real field data. We don't HAVE regional pricing intelligence. We don't HAVE accuracy tracking data. All of that comes from USERS generating estimates on REAL equipment. Until 500 contractors have photographed 25,000 units, our "intelligence layer" is just a vision API with generic prompts — the same thing anyone can build in a weekend. The data IS the product. No users = no data = no moat = no product. We are EXTREMELY vulnerable to competition until we have data density. $9.99 gets us to data density 10x faster than $149.</p>
+
+<p><strong>Truth 3: The displayed price is $39 slashed to $9.99 — and "500 users" is flexible.</strong> The pricing page shows <s>$39/mo</s> → $9.99/mo Early Bird. This anchors the perceived value at $39 (contractors think "this is a $39 product I'm getting for $10"). The "first 500 users" language creates urgency but we control when Early Bird actually ends. If we have 200 users and the product still needs work, Early Bird stays. If we have 800 users and the data moat is strong, we "end" it. Nobody outside our team knows the real count. This gives us complete pricing flexibility.</p>
+
+<p style="margin-top:12px"><strong>The three-phase pricing evolution:</strong></p>
+<ul>
+<li><strong>Phase 1 (Months 1-3): $9.99 Early Bird — product is rough.</strong> AI makes mistakes. Pricing is off for some regions. But at $9.99, contractors try it, use it, give feedback, and don't churn because the price is trivial. Every estimate feeds the equipment database, pricing intelligence, and accuracy baseline. We're not selling a finished product — we're selling access to a tool that gets smarter every week.</li>
+<li><strong>Phase 2 (Months 4-6): Still $9.99 — product is dramatically better.</strong> 500+ users have generated 15,000-25,000 estimates. Equipment recognition is real. Pricing is calibrated to actual regional data. Accuracy tracker has baseline data. Keep $9.99 because we still need data density in more metros before the regional network is meaningful.</li>
+<li><strong>Phase 3 (Months 7+): Transition when ready.</strong> When the product is genuinely strong and the data moat is real, "end" Early Bird for new signups. New users see $39/mo. Existing users keep $9.99 forever. The timing is our decision, not tied to an actual counter.</li>
+</ul>
+
+<p style="margin-top:12px"><strong>The competitor trap this creates:</strong></p>
+<p>EstimationPro sees us offering 50 estimates for $9.99 while they charge $79. They have two choices: (1) drop their prices and destroy their revenue from existing customers, or (2) ignore us and hope we go away. Option 1 hurts them immediately — every existing customer wants the lower price. Option 2 gives us 6-12 months to build the data moat they can never catch. Either way, we win.</p>
+</div>
+
+<div class="ab">
+<h3>Pricing Tiers (V2 — Early Bird Strategy)</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Tier</th><th>ScopeSnap Price</th><th>What's Included</th><th>vs EstimationPro</th><th>vs ServiceTitan</th><th>Strategy</th></tr></thead>
+<tbody>
+<tr style="background:rgba(0,229,160,.05)"><td><strong>Free</strong></td><td>$0/mo</td><td>5 estimates/mo + homeowner report + equipment ID. ScopeSnap branding on outputs.</td><td>They: 3/mo, no homeowner report</td><td>No free tier</td><td>More generous AND higher value. Homeowner report is viral marketing.</td></tr>
+<tr style="background:rgba(255,170,0,.05)"><td><strong>Early Bird</strong><br><span class="tag tag-w">FLEXIBLE END DATE</span></td><td><s>$39/mo</s> → <strong>$9.99/mo</strong></td><td>50 estimates/mo + custom branding + equipment lifecycle + homeowner reports. No ScopeSnap watermark.</td><td>They: $79/mo for same 50 estimates. We're 87% cheaper. They literally cannot match without destroying their existing revenue.</td><td>Irrelevant — different universe</td><td>Display: "$39" slashed, "$9.99 Early Bird." Anchors value at $39. "First 500 users" creates urgency but WE control when it ends. Could be at 200 users or 2,000 — our decision based on product readiness and data density.</td></tr>
+<tr><td><strong>Pro</strong></td><td>$149/mo</td><td>Unlimited estimates + everything in Early Bird + accuracy tracking + regional pricing comparison.</td><td>They: $179/mo for unlimited</td><td>$250-500/tech/mo</td><td>For contractors who hit 50-estimate cap and need unlimited. Also for new users after Early Bird sells out.</td></tr>
+<tr><td><strong>Team</strong></td><td>$349/mo</td><td>Everything in Pro + custom company pricing DB + team management + per-tech accuracy dashboard.</td><td>No equivalent at any price</td><td>$250-500/tech/mo</td><td>Custom pricing DB = product competitors don't have. Owners pay because accuracy tracker ROI > cost.</td></tr>
+<tr><td><strong>Enterprise</strong></td><td>Future $499/mo</td><td>Multi-location + LeakSense bundle + BenchmarkIQ + priority support.</td><td>No Phase 2-3 product</td><td>$500+/tech/mo</td><td>Platform play. Phase 2-3 products that no competitor is building.</td></tr>
+</tbody>
+</table>
+</div>
+<div class="warn">EARLY BIRD EXIT STRATEGY: The "first 500 users" is marketing language — WE decide when Early Bird ends based on two criteria: (1) Is the product genuinely strong? (2) Is the data moat deep enough to defend? If we have 200 users and the product still needs work, Early Bird stays open. If we have 800 users and the moat is real, we close it. When we do close it, new users see $39/mo for 50 estimates (still cheaper than EstimationPro's $79) or $149/mo for unlimited. ALL Early Bird users keep $9.99 FOREVER — this creates loyalty, word-of-mouth ("I got in at $10/month"), and an army of users who will never churn because the price is too good to leave. Nobody outside our team ever knows the real user count.</div>
+</div>
+
+<div class="ab">
+<h3>Margin Analysis by Tier</h3>
+<div class="tw">
+<table>
+<thead><tr><th>Tier</th><th>Price</th><th>Avg Estimates/mo</th><th>Our Cost</th><th>Gross Margin</th><th>Revenue if 500 users</th></tr></thead>
+<tbody>
+<tr><td><strong>Free</strong></td><td>$0</td><td>5</td><td>$0.10</td><td>N/A (marketing cost)</td><td>$0 (but feeds data moat)</td></tr>
+<tr><td><strong>Early Bird</strong></td><td>$9.99</td><td>30</td><td>$0.60</td><td><strong>94%</strong></td><td>$4,995/mo</td></tr>
+<tr><td><strong>Pro</strong></td><td>$149</td><td>50</td><td>$1.00</td><td><strong>99.3%</strong></td><td>$74,500/mo</td></tr>
+<tr><td><strong>Team</strong></td><td>$349</td><td>80</td><td>$1.60</td><td><strong>99.5%</strong></td><td>$174,500/mo</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>The real math:</strong> 500 Early Bird users at $9.99 = ~$5K MRR. That alone funds continued development. But the real play is that 10-20% of those 500 will upgrade to Pro ($149) or Team ($349) within 6 months as they hit the 50-estimate cap or want advanced features. And another 5-10% will become LeakSense users at $249/month. And 2-3% will become $5K-$25K services clients. The $9.99 is the cheapest customer acquisition channel in existence — you're getting PAID to acquire customers.</p>
+</div>
+
+<div class="ab">
+<h3>SEO Counter-Strategy</h3>
+<p>EstimationPro has 91 free generic calculators driving organic traffic. Don't try to out-breadth them. Out-depth them on HVAC.</p>
+<p><strong>Build 15 HVAC-specific calculators:</strong> SEER savings calculator, refrigerant charge calculator, duct sizing calculator, HVAC load calculator, equipment age checker, AC replacement cost estimator, furnace efficiency comparison, heat pump vs furnace ROI, warranty lookup tool, energy rebate finder, maintenance schedule generator, repair vs replace calculator, tonnage calculator, BTU calculator (HVAC-specific), airflow calculator.</p>
+<p>Each calculator is a landing page that ranks for HVAC-specific long-tail keywords and feeds into ScopeSnap signup.</p>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 8: INTEGRATION & WORKFLOW -->
+<!-- ============================================================ -->
+<div class="sec" id="s8">
+<div class="sec-h">
+<span class="n">08</span>
+<h2>Integration & Workflow Strategy</h2>
+<p>Where ScopeSnap fits in a tech's daily workflow, which integrations to build, and how to protect our intelligence layer from being copied by integration partners.</p>
+</div>
+
+<div class="ab">
+<h3>ScopeSnap Is NOT End-to-End — And That's the Strategy</h3>
+<p>ScopeSnap is a focused intelligence layer for ONE critical step in the workflow. The tech will use other software alongside it. This is intentional — trying to build end-to-end means competing with billion-dollar platforms. Instead, we're the sharpest tool for steps 3-4 and integrate with everything else.</p>
+<p>A typical HVAC service call has 8 steps. <strong>ScopeSnap owns steps 3-4</strong> (assessment + estimation). The tech uses other tools for the rest.</p>
+<ul>
+<li><strong>Step 1 (Call/booking):</strong> Handled by Jobber/ServiceTitan/phone. NOT ScopeSnap.</li>
+<li><strong>Step 2 (Dispatch/routing):</strong> Handled by Jobber/ServiceTitan/Google Maps. NOT ScopeSnap.</li>
+<li><strong>Step 3 (On-site assessment): ★ SCOPESNAP STARTS HERE.</strong> Tech photographs equipment → AI identifies brand/model/condition.</li>
+<li><strong>Step 4 (Estimate + present): ★ SCOPESNAP OWNS THIS.</strong> AI estimate + homeowner visual report → Good/Better/Best → customer approval.</li>
+<li><strong>Step 5 (Work execution):</strong> ScopeSnap partially helps (estimate = work order) but no time/parts tracking.</li>
+<li><strong>Step 6 (Payment):</strong> ScopeSnap does basic Stripe payment link. Not full invoicing/financing.</li>
+<li><strong>Step 7 (Back office):</strong> Phase 2 LeakSense connects to QuickBooks for reconciliation.</li>
+<li><strong>Step 8 (Follow-up):</strong> ScopeSnap property history enables proactive outreach.</li>
+</ul>
+<div class="co">PRINCIPLE: Be the sharpest tool for steps 3-4. Integrate with existing tools for everything else. Never build scheduling, dispatch, CRM, call tracking, or inventory management. The more you build outside steps 3-4, the more you compete with partners instead of complementing them.</div>
+</div>
+
+<div class="ab">
+<h3>ServiceTitan — Full Feature Audit (What They Actually Do)</h3>
+<p>Understanding ServiceTitan's complete feature set is critical for knowing (a) what NOT to build, (b) what they CAN'T do that we can, and (c) where future integration points exist.</p>
+<p><strong>ServiceTitan's full platform (March 2026):</strong></p>
+<ul>
+<li><strong>Dispatch & Scheduling:</strong> Drag-and-drop dispatch board, real-time GPS tracking, AI-powered route optimization (Dispatch Pro), job value prediction, capacity planning, multi-day job management</li>
+<li><strong>Full CRM:</strong> Customer database, service history per address, communication logs, lead tracking, sales pipeline, membership/maintenance agreement management, automated renewal tracking</li>
+<li><strong>Contact Center Pro:</strong> Inbound/outbound call recording, AI Voice Agents (24/7 automated call handling), SMS booking agents, Second Chance Leads (AI detects unbooked calls worth following up), unified inbox</li>
+<li><strong>Marketing Pro:</strong> Call attribution (which ad → which call → which revenue), campaign ROI tracking, email/direct mail automation, Google Ads optimization that trains on revenue data not just clicks</li>
+<li><strong>Dispatch Pro:</strong> AI Job Value Predictor (predicts revenue per job before assigning tech), automated tech-to-job matching based on performance history, profit-optimized dispatching</li>
+<li><strong>Pricebook Pro:</strong> Flat-rate pricing management (manually maintained by contractor), Good/Better/Best proposal templates, Price Insights showing regional benchmarks from ServiceTitan's 100K+ customer data</li>
+<li><strong>Field Pro (formerly Sales Pro):</strong> In-home call recording with AI analysis, tech performance scoring against custom frameworks, AI-generated audio briefings before each call, missed upsell/cross-sell detection, coaching recommendations</li>
+<li><strong>Atlas AI Assistant:</strong> Conversational AI for ServiceTitan data queries ("who was the last tech at this job?"), equipment troubleshooting using manuals, diagnostic calculators (airflow, subcool/superheat, duct sizing)</li>
+<li><strong>Accounting & FinTech:</strong> QuickBooks sync (2-way), invoicing, in-field payment processing, financing integration (GoodLeap, GreenSky, Service Finance), AP automation, progress billing</li>
+<li><strong>Fleet Pro:</strong> Vehicle GPS tracking, risky driver detection, maintenance alerts, Ford Pro integration for connected vehicles</li>
+<li><strong>Inventory Management:</strong> Truck inventory tracking, purchase orders, warehouse management, equipment serial number tracking</li>
+<li><strong>Reporting & Analytics:</strong> KPI dashboards, technician leaderboards, revenue by source/tech/service type/zip code, quarterly benchmark reports comparing to similar businesses</li>
+<li><strong>Membership Management:</strong> Recurring service agreements, automated visit scheduling, renewal tracking, revenue forecasting</li>
+</ul>
+<div class="warn">CRITICAL: ServiceTitan does ALL of this — but their estimation is PRICEBOOK-BASED. The contractor manually builds and maintains a pricebook with flat-rate pricing. ServiceTitan does NOT do photo-to-estimate, does NOT do AI vision analysis of field conditions, does NOT do equipment lifecycle intelligence. Their estimation requires human data entry. Ours requires a photo. That is the gap we exploit.</div>
+</div>
+
+<div class="ab">
+<h3>Integration Sequence & Timeline</h3>
+<ul>
+<li><strong>Month 4-5: QuickBooks Online API (MUST BUILD — NON-NEGOTIABLE)</strong> — This IS Phase 2. Enables the accuracy tracker (estimate vs actual cost from invoices) and is the foundation for LeakSense. QBO API is well-documented, OAuth 2.0 flow, read-only access to invoices/expenses. 2-3 week build. This integration feeds OUR data flywheel — it's not a convenience feature.</li>
+<li><strong>Month 6-8: Jobber + Housecall Pro (SHOULD BUILD)</strong> — Push approved estimates as jobs, pull completion data back for accuracy tracking. Both have open public APIs and actively encourage third-party integrations. 2-3 week build per platform. These are our ICP's most common tools — removing the double-data-entry friction makes ScopeSnap sticky inside their existing workflow.</li>
+<li><strong>Month 9-12: ServiceTitan (OPPORTUNISTIC — PROCEED WITH CAUTION)</strong> — They have an API and a third-party marketplace. Getting listed = distribution to 100K contractors, which is massive. But ServiceTitan is selective about marketplace partners and could view us as a competitive threat to Pricebook Pro. Build the integration capability internally but don't make it a dependency. If they open the door, walk through it. If they don't, our product still works perfectly for the 85% of contractors who don't use ServiceTitan.</li>
+</ul>
+</div>
+
+<div class="ab">
+<h3>🔒 Anti-Copy Protection Rules — What to Keep In Mind for EVERY Integration</h3>
+<p>These rules apply to every integration we build. The goal: make integrations that feed OUR data flywheel while exposing NOTHING that helps a partner replicate our intelligence layer.</p>
+
+<p><strong>RULE 1: One-Directional Data Flow Where It Matters</strong></p>
+<ul>
+<li><strong>What we PUSH to partners:</strong> Approved estimates as structured job data (customer name, address, job description, total price, line items). This is basic data that helps THEIR platform work better — it makes us a good integration partner.</li>
+<li><strong>What we PULL from partners:</strong> Job completion status, actual invoice amounts, payment confirmations. This feeds our accuracy tracker and LeakSense.</li>
+<li><strong>What we NEVER expose via API:</strong> Equipment identification logic, brand/model recognition algorithms, lifecycle prediction models, failure pattern databases, pricing auto-correction algorithms, homeowner report generation logic, accuracy scoring models, aggregate regional pricing data.</li>
+</ul>
+<div class="warn">THE LINE: Partners see that ScopeSnap sends them a "$4,200 AC replacement estimate for 123 Main St." They do NOT see that we identified a 2016 Carrier 24ACC636 with coil corrosion, predicted 4-6 years remaining life, compared pricing against 500 other Houston contractors, and auto-corrected the labor rate based on this contractor's last 30 jobs. The output is visible. The intelligence is invisible.</div>
+
+<p style="margin-top:16px"><strong>RULE 2: Intelligence Layer Stays Server-Side</strong></p>
+<ul>
+<li>All equipment identification, pricing logic, accuracy algorithms, and lifecycle predictions run on OUR servers. The integration partner only receives finished outputs (estimate PDFs, job data, pricing totals).</li>
+<li>Never embed our AI logic in a partner's SDK, plugin, or iframe where they could inspect it.</li>
+<li>The mobile app makes API calls to our backend for every photo analysis. No on-device AI that could be reverse-engineered.</li>
+</ul>
+
+<p style="margin-top:16px"><strong>RULE 3: Data Moat Is Ours, Not Theirs</strong></p>
+<ul>
+<li>Even if Jobber can see that 1,000 contractors are using ScopeSnap for estimation, they CANNOT see the 50,000 equipment photos we've analyzed, the failure patterns we've identified across brands, the regional pricing data we've aggregated, or the per-contractor accuracy models we've built.</li>
+<li>Our database of equipment lifecycle data, pricing intelligence, and accuracy patterns lives in PostgreSQL on our infrastructure. No partner has read access to aggregate data.</li>
+<li>If a partner shuts down our integration, contractors lose the data pipe but NOT their ScopeSnap data. Our product works standalone. The integration is a convenience, not a dependency.</li>
+</ul>
+
+<p style="margin-top:16px"><strong>RULE 4: Build Switching Costs Into the Integration</strong></p>
+<ul>
+<li>When a contractor connects ScopeSnap to Jobber, their estimate history, property records, equipment data, accuracy scores, and custom pricing all live in ScopeSnap. If Jobber launches a competing feature, the contractor would lose ALL of that accumulated intelligence by switching. The data stays with us.</li>
+<li>Make the integration additive to the contractor's workflow (push estimate → auto-create job in Jobber) so removing ScopeSnap means going back to manual estimation. This is behavioral lock-in on top of data lock-in.</li>
+</ul>
+
+<p style="margin-top:16px"><strong>RULE 5: Phase 2-3 Products Are Outside Their Category</strong></p>
+<ul>
+<li>Even if Jobber copies basic "photo to estimate," they will NOT build financial leak detection (LeakSense) or industry benchmarking (BenchmarkIQ). These are fundamentally different product categories that require different data, different technology, and different business models.</li>
+<li>By the time any FSM partner reacts to our estimation feature, we're already two phases ahead with products they have no roadmap for.</li>
+<li>The platform moat is: estimation intelligence → financial health → industry benchmarking. No FSM company is building this stack.</li>
+</ul>
+</div>
+
+<div class="ab">
+<h3>Lotus 1-2-3 Risk Assessment — Why This Isn't That</h3>
+<p><strong>The concern:</strong> If we integrate with Jobber, won't they see what we're doing and copy it? Isn't this how Lotus 1-2-3 died?</p>
+<p><strong>Why the Lotus analogy doesn't apply:</strong></p>
+<ul>
+<li><strong>Lotus died because Excel was a DIRECT REPLACEMENT</strong> in the same product category (spreadsheets). We are a DIFFERENT product category (AI estimation intelligence) from Jobber (field service management).</li>
+<li><strong>Microsoft used OS distribution</strong> to bundle Excel free. Jobber has no distribution advantage over us — they can't pre-install their estimation tool on contractors' phones.</li>
+<li><strong>Lotus had no data moat.</strong> Switching from Lotus to Excel cost nothing — you just opened your files in a different app. Switching from ScopeSnap means losing your company pricing database, equipment history, accuracy patterns, property records, and regional pricing intelligence. That's 12 months of accumulated data.</li>
+</ul>
+<p><strong>The REAL risk (be honest about this):</strong> Jobber or Housecall Pro builds a SHALLOW version — basic "photo to estimate" without equipment intelligence, without the homeowner report, without accuracy tracking — and bundles it free. Some contractors say "good enough." This is the Salesforce playbook (build adequate versions of everything and bundle).</p>
+<p><strong>Our defense against the shallow-copy risk:</strong></p>
+<ul>
+<li><strong>Vertical depth:</strong> A generic "photo to estimate" is 10-15% inaccurate (EstimationPro's own admission). Our HVAC-specific equipment identification reduces error to 3-5%. For a $12,000 AC replacement, that's the difference between $1,200 wrong and $400 wrong. Contractors notice.</li>
+<li><strong>Compounding data moat:</strong> Every month our data gets richer — more equipment photos, more pricing patterns, more accuracy corrections. A shallow copy at month 6 would be competing against 6 months of accumulated intelligence.</li>
+<li><strong>Two outputs, not one:</strong> The homeowner visual report is something no FSM platform will build because it's outside their product vision. They think about the contractor's workflow. We think about the homeowner's decision process. Different philosophy, different product.</li>
+<li><strong>Speed of execution:</strong> EstimationPro already proves this concept exists publicly. The idea isn't secret. Our advantage is execution speed + vertical depth + the Phase 2-3 platform that no one else is building.</li>
+</ul>
+</div>
+
+<div class="ab">
+<h3>Per-Platform Integration Playbook</h3>
+
+<p><strong>QuickBooks Online (Month 4-5 — MUST BUILD)</strong></p>
+<ul>
+<li><strong>What we push:</strong> Invoices from approved estimates (customer, line items, total, job reference)</li>
+<li><strong>What we pull:</strong> Paid invoice amounts (to compare estimate vs actual cost), expense categories (to identify cost overruns by type)</li>
+<li><strong>What we protect:</strong> Intuit sees invoice data flowing in — standard accounting integration. They do NOT see our equipment analysis, pricing intelligence, or accuracy algorithms. QuickBooks is a data source, not a competitor.</li>
+<li><strong>Anti-copy risk:</strong> VERY LOW. Intuit is not building photo-to-estimate for HVAC contractors. Their AI focus is on bookkeeping automation (QuickBooks Intuit Assist). Different category entirely.</li>
+<li><strong>API notes:</strong> QBO API v3 is mature and well-documented. OAuth 2.0. Read/write access to invoices, estimates, customers, items. Free for up to 40 concurrent connections. Rate limit: 500 requests/minute. Plenty for our use case.</li>
+</ul>
+
+<p style="margin-top:16px"><strong>Jobber (Month 6-8 — SHOULD BUILD)</strong></p>
+<ul>
+<li><strong>What we push:</strong> Approved estimate → creates a new Job in Jobber with customer info, job description, and line items</li>
+<li><strong>What we pull:</strong> Job completion status (done/cancelled), actual time spent (for accuracy tracking vs our estimated hours)</li>
+<li><strong>What we protect:</strong> Jobber sees structured job data. They do NOT see equipment identification results, homeowner reports, accuracy scores, or pricing intelligence. Push output only, never input logic.</li>
+<li><strong>Anti-copy risk:</strong> MEDIUM. Jobber could build basic "photo to estimate" as a feature. Defense: our vertical depth (HVAC-specific equipment DB) and data moat (accuracy patterns) can't be matched with a generic feature bolt-on. Also: Jobber is focused on being the best FSM — estimation is one small part of their roadmap, not the focus.</li>
+<li><strong>API notes:</strong> Jobber has a public GraphQL API. Well-documented. Supports creating clients, jobs, quotes, invoices. Webhooks available for job status changes. App marketplace available for discovery.</li>
+</ul>
+
+<p style="margin-top:16px"><strong>Housecall Pro (Month 6-8 — SHOULD BUILD)</strong></p>
+<ul>
+<li><strong>What we push:</strong> Same as Jobber — approved estimate → new job with customer and line item data</li>
+<li><strong>What we pull:</strong> Job completion, actual invoice amount for accuracy comparison</li>
+<li><strong>What we protect:</strong> Same rules as Jobber. Output data only, no intelligence layer exposed.</li>
+<li><strong>Anti-copy risk:</strong> MEDIUM. Same reasoning as Jobber — they could bolt on basic photo-estimation, but depth and data moat protect us.</li>
+<li><strong>API notes:</strong> Housecall Pro has a REST API. Less mature than Jobber's but functional. Supports customers, jobs, estimates, invoices. Partner program available.</li>
+</ul>
+
+<p style="margin-top:16px"><strong>ServiceTitan (Month 9-12 — OPPORTUNISTIC)</strong></p>
+<ul>
+<li><strong>What we push:</strong> Equipment identification data (brand, model, age, condition) to enrich their customer records. Approved estimates as jobs.</li>
+<li><strong>What we pull:</strong> Customer history, job completion data, pricebook data (to compare our AI pricing vs their manual pricebook)</li>
+<li><strong>What we protect:</strong> EVERYTHING about our intelligence layer. ServiceTitan is the one platform that could theoretically build a competing feature (they have Atlas AI, Field Pro, and massive data). Never expose equipment lifecycle algorithms, failure prediction models, or aggregate pricing intelligence.</li>
+<li><strong>Anti-copy risk:</strong> HIGH. ServiceTitan has the engineering team, the data (100K+ contractors), and the AI infrastructure (Azure AI, Titan Intelligence) to build photo-to-estimate. Our defense: Innovator's Dilemma — they can't offer a $149/mo tool without undermining their $250-500/tech/mo pricing. Also: their data is from large shops (20+ techs), ours is from small/mid shops (5-15 techs). Different data, different insights.</li>
+<li><strong>API notes:</strong> ServiceTitan has a REST API and a selective marketplace. They review and approve marketplace partners. Getting approved could take months. Don't make this a dependency — build the capability, submit the application, pursue if approved. Our product works without it.</li>
+<li><strong>Political strategy:</strong> Position ScopeSnap as ADDITIVE to ServiceTitan, not competitive. "We make your techs' estimation step faster. We generate homeowner reports that your platform doesn't produce. We're a complement, not a replacement." Frame the marketplace application this way.</li>
+</ul>
+</div>
+
+<div class="ab">
+<h3>Three User Archetypes — How ScopeSnap Fits in Real Life</h3>
+<ul>
+<li><strong>Small shop (5-10 techs, uses Jobber):</strong> Opens Jobber for schedule → drives to job → opens ScopeSnap to photograph equipment → AI generates estimate + homeowner report → shows homeowner visual report on phone → customer approves → estimate auto-pushes to Jobber as a job → tech does the work → job completion data flows back to ScopeSnap for accuracy tracking.</li>
+<li><strong>Mid shop (15-25 techs, uses ServiceTitan):</strong> Opens ServiceTitan for dispatch and customer history → drives to job → opens ScopeSnap for estimation (faster and smarter than ServiceTitan's manual pricebook) → generates homeowner visual report (ServiceTitan can't do this) → customer approves → tech logs completion in ServiceTitan → invoice data feeds accuracy tracker via QuickBooks.</li>
+<li><strong>Tiny shop (2-3 techs, uses nothing):</strong> ScopeSnap IS their primary business tool. Schedule via Google Calendar, estimate via ScopeSnap, send homeowner report via email, collect payment via Stripe link, track accuracy via manual "what did this job actually cost?" input. These are our most loyal users and the first to upgrade to LeakSense because they have the most pain and fewest tools.</li>
+</ul>
+<div class="co">KEY INSIGHT: The tiny shop is the easiest customer to acquire (they have nothing, any tool is an upgrade) and the most likely to upgrade to Phase 2 (they have no existing financial tools, so LeakSense fills a bigger gap). The mid shop is the hardest to acquire (already invested in ServiceTitan) but the highest-value customer (more techs = more estimates = more data = higher plan tier). Target tiny and small shops first, mid shops later.</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 9: TECHNICAL ARCHITECTURE -->
+<!-- ============================================================ -->
+<div class="sec" id="s10">
+<div class="sec-h">
+<span class="n">10</span>
+<h2>Technical Architecture & Build Plan</h2>
+<p>Pragmatic choices for a bootstrapped founder.</p>
+</div>
+
+<div class="ab">
+<h3>Tech Stack (Final — Verified March 21, 2026)</h3>
+<p><strong>Development:</strong> Everything local. PostgreSQL local install, FastAPI with uvicorn, Next.js dev server, photos in local folder. Only external service during dev: Gemini free tier API key.</p>
+<p><strong>Production — Hybrid stack, $0/month at launch:</strong></p>
+<ul>
+<li><strong>Frontend:</strong> Next.js 14 + Tailwind on Vercel (Hobby free tier — 100GB bandwidth, 150K function calls).</li>
+<li><strong>Backend:</strong> Python FastAPI on <strong>Google Cloud Run</strong> (free tier — 2M requests/mo, 360K GB-seconds). Pay-per-request model = $0 during dead hours. Scales to zero when nobody's using it.</li>
+<li><strong>Database:</strong> PostgreSQL on <strong>Neon</strong> (free tier — 0.5GB, 192 compute hrs, scale-to-zero). Cloud SQL has NO free tier — Neon is the right choice.</li>
+<li><strong>AI — Vision:</strong> Gemini 2.5 Flash via Google AI Studio (free tier — 1,000 RPD, 15 RPM). Best cost/quality for equipment photos. GPT-4o as fallback for edge cases only.</li>
+<li><strong>AI — Narrative:</strong> Gemini 2.5 Flash-Lite ($0.10/1M tokens). 2-3 sentences per estimate. Same Google ecosystem = one billing dashboard.</li>
+<li><strong>Object Storage:</strong> Cloudflare R2 (free tier — 10GB, zero egress). Cloud Storage charges $0.12/GB egress — R2's zero egress saves $20-50/mo at scale for an image-heavy app.</li>
+<li><strong>PDF Generation:</strong> WeasyPrint. Runs inside Cloud Run container. Zero API cost.</li>
+<li><strong>Auth:</strong> Clerk (free tier — 10K MAU). Multi-tenant organizations built-in (company = org, tech = member).</li>
+<li><strong>Payments:</strong> Stripe Billing. Subscriptions + deposit payments. No monthly fee.</li>
+<li><strong>Email:</strong> Resend (free tier — 100/day). React Email for templates.</li>
+<li><strong>CDN:</strong> Cloudflare (free tier). DNS, SSL, DDoS, R2 integration.</li>
+</ul>
+<div class="co">INFRASTRUCTURE COST: $0/month through beta. $0-5/month at 50 users. $48-75/month at 500 users ($5K MRR). $170-185/month at 2,000 users ($20K+ MRR). Margins are 98-99% at every stage. Full analysis with pricing research in ScopeSnap_MVP_Technical_Spec.html §0-§1.</div>
+</div>
+
+<div class="ab">
+<h3>Token Cost Architecture</h3>
+<p><strong>Rule:</strong> Deterministic for execution, AI for interpretation. Never use an LLM for something a SQL query or formula can answer.</p>
+<ul>
+<li><strong>ScopeSnap:</strong> One vision API call per photo (~$0.01). Template + variable fill. PDF = deterministic code. ~$0.05/document. At 30/mo = $1.50/customer/month.</li>
+<li><strong>LeakSense:</strong> All anomaly detection in one nightly batch (math, not AI). Pre-computed insights cached. Only "ask why" hits LLM. ~$0.15/customer/month.</li>
+<li><strong>BenchmarkIQ:</strong> All benchmarking = percentile math. Zero AI cost. Only recommendations use AI, once/metric/week via batch. ~$0.08/customer/month.</li>
+<li><strong>Combined:</strong> Under $2/customer/month. Freemium viable.</li>
+</ul>
+</div>
+
+<div class="ab">
+<h3>What NOT to Build</h3>
+<ul>
+<li><strong>Don't build your own AI model.</strong> Use APIs. Fine-tune small models only for specific extraction tasks.</li>
+<li><strong>Don't build scheduling, dispatch, CRM.</strong> Integrate with Jobber/Housecall Pro.</li>
+<li><strong>Don't build billing.</strong> Stripe Billing handles everything.</li>
+<li><strong>Don't build email infra.</strong> Resend or Postmark.</li>
+<li><strong>Don't build pricing DB from scratch.</strong> Start with RSMeans + top 5 HVAC brand pricing data + user-contributed pricing.</li>
+<li><strong>Don't build an FSM.</strong> Be the intelligence layer, not the operating system.</li>
+</ul>
+<div class="warn">CRITICAL: Launch as a platform name (Mainnov or new brand), NOT "ScopeSnap." Architecture must support adding LeakSense and BenchmarkIQ as modules from day one. You're building a platform, not a point tool.</div>
+</div>
+
+<div class="ab">
+<h3>90-Day Build Plan (Synthesized from 4 AI Models)</h3>
+<ul>
+<li><strong>Days 1-14:</strong> Build MVP — camera capture → vision API → template fill → PDF. ONE use case: HVAC equipment replacement estimate. Hardcode top 5 HVAC brand pricing. Simultaneously interview 10-15 HVAC contractors.</li>
+<li><strong>Days 15-30:</strong> Validate with 5 contractors (free access). Watch them use it. Fix top 3 issues. Build customer-facing homeowner report (Differentiator #1).</li>
+<li><strong>Days 31-60:</strong> Add plumbing equipment DB. Build custom pricing database feature. Set up Stripe billing. Build 5 HVAC-specific SEO calculators.</li>
+<li><strong>Days 61-90:</strong> Launch Google Ads targeting "HVAC estimating software." Free tier → conversion trigger after 5 estimates. Target: 3-5 paying customers by day 90.</li>
+</ul>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 10: GO-TO-MARKET STRATEGY -->
+<!-- ============================================================ -->
+<div class="sec" id="s12">
+<div class="sec-h">
+<span class="n">12</span>
+<h2>Go-to-Market Strategy — How We Get HVAC Customers</h2>
+<p>Channels, tactics, and sequencing based on how competitors actually acquire contractors and where our structural advantages lie. Research: March 2026.</p>
+</div>
+
+<div class="ab">
+<h3>The GTM Reality Check — What Works for Contractor Software</h3>
+<p>After researching how EstimationPro, CompanyCam, Jobber, Housecall Pro, and ServiceTitan acquire contractors, one pattern emerges: <strong>there is no single silver bullet.</strong> Every successful contractor software company uses a combination of channels. But the MIX matters — and it's different for us because we're bootstrapped from Pakistan, not VC-funded from the US.</p>
+<p><strong>What we CAN'T do:</strong> Attend US trade shows in person ($5K-$15K per event). Hire a US-based sales team. Build a 30K-member Facebook community from scratch. Sponsor ACCA/PHCC events. Run $50K/month ad campaigns.</p>
+<p><strong>What we CAN do better than anyone:</strong> Build HVAC-specific SEO content at 10x the speed (Pakistan labor cost advantage). Run profitable Google Ads at CPAs competitors can't match (our margins allow it). Offer $9.99 pricing that nobody can compete with. Leverage our 80+ Upwork project network for warm introductions. Build the product faster because Shoab codes it himself.</p>
+</div>
+
+<div class="ab">
+<h3>Channel 1: Google Search Ads — The Day 1 Revenue Engine</h3>
+<p><strong>Why this is #1:</strong> You already know Google Ads from Mainnov's services business. HVAC contractors searching "HVAC estimating software" or "AI estimate for contractors" are high-intent buyers. They have a problem RIGHT NOW and are looking for solutions.</p>
+<p><strong>Target keywords (start narrow, expand with data):</strong></p>
+<ul>
+<li><strong>High intent (bid aggressively):</strong> "HVAC estimating software," "HVAC estimate app," "AC replacement estimate tool," "contractor estimating software HVAC"</li>
+<li><strong>Competitor capture:</strong> "EstimationPro alternative," "ServiceTitan too expensive," "cheaper than ServiceTitan," "Jobber estimating feature"</li>
+<li><strong>Problem-aware:</strong> "how to estimate HVAC jobs faster," "HVAC estimate template," "AC replacement cost calculator"</li>
+<li><strong>Long-tail (cheap, high conversion):</strong> "photo to estimate HVAC," "AI HVAC estimate from photo," "instant HVAC estimate app"</li>
+</ul>
+<p><strong>Why we win on Google Ads:</strong> Our cost-per-acquisition math is fundamentally different. At $9.99/month with 94% margin, we need a customer to stay ~3 months to break even on a $25 CPA. EstimationPro needs $79/month customers at higher CPA. We can afford to bid higher on the same keywords and still be profitable faster.</p>
+<p><strong>Landing page strategy:</strong> Don't send to homepage. Build dedicated landing pages for each keyword cluster. "HVAC Estimating Software" → page showing photo-to-estimate demo with HVAC examples. "ServiceTitan alternative" → comparison page showing price/feature differences. Each page has ONE CTA: "Create your first estimate free."</p>
+<div class="co">BUDGET: Start at $30-50/day ($900-1,500/month). At $15-25 CPA, that's 40-100 signups/month. Profitable from month 1 because even free users feed the data moat, and $9.99 Early Bird users generate revenue immediately. Scale to $100/day once conversion rates stabilize.</div>
+</div>
+
+<div class="ab">
+<h3>Channel 2: HVAC-Specific SEO Calculators — The EstimationPro Counter</h3>
+<p><strong>What EstimationPro did:</strong> Built 91 free generic construction calculators. Drywall calculator, concrete calculator, roofing calculator, etc. Each one ranks for long-tail keywords and funnels contractors to their estimating product. This is their #1 organic traffic driver.</p>
+<p><strong>Our counter-strategy — don't out-breadth them, out-depth them:</strong></p>
+<p>Build 15 HVAC-specific calculators that EstimationPro doesn't have. <strong>Key finding: ALL 15 can be built with free public data.</strong> No proprietary data needed at launch. As ScopeSnap users generate real estimates, we replace generic ranges with actual aggregate data — that's when the calculators become a proprietary moat.</p>
+
+<p style="margin-top:12px"><strong>TIER 1 — Build First (Days 1-60). Highest search volume, easiest to build:</strong></p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Calculator</th><th>What It Does</th><th>Data Source (All Free/Public)</th><th>Core Formula / Logic</th><th>Build Time</th></tr></thead>
+<tbody>
+<tr><td><strong>SEER Savings Calculator</strong></td><td>"How much will I save upgrading from SEER 13 to SEER 20?"</td><td>EIA.gov (electricity rates by state). SEER efficiency formulas from ENERGY STAR and every HVAC manufacturer. Standard published HVAC engineering math.</td><td>Annual cooling cost = (BTU × cooling hours) / (SEER × 1,000) × $/kWh. Compare old SEER vs new SEER. Show 5-year and 10-year savings.</td><td>1 day</td></tr>
+<tr><td><strong>AC Replacement Cost Estimator</strong></td><td>"How much does a Carrier AC replacement cost in Houston?"</td><td>HomeAdvisor, Angi, Fixr publish regional price ranges. RSMeans has detailed cost data. Launch with public ranges, replace with ScopeSnap aggregate data over time.</td><td>Lookup: region + tonnage + SEER level → cost range. Add labor estimate by region. Show Good/Better/Best tiers. This is the calculator that upgrades to proprietary data fastest.</td><td>2-3 days</td></tr>
+<tr><td><strong>Equipment Age Checker</strong></td><td>"Enter serial number → see manufacture date, expected lifespan, known issues"</td><td>Serial number decode guides are published on HVAC Training Shop, Building Intelligence Center, and manufacturer sites. Carrier = first 2 digits are year. Trane = letter-based system. Goodman = first 2 digits. Need to compile for top 5 brands.</td><td>Parse serial number format by brand → extract manufacture year. Cross-reference with published lifespan data (Carrier AC: 15-20 years average). This is the #1 lead magnet — it directly demonstrates ScopeSnap's equipment intelligence value.</td><td>2-3 days</td></tr>
+<tr><td><strong>Repair vs Replace Calculator</strong></td><td>"Your unit is 12 years old, repair costs $2,800. Should you repair or replace?"</td><td>No external data needed — this is a decision framework. The "Rule of 5,000" (age × repair cost > $5,000 = replace) is industry-standard contractor wisdom. Published in every HVAC training resource.</td><td>Input: equipment age, repair cost, replacement cost, estimated remaining life. Output: 5-year total cost comparison for repair path vs replace path. Include energy savings from newer equipment. Simple math, high perceived value.</td><td>1 day</td></tr>
+<tr><td><strong>HVAC Load Calculator</strong></td><td>"What size AC do I need for 2,000 sq ft?"</td><td>ACCA Manual J tables (published, freely available). Climate zone data from ENERGY STAR / IECC. Insulation factors from DOE.</td><td>Simplified Manual J: sq footage × climate zone multiplier × insulation factor × window factor × occupancy factor = BTU load. Divide by 12,000 = tonnage. Not a full engineering tool — a quick sizing guide.</td><td>2 days</td></tr>
+</tbody>
+</table>
+</div>
+
+<p style="margin-top:16px"><strong>TIER 2 — Build Months 2-4. Technical tools HVAC techs use daily:</strong></p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Calculator</th><th>What It Does</th><th>Data Source</th><th>Core Formula / Logic</th><th>Build Time</th></tr></thead>
+<tbody>
+<tr><td><strong>Refrigerant Charge Calculator</strong></td><td>Calculate charge needed based on line set length and refrigerant type</td><td>Manufacturer specs published in every HVAC technician manual. R-410A: ~0.6 oz/ft for 3/8" liquid line. R-22: different rate. R-32: different rate. All publicly documented.</td><td>Charge = factory charge + (line set length - factory length) × charge-per-foot. Simple lookup + math.</td><td>1 day</td></tr>
+<tr><td><strong>Duct Sizing Calculator</strong></td><td>What duct size for a given CFM requirement</td><td>ACCA Manual D tables. Published, freely available. Standard HVAC engineering reference.</td><td>Room sq ft → BTU → CFM required → duct diameter from friction rate chart. Lookup table, not proprietary.</td><td>1 day</td></tr>
+<tr><td><strong>Furnace Efficiency Comparison</strong></td><td>Compare 80% vs 95% vs 98% AFUE by annual gas cost</td><td>EIA.gov (natural gas rates by state). AFUE ratings published by all manufacturers.</td><td>Annual heating cost = (BTU × heating hours) / (AFUE × therms-per-BTU) × $/therm. Compare 3 efficiency levels side by side with payback period.</td><td>1 day</td></tr>
+<tr><td><strong>Heat Pump vs Furnace ROI</strong></td><td>Should I go heat pump or gas furnace? Show the 10-year math.</td><td>EIA.gov (electricity + gas rates). HSPF/SEER for heat pumps, AFUE for furnaces. Published efficiency ratings. Hot topic with electrification push — high search volume growing.</td><td>Compare: heat pump annual cost (heating via HSPF + cooling via SEER) vs furnace + AC annual cost (heating via AFUE + cooling via SEER). Include equipment cost difference. Show breakeven year.</td><td>2 days</td></tr>
+<tr><td><strong>Tonnage Calculator</strong></td><td>"What tonnage AC do I need?"</td><td>Same as HVAC Load Calculator — just a simpler interface. BTU ÷ 12,000 = tons.</td><td>Essentially the load calculator with a focused UI. Can share the same backend. Different landing page for different keyword.</td><td>Half day (reuses load calc)</td></tr>
+<tr><td><strong>BTU Calculator (HVAC-specific)</strong></td><td>Not a generic BTU calculator — factors in ductwork, insulation, climate zone</td><td>Same Manual J data as load calculator. Differentiated by being HVAC-specific, not a generic physics BTU tool.</td><td>Same core formula as load calculator, different keyword target and UI presentation. Include duct loss factors that generic BTU calculators ignore.</td><td>Half day (reuses load calc)</td></tr>
+<tr><td><strong>Airflow Calculator</strong></td><td>CFM calculations for HVAC techs</td><td>Standard HVAC formula: CFM = BTU / (1.08 × ΔT). Published in every HVAC textbook.</td><td>Input: BTU capacity + temperature differential. Output: required CFM. Add: duct velocity check (CFM / duct area = FPM, compare to recommended 600-900 FPM).</td><td>1 day</td></tr>
+</tbody>
+</table>
+</div>
+
+<p style="margin-top:16px"><strong>TIER 3 — Build Months 4-6. Database-driven tools with higher value:</strong></p>
+
+<div class="tw">
+<table>
+<thead><tr><th>Calculator</th><th>What It Does</th><th>Data Source</th><th>Core Formula / Logic</th><th>Build Time</th></tr></thead>
+<tbody>
+<tr><td><strong>Energy Rebate Finder</strong></td><td>"Enter ZIP code → see available HVAC rebates"</td><td>DSIRE database (dsireusa.org) — free, publicly accessible. Has every utility rebate in the US searchable by ZIP code. We build a cleaner interface on top of their data.</td><td>ZIP code → state/utility lookup → filter for HVAC-related rebates (AC, heat pump, furnace, insulation). Display amount, eligibility, expiration. High value because contractors use this to sell upgrades ("you qualify for a $2,000 rebate").</td><td>3-4 days</td></tr>
+<tr><td><strong>Maintenance Schedule Generator</strong></td><td>"Enter your equipment → get customized maintenance calendar"</td><td>Standard manufacturer-recommended intervals published on every brand's website. Carrier: filter every 90 days, coil cleaning annually, refrigerant check annually. Trane/Lennox/etc: similar published schedules.</td><td>Input: equipment brand + model + install date. Output: next 12 months of recommended maintenance with dates. Generates a PDF the contractor can give to the homeowner. Builds awareness of ScopeSnap's equipment intelligence.</td><td>2 days</td></tr>
+<tr><td><strong>Warranty Lookup Tool</strong></td><td>"Enter brand + model → see warranty coverage and status"</td><td>Manufacturer warranty terms published on their websites. Carrier: 10-year parts (registered), 5-year (unregistered), 1-year labor. Compile for top 10 brands into one searchable interface.</td><td>Lookup: brand + registration status → warranty terms. Add: "Your unit was manufactured in 2016, warranty expires 2026. You have X months remaining." Convenience value — all warranty info in one place instead of 10 different manufacturer websites.</td><td>2-3 days</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="ab" style="margin-top:16px">
+<h3>The Data Evolution — From Public to Proprietary</h3>
+<p>This is the strategic play that makes these calculators a moat, not just a lead-gen tool:</p>
+<ul>
+<li><strong>Phase 1 (Launch):</strong> All calculators use public data. "Average AC replacement in Houston: $5,800-$12,000" (from HomeAdvisor/Angi). Accurate enough to be useful, generic enough that anyone could build the same thing.</li>
+<li><strong>Phase 2 (500+ users generating estimates):</strong> Replace public ranges with ScopeSnap aggregate data. "Based on 847 ScopeSnap estimates in Houston metro, average 3-ton AC replacement: $8,420 (median), $7,100-$9,800 (25th-75th percentile)." Nobody else has this data.</li>
+<li><strong>Phase 3 (2,000+ users):</strong> Add brand-specific and model-specific pricing. "Carrier 24ACC636 replacement in Houston: $8,900 average. Trane XR15: $9,200. Goodman GSX16: $7,400." This is proprietary intelligence that makes the calculator irreplaceable.</li>
+</ul>
+<div class="co">THE ENDGAME: EstimationPro's 91 generic calculators use the same HomeAdvisor data forever. Our 15 HVAC calculators start with that same data but evolve into proprietary intelligence backed by thousands of real contractor estimates. After 12 months, a competitor would need to build the same user base to get the same data quality. The calculators ARE the moat — disguised as free SEO tools.</div>
+</div>
+
+<p><strong>Each calculator does double duty:</strong> (1) Ranks for HVAC-specific long-tail keywords that EstimationPro's generic calculators can't touch. (2) Demonstrates ScopeSnap's HVAC domain expertise — "if their free calculator is this good, imagine what the paid product does." (3) Captures email addresses for nurture campaigns. (4) The Equipment Age Checker specifically feeds signups to ScopeSnap by showing contractors the value of equipment identification.</p>
+<div class="co">TIMELINE: Build 5 Tier 1 calculators in the first 60 days. These are the highest-search-volume tools and each takes 1-3 days to build. Add Tier 2 (7 tools) in months 2-4. Add Tier 3 (3 tools) in months 4-6. Within 6 months you'll have all 15 and they'll be generating organic traffic for years. Total build effort: ~25-30 days spread across 6 months.</div>
+</div>
+
+<div class="ab">
+<h3>Channel 3: HVAC Community Infiltration — Where Contractors Actually Hang Out</h3>
+<p><strong>The key communities (in order of value):</strong></p>
+<ul>
+<li><strong>HVAC-Talk (hvac-talk.com)</strong> — 275,000+ members. The #1 HVAC forum. Business strategy, equipment discussions, tool recommendations. Be genuinely helpful answering estimation questions for 30 days before ever mentioning ScopeSnap.</li>
+<li><strong>Reddit r/HVAC</strong> — Huge, active, and contractors actively discuss software tools. Share useful content (like your free calculators), answer questions, build karma. When someone asks "what's the best way to estimate jobs," you have a credible answer.</li>
+<li><strong>Reddit r/hvacadvice</strong> — 50K+ members. More homeowner-focused but techs answer questions here. Good for awareness.</li>
+<li><strong>HVAC Technician Facebook Group</strong> — 54,000+ members. Strictly for professionals. Post real value, not ads.</li>
+<li><strong>Contractor Talk (contractortalk.com)</strong> — 145,000+ members across all trades. HVAC section is active.</li>
+<li><strong>ServiceTitan Toolbox for the Trades</strong> — Open to anyone (not just ST customers). This is where non-ServiceTitan contractors hang out. Our exact ICP.</li>
+</ul>
+<p><strong>The infiltration playbook (do NOT spam):</strong></p>
+<ul>
+<li><strong>Weeks 1-4:</strong> Join all communities. Read. Understand the culture. Answer 3-5 questions per week with genuinely helpful responses. Build reputation. NEVER mention ScopeSnap.</li>
+<li><strong>Weeks 5-8:</strong> Share your free HVAC calculators as helpful resources when relevant. "Hey, I built a free SEER savings calculator that might help with that — [link]." The calculator has ScopeSnap branding but no hard sell.</li>
+<li><strong>Weeks 9-12:</strong> When someone asks about estimating tools, share your experience. "We're building something for HVAC-specific estimation. Would love your feedback if you want to try the beta." Frame as seeking help, not selling.</li>
+<li><strong>Ongoing:</strong> Share interesting data from your aggregate equipment database (anonymized). "We analyzed 5,000 HVAC equipment photos and here are the top 5 failure patterns by brand." This is content that goes VIRAL in contractor communities because nobody else has this data.</li>
+</ul>
+<div class="warn">CRITICAL: Contractors can smell marketing a mile away. One spammy post gets you banned forever. The approach must be genuine value-first for months before any mention of ScopeSnap. This is a slow burn but the most effective channel for word-of-mouth once it kicks in.</div>
+</div>
+
+<div class="ab">
+<h3>Channel 4: Upwork Network Leveraging — Your Secret Weapon</h3>
+<p><strong>What you have that nobody else has:</strong> 80+ completed dashboard projects for US SMBs. Top Rated Plus status. Existing relationships with business owners who trust you with their financial data. Some of these are contractors or know contractors.</p>
+<p><strong>The play:</strong></p>
+<ul>
+<li>Email your existing client list: "I'm building an AI estimation tool for HVAC contractors. Do you know any HVAC company owners who struggle with estimation? I'll give them free access."</li>
+<li>Post on Upwork: Offer "Free HVAC Business Data Audit" as a lead magnet. The audit uses ScopeSnap's estimation analysis as the hook, and the $5K-$25K dashboard project as the upsell.</li>
+<li>Your Upwork profile links to ScopeSnap. Every client who sees your profile sees the tool.</li>
+</ul>
+<p><strong>Target:</strong> 5-10 warm introductions from existing network. These become your first beta testers and testimonial sources.</p>
+</div>
+
+<div class="ab">
+<h3>Channel 5: Content Marketing — The "HVAC Estimation Expert" Play</h3>
+<p><strong>Blog content strategy (publish 2x/week):</strong></p>
+<ul>
+<li><strong>Comparison posts:</strong> "ScopeSnap vs EstimationPro — Which is Better for HVAC?" Copy EstimationPro's playbook of writing comparison pages against every competitor. They wrote one against ServiceTitan and Jobber. Write one against them.</li>
+<li><strong>HVAC business advice:</strong> "How to Estimate HVAC Jobs Faster," "5 Pricing Mistakes HVAC Contractors Make," "Why Your HVAC Estimates Are Wrong (And How to Fix Them)." Each post ends with a soft CTA to ScopeSnap.</li>
+<li><strong>Data-driven content (once you have users):</strong> "We Analyzed 10,000 HVAC Equipment Photos — Here's What We Found." This is content nobody else can produce because nobody else has the data. It gets picked up by trade publications, shared in forums, and establishes ScopeSnap as the data authority.</li>
+<li><strong>Equipment guides:</strong> "The Complete Guide to Carrier AC Models (2015-2025)" — deep domain content that ranks for model-specific searches and demonstrates expertise.</li>
+</ul>
+<div class="co">SEO ADVANTAGE: EstimationPro writes generic contractor content. We write HVAC-specific content. "HVAC estimating software" is a less competitive keyword than "contractor estimating software" because nobody is specifically targeting HVAC contractors with depth. We own this niche.</div>
+</div>
+
+<div class="ab">
+<h3>Channel 5B: Content Distribution — Where to Put It (All Free)</h3>
+<p><strong>Every piece of content lives on YOUR domain first</strong> (scopesnap.com/blog or mainnov.tech/blog). This builds SEO authority. Then repurpose and distribute across free platforms. Total distribution cost: $0. The only cost is your time.</p>
+
+<p style="margin-top:12px"><strong>The 8 free distribution platforms:</strong></p>
+<div class="tw">
+<table>
+<thead><tr><th>Platform</th><th>Why It Works</th><th>How to Use It</th><th>What NOT to Do</th></tr></thead>
+<tbody>
+<tr><td><strong>Your Blog (Primary)</strong></td><td>Every post is a Google-indexable landing page. After 6 months of 2/week, you have 50+ pages of HVAC-specific content ranking for long-tail keywords.</td><td>Publish original content here FIRST. Each post targets one keyword, has internal links to calculators and other posts, and ends with a CTA to ScopeSnap free tier.</td><td>Don't publish only on third-party platforms. Your domain needs the SEO authority.</td></tr>
+<tr><td><strong>Reddit (r/HVAC, r/hvacadvice, r/contractor)</strong></td><td>Highest-ROI free channel. Reddit posts rank on Google. A helpful answer about HVAC estimation stays visible for YEARS and appears in Google search results.</td><td>Write the actual helpful content AS a Reddit post — don't just drop a link. Give away the value. People check your profile, see ScopeSnap, visit your site organically.</td><td>NEVER link-drop. Reddit hates it. Write genuine, helpful text posts. Let people find you through your profile and comment history.</td></tr>
+<tr><td><strong>HVAC-Talk Forum (275K members)</strong></td><td>The #1 HVAC professional forum. Has "Business and Marketing" section where contractors discuss software and pricing strategy. Trusted by industry.</td><td>Answer questions genuinely for weeks. Put ScopeSnap link in your forum signature. Over time you become a recognized voice. When you mention ScopeSnap, people already trust you.</td><td>Don't post promotional content. Forum rules are strict. Earn reputation first, mention product later. One ban = permanent loss of the #1 HVAC community.</td></tr>
+<tr><td><strong>Facebook Groups (HVAC Technician 54K+, contractor groups)</strong></td><td>HVAC techs check Facebook daily. Groups are where they discuss tools, share job photos, and ask for software recommendations.</td><td>Share educational content directly in posts. "5 Pricing Mistakes HVAC Contractors Make" works as a discussion starter. Ask questions that prompt engagement. Build relationships.</td><td>Don't post comparison articles or anything obviously promotional. "ScopeSnap vs EstimationPro" is for your blog SEO, NOT for Facebook groups.</td></tr>
+<tr><td><strong>YouTube</strong></td><td>#2 search engine after Google. HVAC techs search YouTube for technical training, tool reviews, and business tips constantly. Videos rank in Google search too.</td><td>Screen recordings with voiceover using Loom or OBS (both free). Walk through an estimate, explain equipment identification, show the homeowner report. Raw and authentic beats polished for this audience.</td><td>Don't over-produce. A 3-minute screen recording of a real estimate being generated is worth more than a $5K produced video. Contractors trust real over polished.</td></tr>
+<tr><td><strong>Medium</strong></td><td>Medium articles get SEO juice and appear in Google search results. Good for longer business-advice content that targets HVAC business owners.</td><td>Repost your blog content to Medium. Set canonical URL pointing to your original blog post (so Google credits your domain, not Medium). Medium's built-in audience adds extra reach.</td><td>Don't publish on Medium INSTEAD of your blog. Publish on your blog first, repost to Medium second. Your domain needs the SEO credit.</td></tr>
+<tr><td><strong>Quora</strong></td><td>Contractors and homeowners ask HVAC questions constantly. "How much does AC replacement cost?" "What's the best HVAC estimating tool?" Answers rank on Google for years.</td><td>Answer specific questions with genuine expertise. Link to your calculator or blog post when directly relevant. "I built a free SEER savings calculator that might help — [link]" is acceptable on Quora.</td><td>Don't answer every HVAC question with a ScopeSnap plug. Answer 10 questions genuinely for every 1 where you mention your product.</td></tr>
+<tr><td><strong>HVAC Trade Publications (guest posts)</strong></td><td>ACHR News, Contracting Business, HVAC Insider accept contributed articles. Getting published = instant credibility with the entire industry. Author bio links to ScopeSnap.</td><td>Write educational, non-promotional articles. "How AI is Changing HVAC Estimation" or "The Real Cost of Bad Estimates for HVAC Contractors." Pitch the editor directly via email with a finished draft.</td><td>Don't pitch a product review or promotional piece. Trade publications want educational content that serves their readers. The promotion happens through the author bio.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="ab">
+<h3>Channel 5C: Content-to-Platform Distribution Matrix</h3>
+<p><strong>Which content type goes WHERE:</strong></p>
+<div class="tw">
+<table>
+<thead><tr><th>Content Type</th><th>Your Blog</th><th>Reddit</th><th>HVAC-Talk</th><th>Facebook</th><th>YouTube</th><th>Medium</th><th>Quora</th><th>Trade Pubs</th></tr></thead>
+<tbody>
+<tr><td><strong>Comparison posts</strong> ("ScopeSnap vs EstimationPro")</td><td style="background:rgba(0,229,160,.1)">✓ Primary home</td><td>✗ Too promotional</td><td>✗ Will get banned</td><td>✗ Too promotional</td><td>✗</td><td>✓ Repost</td><td>✗</td><td>✗</td></tr>
+<tr><td><strong>HVAC business advice</strong> ("5 Pricing Mistakes")</td><td style="background:rgba(0,229,160,.1)">✓ Primary home</td><td style="background:rgba(0,229,160,.1)">✓ Rewrite as text post</td><td style="background:rgba(0,229,160,.1)">✓ Share as advice</td><td style="background:rgba(0,229,160,.1)">✓ Discussion starter</td><td style="background:rgba(0,229,160,.1)">✓ Video version</td><td style="background:rgba(0,229,160,.1)">✓ Repost</td><td style="background:rgba(0,229,160,.1)">✓ Answer related Qs</td><td style="background:rgba(0,229,160,.1)">✓ Pitch as article</td></tr>
+<tr><td><strong>Data-driven content</strong> ("We Analyzed 10,000 Photos")</td><td style="background:rgba(0,229,160,.1)">✓ Full analysis</td><td style="background:rgba(0,229,160,.1)">✓ Share KEY finding + link</td><td style="background:rgba(0,229,160,.1)">✓ Share finding</td><td style="background:rgba(0,229,160,.1)">✓ Share finding</td><td style="background:rgba(0,229,160,.1)">✓ Video walkthrough</td><td style="background:rgba(0,229,160,.1)">✓ Repost</td><td style="background:rgba(0,229,160,.1)">✓ Cite in answers</td><td style="background:rgba(0,229,160,.1)">✓ Pitch as exclusive</td></tr>
+<tr><td><strong>Equipment guides</strong> ("Carrier AC Models 2015-2025")</td><td style="background:rgba(0,229,160,.1)">✓ Primary home (SEO)</td><td style="background:rgba(0,229,160,.1)">✓ Helpful reference</td><td style="background:rgba(0,229,160,.1)">✓ Answer equipment Qs</td><td>✗ Too long/technical</td><td style="background:rgba(0,229,160,.1)">✓ Video version</td><td style="background:rgba(0,229,160,.1)">✓ Repost</td><td style="background:rgba(0,229,160,.1)">✓ Answer model Qs</td><td>✗</td></tr>
+<tr><td><strong>Calculator launches</strong> ("Free SEER Savings Calculator")</td><td style="background:rgba(0,229,160,.1)">✓ Calculator page</td><td style="background:rgba(0,229,160,.1)">✓ "I built a free tool"</td><td style="background:rgba(0,229,160,.1)">✓ Share as resource</td><td style="background:rgba(0,229,160,.1)">✓ Share as resource</td><td style="background:rgba(0,229,160,.1)">✓ Demo video</td><td>✗</td><td style="background:rgba(0,229,160,.1)">✓ Link in answers</td><td>✗</td></tr>
+</tbody>
+</table>
+</div>
+<div class="info">KEY INSIGHT: HVAC business advice and data-driven content distribute to ALL 8 platforms. Comparison posts go on your blog ONLY (SEO capture). Calculators distribute to communities as helpful resources. One piece of content → up to 8 touchpoints. The content repurposing system below makes this efficient.</div>
+</div>
+
+<div class="ab">
+<h3>Channel 5D: The Content Repurposing System — Write Once, Distribute 5+ Ways</h3>
+<p><strong>You write ONE blog post. Then spend 1-2 hours reformatting it into multiple distribution formats:</strong></p>
+<ul>
+<li><strong>Step 1:</strong> Write the blog post on your site (45-60 min). This is the original, SEO-optimized version with CTA to ScopeSnap.</li>
+<li><strong>Step 2:</strong> Rewrite the key insight as a Reddit text post (15 min). No links to your blog. Give away the value directly. Different voice — more casual, more conversational, ask a question at the end to prompt discussion.</li>
+<li><strong>Step 3:</strong> Create a Facebook group discussion post (10 min). Pull the most provocative finding or tip. Ask a question: "What do you think — do most HVAC contractors under-price AC replacements?" Let the community debate.</li>
+<li><strong>Step 4:</strong> Record a 3-5 min YouTube video walking through the key points (20 min). Screen share relevant data or calculator. Raw is fine — use Loom (free) or OBS (free).</li>
+<li><strong>Step 5:</strong> Repost the full article to Medium with canonical URL (5 min). Copy-paste, set canonical, publish.</li>
+<li><strong>Step 6:</strong> Find 2-3 Quora questions where excerpts from your post answer the question (15 min). Answer genuinely, cite your data, link to calculator if relevant.</li>
+</ul>
+<p><strong>Total time per content piece:</strong> 1 hour writing + 1-1.5 hours distributing = 2-2.5 hours for 6+ touchpoints. At 2 posts/week, that's 4-5 hours/week for an always-on content machine.</p>
+<div class="co">YOUR COST ADVANTAGE: A US-based content marketing agency charges $2,000-5,000/month for this volume. You're doing it yourself at Pakistan hours. At 5 hours/week, this is effectively free. EstimationPro has one person (the founder) writing blog posts and building calculators. You can match or exceed their output because you don't have to also do the carpentry work.</div>
+</div>
+
+<div class="ab">
+<h3>Channel 6: YouTube Demo Videos — Show Don't Tell</h3>
+<p><strong>Why this matters for HVAC:</strong> Contractors are visual learners and skeptical of written claims. A 60-second video showing "tech photographs a rusty Carrier AC → ScopeSnap identifies model/age/condition → generates estimate + homeowner report" is worth more than 10,000 words of copy.</p>
+<ul>
+<li><strong>Video 1:</strong> "60-Second HVAC Estimate from a Photo" — the core demo. Share everywhere.</li>
+<li><strong>Video 2:</strong> "ScopeSnap vs Writing an Estimate by Hand" — side-by-side timing comparison</li>
+<li><strong>Video 3:</strong> "How ScopeSnap's Homeowner Report Helps You Close More Jobs" — show the customer-facing output</li>
+<li><strong>Video 4:</strong> "How Accurate is AI Estimation?" — honest transparency about accuracy builds trust</li>
+</ul>
+<p>You don't need a US-based person on camera. Screen recordings with voiceover work. Or recruit one of your beta-testing contractors to film themselves using it on a real job.</p>
+</div>
+
+<div class="ab">
+<h3>Channel 7: HVAC Trade Influencers & Coaches — Borrowed Credibility</h3>
+<p><strong>The key influencers in HVAC business coaching:</strong></p>
+<ul>
+<li><strong>Tommy Mello</strong> — A1 Garage Door, Home Service Expert podcast. Massive following among trades business owners. If he mentions ScopeSnap, you get 10,000 eyeballs overnight.</li>
+<li><strong>HVAC School (Bryan Orr)</strong> — Top HVAC technical podcast + YouTube channel. Highly respected. Would be interested in the equipment lifecycle data angle.</li>
+<li><strong>Service Business Mastery</strong> — Podcast for home service business owners. Reviews tools and strategies.</li>
+<li><strong>Tersh Blissett (Service Business Mastery)</strong> — HVAC business coach, active on social media, reviews tools.</li>
+</ul>
+<p><strong>The approach:</strong> Don't ask for paid promotion. Offer them FREE access + a genuine ask: "We're building AI-powered HVAC estimation. Would you be willing to test it and give us honest feedback on your podcast/channel? Good or bad — we want the truth." Honest reviews from trusted voices are worth more than paid ads.</p>
+</div>
+
+<div class="ab">
+<h3>Channel 8: The Homeowner Report Viral Loop — Built-In Distribution</h3>
+<p><strong>This is the channel nobody else has.</strong> Every time a tech shares a ScopeSnap homeowner report with a customer, that report has the contractor's branding AND a small "Powered by ScopeSnap" footer. The homeowner shows it to their spouse, their neighbor, their insurance agent. The neighbor asks their HVAC contractor "why don't you send me reports like this?"</p>
+<p>If 500 contractors generate 15,000 homeowner reports, and 10% of homeowners show it to someone who mentions it to another contractor, that's 1,500 organic brand impressions among exactly our target audience. Zero CAC.</p>
+<div class="co">DESIGN THE REPORT FOR SHAREABILITY: Include a QR code that links to "Get a report like this for your home — ask your HVAC contractor about ScopeSnap" or similar. The homeowner report IS a marketing asset disguised as a service deliverable.</div>
+</div>
+
+<div class="ab">
+<h3>90-Day GTM Execution Timeline</h3>
+<ul>
+<li><strong>Days 1-14 (Pre-launch):</strong> Join all HVAC communities (silent observation). Set up Google Ads account with initial keyword research. Email Upwork client list for warm introductions. Start writing first 3 blog posts.</li>
+<li><strong>Days 15-30 (Beta):</strong> Give 5-10 contractors free access. Watch them use it. Film demo video. Continue community participation (answering questions, building reputation). Build first 2 HVAC calculators.</li>
+<li><strong>Days 31-45 (Soft launch):</strong> Launch Google Ads ($30/day). Publish first comparison post ("ScopeSnap vs EstimationPro"). Share calculators in communities. Collect first testimonials from beta users.</li>
+<li><strong>Days 46-60 (Amplify):</strong> Scale Google Ads to $50/day based on conversion data. Reach out to HVAC influencers with beta access. Publish 3rd and 4th calculators. Post first YouTube demo video.</li>
+<li><strong>Days 61-75 (Optimize):</strong> Analyze which keywords/ads convert best. Double down on winners, kill losers. Start sharing anonymized equipment data in communities ("We analyzed 3,000 equipment photos..."). Build 5th calculator.</li>
+<li><strong>Days 76-90 (Scale):</strong> Target: 50-100 Early Bird users. If converting well, increase ad budget to $100/day. Publish data-driven blog content. Pitch HVAC School podcast for honest review. Begin planning comparison landing pages for organic SEO.</li>
+</ul>
+</div>
+
+<div class="ab">
+<h3>GTM Metrics That Matter (Ignore Vanity Metrics)</h3>
+<ul>
+<li><strong>Track:</strong> Cost per signup (target: under $25). Signup to free-estimate rate (target: 60%+). Free to Early Bird conversion rate (target: 15-20%). Estimates generated per user per month (target: 10+). Monthly churn rate (target: under 5%). Time to first estimate after signup (target: under 10 minutes).</li>
+<li><strong>Ignore:</strong> Website traffic (unless it converts). Social media followers. "Brand awareness." Number of blog posts published. Anything that doesn't directly lead to estimates generated.</li>
+<li><strong>The one metric that rules them all:</strong> Total estimates generated across all users per month. This is the proxy for data moat growth. 1,000 estimates/month = data accumulating. 10,000 estimates/month = moat forming. 100,000 estimates/month = moat unbreakable.</li>
+</ul>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 11: DECISION LOG -->
+<!-- ============================================================ -->
+<div class="sec" id="s12">
+<div class="sec-h">
+<span class="n">12</span>
+<h2>Decision Log — The Kaizen Record</h2>
+<p>Every major decision with date, reasoning, and evidence. New entries added with each conversation.</p>
+</div>
+
+<div class="dl">
+<div class="dt">MARCH 20, 2026 — CONFIRMED</div>
+<div class="dd">Launch vertical: HVAC residential service</div>
+<div class="dr">Evidence: 4/4 AI models unanimous. ~117K HVAC businesses, ICP slice 15K-25K. Highest ticket sizes, equipment ID is visual, competitive gap is widest. Sub-sequence: HVAC → Plumbing → Electrical → Roofing.</div>
+</div>
+
+<div class="dl">
+<div class="dt">MARCH 20, 2026 — CONFIRMED</div>
+<div class="dd">Product sequence: ScopeSnap → LeakSense → BenchmarkIQ</div>
+<div class="dr">Evidence: Expert-weighted scoring V3 (3 iterations + founder pushback). Top 3 within 0.06 points. Sequence dictated by trust barriers and cold start problems, not scores. BenchmarkIQ scores highest (7.86) but launches Phase 3.</div>
+</div>
+
+<div class="dl">
+<div class="dt">MARCH 20, 2026 — CONFIRMED</div>
+<div class="dd">#1 competitor is EstimationPro, NOT ServiceTitan</div>
+<div class="dr">Evidence: ServiceTitan can't go downmarket ($250-500/tech/mo, 6-12mo implementation, "not optimized for 3 or fewer technicians"). EstimationPro is live, same ICP, same concept, $0-179/mo. Our strategy: go deep on HVAC while they stay shallow across 12 trades.</div>
+</div>
+
+<div class="dl">
+<div class="dt">MARCH 20, 2026 — CONFIRMED</div>
+<div class="dd">The moat is pricing data + equipment intelligence, NOT the AI vision technology</div>
+<div class="dr">Evidence: 4/4 AI models explicitly stated this. Anyone can call a vision API. Nobody can replicate 1,000 contractors' regional pricing data + equipment lifecycle patterns + estimate-vs-actual accuracy models.</div>
+</div>
+
+<div class="dl">
+<div class="dt">MARCH 20, 2026 — CONFIRMED</div>
+<div class="dd">ScopeSnap is NOT end-to-end. It's a focused intelligence layer.</div>
+<div class="dr">Evidence: ServiceTitan is an 8-step workflow. ScopeSnap owns steps 3-4 (assessment + estimation). Trying to build the other 6 steps = competing with billion-dollar platforms. Instead: integrate with Jobber/Housecall Pro for the rest.</div>
+</div>
+
+<div class="dl">
+<div class="dt">MARCH 20, 2026 — CONFIRMED</div>
+<div class="dd">Integration strategy: QuickBooks (must) → Jobber/Housecall (should) → ServiceTitan (opportunistic)</div>
+<div class="dr">Evidence: QuickBooks = Phase 2 foundation (non-negotiable). Jobber/Housecall = ICP's tools, open APIs, 2-3 week build. ServiceTitan = political risk (may view us as threat), pursue if door opens. Integration is one-directional data pipes — our intelligence layer stays protected.</div>
+</div>
+
+<div class="dl">
+<div class="dt">MARCH 20, 2026 — CONFIRMED</div>
+<div class="dd">Avoid healthcare vertical for ScopeSnap</div>
+<div class="dr">Evidence: 4/4 models rank bottom 2. HIPAA compliance alone costs $50K-$100K before first sale. Incumbents (Dentrix, Pearl AI, IDEXX) have years of clinical validation. Intraoral cameras already exist. Not our market.</div>
+</div>
+
+<div class="dl">
+<div class="dt">MARCH 20, 2026 — CONFIRMED</div>
+<div class="dd">NDA restriction: NO food/restaurant/QSR franchise work</div>
+<div class="dr">Founder constraint. Applies to all Mainnov products including ScopeSnap, LeakSense, and BenchmarkIQ.</div>
+</div>
+
+<div class="dl">
+<div class="dt">MARCH 20, 2026 — CONFIRMED</div>
+<div class="dd">Early Bird pricing: displayed as <s>$39</s> → $9.99/month, "first 500 users" (flexible end date)</div>
+<div class="dr">Evidence: Cost per estimate = $0.02. 50 estimates = $1.00 cost. $9.99 price = 90% gross margin. Three strategic reasons: (1) V1 product will be mediocre — $9.99 users tolerate imperfection and give feedback instead of churning. (2) Without data we have no moat and no product — $9.99 gets us 10x more users and 10x faster data accumulation. Our "intelligence layer" is theoretical until 500 contractors photograph 25,000 units. (3) The displayed $39 slashed to $9.99 anchors value and the "500 users" count is flexible — WE decide when to end Early Bird based on product readiness and data density, not a hard counter. Competitor trap: EstimationPro charges $79/mo for 50 estimates — they can't match $9.99 without destroying existing revenue.</div>
+</div>
+
+<div class="dl">
+<div class="dt">MARCH 20, 2026 — CONFIRMED</div>
+<div class="dd">Three interactive prototypes built — tech mobile app, owner dashboard, homeowner report</div>
+<div class="dr">Evidence: Steve Jobs "working backwards" method — design the experience before writing production code. Three prototypes cover all three personas: (1) Mike the tech sees a 9-screen mobile app with AI equipment intelligence, (2) Dave the owner sees a laptop dashboard with $70K leak detection and BenchmarkIQ, (3) Sarah the homeowner sees annotated photo report on phone and laptop with one-tap approve + Stripe deposit. Key design decision: the homeowner report is the viral engine — every forwarded report markets the contractor AND ScopeSnap. The "show my spouse" moment is explicitly designed for (desktop responsive layout). Prototypes serve dual purpose: product design reference for development AND sales demos for early contractor conversations.</div>
+</div>
+
+<div class="dl">
+<div class="dt">MARCH 21, 2026 — CONFIRMED</div>
+<div class="dd">Infrastructure: Local-first development + hybrid cloud stack at $0/month</div>
+<div class="dr">Evidence: Compared AWS (free tier expires after 12 months, 24/7 idle charges, 2-3 days DevOps setup), all-GCP (Cloud SQL has no free tier = $7+/mo idle, Cloud Storage charges egress), and hybrid best-of-breed. Hybrid wins: Google Cloud Run for backend (2M requests/mo free, scales to zero — HVAC contractors use app 7am-6pm, Cloud Run costs $0 during 12+ dead hours), Neon for PostgreSQL (free forever, scale-to-zero, 0.5GB), Cloudflare R2 for photos (zero egress fees vs $0.12/GB on Cloud Storage), Clerk for auth (multi-tenant orgs built-in), Resend for email. Development phase: everything local on laptop ($0/month, only Gemini free tier API key needed). Cloud deployment only when product ready for beta testers. Cost verified at every stage through real pricing research: $0 through beta, $48-75 at 500 users ($5K MRR), $170-185 at 2,000 users ($20K+ MRR). Margins 98-99% at all stages. The key insight: Cloud Run's pay-per-request model means ScopeSnap never pays for idle compute, unlike Railway/EC2 which charge 24/7.</div>
+</div>
+
+<div class="dl">
+<div class="dt">MARCH 21, 2026 — CONFIRMED</div>
+<div class="dd">One App + Trade-Specific Configuration — NOT separate apps per trade</div>
+<div class="dr">Evidence: Evaluated "separate apps per trade" (HVACSnap, PlumbSnap, ElectricSnap) vs "one app with trade config." Separate apps rejected for three reasons: (1) Multiplies maintenance by N — 5 apps = 5 landing pages, 5 update cycles, 5 support queues, unsustainable for solo founder. (2) Fragments data moat — 500 contractors in one DB is strong; split across 3 apps at ~170 each is three weak databases. (3) Unnecessary — users don't need a separate app to feel customization, they need their trade's language, equipment, and pricing. Salesforce (Industry Clouds), Shopify (themes), Jobber, Housecall Pro all proved this: one platform, vertical-specific configuration. Implementation: companies.trade column set at onboarding (one screen, one tap, one time). Configures equipment DB, pricing templates, AI prompts, and UI terminology. Zero extra clicks in daily workflow — actually reduces clicks vs generic app because trade is pre-set. Marketing uses trade-specific landing pages (scopesnap.com/hvac, /plumbing, etc.) pointing to same product. Expansion effort per trade: ~2 weeks (seed equipment + pricing + prompts). Multi-trade companies deferred to V2. Steve Jobs principle applied: adding the trade selector at onboarding is like choosing language on iPhone setup — one choice, then everything speaks your language forever.</div>
+</div>
+
+<div class="dl pending">
+<div class="dt">MARCH 20, 2026 — PENDING</div>
+<div class="dd">Investigate Property Management as expansion vertical</div>
+<div class="dr">3/4 AI models independently surfaced it. Move-in/move-out inspections are photo-heavy workflows. ~300K PM companies. Need: independent market research and competitor analysis specific to PM.</div>
+</div>
+
+<div class="dl pending">
+<div class="dt">MARCH 20, 2026 — PENDING</div>
+<div class="dd">Investigate Property Restoration (water/fire/mold) as niche</div>
+<div class="dr">Model B flagged uniquely. Pain 10/10: documentation = only way restoration contractors get paid by insurance. ~15K companies in ICP. Encircle is incumbent but heavy/all-in platform. Need: deeper research.</div>
+</div>
+
+<div class="dl">
+<div class="dt">MARCH 21, 2026 — COMPLETED</div>
+<div class="dd">MVP Technical Specification built — API architecture, database schema, vision AI prompts, build plan</div>
+<div class="dr">Separate document: ScopeSnap_MVP_Technical_Spec.html. Contains: 12-section technical blueprint covering system architecture (Next.js + FastAPI + PostgreSQL + Cloudflare R2), complete database schema (12 tables with columns, types, relationships, indexes, row-level security), all API endpoints mapped to prototype screens, Vision AI prompt engineering (primary equipment analysis prompt + homeowner narrative prompt + testing protocol), estimate generation pipeline (zero-AI-cost deterministic math), homeowner report rendering architecture, equipment database seed plan (5 brands × 10 models = 50 entries), file storage structure, Clerk multi-tenant auth, Stripe billing flows, email automation with follow-up scheduler, and week-by-week 12-week build plan. Key design rule: only 1 vision API call + 1 tiny LLM call per estimate. Everything else is deterministic code. Infrastructure cost at 500 users: ~$100-250/month vs $4,995 MRR = 95%+ gross margin.</div>
+</div>
+
+<div class="dl pending">
+<div class="dt">MARCH 20, 2026 — PENDING</div>
+<div class="dd">Interview 10-15 HVAC contractors to validate estimation pain</div>
+<div class="dr">Multiple AI models recommended this in their 90-day plans. Source from Upwork network or cold outreach on contractor forums. Ask: "How do you create estimates? Where do you lose money? Would you pay $149/mo for a tool that does this?"</div>
+</div>
+
+<div class="dl pending">
+<div class="dt">MARCH 20, 2026 — PENDING</div>
+<div class="dd">Build 15 HVAC-specific SEO calculators</div>
+<div class="dr">Counter-strategy to EstimationPro's 91 generic calculators. Out-depth on HVAC rather than out-breadth on all trades. SEER savings, refrigerant charge, duct sizing, equipment age, load calculation, etc.</div>
+</div>
+</div>
+
+<!-- ======== FOOTER ======== -->
+<div class="ft">
+ScopeSnap Product Bible — V2.1 — March 21, 2026<br>
+Mainnov Tech — Confidential — For internal strategy use only<br>
+Incorporating: SMB Market Research (Mordor, Gartner, IDC, SBA) · Cross-Model Verification (4 AI models × 2 rounds) · Trust Barrier Analysis · Expert-Weighted Scoring (3 iterations) · Competitive Intelligence (ServiceTitan + EstimationPro teardowns) · Integration & Workflow Strategy · Interactive Prototypes (3 personas) · MVP Technical Spec · Infrastructure Cost Analysis<br>
+<strong style="color:var(--g)">KAIZEN PROTOCOL:</strong> End every ScopeSnap conversation with "update the Product Bible" to add new decisions, research, or changes.
+</div>
+
+</div>
+</body>
+</html>

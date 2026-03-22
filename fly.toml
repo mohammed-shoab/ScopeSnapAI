@@ -1,0 +1,59 @@
+# ── ScopeSnap — Fly.io Deployment Configuration ───────────────────────────────
+# Deploy the API to Fly.io:
+#   fly launch  (first time — creates app)
+#   fly deploy  (subsequent deploys)
+#
+# Prerequisites:
+#   1. Install flyctl: https://fly.io/docs/hands-on/install-flyctl/
+#   2. fly auth login
+#   3. Set secrets: fly secrets set DATABASE_URL="..." GEMINI_API_KEY="..." etc.
+#   4. Provision Postgres: fly postgres create --name scopesnap-db
+#   5. Attach DB: fly postgres attach scopesnap-db --app scopesnap-api
+
+app = "scopesnap-api"
+primary_region = "dfw"   # Dallas — close to HVAC contractor base
+
+[build]
+  dockerfile = "scopesnap-api/Dockerfile"
+  build_target = ""
+
+[env]
+  PORT = "8080"
+  ENVIRONMENT = "production"
+  UPLOAD_DIR = "/app/uploads"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true    # Scale to zero when idle (save cost)
+  auto_start_machines = true
+  min_machines_running = 0     # Scale to zero on Fly.io free tier
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 100
+    soft_limit = 80
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+# ── Secrets (set with: fly secrets set KEY=value) ────────────────────────────
+# Required:
+#   DATABASE_URL          — PostgreSQL connection string (from fly postgres attach)
+#   CLERK_SECRET_KEY      — From Clerk dashboard
+#   CLERK_WEBHOOK_SECRET  — From Clerk webhooks page
+#   GEMINI_API_KEY        — From Google AI Studio
+#   STRIPE_SECRET_KEY     — From Stripe dashboard
+#   STRIPE_WEBHOOK_SECRET — From Stripe webhooks page
+#   RESEND_API_KEY        — From Resend dashboard
+#   FROM_EMAIL            — Verified sender email
+#
+# Optional (for production file storage):
+#   R2_ACCOUNT_ID
+#   R2_ACCESS_KEY_ID
+#   R2_SECRET_ACCESS_KEY
+#   R2_BUCKET_NAME
+#   R2_PUBLIC_URL

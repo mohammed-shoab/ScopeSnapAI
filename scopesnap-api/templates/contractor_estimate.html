@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HVAC Estimate — {{ company_name }}</title>
+<style>
+  @page {
+    size: Letter;
+    margin: 0.6in 0.65in 0.7in 0.65in;
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      font-size: 9px;
+      color: #888;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 10pt;
+    line-height: 1.5;
+    color: #1a1a18;
+    background: white;
+  }
+
+  /* ── Header ─────────────────────────────────────────── */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2.5px solid #1a8754;
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+  }
+
+  .company-block {}
+  .company-name {
+    font-size: 18pt;
+    font-weight: 700;
+    color: #1a1a18;
+    letter-spacing: -0.3px;
+  }
+  .company-meta {
+    font-size: 9pt;
+    color: #7a7770;
+    margin-top: 3px;
+    line-height: 1.7;
+  }
+
+  .doc-info {
+    text-align: right;
+  }
+  .doc-label {
+    font-size: 22pt;
+    font-weight: 800;
+    color: #1a8754;
+    letter-spacing: -0.5px;
+  }
+  .doc-id {
+    font-size: 9pt;
+    color: #7a7770;
+    font-family: 'Courier New', monospace;
+    margin-top: 2px;
+  }
+  .doc-date {
+    font-size: 9pt;
+    color: #7a7770;
+    margin-top: 2px;
+  }
+  .doc-valid {
+    margin-top: 4px;
+    display: inline-block;
+    background: #fef3e8;
+    color: #c4600a;
+    font-size: 8pt;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid #f0d0aa;
+  }
+
+  /* ── Customer / Job Info ─────────────────────────────── */
+  .info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .info-box {
+    background: #f7f6f2;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .info-box-title {
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #7a7770;
+    margin-bottom: 6px;
+  }
+  .info-box-content {
+    font-size: 10pt;
+    line-height: 1.7;
+  }
+  .info-box-content strong {
+    font-size: 11pt;
+    font-weight: 700;
+  }
+
+  /* ── Equipment Summary ───────────────────────────────── */
+  .equipment-bar {
+    background: #e8f5ee;
+    border: 1px solid #c3e6d0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .equipment-title {
+    font-size: 9pt;
+    font-weight: 700;
+    color: #0f5c38;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-basis: 100%;
+    margin-bottom: 4px;
+  }
+  .eq-item {
+    font-size: 9.5pt;
+    color: #1a1a18;
+  }
+  .eq-label {
+    font-size: 8pt;
+    color: #7a7770;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Section Title ───────────────────────────────────── */
+  .section-title {
+    font-size: 12pt;
+    font-weight: 700;
+    color: #1a1a18;
+    border-bottom: 1.5px solid #e2dfd7;
+    padding-bottom: 6px;
+    margin-bottom: 14px;
+    margin-top: 24px;
+  }
+  .section-title:first-of-type {
+    margin-top: 0;
+  }
+
+  /* ── Option Card ─────────────────────────────────────── */
+  .option-card {
+    border: 1px solid #e2dfd7;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    page-break-inside: avoid;
+  }
+  .option-card.recommended {
+    border-color: #1a8754;
+    border-width: 1.5px;
+  }
+
+  .option-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: #f7f6f2;
+    border-bottom: 1px solid #e2dfd7;
+  }
+  .option-card.recommended .option-header {
+    background: #e8f5ee;
+    border-bottom-color: #c3e6d0;
+  }
+
+  .option-tier-badge {
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #7a7770;
+    background: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid #e2dfd7;
+  }
+  .option-card.recommended .option-tier-badge {
+    background: #1a8754;
+    color: white;
+    border-color: #1a8754;
+  }
+
+  .option-name {
+    font-size: 12pt;
+    font-weight: 700;
+    color: #1a1a18;
+    flex: 1;
+    margin: 0 12px;
+  }
+
+  .option-total {
+    font-size: 16pt;
+    font-weight: 800;
+    color: #1a8754;
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+  }
+
+  /* Line items table */
+  .line-items {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+  }
+  .line-items th {
+    text-align: left;
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #7a7770;
+    padding: 8px 14px 6px;
+    background: #fafaf8;
+    border-bottom: 1px solid #f0efea;
+  }
+  .line-items th:last-child {
+    text-align: right;
+  }
+  .line-items td {
+    padding: 7px 14px;
+    border-bottom: 1px solid #f0efea;
+    color: #1a1a18;
+  }
+  .line-items td:last-child {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .line-items .subtotal-row td {
+    background: #f7f6f2;
+    font-weight: 600;
+    border-top: 1.5px solid #e2dfd7;
+    border-bottom: none;
+  }
+  .line-items .total-row td {
+    background: #e8f5ee;
+    font-size: 11pt;
+    font-weight: 800;
+    color: #1a8754;
+    border-top: 1.5px solid #c3e6d0;
+    border-bottom: none;
+    padding: 9px 14px;
+  }
+  .line-items .category-label {
+    font-size: 8pt;
+    color: #a8a49c;
+    font-style: italic;
+    padding-top: 10px;
+    border-bottom: none;
+    padding-bottom: 2px;
+  }
+
+  /* 5-year cost row */
+  .five-yr-row td {
+    background: #f0f8ff;
+    color: #1565c0;
+    font-size: 9pt;
+    font-weight: 600;
+    border-top: 1px solid #c8dff8;
+    border-bottom: none;
+  }
+
+  /* ── Issues Found ────────────────────────────────────── */
+  .issues-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .issue-item {
+    display: flex;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid #f0efea;
+    page-break-inside: avoid;
+  }
+  .issue-item:last-child {
+    border-bottom: none;
+  }
+  .issue-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 3px;
+  }
+  .dot-red { background: #c62828; }
+  .dot-orange { background: #c4600a; }
+  .dot-green { background: #1a8754; }
+  .issue-component {
+    font-weight: 700;
+    font-size: 10pt;
+  }
+  .issue-desc {
+    font-size: 9pt;
+    color: #5a5a55;
+    margin-top: 1px;
+  }
+
+  /* ── Terms + Validity ────────────────────────────────── */
+  .terms-box {
+    background: #f7f6f2;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-top: 20px;
+    font-size: 8.5pt;
+    color: #7a7770;
+    line-height: 1.7;
+    page-break-inside: avoid;
+  }
+  .terms-box strong {
+    color: #1a1a18;
+    font-weight: 700;
+  }
+
+  /* ── Signature Block ─────────────────────────────────── */
+  .sig-block {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 24px;
+    page-break-inside: avoid;
+  }
+  .sig-line {
+    border-top: 1px solid #1a1a18;
+    padding-top: 4px;
+    font-size: 9pt;
+    color: #7a7770;
+    margin-top: 32px;
+  }
+
+  /* ── Footer ──────────────────────────────────────────── */
+  .footer {
+    margin-top: 24px;
+    padding-top: 12px;
+    border-top: 1px solid #e2dfd7;
+    font-size: 8pt;
+    color: #a8a49c;
+    text-align: center;
+    line-height: 1.8;
+  }
+
+  /* utility */
+  .text-green { color: #1a8754; }
+  .text-right { text-align: right; }
+  .mt-8 { margin-top: 8px; }
+  .rec-badge {
+    font-size: 7.5pt;
+    font-weight: 700;
+    background: #1a8754;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-left: 6px;
+    vertical-align: middle;
+    letter-spacing: 0.3px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     HEADER
+     ════════════════════════════════════════════════════════ -->
+<div class="header">
+  <div class="company-block">
+    <div class="company-name">{{ company_name }}</div>
+    <div class="company-meta">
+      {% if company_license %}License #{{ company_license }}<br>{% endif %}
+      {% if company_phone %}{{ company_phone }}{% if company_email %} · {% endif %}{% endif %}
+      {% if company_email %}{{ company_email }}{% endif %}
+    </div>
+  </div>
+  <div class="doc-info">
+    <div class="doc-label">ESTIMATE</div>
+    <div class="doc-id">{{ report_short_id }}</div>
+    <div class="doc-date">{{ estimate_date }}</div>
+    <div class="doc-valid">Valid 30 days</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     CUSTOMER & JOB INFO
+     ════════════════════════════════════════════════════════ -->
+<div class="info-grid">
+  <div class="info-box">
+    <div class="info-box-title">Prepared For</div>
+    <div class="info-box-content">
+      <strong>{{ customer_name or "Homeowner" }}</strong><br>
+      {% if address_line1 %}{{ address_line1 }}<br>{% endif %}
+      {% if city or state or zip %}{{ city }}{% if state %}, {{ state }}{% endif %}{% if zip %} {{ zip }}{% endif %}<br>{% endif %}
+      {% if customer_phone %}{{ customer_phone }}{% endif %}
+    </div>
+  </div>
+  <div class="info-box">
+    <div class="info-box-title">Prepared By</div>
+    <div class="info-box-content">
+      <strong>{{ prepared_by or company_name }}</strong><br>
+      {{ estimate_date }}<br>
+      Assessment ID: <span style="font-family:'Courier New',monospace;font-size:9pt">{{ assessment_id_short }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     EQUIPMENT SUMMARY
+     ════════════════════════════════════════════════════════ -->
+{% if equipment_brand or equipment_model %}
+<div class="equipment-bar">
+  <div class="equipment-title">Equipment Assessed</div>
+  {% if equipment_brand %}
+  <div>
+    <div class="eq-label">Brand</div>
+    <div class="eq-item">{{ equipment_brand }}</div>
+  </div>
+  {% endif %}
+  {% if equipment_model %}
+  <div>
+    <div class="eq-label">Model</div>
+    <div class="eq-item">{{ equipment_model }}</div>
+  </div>
+  {% endif %}
+  {% if equipment_install_year %}
+  <div>
+    <div class="eq-label">Installed</div>
+    <div class="eq-item">{{ equipment_install_year }}</div>
+  </div>
+  {% endif %}
+  {% if equipment_condition %}
+  <div>
+    <div class="eq-label">Condition</div>
+    <div class="eq-item" style="font-weight:700;text-transform:capitalize">{{ equipment_condition }}</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ════════════════════════════════════════════════════════
+     ISSUES FOUND
+     ════════════════════════════════════════════════════════ -->
+{% if issues %}
+<div class="section-title">Issues Found</div>
+<ul class="issues-list">
+  {% for issue in issues %}
+  <li class="issue-item">
+    <div class="issue-dot dot-{{ issue.color }}"></div>
+    <div>
+      <div class="issue-component">{{ issue.component }} — {{ issue.issue }}</div>
+      {% if issue.description_plain or issue.description %}
+      <div class="issue-desc">{{ issue.description_plain or issue.description }}</div>
+      {% endif %}
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<!-- ════════════════════════════════════════════════════════
+     OPTIONS
+     ════════════════════════════════════════════════════════ -->
+<div class="section-title">Repair Options</div>
+<p style="font-size:9.5pt;color:#7a7770;margin-bottom:14px">
+  Three options are presented below. Prices are valid for 30 days from the date of this estimate.
+  All work is performed by licensed technicians.
+</p>
+
+{% for option in options %}
+<div class="option-card {% if option.tier == 'better' %}recommended{% endif %}">
+  <div class="option-header">
+    <span class="option-tier-badge">
+      {% if option.tier == 'good' %}Option A — Good{% elif option.tier == 'better' %}Option B — Better{% elif option.tier == 'best' %}Option C — Best{% else %}{{ option.tier | title }}{% endif %}
+      {% if option.tier == 'better' %}★ Recommended{% endif %}
+    </span>
+    <span class="option-name">
+      {{ option.name }}
+    </span>
+    <span class="option-total">${{ "%.2f"|format(option.total) }}</span>
+  </div>
+
+  <table class="line-items">
+    <thead>
+      <tr>
+        <th style="width:60%">Description</th>
+        <th>Qty</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set parts = option.line_items | selectattr('category', 'equalto', 'parts') | list %}
+      {% set labor = option.line_items | selectattr('category', 'equalto', 'labor') | list %}
+      {% set fees  = option.line_items | rejectattr_in('category', ['parts', 'labor']) | list %}
+
+      {% if parts %}
+      <tr><td class="category-label" colspan="3">Parts &amp; Materials</td></tr>
+      {% for item in parts %}
+      <tr>
+        <td>{{ item.description or item.label or item.name or "Part" }}</td>
+        <td>{{ item.quantity or item.qty or 1 }}</td>
+        <td>${{ "%.2f"|format(item.total or item.amount or 0) }}</td>
+      </tr>
+      {% endfor %}
+      {% endif %}
+
+      {% if labor %}
+      <tr><td class="category-label" colspan="3">Labor</td></tr>
+      {% for item in labor %}
+      <tr>
+        <td>{{ item.description or item.label or item.name or "Labor" }}</td>
+        <td>{{ item.quantity or item.qty or 1 }}</td>
+        <td>${{ "%.2f"|format(item.total or item.amount or 0) }}</td>
+      </tr>
+      {% endfor %}
+      {% endif %}
+
+      {% if fees %}
+      <tr><td class="category-label" colspan="3">Fees &amp; Other</td></tr>
+      {% for item in fees %}
+      <tr>
+        <td>{{ item.description or item.label or item.name or "Fee" }}</td>
+        <td>{{ item.quantity or item.qty or 1 }}</td>
+        <td>${{ "%.2f"|format(item.total or item.amount or 0) }}</td>
+      </tr>
+      {% endfor %}
+      {% endif %}
+
+      <!-- Subtotal if markup applied -->
+      {% if option.subtotal and option.subtotal != option.total %}
+      <tr class="subtotal-row">
+        <td colspan="2">Subtotal</td>
+        <td>${{ "%.2f"|format(option.subtotal) }}</td>
+      </tr>
+      {% if option.markup_percent %}
+      <tr class="subtotal-row">
+        <td colspan="2">Markup ({{ "%.0f"|format(option.markup_percent) }}%)</td>
+        <td>${{ "%.2f"|format(option.total - option.subtotal) }}</td>
+      </tr>
+      {% endif %}
+      {% endif %}
+
+      <tr class="total-row">
+        <td colspan="2">Total — {{ option.name }}</td>
+        <td>${{ "%.2f"|format(option.total) }}</td>
+      </tr>
+
+      {% if option.five_year_total %}
+      <tr class="five-yr-row">
+        <td colspan="2">Estimated 5-Year Total Cost (incl. energy &amp; projected repairs)</td>
+        <td>${{ "%.2f"|format(option.five_year_total) }}</td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+
+<!-- ════════════════════════════════════════════════════════
+     TERMS + SIGNATURE
+     ════════════════════════════════════════════════════════ -->
+<div class="terms-box">
+  <strong>Terms &amp; Conditions:</strong>
+  This estimate is valid for 30 days from the date shown above.
+  Prices are subject to change if additional issues are discovered during repair.
+  A 20% deposit is required to schedule work.
+  All parts carry manufacturer warranty. Labor warranty: 1 year on all installed parts.
+  Payment in full due upon job completion.
+  {% if company_license %}License #{{ company_license }}.{% endif %}
+</div>
+
+<div class="sig-block">
+  <div>
+    <div style="font-size:9pt;color:#7a7770;margin-bottom:28px">Customer Signature</div>
+    <div class="sig-line">Signature &amp; Date</div>
+  </div>
+  <div>
+    <div style="font-size:9pt;color:#7a7770;margin-bottom:28px">Contractor Signature</div>
+    <div class="sig-line">{{ company_name }}</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════
+     FOOTER
+     ════════════════════════════════════════════════════════ -->
+<div class="footer">
+  {{ company_name }}{% if company_license %} · License #{{ company_license }}{% endif %}<br>
+  This estimate was prepared using ScopeSnap HVAC Intelligence · Report {{ report_short_id }}
+</div>
+
+</body>
+</html>
