@@ -30,6 +30,6 @@
     "postcss": "^8"
   },
   "engines": {
-    "node": "18.x"
+    "node": "18"
   }
 }
