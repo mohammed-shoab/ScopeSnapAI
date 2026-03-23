@@ -204,7 +204,22 @@ function HealthGauge({ condition }: { condition?: string }) {
   );
 }
 
-function AnnotatedPhotoSvg({ photo }: { photo: Photo }) {
+const EQUIP_LABELS: Record<string, string> = {
+  ac_unit: "AC Unit",
+  heat_pump: "Heat Pump",
+  furnace: "Furnace",
+  boiler: "Boiler",
+  air_handler: "Air Handler",
+  mini_split: "Mini-Split",
+  package_unit: "Package Unit",
+  other: "Equipment",
+};
+
+function equipLabel(type: string): string {
+  return EQUIP_LABELS[type] || type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function AnnotatedPhotoSvg({ photo, hasIssues }: { photo: Photo; hasIssues?: boolean }) {
   const annotations = photo.annotations || [];
   const hasUrl = !!(photo.annotated_photo_url || photo.photo_url);
 
@@ -242,15 +257,19 @@ function AnnotatedPhotoSvg({ photo }: { photo: Photo }) {
           <text x="179" y="195" textAnchor="middle" fill="#ccc" fontSize="9" fontFamily="IBM Plex Mono">
             HVAC EQUIPMENT
           </text>
-          <circle cx="125" cy="85" r="30" fill="none" stroke="#ff4444" strokeWidth="2.5" strokeDasharray="5,3" />
-          <line x1="150" y1="65" x2="265" y2="25" stroke="#ff4444" strokeWidth="1.5" />
-          <rect x="210" y="8" width="142" height="28" rx="5" fill="#ff4444" />
-          <text x="218" y="20" fill="white" fontSize="8" fontWeight="700" fontFamily="Plus Jakarta Sans">
-            ⚠ SEE ISSUES BELOW
-          </text>
-          <text x="218" y="31" fill="rgba(255,255,255,.8)" fontSize="7" fontFamily="Plus Jakarta Sans">
-            Annotated by AI
-          </text>
+          {hasIssues && (
+            <>
+              <circle cx="125" cy="85" r="30" fill="none" stroke="#ff4444" strokeWidth="2.5" strokeDasharray="5,3" />
+              <line x1="150" y1="65" x2="265" y2="25" stroke="#ff4444" strokeWidth="1.5" />
+              <rect x="210" y="8" width="142" height="28" rx="5" fill="#ff4444" />
+              <text x="218" y="20" fill="white" fontSize="8" fontWeight="700" fontFamily="Plus Jakarta Sans">
+                ⚠ SEE ISSUES BELOW
+              </text>
+              <text x="218" y="31" fill="rgba(255,255,255,.8)" fontSize="7" fontFamily="Plus Jakarta Sans">
+                Annotated by AI
+              </text>
+            </>
+          )}
       </svg>
       <div style={{ padding: "8px 12px", background: "rgba(0,0,0,.85)", color: "rgba(255,255,255,.7)", fontSize: 10 }}>
         <strong style={{ color: "#22cc66" }}>AI-Enhanced Assessment Photo</strong>
@@ -491,7 +510,7 @@ export default function ReportClient({ report }: { report: Report }) {
               <div>
                 <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>
                   {equipment?.equipment_type
-                    ? `Your ${equipment.equipment_type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}:`
+                    ? `Your ${equipLabel(equipment.equipment_type)}:`
                     : "Your System:"}{" "}
                   <span style={{ color: conditionColor }}>
                     {condition.charAt(0).toUpperCase() + condition.slice(1)} Condition
@@ -574,9 +593,9 @@ export default function ReportClient({ report }: { report: Report }) {
           <div style={{ padding: "12px 16px 16px" }}>
             {/* Annotated Photo */}
             {report.photos.length > 0 ? (
-              <AnnotatedPhotoSvg photo={report.photos[0]} />
+              <AnnotatedPhotoSvg photo={report.photos[0]} hasIssues={report.issues.length > 0} />
             ) : (
-              <AnnotatedPhotoSvg photo={{ photo_url: "", annotated_photo_url: "", annotations: [] }} />
+              <AnnotatedPhotoSvg photo={{ photo_url: "", annotated_photo_url: "", annotations: [] }} hasIssues={report.issues.length > 0} />
             )}
 
             {/* Issues List */}
