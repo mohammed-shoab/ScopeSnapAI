@@ -119,14 +119,14 @@ async def record_event(payload: EventPayload, request: Request):
         if _is_rate_limited(identifier):
             return {"ok": True}
 
-        async with get_db_session() as db:
+        async with AsyncSessionLocal() as db:
             await db.execute(
-                """
+                text("""
                 INSERT INTO app_events
                     (event_name, event_data, session_id, page_url, user_agent, ip_address, user_id)
                 VALUES
                     (:event_name, :event_data::jsonb, :session_id, :page_url, :user_agent, :ip_address, :user_id)
-                """,
+                """),
                 {
                     "event_name": payload.event_name,
                     "event_data": __import__("json").dumps(payload.event_data or {}),
@@ -170,14 +170,14 @@ async def join_waitlist(payload: WaitlistPayload, request: Request):
     referrer = request.headers.get("Referer", "")[:2000]
 
     try:
-        async with get_db_session() as db:
+        async with AsyncSessionLocal() as db:
             # Upsert — silently ignore duplicate emails
             await db.execute(
-                """
+                text("""
                 INSERT INTO waitlist_signups (email, source, referrer_url, ip_address)
                 VALUES (:email, 'landing_page', :referrer, :ip)
                 ON CONFLICT (email) DO NOTHING
-                """,
+                """),
                 {
                     "email": payload.email,
                     "referrer": referrer,
