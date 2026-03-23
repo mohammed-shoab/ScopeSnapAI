@@ -48,8 +48,18 @@ interface PricingRule {
   additional_costs: Record<string, number> | null;
 }
 
+const EQUIP_LABELS: Record<string, string> = {
+  ac_unit: "AC Unit",
+  heat_pump: "Heat Pump",
+  furnace: "Furnace",
+  boiler: "Boiler",
+  air_handler: "Air Handler",
+  mini_split: "Mini-Split",
+  package_unit: "Package Unit",
+};
+
 function labelify(s: string) {
-  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return EQUIP_LABELS[s] ?? s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function fmt(n?: number | null) {
