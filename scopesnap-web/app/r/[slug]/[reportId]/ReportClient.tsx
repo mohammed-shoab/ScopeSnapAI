@@ -425,9 +425,10 @@ export default function ReportClient({ report }: { report: Report }) {
         {company.phone && (
           <a
             href={`tel:${company.phone.replace(/\D/g, "")}`}
-            style={{ fontSize: 12, fontWeight: 700, color: "#1a8754", textDecoration: "none", flexShrink: 0 }}
+            style={{ fontSize: 12, fontWeight: 700, color: "#1a8754", textDecoration: "none", flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}
           >
-            📞 Call
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 11 19.79 19.79 0 0 0 .21 2.36 2 2 0 012.22 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.66-.66a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg>
+            Call
           </a>
         )}
       </div>
@@ -488,7 +489,9 @@ export default function ReportClient({ report }: { report: Report }) {
               <HealthGauge condition={condition} />
               <div>
                 <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>
-                  Your AC:{" "}
+                  {equipment?.equipment_type
+                    ? `Your ${equipment.equipment_type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}:`
+                    : "Your System:"}{" "}
                   <span style={{ color: conditionColor }}>
                     {condition.charAt(0).toUpperCase() + condition.slice(1)} Condition
                   </span>
@@ -888,9 +891,14 @@ export default function ReportClient({ report }: { report: Report }) {
                     textAlign: "center",
                     fontWeight: 700,
                     fontSize: 13,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
                   }}
                 >
-                  📞 Call
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 11 19.79 19.79 0 0 0 .21 2.36 2 2 0 012.22 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.66-.66a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg>
+                  Call
                 </a>
               )}
               {company.phone && (
@@ -907,9 +915,14 @@ export default function ReportClient({ report }: { report: Report }) {
                     fontWeight: 700,
                     fontSize: 13,
                     border: "1px solid #e5e2da",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
                   }}
                 >
-                  💬 Text
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                  Text
                 </a>
               )}
             </div>
