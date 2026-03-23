@@ -18,7 +18,8 @@ import logging
 import time
 from collections import defaultdict
 
-from db.database import get_db_session
+from sqlalchemy import text
+from db.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 
