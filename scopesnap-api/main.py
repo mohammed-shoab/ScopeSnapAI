@@ -47,13 +47,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Local File Serving (Development Only) ─────────────────────────────────────
-# In production, files are served from Cloudflare R2 (zero egress fees)
-# In development, we serve them directly from FastAPI at /files/
-if settings.is_development:
-    uploads_dir = Path(settings.upload_dir)
-    uploads_dir.mkdir(parents=True, exist_ok=True)
-    app.mount("/files", StaticFiles(directory=str(uploads_dir)), name="uploads")
+# ── Local File Serving ─────────────────────────────────────────────────────────
+# Serve /files from local disk when R2 is not configured (dev or staging).
+# When R2 credentials are set, the frontend will reference R2 URLs directly and
+# this mount is a harmless no-op fallback.
+uploads_dir = Path(settings.upload_dir)
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/files", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 # ── API Routers ───────────────────────────────────────────────────────────────
 app.include_router(assessments.router)
