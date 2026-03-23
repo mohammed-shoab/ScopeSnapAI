@@ -146,8 +146,9 @@ const CONDITION_BG: Record<string, string> = {
   failed: "#fce8e8",
 };
 
-function fmt(n: number): string {
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+function fmt(n: number | undefined | null): string {
+  if (n == null || isNaN(n as number)) return "$0";
+  return (n as number).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
 
 /** Convert snake_case slugs to Title Case for display ("evaporator_coil" → "Evaporator Coil") */
@@ -712,9 +713,9 @@ export default function ReportClient({ report }: { report: Report }) {
                               color: "#5a5a55",
                             }}
                           >
-                            <span>{item.label}</span>
+                            <span>{item.description || item.label}</span>
                             <span style={{ fontFamily: "IBM Plex Mono, monospace", fontWeight: 600 }}>
-                              {fmt(item.amount)}
+                              {fmt(item.total ?? item.amount)}
                             </span>
                           </div>
                         ))}
