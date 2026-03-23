@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
 
+const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER: Record<string, string> = {
   "X-Dev-Clerk-User-Id": "test_user_mike",
   "Content-Type": "application/json",
@@ -47,6 +49,7 @@ const TRADES: Record<Trade, { icon: string; label: string; description: string }
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { getToken } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState(1);
@@ -61,26 +64,38 @@ export default function OnboardingPage() {
     license_number: "",
   });
 
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    if (IS_DEV) return DEV_HEADER;
+    const token = await getToken();
+    return token
+      ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+      : { "Content-Type": "application/json" };
+  }, [getToken]);
+
   // Load current company info
   useEffect(() => {
-    fetch(`${API_URL}/api/auth/me`, { headers: DEV_HEADER })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.company) {
-          setProfile((prev) => ({
-            ...prev,
-            name: data.company.name || "",
-            phone: data.company.phone || "",
-            license_number: data.company.license_number || "",
-            logo_url: data.company.logo_url || undefined,
-          }));
-          if (data.company.logo_url) {
-            setLogoPreview(data.company.logo_url);
+    const load = async () => {
+      const headers = await getAuthHeaders();
+      fetch(`${API_URL}/api/auth/me`, { headers })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.company) {
+            setProfile((prev) => ({
+              ...prev,
+              name: data.company.name || "",
+              phone: data.company.phone || "",
+              license_number: data.company.license_number || "",
+              logo_url: data.company.logo_url || undefined,
+            }));
+            if (data.company.logo_url) {
+              setLogoPreview(data.company.logo_url);
+            }
           }
-        }
-      })
-      .catch(() => {});
-  }, []);
+        })
+        .catch(() => {});
+    };
+    load();
+  }, [getAuthHeaders]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -116,9 +131,10 @@ export default function OnboardingPage() {
     setSaving(true);
     setError(null);
     try {
+      const headers = await getAuthHeaders();
       const r = await fetch(`${API_URL}/api/auth/me/company`, {
         method: "PATCH",
-        headers: DEV_HEADER,
+        headers,
         body: JSON.stringify({
           name: profile.name,
           phone: profile.phone,
@@ -142,9 +158,10 @@ export default function OnboardingPage() {
   const handleSkip = async () => {
     setSaving(true);
     try {
+      const headers = await getAuthHeaders();
       await fetch(`${API_URL}/api/auth/me/company`, {
         method: "PATCH",
-        headers: DEV_HEADER,
+        headers,
         body: JSON.stringify({
           trade: selectedTrade,
         }),

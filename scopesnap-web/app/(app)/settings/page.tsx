@@ -7,10 +7,12 @@
  */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
 
+const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER: Record<string, string> = {
   "X-Dev-Clerk-User-Id": "test_user_mike",
   "Content-Type": "application/json",
@@ -37,6 +39,7 @@ interface CompanyData {
 }
 
 export default function SettingsPage() {
+  const { getToken } = useAuth();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,40 +59,51 @@ export default function SettingsPage() {
     zip: "",
   });
 
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    if (IS_DEV) return DEV_HEADER;
+    const token = await getToken();
+    return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
+  }, [getToken]);
+
   useEffect(() => {
-    fetch(`${API_URL}/api/auth/me`, { headers: DEV_HEADER })
-      .then((r) => r.json())
-      .then((data) => {
-        setUser(data.user);
-        setCompany(data.company);
-        if (data.company) {
-          setForm({
-            name: data.company.name || "",
-            phone: data.company.phone || "",
-            email: data.company.email || "",
-            license_number: data.company.license_number || "",
-            address_line1: data.company.address_line1 || "",
-            city: data.company.city || "",
-            state: data.company.state || "",
-            zip: data.company.zip || "",
-          });
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Could not load settings — is the API running?");
-        setLoading(false);
-      });
-  }, []);
+    const load = async () => {
+      const headers = await getAuthHeaders();
+      fetch(`${API_URL}/api/auth/me`, { headers })
+        .then((r) => r.json())
+        .then((data) => {
+          setUser(data.user);
+          setCompany(data.company);
+          if (data.company) {
+            setForm({
+              name: data.company.name || "",
+              phone: data.company.phone || "",
+              email: data.company.email || "",
+              license_number: data.company.license_number || "",
+              address_line1: data.company.address_line1 || "",
+              city: data.company.city || "",
+              state: data.company.state || "",
+              zip: data.company.zip || "",
+            });
+          }
+          setLoading(false);
+        })
+        .catch(() => {
+          setError("Could not load settings — is the API running?");
+          setLoading(false);
+        });
+    };
+    load();
+  }, [getAuthHeaders]);
 
   const handleSave = async () => {
     setSaving(true);
     setError(null);
     setSuccess(false);
     try {
+      const headers = await getAuthHeaders();
       const r = await fetch(`${API_URL}/api/auth/me/company`, {
         method: "PATCH",
-        headers: DEV_HEADER,
+        headers,
         body: JSON.stringify(form),
       });
       if (!r.ok) {

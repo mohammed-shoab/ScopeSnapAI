@@ -12,8 +12,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
 
+const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
 
 const DATA_WE_STORE = [
@@ -50,6 +52,7 @@ const DATA_WE_STORE = [
 ];
 
 export default function PrivacySettingsPage() {
+  const { getToken } = useAuth();
   const [exporting, setExporting] = useState(false);
   const [exportDone, setExportDone] = useState(false);
   const [exportError, setExportError] = useState("");
@@ -76,8 +79,15 @@ export default function PrivacySettingsPage() {
     setExporting(true);
     setExportError("");
     try {
+      let headers: Record<string, string>;
+      if (IS_DEV) {
+        headers = DEV_HEADER;
+      } else {
+        const token = await getToken();
+        headers = token ? { Authorization: `Bearer ${token}` } : {};
+      }
       const res = await fetch(`${API_URL}/api/estimates/export/csv`, {
-        headers: DEV_HEADER,
+        headers,
       });
       if (!res.ok) throw new Error("Export failed");
       const blob = await res.blob();

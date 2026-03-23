@@ -5,12 +5,14 @@
  */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
 
+const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
-const CT = { ...DEV_HEADER, "Content-Type": "application/json" };
+const DEV_CT = { ...DEV_HEADER, "Content-Type": "application/json" };
 
 const EQUIPMENT_TYPES = [
   "ac_unit",
@@ -68,6 +70,7 @@ const DEFAULT_NEW: Omit<PricingRule, "id" | "company_id"> = {
 };
 
 export default function PricingRulesPage() {
+  const { getToken } = useAuth();
   const [rules, setRules] = useState<PricingRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,21 +82,39 @@ export default function PricingRulesPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    if (IS_DEV) return DEV_HEADER;
+    const token = await getToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, [getToken]);
+
+  const getAuthCT = useCallback(async (): Promise<Record<string, string>> => {
+    if (IS_DEV) return DEV_CT;
+    const token = await getToken();
+    return token
+      ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+      : { "Content-Type": "application/json" };
+  }, [getToken]);
+
   useEffect(() => {
-    fetch(`${API_URL}/api/pricing-rules/`, { headers: DEV_HEADER })
-      .then((r) => {
-        if (!r.ok) throw new Error(`API error ${r.status}`);
-        return r.json();
-      })
-      .then((data) => {
-        setRules(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch((e) => {
-        setError(e.message || "Could not load pricing rules.");
-        setLoading(false);
-      });
-  }, []);
+    const load = async () => {
+      const headers = await getAuthHeaders();
+      fetch(`${API_URL}/api/pricing-rules/`, { headers })
+        .then((r) => {
+          if (!r.ok) throw new Error(`API error ${r.status}`);
+          return r.json();
+        })
+        .then((data) => {
+          setRules(Array.isArray(data) ? data : []);
+          setLoading(false);
+        })
+        .catch((e) => {
+          setError(e.message || "Could not load pricing rules.");
+          setLoading(false);
+        });
+    };
+    load();
+  }, [getAuthHeaders]);
 
   const startEdit = (rule: PricingRule) => {
     setEditingId(rule.id);
@@ -115,9 +136,10 @@ export default function PricingRulesPage() {
     setSaving(true);
     setSaveError(null);
     try {
+      const headers = await getAuthCT();
       const r = await fetch(`${API_URL}/api/pricing-rules/${ruleId}`, {
         method: "PATCH",
-        headers: CT,
+        headers,
         body: JSON.stringify(editValues),
       });
       if (!r.ok) {
@@ -139,9 +161,10 @@ export default function PricingRulesPage() {
     if (!confirm("Remove this pricing override? The job will revert to national defaults.")) return;
     setDeletingId(ruleId);
     try {
+      const headers = await getAuthHeaders();
       const r = await fetch(`${API_URL}/api/pricing-rules/${ruleId}`, {
         method: "DELETE",
-        headers: DEV_HEADER,
+        headers,
       });
       if (!r.ok && r.status !== 204) throw new Error("Delete failed");
       setRules((prev) => prev.filter((rule) => rule.id !== ruleId));
@@ -156,9 +179,10 @@ export default function PricingRulesPage() {
     setSaving(true);
     setSaveError(null);
     try {
+      const headers = await getAuthCT();
       const r = await fetch(`${API_URL}/api/pricing-rules/`, {
         method: "POST",
-        headers: CT,
+        headers,
         body: JSON.stringify(newRule),
       });
       if (!r.ok) {

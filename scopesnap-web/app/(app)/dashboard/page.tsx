@@ -18,9 +18,12 @@
  *  - Date range picker
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
+
+const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface EstimateItem {
@@ -78,32 +81,43 @@ function capitalize(s: string) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
+  const { getToken } = useAuth();
   const [estimates, setEstimates]   = useState<EstimateItem[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
   const [company, setCompany]       = useState<CompanyStatus | null>(null);
 
-  useEffect(() => {
-    // Load company profile (for setup banner)
-    fetch(`${API_URL}/api/auth/me`, { headers: DEV_HEADER })
-      .then((r) => r.json())
-      .then((data) => setCompany(data.company ?? null))
-      .catch(() => {});
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    if (IS_DEV) return DEV_HEADER;
+    const token = await getToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, [getToken]);
 
-    // Load recent assessments (limit 5 for dashboard)
-    fetch(`${API_URL}/api/estimates/?limit=5`, { headers: DEV_HEADER })
-      .then((r) => r.json())
-      .then((data) => {
-        const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
-        setEstimates(list);
-        setLoading(false);
-      })
-      .catch((e) => {
-        setError("Could not reach the API");
-        setLoading(false);
-        console.error(e);
-      });
-  }, []);
+  useEffect(() => {
+    const load = async () => {
+      const headers = await getAuthHeaders();
+      // Load company profile (for setup banner)
+      fetch(`${API_URL}/api/auth/me`, { headers })
+        .then((r) => r.json())
+        .then((data) => setCompany(data.company ?? null))
+        .catch(() => {});
+
+      // Load recent assessments (limit 5 for dashboard)
+      fetch(`${API_URL}/api/estimates/?limit=5`, { headers })
+        .then((r) => r.json())
+        .then((data) => {
+          const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+          setEstimates(list);
+          setLoading(false);
+        })
+        .catch((e) => {
+          setError("Could not reach the API");
+          setLoading(false);
+          console.error(e);
+        });
+    };
+    load();
+  }, [getAuthHeaders]);
 
   // ── Derived stats (only from real data, no hardcoding) ────────────────────
   const safe = Array.isArray(estimates) ? estimates : [];

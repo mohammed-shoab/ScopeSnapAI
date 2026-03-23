@@ -5,9 +5,12 @@
  */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
+
+const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
 
@@ -58,21 +61,32 @@ const EQUIP_LABELS: Record<string, string> = {
 };
 
 export default function EstimatesPage() {
+  const { getToken } = useAuth();
   const [estimates, setEstimates] = useState<Estimate[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
 
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    if (IS_DEV) return DEV_HEADER;
+    const token = await getToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, [getToken]);
+
   useEffect(() => {
-    fetch(`${API_URL}/api/estimates/?limit=50`, { headers: DEV_HEADER })
-      .then((r) => r.json())
-      .then((data) => {
-        const items = Array.isArray(data.items) ? data.items : Array.isArray(data) ? data : [];
-        setEstimates(items);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+    const load = async () => {
+      const headers = await getAuthHeaders();
+      fetch(`${API_URL}/api/estimates/?limit=50`, { headers })
+        .then((r) => r.json())
+        .then((data) => {
+          const items = Array.isArray(data.items) ? data.items : Array.isArray(data) ? data : [];
+          setEstimates(items);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+    };
+    load();
+  }, [getAuthHeaders]);
 
   const filtered = estimates.filter((e) => {
     const matchesFilter = filter === "all" || e.status === filter;
