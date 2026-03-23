@@ -10,6 +10,8 @@
 import { notFound } from "next/navigation";
 import ReportClient from "./ReportClient";
 
+export const dynamic = "force-dynamic";
+
 interface ReportPageProps {
   params: {
     slug: string;      // Company slug e.g. "abc-hvac"
