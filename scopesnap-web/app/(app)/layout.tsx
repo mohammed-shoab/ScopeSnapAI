@@ -7,6 +7,7 @@
 import SidebarNav from "@/components/SidebarNav";
 import BottomNav from "@/components/BottomNav";
 import OfflineBanner from "@/components/OfflineBanner";
+import FeedbackButton from "@/components/FeedbackButton";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development" ||
   process.env.NODE_ENV === "development";
@@ -57,6 +58,9 @@ export default async function AppLayout({
 
       {/* Mobile bottom nav — hidden on md+ */}
       <BottomNav />
+
+      {/* Floating feedback button — desktop only, hidden on homeowner report pages */}
+      <FeedbackButton />
     </div>
   );
 }

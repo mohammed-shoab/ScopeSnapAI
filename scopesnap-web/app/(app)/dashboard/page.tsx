@@ -1,19 +1,36 @@
 "use client";
-// v2
+/**
+ * ScopeSnap — Dashboard (Beta)
+ * SOW Task 1.7: Simplified beta dashboard — 3 elements only.
+ *
+ * Elements:
+ *  1. Hero CTA — prompt to start first assessment (or "New Assessment" if they have some)
+ *  2. Recent Assessments — last 5 assessment cards from real API data
+ *  3. Dynamic Stats Line — derived from live data, no hardcoded numbers
+ *
+ * Removed for beta (feature-flagged for later phases):
+ *  - Profit Leaks widget ($70K mock)
+ *  - Tech Accuracy Scores (mock data)
+ *  - BenchmarkIQ panel (mock data)
+ *  - Equipment Aging Alerts (mock data)
+ *  - Action Alert card (hardcoded coil replacement warning)
+ *  - Four-stat card grid with trend copy
+ *  - Date range picker
+ */
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { API_URL } from "@/lib/api";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
 interface EstimateItem {
   id: string;
   report_short_id: string;
   status: string;
   total_amount?: number;
   created_at?: string;
-  approved_at?: string;
-  viewed_at?: string;
   customer_name?: string;
-  technician_name?: string;
+  customer_address?: string;
 }
 
 interface CompanyStatus {
@@ -23,17 +40,18 @@ interface CompanyStatus {
   license_number?: string | null;
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
 
-const STATUS_BADGE_COLORS: Record<string, { bg: string; text: string }> = {
-  approved: { bg: "bg-green-100", text: "text-green-700" },
-  completed: { bg: "bg-green-100", text: "text-green-700" },
-  pending: { bg: "bg-yellow-100", text: "text-yellow-700" },
-  viewed: { bg: "bg-blue-100", text: "text-blue-700" },
-  sent: { bg: "bg-gray-100", text: "text-gray-700" },
-  draft: { bg: "bg-gray-100", text: "text-gray-700" },
-  analyzed: { bg: "bg-blue-100", text: "text-blue-700" },
+const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  approved:  { bg: "bg-green-100",  text: "text-green-700" },
+  completed: { bg: "bg-green-100",  text: "text-green-700" },
+  viewed:    { bg: "bg-blue-100",   text: "text-blue-700" },
+  sent:      { bg: "bg-gray-100",   text: "text-gray-600" },
+  pending:   { bg: "bg-yellow-100", text: "text-yellow-700" },
+  analyzed:  { bg: "bg-blue-100",   text: "text-blue-700" },
   estimated: { bg: "bg-yellow-100", text: "text-yellow-700" },
+  draft:     { bg: "bg-gray-100",   text: "text-gray-500" },
 };
 
 function fmt(n?: number) {
@@ -45,56 +63,35 @@ function timeAgo(dateStr?: string) {
   if (!dateStr) return "";
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
+  if (mins < 2) return "just now";
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// Mock data for sections not yet wired to API
-const mockTechAccuracy = [
-  { name: "Mike Rodriguez", accuracy: 92, sub: "142 estimates · Top performer" },
-  { name: "James Sullivan",  accuracy: 88, sub: "98 estimates · Improving" },
-  { name: "Brian Kim",       accuracy: 84, sub: "115 estimates · Under-prices labor" },
-  { name: "Javier Vasquez",  accuracy: 78, sub: "91 estimates · Needs coaching" },
-];
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
-const mockProfitLeaks = [
-  { name: "Coil replacement labor under-estimated", impact: "-$28,200/yr" },
-  { name: "R-410A refrigerant cost not updated",    impact: "-$18,900/yr" },
-  { name: "Brian's system replacements under-priced", impact: "-$15,300/yr" },
-  { name: "Permit costs not included in estimates",  impact: "-$8,160/yr" },
-];
-
-const mockEquipmentAging = [
-  { name: "Carrier 24ABR",   detail: "18 properties · Avg age 17 yrs · Known compressor failures", status: "Critical" },
-  { name: "Trane XR13",      detail: "14 properties · Avg age 16 yrs · Coil failures after yr 14", status: "Aging" },
-  { name: "Goodman GSX13",   detail: "11 properties · Avg age 15 yrs · Refrigerant leak after yr 12", status: "Aging" },
-];
-
-const mockBenchmarks = [
-  { label: "Revenue Per Truck", you: "$380K", avg: "$420K", top: "$520K", youColor: "#c4600a" },
-  { label: "Average Ticket",    you: "$4,200", avg: "$3,800", top: "$5,100", youColor: "#1a8754" },
-  { label: "Labor Cost %",      you: "38%",    avg: "32%",   top: "28%",   youColor: "#c62828" },
-  { label: "Close Rate",        you: "62%",    avg: "51%",   top: "67%",   youColor: "#1a8754" },
-];
-
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const [estimates, setEstimates] = useState<EstimateItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [company, setCompany] = useState<CompanyStatus | null>(null);
-  const [dateRange, setDateRange] = useState("This Week");
+  const [estimates, setEstimates]   = useState<EstimateItem[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
+  const [company, setCompany]       = useState<CompanyStatus | null>(null);
 
   useEffect(() => {
-    // Load company profile
+    // Load company profile (for setup banner)
     fetch(`${API_URL}/api/auth/me`, { headers: DEV_HEADER })
       .then((r) => r.json())
-      .then((data) => setCompany(data.company || null))
+      .then((data) => setCompany(data.company ?? null))
       .catch(() => {});
 
-    // Load estimates
-    fetch(`${API_URL}/api/estimates/?limit=50`, { headers: DEV_HEADER })
+    // Load recent assessments (limit 5 for dashboard)
+    fetch(`${API_URL}/api/estimates/?limit=5`, { headers: DEV_HEADER })
       .then((r) => r.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
@@ -102,326 +99,249 @@ export default function DashboardPage() {
         setLoading(false);
       })
       .catch((e) => {
-        setError("Could not load estimates — is the API running?");
+        setError("Could not reach the API");
         setLoading(false);
         console.error(e);
       });
   }, []);
 
-  // Calculate stats — defensive: ensure estimates is always an array
-  const safeEstimates = Array.isArray(estimates) ? estimates : [];
-  const estimatesThisWeek = safeEstimates.length;
-  const closeRate = safeEstimates.length > 0 ? ((safeEstimates.filter((e) => ["approved", "completed"].includes(e.status)).length / safeEstimates.length) * 100).toFixed(0) : "0";
-  const avgTicket = safeEstimates.length > 0 ? Math.round(safeEstimates.reduce((sum, e) => sum + (e.total_amount || 0), 0) / safeEstimates.length) : 0;
-  const revenue = safeEstimates
-    .filter((e) => ["approved", "completed"].includes(e.status))
-    .reduce((sum, e) => sum + (e.total_amount || 0), 0);
+  // ── Derived stats (only from real data, no hardcoding) ────────────────────
+  const safe = Array.isArray(estimates) ? estimates : [];
+  const closedCount = safe.filter((e) => ["approved", "completed"].includes(e.status)).length;
+  const closeRate   = safe.length > 0 ? Math.round((closedCount / safe.length) * 100) : null;
+  const totalValue  = safe.reduce((sum, e) => sum + (e.total_amount ?? 0), 0);
+  const avgTicket   = safe.length > 0 ? Math.round(totalValue / safe.length) : null;
+
+  const hasEstimates = safe.length > 0;
+  const isFirstTime  = !loading && !error && !hasEstimates;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-6">
+    <div className="max-w-2xl mx-auto py-4">
 
-        {/* 1. TOP BAR: Dashboard title + date range picker */}
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-extrabold tracking-tight" style={{ fontSize: "24px", fontWeight: 800 }}>
-            Dashboard
-          </h1>
-          <button
-            onClick={() => setDateRange(dateRange === "This Week" ? "This Month" : "This Week")}
-            className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+      {/* ── Setup Banner (shown if profile incomplete) ─────────────────────── */}
+      {company && (!company.phone || !company.license_number) && (
+        <Link
+          href="/settings"
+          className="flex items-center gap-3 bg-brand-green/5 border border-brand-green/25 rounded-2xl px-4 py-3 mb-6 hover:bg-brand-green/10 transition-colors"
+        >
+          <span className="text-xl">🚀</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm">Finish your company profile</p>
+            <p className="text-xs text-text-secondary">Add your phone and license number so they appear on reports.</p>
+          </div>
+          <span className="text-brand-green font-bold text-sm flex-shrink-0">Set up →</span>
+        </Link>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          ELEMENT 1 — Hero CTA
+      ══════════════════════════════════════════════════════════════════════ */}
+      {isFirstTime ? (
+        /* First-time state: no assessments yet */
+        <div
+          className="rounded-2xl px-6 py-10 mb-6 text-center"
+          style={{ background: "linear-gradient(135deg, #0f5c38 0%, #0d4a2e 100%)" }}
+        >
+          <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </div>
+          <h2 className="text-white font-bold text-xl mb-2">Take your first assessment</h2>
+          <p className="text-white/70 text-sm mb-6 max-w-xs mx-auto">
+            Photograph any HVAC unit. AI identifies the equipment and generates Good / Better / Best pricing in seconds.
+          </p>
+          <Link
+            href="/assess"
+            className="inline-flex items-center gap-2 bg-white text-brand-green font-bold px-6 py-3 rounded-xl text-sm hover:bg-white/90 transition-colors"
           >
-            {dateRange} ▼
-          </button>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="7.25" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.6"/>
+              <path d="M8 5v6M5 8h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            New Assessment
+          </Link>
+        </div>
+      ) : (
+        /* Returning user: quick action card */
+        <div
+          className="rounded-2xl px-5 py-5 mb-6 flex items-center justify-between gap-4"
+          style={{ background: "linear-gradient(135deg, #0f5c38 0%, #0d4a2e 100%)" }}
+        >
+          <div className="min-w-0">
+            <p className="text-white/70 text-xs font-semibold uppercase tracking-wider mb-1">Ready for your next job?</p>
+            <p className="text-white font-bold text-lg leading-snug">Start a new assessment</p>
+            <p className="text-white/60 text-xs mt-0.5">90 seconds · AI-powered · Good / Better / Best</p>
+          </div>
+          <Link
+            href="/assess"
+            className="flex-shrink-0 inline-flex items-center gap-1.5 bg-white text-brand-green font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-white/90 transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="7.25" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.6"/>
+              <path d="M8 5v6M5 8h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            Assess
+          </Link>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          ELEMENT 2 — Recent Assessments (last 5)
+      ══════════════════════════════════════════════════════════════════════ */}
+      <div className="bg-white border border-surface-border rounded-2xl overflow-hidden mb-4">
+        <div className="px-5 py-4 border-b border-surface-border flex items-center justify-between">
+          <h2 className="font-bold text-base">Recent Assessments</h2>
+          {hasEstimates && (
+            <Link href="/estimates" className="text-xs text-brand-green font-semibold hover:underline">
+              View all →
+            </Link>
+          )}
         </div>
 
-        {/* Setup Banner */}
-        {company && (!company.phone || !company.license_number) && (
-          <Link
-            href="/onboarding"
-            className="block bg-brand-green/5 border border-brand-green/30 rounded-2xl px-4 py-3 mb-8 hover:bg-brand-green/10 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-xl">🚀</span>
-              <div className="flex-1">
-                <p className="font-semibold text-sm">Complete your company profile</p>
-                <p className="text-xs text-text-secondary">Add your phone, license number, and address to appear on estimates.</p>
-              </div>
-              <span className="text-brand-green font-bold text-sm">Set up →</span>
-            </div>
-          </Link>
+        {/* Loading state */}
+        {loading && (
+          <div className="px-5 py-8 flex items-center justify-center gap-3 text-text-secondary text-sm">
+            <div className="w-5 h-5 border-2 border-brand-green border-t-transparent rounded-full animate-spin" />
+            Loading assessments…
+          </div>
         )}
 
-        {/* 2. HERO METRIC CARD */}
-        <div
-          className="rounded-2xl mb-8 flex items-center justify-between px-4 py-6 md:px-8 md:py-7 overflow-hidden"
-          style={{
-            background: "linear-gradient(135deg, #0f5c38 0%, #0d4a2e 100%)",
-            borderRadius: "16px",
-          }}
-        >
-          <div className="flex-1 min-w-0">
-            <p className="text-white uppercase text-xs tracking-wide" style={{ opacity: 0.7, fontSize: "13px", fontWeight: 600 }}>
-              Estimated Annual Profit Leak
-            </p>
-            <p className="font-bold text-white mt-2" style={{ fontFamily: "IBM Plex Mono", fontSize: "clamp(28px, 8vw, 48px)", fontWeight: 700 }}>
-              $70,560
-            </p>
-            <p className="text-white text-sm mt-1" style={{ opacity: 0.8 }}>
-              Your estimates are 14% below actual cost on average · <span style={{ opacity: 0.65 }}>That&apos;s $588 lost per job across 120 jobs/month</span>
-            </p>
+        {/* Error state */}
+        {error && (
+          <div className="px-5 py-6 text-center">
+            <p className="text-sm font-medium text-gray-700 mb-1">API offline</p>
+            <p className="text-xs text-text-secondary font-mono">{error}</p>
           </div>
-          <Link
-            href="/intelligence/leaks"
-            className="flex px-4 py-2.5 text-white font-semibold text-sm border items-center gap-1 flex-shrink-0"
-            style={{
-              backgroundColor: "rgba(255, 255, 255, 0.15)",
-              borderColor: "rgba(255, 255, 255, 0.25)",
-              borderRadius: "8px",
-              fontSize: "13px",
-            }}
-          >
-            View Details →
-          </Link>
-        </div>
+        )}
 
-        {/* 3. FOUR STAT CARDS GRID */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: "Estimates This Week", value: estimatesThisWeek, trend: "↑ 12% vs last week" },
-            { label: "Close Rate",          value: `${closeRate}%`,  trend: "↑ 14pts since ScopeSnap" },
-            { label: "Average Ticket",      value: fmt(avgTicket),   trend: "↑ $600 since Good/Better/Best" },
-            { label: "Revenue",             value: fmt(revenue),     trend: "↑ 23% vs last week" },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="bg-white border border-gray-200 rounded-2xl p-5"
-              style={{ borderRadius: "14px", padding: "18px 20px" }}
+        {/* Empty state — SOW Task 1.7 / Jobs req: line illustration of phone photographing HVAC unit */}
+        {!loading && !error && !hasEstimates && (
+          <div className="px-5 py-10 text-center flex flex-col items-center gap-4">
+            {/* Monochrome ScopeSnap blue illustration: phone + viewfinder + HVAC unit */}
+            <svg
+              width="96" height="116" viewBox="0 0 96 116"
+              fill="none" xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
             >
-              <p
-                className="text-gray-600 uppercase font-semibold tracking-wider"
-                style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px" }}
-              >
-                {stat.label}
-              </p>
-              <p
-                className="font-bold mt-2 text-gray-900"
-                style={{ fontFamily: "IBM Plex Mono", fontSize: "28px", fontWeight: 700 }}
-              >
-                {stat.value}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">{stat.trend}</p>
+              {/* Phone body */}
+              <rect x="14" y="4" width="68" height="108" rx="10" stroke="#1565C0" strokeWidth="2.5"/>
+              {/* Speaker pill */}
+              <rect x="36" y="11" width="24" height="4" rx="2" fill="#1565C0" opacity="0.35"/>
+              {/* Home indicator */}
+              <rect x="38" y="101" width="20" height="3" rx="1.5" fill="#1565C0" opacity="0.4"/>
+              {/* Screen background */}
+              <rect x="21" y="22" width="54" height="72" rx="4" fill="#EEF4FC"/>
+              {/* Viewfinder corner brackets */}
+              <path d="M25 30 L25 23 L32 23" stroke="#1565C0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M71 30 L71 23 L64 23" stroke="#1565C0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M25 86 L25 93 L32 93" stroke="#1565C0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M71 86 L71 93 L64 93" stroke="#1565C0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              {/* HVAC unit body */}
+              <rect x="27" y="42" width="42" height="28" rx="3" stroke="#1565C0" strokeWidth="1.8"/>
+              {/* Fan circle */}
+              <circle cx="48" cy="56" r="9" stroke="#1565C0" strokeWidth="1.5"/>
+              {/* Fan blades (4 arcs) */}
+              <path d="M48 47 Q52 51 48 56" stroke="#1565C0" strokeWidth="1.2" strokeLinecap="round"/>
+              <path d="M57 56 Q53 60 48 56" stroke="#1565C0" strokeWidth="1.2" strokeLinecap="round"/>
+              <path d="M48 65 Q44 61 48 56" stroke="#1565C0" strokeWidth="1.2" strokeLinecap="round"/>
+              <path d="M39 56 Q43 52 48 56" stroke="#1565C0" strokeWidth="1.2" strokeLinecap="round"/>
+              {/* Vent slats below fan */}
+              <line x1="29" y1="74" x2="67" y2="74" stroke="#1565C0" strokeWidth="1.2" strokeDasharray="4 3" strokeLinecap="round"/>
+              {/* Model plate (right side of unit) */}
+              <rect x="60" y="46" width="7" height="10" rx="1" stroke="#1565C0" strokeWidth="1" opacity="0.5"/>
+              {/* Camera shutter button on phone edge */}
+              <rect x="82" y="40" width="3.5" height="12" rx="1.75" fill="#1565C0" opacity="0.6"/>
+            </svg>
+            <div>
+              <p className="text-text-primary font-semibold text-sm">Your first assessment is 3 taps away</p>
+              <p className="text-text-secondary text-xs mt-1">Tap Assess, snap a photo, get an estimate.</p>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
-        {/* 4. ACTION ALERT CARD */}
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-5 mb-8">
-          <div className="flex items-start gap-3">
-            <span className="text-2xl">⚠️</span>
-            <div className="flex-1">
-              <h3 className="font-bold text-gray-900">Coil replacement jobs are under-estimated by 23%</h3>
-              <p className="text-sm text-gray-700 mt-1">
-                This is your biggest leak — coil jobs consistently take 2+ hours longer than estimated. Fix this and recover ~$28K/year.
-              </p>
-            </div>
-            <button className="px-4 py-2 bg-orange-600 text-white text-sm font-semibold rounded-lg hover:bg-orange-700 transition-colors">
-              Review
-            </button>
-          </div>
-        </div>
-
-        {/* 5. TWO-COLUMN LAYOUT */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-
-          {/* LEFT: Tech Accuracy Scores */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-bold text-gray-900">🎯 Tech Accuracy Scores</h3>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#e8f0fe", color: "#1565c0" }}>LeakSense AI</span>
-            </div>
-            <div className="space-y-4">
-              {mockTechAccuracy.map((tech) => {
-                const barColor = tech.accuracy >= 90 ? "#1a8754" : tech.accuracy >= 85 ? "#1565c0" : tech.accuracy >= 80 ? "#c4600a" : "#c62828";
-                return (
-                  <div key={tech.name}>
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="text-sm font-semibold text-gray-900">{tech.name}</span>
-                      <span className="text-sm font-bold text-gray-900" style={{ fontFamily: "IBM Plex Mono" }}>{tech.accuracy}%</span>
-                    </div>
-                    <p className="text-xs text-gray-500 mb-1.5">{tech.sub}</p>
-                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${tech.accuracy}%`, background: barColor }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-5 bg-green-50 border border-green-100 rounded-lg p-3">
-              <p className="text-xs font-bold text-green-800">💡 AI SUGGESTION</p>
-              <p className="text-xs text-green-700 mt-1">Pair Javier with Mike for 5 ride-alongs on coil replacement jobs. Mike&apos;s labor estimates are 23% more accurate on these jobs.</p>
-            </div>
-          </div>
-
-          {/* RIGHT: BenchmarkIQ Panel */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h3 className="font-bold text-gray-900">📈 BenchmarkIQ</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Houston Metro</p>
-              </div>
-              <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#f3e8ff", color: "#6a1b9a" }}>vs 287 companies</span>
-            </div>
-            <div className="space-y-5">
-              {mockBenchmarks.map((bm) => (
-                <div key={bm.label}>
-                  <p className="text-xs font-semibold text-gray-700 mb-1.5">{bm.label}</p>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div className="text-center">
-                      <div className="font-bold font-mono" style={{ color: bm.youColor }}>{bm.you}</div>
-                      <div className="text-gray-400 mt-0.5">You</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="font-bold font-mono text-gray-500">{bm.avg}</div>
-                      <div className="text-gray-400 mt-0.5">Avg</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="font-bold font-mono" style={{ color: "#f9a825" }}>{bm.top}</div>
-                      <div className="text-gray-400 mt-0.5">Top 25%</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-5 bg-purple-50 border border-purple-100 rounded-lg p-3">
-              <p className="text-xs text-purple-800">Your close rate is top 10% in Houston. The homeowner visual reports are working. Focus on reducing labor cost % to improve revenue per truck.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* 6. PROFIT LEAKS SECTION */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="font-bold text-gray-900">🔍 Top Profit Leaks Found</h3>
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#fee2e2", color: "#991b1b" }}>$70.5K/year</span>
-          </div>
-          <div className="space-y-3">
-            {mockProfitLeaks.map((leak) => (
-              <div key={leak.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
-                <p className="text-sm font-medium text-gray-900 flex-1 truncate mr-2 min-w-0">{leak.name}</p>
-                <p className="text-sm font-bold text-red-600 font-mono flex-shrink-0">{leak.impact}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 7. EQUIPMENT AGING ALERTS */}
-        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900">⚠️ Equipment Aging Alerts</h3>
-            <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#fff7ed", color: "#c2410c" }}>43 properties</span>
-          </div>
-          {/* Campaign opportunity banner */}
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4">
-            <p className="text-xs font-bold text-orange-800">🎯 Replacement Campaign Opportunity</p>
-            <p className="text-xs text-orange-700 mt-1">43 properties have AC units past 15-year mark. Estimated replacement revenue: $344,000 if 50% convert.</p>
-          </div>
-          <div className="space-y-3">
-            {mockEquipmentAging.map((equipment) => (
-              <div key={equipment.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-900">{equipment.name}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{equipment.detail}</p>
-                </div>
-                <span
-                  className="px-3 py-1 rounded-full text-xs font-bold flex-shrink-0 ml-3"
-                  style={{
-                    backgroundColor: equipment.status === "Critical" ? "#fee2e2" : "#fef3c7",
-                    color: equipment.status === "Critical" ? "#991b1b" : "#92400e",
-                  }}
+        {/* Assessment cards */}
+        {!loading && !error && hasEstimates && (
+          <div className="divide-y divide-surface-border">
+            {safe.slice(0, 5).map((est) => {
+              const badge = STATUS_COLORS[est.status] ?? STATUS_COLORS.draft;
+              return (
+                <Link
+                  key={est.id}
+                  href={`/estimate/${est.id}`}
+                  className="flex items-center gap-3 px-5 py-4 hover:bg-surface-bg transition-colors"
                 >
-                  {equipment.status.toUpperCase()}
-                </span>
-              </div>
-            ))}
-            <button
-              className="w-full mt-2 py-2.5 text-sm font-semibold rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
-            >
-              📧 Generate Replacement Campaign →
-            </button>
-          </div>
-        </div>
+                  {/* Icon */}
+                  <div className="w-10 h-10 rounded-xl bg-brand-green/8 flex items-center justify-center flex-shrink-0 border border-brand-green/12">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a8754" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </div>
 
-        {/* 8. RECENT ESTIMATES TABLE */}
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-            <h3 className="font-bold text-gray-900">Recent Estimates</h3>
-            {!loading && safeEstimates.length > 0 && (
-              <span className="text-xs text-gray-500 font-mono">{safeEstimates.length} total</span>
+                  {/* Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-mono font-bold text-sm">{est.report_short_id}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.bg} ${badge.text}`}>
+                        {capitalize(est.status)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-text-secondary truncate">
+                      {est.customer_name || "Customer"}{est.customer_address ? ` · ${est.customer_address}` : ""}
+                    </p>
+                  </div>
+
+                  {/* Amount + time */}
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-bold text-sm font-mono">{fmt(est.total_amount)}</p>
+                    <p className="text-[10px] text-text-secondary mt-0.5">{timeAgo(est.created_at)}</p>
+                  </div>
+
+                  <span className="text-text-secondary text-lg ml-1">›</span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          ELEMENT 3 — Dynamic Stats Line
+          Only shown once there is real data to display.
+      ══════════════════════════════════════════════════════════════════════ */}
+      {hasEstimates && (
+        <div className="bg-white border border-surface-border rounded-2xl px-5 py-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">
+            Last {safe.length} Assessment{safe.length !== 1 ? "s" : ""}
+          </p>
+          <div className="flex items-center gap-0 divide-x divide-surface-border">
+            {/* Total sent */}
+            <div className="flex-1 text-center pr-4">
+              <p className="font-bold text-xl font-mono">{safe.length}</p>
+              <p className="text-[10px] text-text-secondary mt-0.5">Sent</p>
+            </div>
+
+            {/* Close rate */}
+            {closeRate !== null && (
+              <div className="flex-1 text-center px-4">
+                <p className="font-bold text-xl font-mono text-brand-green">{closeRate}%</p>
+                <p className="text-[10px] text-text-secondary mt-0.5">Close Rate</p>
+              </div>
+            )}
+
+            {/* Avg ticket */}
+            {avgTicket !== null && avgTicket > 0 && (
+              <div className="flex-1 text-center pl-4">
+                <p className="font-bold text-xl font-mono">{fmt(avgTicket)}</p>
+                <p className="text-[10px] text-text-secondary mt-0.5">Avg Ticket</p>
+              </div>
             )}
           </div>
-
-          {loading && (
-            <div className="p-8 text-center text-gray-500">
-              <div className="spinner w-6 h-6 border-2 border-brand-green border-t-transparent rounded-full mx-auto mb-2" />
-              Loading estimates...
-            </div>
-          )}
-
-          {error && (
-            <div className="p-6 text-center">
-              <p className="text-brand-red font-medium mb-1">⚠ API Offline</p>
-              <p className="text-sm text-gray-500">{error}</p>
-              <p className="text-xs text-gray-500 mt-1 font-mono">
-                Start: cd scopesnap-api && uvicorn main:app --port 8001
-              </p>
-            </div>
-          )}
-
-          {!loading && !error && safeEstimates.length === 0 && (
-            <div className="p-10 text-center text-gray-500">
-              <div className="text-4xl mb-3">📋</div>
-              <p className="font-medium text-gray-900">No estimates yet</p>
-              <p className="text-sm mt-1 mb-4">Tap "New Job" to create your first assessment.</p>
-              <Link
-                href="/assess"
-                className="inline-block bg-brand-green text-white font-bold px-5 py-2.5 rounded-xl text-sm"
-              >
-                Start Assessment →
-              </Link>
-            </div>
-          )}
-
-          {!loading && !error && safeEstimates.length > 0 && (
-            <div className="divide-y divide-gray-200">
-              {safeEstimates.slice(0, 10).map((est) => {
-                const statusBadge = STATUS_BADGE_COLORS[est.status] || STATUS_BADGE_COLORS.draft;
-                return (
-                  <Link
-                    key={est.id}
-                    href={`/estimate/${est.id}`}
-                    className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-mono font-bold text-sm text-gray-900">{est.report_short_id}</span>
-                        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${statusBadge.bg} ${statusBadge.text}`}>
-                          {est.status.charAt(0).toUpperCase() + est.status.slice(1)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500">{est.customer_name || "Customer"} · {est.technician_name || "Technician"}</p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="font-bold text-sm font-mono text-gray-900">{fmt(est.total_amount)}</p>
-                      <p className="text-xs text-gray-500 mt-1">{timeAgo(est.created_at)}</p>
-                    </div>
-                    <span className="text-gray-400">›</span>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
         </div>
-      </div>
+      )}
+
     </div>
   );
 }

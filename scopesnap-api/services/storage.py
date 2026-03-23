@@ -185,6 +185,35 @@ class R2Storage(BaseStorage):
         except Exception:
             return False
 
+    async def get_bytes(self, path_or_url: str) -> Optional[bytes]:
+        """Fetches file bytes from R2 for vision.py Gemini API usage."""
+        import asyncio
+        # Strip public URL prefix if full URL provided
+        if path_or_url.startswith("http"):
+            prefix = self.public_url + "/"
+            if path_or_url.startswith(prefix):
+                path_or_url = path_or_url[len(prefix):]
+            else:
+                # Unknown URL — try HTTP fetch as fallback
+                try:
+                    import httpx
+                    async with httpx.AsyncClient() as client:
+                        resp = await client.get(path_or_url, timeout=10)
+                        if resp.status_code == 200:
+                            return resp.content
+                except Exception:
+                    pass
+                return None
+        loop = asyncio.get_event_loop()
+        try:
+            response = await loop.run_in_executor(
+                None,
+                lambda: self.client.get_object(Bucket=self.bucket, Key=path_or_url)
+            )
+            return response["Body"].read()
+        except Exception:
+            return None
+
 
 # ── Factory ───────────────────────────────────────────────────────────────────
 def get_storage() -> BaseStorage:

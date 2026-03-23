@@ -159,7 +159,11 @@ export default function OnboardingPage() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  const totalSteps = 3;
+  // 2 actual form steps (welcome is pre-step, not counted):
+  //   step 1 = Welcome  (no dot active — about to begin)
+  //   step 2 = Trade    (dot 1 active — "Step 1 of 2")
+  //   step 3 = Company  (dot 2 active — "Step 2 of 2")
+  const totalSteps = 2;
 
   // Render dot indicators
   const DotIndicators = () => (
@@ -168,7 +172,7 @@ export default function OnboardingPage() {
         <div
           key={i}
           className={`w-2 h-2 rounded-full transition-colors ${
-            i + 1 === step ? "bg-brand-green" : "bg-surface-border"
+            i + 1 === step - 1 ? "bg-brand-green" : "bg-surface-border"
           }`}
         />
       ))}

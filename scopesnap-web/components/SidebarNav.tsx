@@ -1,49 +1,171 @@
 "use client";
-// v2
+/**
+ * ScopeSnap — Sidebar Navigation
+ * SOW Task 1.6: Simplified for beta — 4 core items + feature-flagged extras.
+ *
+ * Changes from pre-beta version:
+ * - Removed all hardcoded numeric badges (47 estimates, $70K, 43 alerts)
+ * - Added BETA badge in logo area
+ * - Non-essential sections hidden via featureFlags
+ * - Core items always visible: Dashboard, Assessments, Settings
+ * - Feature-flagged (hidden by default): Analytics, Intelligence, Equipment, Team, Integrations
+ * - Feedback button at bottom (links to feedback form / mailto)
+ */
+
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { featureFlags } from "@/lib/featureFlags";
 
-const NAV_SECTIONS = [
-  {
-    section: "OVERVIEW",
-    items: [
-      { label: "Dashboard",        href: "/dashboard",              icon: "📊" },
-      { label: "Estimates",        href: "/estimates",              icon: "📋", badge: "47" },
-      { label: "Accuracy Tracker", href: "/analytics",              icon: "🎯" },
-    ],
-  },
-  {
-    section: "INTELLIGENCE",
-    items: [
-      { label: "Profit Leaks",     href: "/intelligence/leaks",     icon: "🔍", badge: "$70K", badgeColor: "#c4600a" },
-      { label: "BenchmarkIQ",      href: "/intelligence/benchmark", icon: "📈" },
-      { label: "Property History", href: "/intelligence/history",   icon: "🏠" },
-    ],
-  },
-  {
-    section: "EQUIPMENT",
-    items: [
-      { label: "Equipment Database", href: "/equipment/database",   icon: "❄️" },
-      { label: "Aging Alerts",       href: "/equipment/alerts",     icon: "⚠️", badge: "43", badgeColor: "#c62828" },
-    ],
-  },
-  {
-    section: "TEAM",
-    items: [
-      { label: "Technicians", href: "/team/technicians", icon: "👥" },
-      { label: "Leaderboard", href: "/team/leaderboard", icon: "🏆" },
-    ],
-  },
-  {
-    section: "SETTINGS",
-    items: [
-      { label: "Pricing Database", href: "/settings/pricing",       icon: "💰" },
-      { label: "Integrations",     href: "/settings/integrations",  icon: "🔗" },
-      { label: "Settings",         href: "/settings",               icon: "⚙️" },
-    ],
-  },
-];
+// ── SVG icon definitions (no emojis — clean, professional, accessible) ────────
+const NavIcons: Record<string, React.ReactNode> = {
+  dashboard: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+    </svg>
+  ),
+  assessments: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      <line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/>
+    </svg>
+  ),
+  analytics: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+  ),
+  leaks: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+  ),
+  benchmark: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+  ),
+  history: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  ),
+  equipment: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>
+    </svg>
+  ),
+  alerts: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+    </svg>
+  ),
+  team: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+    </svg>
+  ),
+  leaderboard: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 6l4-4 4 4"/><path d="M12 2v10.3"/><path d="M20 21H4M4 21v-4a2 2 0 012-2h12a2 2 0 012 2v4"/>
+    </svg>
+  ),
+  pricing: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+    </svg>
+  ),
+  integrations: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+    </svg>
+  ),
+  settings: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+    </svg>
+  ),
+  feedback: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+    </svg>
+  ),
+};
+
+// ── Nav item type ─────────────────────────────────────────────────────────────
+interface NavItem {
+  label: string;
+  href: string;
+  iconKey: string;
+}
+
+interface NavSection {
+  section: string;
+  items: NavItem[];
+}
+
+// ── Build nav sections based on feature flags ─────────────────────────────────
+function buildNavSections(): NavSection[] {
+  const sections: NavSection[] = [];
+
+  // ── OVERVIEW (always visible) ─────────────────────────────────────────────
+  const overviewItems: NavItem[] = [
+    { label: "Dashboard",    href: "/dashboard",  iconKey: "dashboard" },
+    { label: "Assessments",  href: "/estimates",  iconKey: "assessments" },
+  ];
+  if (featureFlags.showAnalytics) {
+    overviewItems.push({ label: "Accuracy Tracker", href: "/analytics", iconKey: "analytics" });
+  }
+  sections.push({ section: "OVERVIEW", items: overviewItems });
+
+  // ── INTELLIGENCE (feature-flagged) ────────────────────────────────────────
+  const intelItems: NavItem[] = [];
+  if (featureFlags.showProfitLeaks)      intelItems.push({ label: "Profit Leaks",     href: "/intelligence/leaks",     iconKey: "leaks" });
+  if (featureFlags.showBenchmark)        intelItems.push({ label: "BenchmarkIQ",      href: "/intelligence/benchmark", iconKey: "benchmark" });
+  if (featureFlags.showPropertyHistory)  intelItems.push({ label: "Property History", href: "/intelligence/history",   iconKey: "history" });
+  if (intelItems.length > 0) {
+    sections.push({ section: "INTELLIGENCE", items: intelItems });
+  }
+
+  // ── EQUIPMENT (feature-flagged) ───────────────────────────────────────────
+  if (featureFlags.showEquipment) {
+    sections.push({
+      section: "EQUIPMENT",
+      items: [
+        { label: "Equipment Database", href: "/equipment/database", iconKey: "equipment" },
+        { label: "Aging Alerts",       href: "/equipment/alerts",   iconKey: "alerts" },
+      ],
+    });
+  }
+
+  // ── TEAM (feature-flagged) ────────────────────────────────────────────────
+  if (featureFlags.showTeam) {
+    sections.push({
+      section: "TEAM",
+      items: [
+        { label: "Technicians", href: "/team/technicians", iconKey: "team" },
+        { label: "Leaderboard", href: "/team/leaderboard", iconKey: "leaderboard" },
+      ],
+    });
+  }
+
+  // ── SETTINGS (always visible) ─────────────────────────────────────────────
+  const settingsItems: NavItem[] = [
+    { label: "Pricing Database", href: "/settings/pricing", iconKey: "pricing" },
+  ];
+  if (featureFlags.showIntegrations) {
+    settingsItems.push({ label: "Integrations", href: "/settings/integrations", iconKey: "integrations" });
+  }
+  settingsItems.push({ label: "Settings", href: "/settings", iconKey: "settings" });
+  sections.push({ section: "SETTINGS", items: settingsItems });
+
+  return sections;
+}
 
 export default function SidebarNav() {
   const pathname = usePathname();
@@ -56,6 +178,8 @@ export default function SidebarNav() {
   const isActive = (href: string) =>
     mounted && (pathname === href || pathname.startsWith(href + "/"));
 
+  const navSections = buildNavSections();
+
   return (
     <>
       {/* Mobile hamburger */}
@@ -63,9 +187,11 @@ export default function SidebarNav() {
         onClick={() => setIsMobileOpen(!isMobileOpen)}
         className="md:hidden fixed top-4 left-4 z-40 p-2 hover:bg-gray-700 rounded-lg transition-colors"
         style={{ background: "#2a2a28" }}
+        aria-label="Toggle navigation menu"
       >
         <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d={isMobileOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
         </svg>
       </button>
 
@@ -86,7 +212,8 @@ export default function SidebarNav() {
         style={{ background: "#1a1a18" }}
       >
         <div className="flex flex-col h-full">
-          {/* Logo Area */}
+
+          {/* ── Logo Area with BETA badge ────────────────────────────────── */}
           <div className="px-5 py-5 border-b" style={{ borderColor: "rgba(255,255,255,.08)" }}>
             <Link href="/dashboard" className="flex items-center gap-2.5" onClick={() => setIsMobileOpen(false)}>
               <div
@@ -95,14 +222,27 @@ export default function SidebarNav() {
               >
                 <span className="text-white font-extrabold text-base">S</span>
               </div>
-              <div>
-                <span className="text-white/90 font-extrabold text-[17px] tracking-tight">Scope</span>
-                <span style={{ color: "#1a8754" }} className="font-extrabold text-[17px] tracking-tight">Snap</span>
+              <div className="flex items-center gap-1.5">
+                <div>
+                  <span className="text-white/90 font-extrabold text-[17px] tracking-tight">Scope</span>
+                  <span style={{ color: "#1a8754" }} className="font-extrabold text-[17px] tracking-tight">Snap</span>
+                </div>
+                <span
+                  className="text-[8px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded"
+                  style={{
+                    background: "rgba(26,135,84,.25)",
+                    color: "#1a8754",
+                    border: "1px solid rgba(26,135,84,.35)",
+                    letterSpacing: "0.1em",
+                  }}
+                >
+                  BETA
+                </span>
               </div>
             </Link>
           </div>
 
-          {/* New Assessment CTA — the ONE button a tech needs */}
+          {/* ── New Assessment CTA ───────────────────────────────────────── */}
           <div className="px-3 pt-4 pb-2" suppressHydrationWarning>
             <Link
               href="/assess"
@@ -122,9 +262,9 @@ export default function SidebarNav() {
             </Link>
           </div>
 
-          {/* Nav Sections */}
+          {/* ── Nav Sections ─────────────────────────────────────────────── */}
           <nav className="flex-1 px-2.5 py-3 overflow-y-auto">
-            {NAV_SECTIONS.map((section) => (
+            {navSections.map((section) => (
               <div key={section.section}>
                 <div
                   className="px-3 pt-4 pb-1.5 text-[9px] font-bold uppercase tracking-widest"
@@ -148,19 +288,10 @@ export default function SidebarNav() {
                         color: isActive(item.href) ? "white" : "rgba(255,255,255,.55)",
                       }}
                     >
-                      <span className="text-base w-6 text-center flex-shrink-0">{item.icon}</span>
+                      <span className="w-5 flex-shrink-0 flex items-center justify-center opacity-70">
+                        {NavIcons[item.iconKey] ?? null}
+                      </span>
                       <span className="flex-1">{item.label}</span>
-                      {"badge" in item && item.badge && (
-                        <span
-                          className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                          style={{
-                            background: ("badgeColor" in item && item.badgeColor) ? item.badgeColor : "rgba(255,255,255,.18)",
-                            color: "white",
-                          }}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
                     </Link>
                   ))}
                 </div>
@@ -168,25 +299,46 @@ export default function SidebarNav() {
             ))}
           </nav>
 
-          {/* Footer with User Avatar */}
+          {/* ── Feedback Button ──────────────────────────────────────────── */}
+          <div className="px-3 pb-2">
+            <a
+              href="mailto:feedback@scopesnap.ai?subject=ScopeSnap Beta Feedback"
+              className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/5"
+              style={{ color: "rgba(255,255,255,.4)" }}
+            >
+              <span className="w-5 flex-shrink-0 flex items-center justify-center opacity-70">
+                {NavIcons.feedback}
+              </span>
+              <span>Send Feedback</span>
+            </a>
+          </div>
+
+          {/* ── Footer / User Area ───────────────────────────────────────── */}
           <div className="px-3.5 py-4 border-t" style={{ borderColor: "rgba(255,255,255,.08)" }}>
-            <div className="flex items-center gap-2.5">
+            <Link
+              href="/settings"
+              onClick={() => setIsMobileOpen(false)}
+              className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
+            >
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                 style={{ background: "#1a8754" }}
               >
-                DM
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-semibold truncate" style={{ color: "rgba(255,255,255,.85)" }}>
-                  Dave Martinez
+                  Account &amp; Settings
                 </div>
                 <div className="text-[10px] truncate" style={{ color: "rgba(255,255,255,.4)" }}>
-                  ABC HVAC Services · Team Plan
+                  Free Trial
                 </div>
               </div>
-            </div>
+            </Link>
           </div>
+
         </div>
       </aside>
     </>

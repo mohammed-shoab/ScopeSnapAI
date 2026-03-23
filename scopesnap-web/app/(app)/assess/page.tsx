@@ -8,6 +8,8 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { API_URL } from "@/lib/api";
 import { OfflineError } from "@/lib/api";
+import { saveToOfflineQueue, processOfflineQueue, getOfflineQueueCount } from "@/lib/offlineQueue";
+import { track } from "@/lib/tracking";
 
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
 type Phase = "capture" | "uploading" | "analyzing" | "results" | "estimating";
@@ -78,8 +80,11 @@ export default function AssessPage() {
   const [usingCamera, setUsingCamera] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<PropertySuggestion | null>(null);
   const [priorEstimates, setPriorEstimates] = useState<PriorEstimate[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [offlineQueued, setOfflineQueued] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
-  // Draft recovery on mount
+  // Draft recovery on mount + offline queue check
   useEffect(() => {
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
@@ -89,6 +94,26 @@ export default function AssessPage() {
         if (ageHrs < 4 && draft.address) setDraftRecovery(draft);
       }
     } catch { /* ignore */ }
+
+    // Check for pending offline uploads
+    getOfflineQueueCount().then(count => {
+      if (count > 0) setPendingCount(count);
+    }).catch(() => {});
+
+    // Auto-sync offline queue when network reconnects
+    const handleOnline = () => {
+      processOfflineQueue(API_URL, DEV_HEADER).then(({ uploaded }) => {
+        if (uploaded > 0) {
+          setPendingCount(0);
+        }
+      }).catch(() => {});
+    };
+    window.addEventListener("online", handleOnline);
+    // Attempt sync immediately if we're already online and have pending items
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      handleOnline();
+    }
+    return () => window.removeEventListener("online", handleOnline);
   }, []);
 
   // Save draft whenever address/name changes
@@ -165,6 +190,8 @@ export default function AssessPage() {
     if (photos.length >= 5) return;
     setPhotos((p) => [...p, file]);
     setPreviewUrls((p) => [...p, URL.createObjectURL(file)]);
+    // SOW Task 1.10 — Bezos req: track photo count + file size for field connection diagnostics
+    track.photoAdded(photos.length + 1, file.size);
   };
 
   const removePhoto = (i: number) => {
@@ -189,7 +216,14 @@ export default function AssessPage() {
 
     let uploaded: { id: string } | null = null;
     try {
-      if (typeof navigator !== "undefined" && !navigator.onLine) throw new OfflineError();
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        // Save to offline IndexedDB queue for auto-sync when reconnected
+        await saveToOfflineQueue(photos, { address, customerName, customerPhone });
+        setOfflineQueued(true);
+        setPendingCount(c => c + 1);
+        setPhase("capture");
+        return;
+      }
       setUploadProgress(30);
       let up: Response;
       try {
@@ -199,7 +233,12 @@ export default function AssessPage() {
           body: fd,
         });
       } catch {
-        throw new OfflineError();
+        // Network error mid-upload — queue for later
+        await saveToOfflineQueue(photos, { address, customerName, customerPhone });
+        setOfflineQueued(true);
+        setPendingCount(c => c + 1);
+        setPhase("capture");
+        return;
       }
       if (!up.ok) {
         const detail = await up.json().then(d => d.detail).catch(() => "Upload failed");
@@ -217,21 +256,43 @@ export default function AssessPage() {
       return;
     }
 
-    // Now analyze
+    // ── Analyze with 30s timeout and one retry ────────────────────────────
     setPhase("analyzing");
     setAnalysisStep(1);
+
+    const analyzeWithTimeout = async (attempt: number): Promise<Response> => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      try {
+        const r = await fetch(
+          `${API_URL}/api/assessments/${uploaded!.id}/analyze`,
+          { method: "POST", headers: DEV_HEADER, signal: controller.signal }
+        );
+        clearTimeout(timer);
+        return r;
+      } catch (e: unknown) {
+        clearTimeout(timer);
+        const isAbort = e instanceof Error && e.name === "AbortError";
+        if (isAbort && attempt === 1) {
+          // First timeout — retry once
+          setAnalysisStep(s => Math.min(s + 1, 4));
+          return analyzeWithTimeout(2);
+        }
+        throw e;
+      }
+    };
+
     try {
       const stepTimer = setInterval(() => {
         setAnalysisStep(s => Math.min(s + 1, 4));
       }, 3500);
       let an: Response;
       try {
-        an = await fetch(
-          `${API_URL}/api/assessments/${uploaded!.id}/analyze`,
-          { method: "POST", headers: DEV_HEADER }
-        );
-      } catch {
+        an = await analyzeWithTimeout(1);
+      } catch (e: unknown) {
         clearInterval(stepTimer);
+        const isTimeout = e instanceof Error && e.name === "AbortError";
+        if (isTimeout) throw new Error("AI analysis timed out after 30 seconds. Please try again.");
         throw new OfflineError();
       }
       clearInterval(stepTimer);
@@ -285,22 +346,31 @@ export default function AssessPage() {
     const progressPct = phase === "uploading" ? uploadProgress : Math.min(20 + analysisStep * 20, 90);
 
     return (
-      <div className="max-w-md mx-auto pt-12 text-center space-y-6 px-4">
-        {/* Scan animation */}
-        <div className="w-40 h-40 mx-auto rounded-2xl border-2 border-gray-100 flex items-center justify-center text-6xl relative overflow-hidden bg-white shadow-sm">
-          ❄️
-          <div
-            className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-brand-green to-transparent"
-            style={{ animation: "scan 1.8s ease-in-out infinite" }}
-          />
-          <style>{`@keyframes scan { 0%{top:0} 50%{top:100%} 100%{top:0} }`}</style>
+      <div className="max-w-md mx-auto pt-16 text-center space-y-6 px-4">
+        {/* Pulsing dots animation — SOW Task 1.8 */}
+        <div className="flex gap-3 justify-center" aria-label="Loading">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="w-4 h-4 rounded-full bg-brand-green"
+              style={{
+                animation: `pulseDot 1.4s ease-in-out ${i * 0.2}s infinite`,
+              }}
+            />
+          ))}
+          <style>{`
+            @keyframes pulseDot {
+              0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+              40% { transform: scale(1.2); opacity: 1; }
+            }
+          `}</style>
         </div>
 
         <div>
-          <h2 className="text-2xl font-extrabold tracking-tight mb-1">
+          <h2 className="text-2xl font-extrabold tracking-tight mb-2">
             {phase === "uploading" ? "Uploading Photos" : "Analyzing Equipment"}
           </h2>
-          <p className="text-sm text-text-secondary animate-pulse">{currentMsg}</p>
+          <p className="text-sm text-text-secondary">{currentMsg}</p>
         </div>
 
         {/* Step checklist */}
@@ -581,9 +651,40 @@ export default function AssessPage() {
     );
   }
 
+  // ── Drag-drop handlers (desktop fallback) ────────────────────────────────
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files)
+      .filter(f => f.type.startsWith("image/"))
+      .slice(0, 5 - photos.length);
+    files.forEach(addPhoto);
+  };
+
   // Capture screen
   return (
     <div className="max-w-lg mx-auto space-y-4 px-4 pb-4">
+      {/* Offline queued banner */}
+      {offlineQueued && (
+        <div className="flex items-center gap-3 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 mt-2">
+          <span className="text-base">📡</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-yellow-900">Saved for when you&apos;re back online</p>
+            <p className="text-xs text-yellow-700">
+              {pendingCount} assessment{pendingCount !== 1 ? "s" : ""} will upload automatically when connected.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Draft Recovery Banner */}
       {draftRecovery && (
         <div className="flex items-center gap-3 bg-brand-gold-light border border-brand-gold rounded-xl px-4 py-3 mt-2">
@@ -648,13 +749,21 @@ export default function AssessPage() {
         </div>
       ) : (
         <div
-          className="bg-white border-2 border-dashed border-gray-300 hover:border-green-500 rounded-2xl p-6 text-center cursor-pointer transition-colors"
+          className="bg-white border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors"
+          style={{ borderColor: isDragging ? "#1a8754" : "#d1d5db", background: isDragging ? "rgba(26,135,84,.04)" : "white" }}
           onClick={() => fileInputRef.current?.click()}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
         >
-          <div className="text-5xl mb-3">📸</div>
-          <p className="font-bold text-gray-900 mb-1">Add Equipment Photos</p>
+          <div className="text-5xl mb-3">{isDragging ? "📂" : "📸"}</div>
+          <p className="font-bold text-gray-900 mb-1">
+            {isDragging ? "Drop photos here" : "Add Equipment Photos"}
+          </p>
           <p className="text-sm text-gray-600 mb-4">
             1–5 photos. Include the data plate if visible.
+            <span className="hidden md:inline"> Or drag &amp; drop files here.</span>
           </p>
           <div className="flex gap-2 justify-center">
             <button

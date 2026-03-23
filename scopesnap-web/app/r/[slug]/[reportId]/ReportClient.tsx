@@ -1,6 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import DataConfidenceLabel from "@/components/DataConfidenceLabel";
+
+/**
+ * ReportQRCode — SOW Task 1.9 (Zuckerberg requirement)
+ * Renders a QR code linking to this report URL with UTM attribution params.
+ * Zero-dependency: uses api.qrserver.com (free, no key, privacy-safe).
+ * Homeowner scans to re-open the report on any device, or share with spouse/family.
+ * UTM params feed back into app_events (report_viewed) for attribution analysis.
+ */
+function ReportQRCode({ reportShortId }: { reportShortId: string }) {
+  const [qrUrl, setQrUrl] = useState("");
+
+  useEffect(() => {
+    // Build the clean report URL + UTM params for tracking
+    const reportUrl = window.location.href.split("?")[0];
+    const trackingUrl = `${reportUrl}?utm_source=report&utm_medium=qr&utm_campaign=${reportShortId}`;
+    const encoded = encodeURIComponent(trackingUrl);
+    setQrUrl(
+      `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encoded}&color=1a8754&bgcolor=ffffff&margin=4`
+    );
+  }, [reportShortId]);
+
+  if (!qrUrl) return null;
+
+  return (
+    <div style={{ marginTop: 14, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={qrUrl}
+        alt="Scan to view this report on any device"
+        width={80}
+        height={80}
+        style={{ borderRadius: 6, border: "1px solid #e2dfd7" }}
+      />
+      <span style={{ fontSize: 9, color: "#b0aca4", letterSpacing: "0.04em" }}>
+        Scan to view on any device
+      </span>
+    </div>
+  );
+}
 
 interface Option {
   tier: string;
@@ -72,6 +112,7 @@ interface Report {
   created_at?: string;
   selected_option?: string;
   approved_at?: string;
+  ai_confidence?: number;   // 0–100 — from assessment ai_equipment_id.confidence
   company: Company;
   property?: Property;
   equipment?: Equipment;
@@ -128,10 +169,7 @@ function resolvePhotoUrl(url: string): string {
 function HealthGauge({ condition }: { condition?: string }) {
   const label = (condition || "unknown").toLowerCase();
   const color = CONDITION_COLORS[label] || "#7a7770";
-  const getBorderColor = () => {
-    if (label === "fair") return "#e6a817";
-    return color;
-  };
+  const bg = CONDITION_BG[label] || "#f5f4f2";
 
   return (
     <div
@@ -139,10 +177,8 @@ function HealthGauge({ condition }: { condition?: string }) {
         width: 64,
         height: 64,
         borderRadius: "50%",
-        border: `5px solid #e5e2da`,
-        borderTopColor: "#1a8754",
-        borderRightColor: "#e6a817",
-        borderBottomColor: "#c4600a",
+        border: `5px solid ${color}`,
+        background: bg,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -151,9 +187,9 @@ function HealthGauge({ condition }: { condition?: string }) {
     >
       <span
         style={{
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: 800,
-          color: "#e6a817",
+          color: color,
           textTransform: "uppercase",
           fontFamily: "IBM Plex Mono, monospace",
           letterSpacing: -0.5,
@@ -498,6 +534,13 @@ export default function ReportClient({ report }: { report: Report }) {
                 <div style={{ fontSize: 9, color: "#a8a49c" }}>Model / SEER</div>
               </div>
             </div>
+
+            {/* AI Data Confidence Label — SOW Task 1.9, Decision #2 */}
+            {report.ai_confidence != null && (
+              <div style={{ marginTop: 10, display: "flex", justifyContent: "center" }}>
+                <DataConfidenceLabel confidence={report.ai_confidence} />
+              </div>
+            )}
           </div>
         </div>
 
@@ -769,10 +812,8 @@ export default function ReportClient({ report }: { report: Report }) {
                     }}
                   >
                     {selectedOption
-                      ? `Deposit ${fmt(Math.round(selectedOption.total * 0.2))} due now · Remaining at completion`
-                      : "Tap an option above, then approve"}
-                    <br />
-                    🔒 Secure payment via Stripe
+                      ? "Your contractor will contact you to confirm scheduling and payment details."
+                      : "Select an option above, then tap Approve"}
                   </p>
                   {error && (
                     <p style={{ color: "#c62828", fontSize: 12, textAlign: "center", marginTop: 8, fontWeight: 600 }}>
@@ -875,20 +916,34 @@ export default function ReportClient({ report }: { report: Report }) {
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Footer — SOW Decision #2: two-line ScopeSnap footer + QR code (Task 1.9 / Zuckerberg) */}
         <div style={{ textAlign: "center", padding: "20px 16px", fontSize: 10, color: "#a8a49c", lineHeight: 1.8 }}>
-          {property?.customer_name && `Prepared for ${property.customer_name}`}
-          {property?.address_line1 && ` · ${property.address_line1}`}
-          {property?.city && `, ${property.city}`}
-          {property?.state && ` ${property.state}`}
+          <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>
+            Report ID: {report.report_short_id}
+          </span>
+          {property?.address_line1 && (
+            <>
+              <br />
+              {[property.address_line1, property.city, property.state].filter(Boolean).join(", ")}
+            </>
+          )}
           <br />
-          This report was created using{" "}
-          <a href="https://scopesnap.com" style={{ color: "#1a8754", fontWeight: 600, textDecoration: "none" }}>
-            ScopeSnap
-          </a>{" "}
-          HVAC Intelligence
+          <span style={{ color: "#c8c4bc" }}>
+            Verified Assessment by{" "}
+            <a
+              href="https://scopesnap.ai"
+              style={{ color: "#1a8754", fontWeight: 700, textDecoration: "none" }}
+            >
+              ScopeSnap AI
+            </a>
+          </span>
           <br />
-          <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>Report ID: {report.report_short_id}</span>
+          <span style={{ color: "#b0aca4" }}>
+            Professional HVAC assessments for contractors &mdash; scopesnap.ai
+          </span>
+          {/* QR code — Zuckerberg req: homeowner scans to re-open report on any device */}
+          {/* UTM params: utm_source=report&utm_medium=qr for attribution tracking */}
+          <ReportQRCode reportShortId={report.report_short_id} />
         </div>
       </div>
     </div>

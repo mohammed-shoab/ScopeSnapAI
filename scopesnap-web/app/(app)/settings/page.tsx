@@ -331,6 +331,24 @@ export default function SettingsPage() {
               </Link>
             </div>
           </div>
+
+          {/* Privacy & Data — SOW Task 1.11 */}
+          <div className="bg-white border border-surface-border rounded-ss shadow-ss p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-[9px] font-bold uppercase tracking-widest font-mono text-text-secondary mb-2">Privacy &amp; Data</h2>
+                <p className="text-text-secondary text-sm">
+                  Export your data, manage analytics, or delete your account.
+                </p>
+              </div>
+              <Link
+                href="/settings/privacy"
+                className="text-sm text-brand-green font-semibold hover:underline flex-shrink-0"
+              >
+                Manage →
+              </Link>
+            </div>
+          </div>
         </>
       )}
     </div>

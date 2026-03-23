@@ -872,3 +872,81 @@ async def process_followups(
         "cancelled": cancelled_count,
         "errors": errors,
     }
+
+
+# ── GET /api/estimates/export/csv ─────────────────────────────────────────────
+# SOW Task 1.11: Data export for privacy compliance.
+# Returns all estimates for the authenticated company as a CSV download.
+
+import csv
+import io
+from fastapi.responses import StreamingResponse
+
+
+@router.get("/export/csv")
+async def export_estimates_csv(
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Export all estimates for the current company as a downloadable CSV.
+    Includes: report_short_id, status, customer_name, address, total, created_at, approved_at.
+    SOW Task 1.11: Required for GDPR/privacy compliance during beta.
+    """
+    result = await db.execute(
+        select(Estimate, Property)
+        .outerjoin(Property, Estimate.property_id == Property.id)
+        .where(Estimate.company_id == auth.company_id)
+        .order_by(Estimate.created_at.desc())
+    )
+    rows = result.all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Header row
+    writer.writerow([
+        "Report ID",
+        "Status",
+        "Customer Name",
+        "Address",
+        "City",
+        "State",
+        "Total ($)",
+        "Selected Tier",
+        "Created",
+        "Approved",
+    ])
+
+    for estimate, prop in rows:
+        total = estimate.options[0]["total"] if estimate.options else ""
+        selected = estimate.selected_option or ""
+
+        # Get total from selected option if available
+        if estimate.options and estimate.selected_option:
+            for opt in estimate.options:
+                if opt.get("tier") == estimate.selected_option:
+                    total = opt.get("total", "")
+                    break
+
+        writer.writerow([
+            estimate.report_short_id or "",
+            estimate.status or "",
+            (prop.customer_name or "") if prop else "",
+            (prop.address_line1 or "") if prop else "",
+            (prop.city or "") if prop else "",
+            (prop.state or "") if prop else "",
+            total,
+            selected,
+            estimate.created_at.strftime("%Y-%m-%d %H:%M") if estimate.created_at else "",
+            estimate.approved_at.strftime("%Y-%m-%d %H:%M") if estimate.approved_at else "",
+        ])
+
+    output.seek(0)
+    filename = f"scopesnap_export_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
+
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

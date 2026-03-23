@@ -19,6 +19,7 @@ from api.clerk_webhook import router as clerk_webhook_router, me_router as auth_
 from api.analytics import router as analytics_router
 from api.billing import router as billing_router, webhook_router as billing_webhook_router
 from api.pricing_rules import router as pricing_rules_router
+from api.events import router as events_router
 
 settings = get_settings()
 
@@ -66,6 +67,7 @@ app.include_router(analytics_router)
 app.include_router(billing_router)
 app.include_router(billing_webhook_router)
 app.include_router(pricing_rules_router)
+app.include_router(events_router)  # POST /api/events + POST /api/waitlist
 
 
 # ── Health Check ──────────────────────────────────────────────────────────────
