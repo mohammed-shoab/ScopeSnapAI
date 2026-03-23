@@ -47,7 +47,7 @@ interface Option {
   name: string;
   total: number;
   five_year_total?: number;
-  line_items?: Array<{ label: string; amount: number }>;
+  line_items?: Array<{ label?: string; amount?: number; description?: string; total?: number }>;
   description?: string;
   savings_note?: string;
   recommended?: boolean;
