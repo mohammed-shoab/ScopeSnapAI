@@ -6,11 +6,13 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
 import { OfflineError } from "@/lib/api";
 import { saveToOfflineQueue, processOfflineQueue, getOfflineQueueCount } from "@/lib/offlineQueue";
 import { track } from "@/lib/tracking";
 
+const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
 type Phase = "capture" | "uploading" | "analyzing" | "results" | "estimating";
 
@@ -60,6 +62,15 @@ const DRAFT_KEY = "scopesnap_draft_assessment";
 
 export default function AssessPage() {
   const router = useRouter();
+  const { getToken } = useAuth();
+
+  /** Returns the correct auth headers for API calls (dev bypass or real JWT). */
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    if (IS_DEV) return DEV_HEADER;
+    const token = await getToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, [getToken]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -102,11 +113,11 @@ export default function AssessPage() {
 
     // Auto-sync offline queue when network reconnects
     const handleOnline = () => {
-      processOfflineQueue(API_URL, DEV_HEADER).then(({ uploaded }) => {
-        if (uploaded > 0) {
-          setPendingCount(0);
-        }
-      }).catch(() => {});
+      getAuthHeaders().then(headers =>
+        processOfflineQueue(API_URL, headers).then(({ uploaded }) => {
+          if (uploaded > 0) setPendingCount(0);
+        })
+      ).catch(() => {});
     };
     window.addEventListener("online", handleOnline);
     // Attempt sync immediately if we're already online and have pending items
@@ -132,9 +143,10 @@ export default function AssessPage() {
     }
     const t = setTimeout(async () => {
       try {
+        const authHeaders = await getAuthHeaders();
         const r = await fetch(
           `${API_URL}/api/properties/search?q=${encodeURIComponent(address)}&limit=5`,
-          { headers: DEV_HEADER }
+          { headers: authHeaders }
         );
         if (r.ok) {
           setSuggestions(await r.json());
@@ -225,11 +237,12 @@ export default function AssessPage() {
         return;
       }
       setUploadProgress(30);
+      const uploadAuthHeaders = await getAuthHeaders();
       let up: Response;
       try {
         up = await fetch(`${API_URL}/api/assessments/`, {
           method: "POST",
-          headers: DEV_HEADER,
+          headers: uploadAuthHeaders,
           body: fd,
         });
       } catch {
@@ -260,13 +273,14 @@ export default function AssessPage() {
     setPhase("analyzing");
     setAnalysisStep(1);
 
+    const analyzeAuthHeaders = await getAuthHeaders();
     const analyzeWithTimeout = async (attempt: number): Promise<Response> => {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 30000); // 30s timeout
       try {
         const r = await fetch(
           `${API_URL}/api/assessments/${uploaded!.id}/analyze`,
-          { method: "POST", headers: DEV_HEADER, signal: controller.signal }
+          { method: "POST", headers: analyzeAuthHeaders, signal: controller.signal }
         );
         clearTimeout(timer);
         return r;
@@ -318,9 +332,10 @@ export default function AssessPage() {
     setPhase("estimating");
     setError(null);
     try {
+      const estAuthHeaders = await getAuthHeaders();
       const r = await fetch(`${API_URL}/api/estimates/generate`, {
         method: "POST",
-        headers: { ...DEV_HEADER, "Content-Type": "application/json" },
+        headers: { ...estAuthHeaders, "Content-Type": "application/json" },
         body: JSON.stringify({ assessment_id: assessment.id }),
       });
       if (!r.ok)
@@ -563,7 +578,7 @@ export default function AssessPage() {
             className="px-4 py-3 border-b-2 font-mono text-xs font-bold uppercase tracking-wider text-blue-600"
             style={{ borderBottomColor: "#1565c0" }}
           >
-            📊 Lifecycle Intelligence
+            Lifecycle Intelligence
           </div>
           <div className="p-4 space-y-2">
             <div className="flex justify-between items-center py-2 border-b border-gray-200">
@@ -737,7 +752,7 @@ export default function AssessPage() {
               onClick={capturePhoto}
               className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors"
             >
-              📸 Capture ({photos.length}/5)
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:5,verticalAlign:"middle"}}><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>Capture ({photos.length}/5)
             </button>
             <button
               onClick={stopCamera}
@@ -757,7 +772,19 @@ export default function AssessPage() {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="text-5xl mb-3">{isDragging ? "📂" : "📸"}</div>
+          <div className="mb-3 flex justify-center">
+            {isDragging ? (
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#1a8754" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+                <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+              </svg>
+            ) : (
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            )}
+          </div>
           <p className="font-bold text-gray-900 mb-1">
             {isDragging ? "Drop photos here" : "Add Equipment Photos"}
           </p>
@@ -779,7 +806,7 @@ export default function AssessPage() {
               }}
               className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl text-sm transition-colors"
             >
-              📷 Camera
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:5,verticalAlign:"middle"}}><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>Camera
             </button>
             <button
               onClick={(e) => {
@@ -880,9 +907,10 @@ export default function AssessPage() {
                     setSelectedProperty(s);
                     // Fetch prior estimates for this property
                     try {
+                      const priorAuthHeaders = await getAuthHeaders();
                       const r = await fetch(
                         `${API_URL}/api/estimates/?property_id=${s.id}&limit=5`,
-                        { headers: DEV_HEADER }
+                        { headers: priorAuthHeaders }
                       );
                       if (r.ok) {
                         const data = await r.json();

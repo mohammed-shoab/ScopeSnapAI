@@ -11,7 +11,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
+import time
 import httpx
+from jose import jwt as jose_jwt, JWTError
 
 from db.database import get_db
 from db.models import User, Company
@@ -19,6 +21,32 @@ from config import get_settings
 
 settings = get_settings()
 security = HTTPBearer(auto_error=False)
+
+# ── JWKS Cache (avoid fetching on every request) ───────────────────────────────
+_jwks_cache: Optional[dict] = None
+_jwks_cache_time: float = 0.0
+_JWKS_CACHE_TTL: float = 3600.0  # 1 hour
+
+
+async def _get_clerk_jwks() -> dict:
+    """Fetches and caches Clerk's JWKS public keys."""
+    global _jwks_cache, _jwks_cache_time
+    if _jwks_cache and (time.time() - _jwks_cache_time) < _JWKS_CACHE_TTL:
+        return _jwks_cache
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            "https://api.clerk.com/v1/jwks",
+            headers={"Authorization": f"Bearer {settings.clerk_secret_key}"},
+            timeout=10.0,
+        )
+    if resp.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not fetch Clerk JWKS — check CLERK_SECRET_KEY",
+        )
+    _jwks_cache = resp.json()
+    _jwks_cache_time = time.time()
+    return _jwks_cache
 
 
 # ── Auth Context Data Classes ──────────────────────────────────────────────────
@@ -40,26 +68,54 @@ class AuthContext:
 # ── Token Verification ────────────────────────────────────────────────────────
 async def verify_clerk_token(token: str) -> dict:
     """
-    Verifies a Clerk session token and returns the claims.
-    Makes a request to Clerk's verification endpoint.
+    Verifies a Clerk JWT using JWKS public-key verification.
+    Replaces the broken /sessions/me approach — JWTs must be verified via JWKS.
     """
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            "https://api.clerk.com/v1/sessions/me",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Clerk-Secret-Key": settings.clerk_secret_key,
-            },
-            timeout=10.0,
+    if not settings.clerk_secret_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Clerk secret key not configured on server",
         )
 
-    if response.status_code != 200:
+    # Get unverified header to find the key ID
+    try:
+        header = jose_jwt.get_unverified_header(token)
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token format",
+        )
+
+    kid = header.get("kid")
+
+    # Fetch JWKS (cached)
+    jwks = await _get_clerk_jwks()
+    keys = jwks.get("keys", [])
+
+    # Find the matching public key by kid
+    key_data = next((k for k in keys if k.get("kid") == kid), None)
+    if not key_data and keys:
+        key_data = keys[0]  # Fallback: use first key if no kid match
+    if not key_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Signing key not found in Clerk JWKS",
+        )
+
+    # Verify and decode the JWT
+    try:
+        claims = jose_jwt.decode(
+            token,
+            key_data,
+            algorithms=["RS256"],
+            options={"verify_aud": False},
+        )
+        return claims
+    except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired session token",
         )
-
-    return response.json()
 
 
 # ── Main Auth Dependency ───────────────────────────────────────────────────────
