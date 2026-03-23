@@ -311,10 +311,30 @@ class ResendSender(BaseEmailSender):
 # ── Factory ───────────────────────────────────────────────────────────────────
 def get_email_sender() -> BaseEmailSender:
     """
-    Returns the correct email sender based on ENVIRONMENT.
-    Use as FastAPI dependency or call directly.
+    Returns the correct email sender based on ENVIRONMENT and credentials.
+
+    Decision tree:
+      1. ENVIRONMENT=development → ConsoleSender (prints to terminal, no key needed)
+      2. ENVIRONMENT=production + RESEND_API_KEY set → ResendSender (real emails)
+      3. ENVIRONMENT=production + RESEND_API_KEY missing → ConsoleSender + warning
+         Emails will print to Railway logs but NOT be delivered to homeowners.
+         Fix: set RESEND_API_KEY and FROM_EMAIL in Railway to enable real sending.
+
+    Railway env vars required for Resend:
+      RESEND_API_KEY — from resend.com dashboard (free tier: 3,000 emails/month)
+      FROM_EMAIL     — verified sender address (e.g. estimates@yourdomain.com)
+                       Must be a domain you own and have verified in Resend.
     """
     if settings.is_development:
         return ConsoleSender()
-    else:
-        return ResendSender()
+
+    if not settings.resend_api_key:
+        print("\n" + "⚠️ " * 20)
+        print("  WARNING: ENVIRONMENT=production but RESEND_API_KEY is not set.")
+        print("  Emails will print to Railway logs but NOT be delivered.")
+        print("  Fix: set RESEND_API_KEY and FROM_EMAIL in Railway environment variables.")
+        print("  Get your API key at: https://resend.com (free tier: 3,000 emails/month)")
+        print("⚠️ " * 20 + "\n")
+        return ConsoleSender()
+
+    return ResendSender()

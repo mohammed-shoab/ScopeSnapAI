@@ -20,6 +20,7 @@ from api.analytics import router as analytics_router
 from api.billing import router as billing_router, webhook_router as billing_webhook_router
 from api.pricing_rules import router as pricing_rules_router
 from api.events import router as events_router
+from api.admin import router as admin_router
 
 settings = get_settings()
 
@@ -68,6 +69,7 @@ app.include_router(billing_router)
 app.include_router(billing_webhook_router)
 app.include_router(pricing_rules_router)
 app.include_router(events_router)  # POST /api/events + POST /api/waitlist
+app.include_router(admin_router)   # POST /admin/seed, GET /admin/status (protected)
 
 
 # ── Health Check ──────────────────────────────────────────────────────────────
@@ -121,6 +123,9 @@ async def on_startup():
         print("   Make sure PostgreSQL is running and DATABASE_URL is correct.")
         print("   For Windows, run: docker start scopesnap-db")
 
+    import sys as _sys
+    _sys.path.insert(0, "/app")
+
     # Auto-seed pricing rules if the table is empty
     try:
         from db.database import AsyncSessionLocal
@@ -131,8 +136,6 @@ async def on_startup():
             rule_count = result.scalar_one()
         if rule_count == 0:
             print("📋 Pricing rules table is empty — seeding national defaults...")
-            import sys
-            sys.path.insert(0, "/app")
             from scripts.seed_pricing import seed_pricing
             await seed_pricing()
             print("✅ Pricing rules seeded successfully")
@@ -140,3 +143,19 @@ async def on_startup():
             print(f"✅ Pricing rules: {rule_count} rules loaded")
     except Exception as _seed_err:
         print(f"⚠️  Pricing rules seed failed (non-fatal): {_seed_err}")
+
+    # Auto-seed equipment models if the table is empty
+    try:
+        from db.models import EquipmentModel
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(sql_func.count()).select_from(EquipmentModel))
+            model_count = result.scalar_one()
+        if model_count == 0:
+            print("🔧 Equipment models table is empty — seeding 50 HVAC models...")
+            from scripts.seed_equipment_db import seed_equipment_db
+            await seed_equipment_db()
+            print("✅ Equipment models seeded successfully")
+        else:
+            print(f"✅ Equipment models: {model_count} models loaded")
+    except Exception as _equip_err:
+        print(f"⚠️  Equipment models seed failed (non-fatal): {_equip_err}")

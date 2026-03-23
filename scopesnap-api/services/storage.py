@@ -218,13 +218,44 @@ class R2Storage(BaseStorage):
 # ── Factory ───────────────────────────────────────────────────────────────────
 def get_storage() -> BaseStorage:
     """
-    Returns the correct storage implementation based on ENVIRONMENT.
-    Use as FastAPI dependency: storage: BaseStorage = Depends(get_storage)
+    Returns the correct storage implementation based on ENVIRONMENT and credentials.
+
+    Decision tree:
+      1. ENVIRONMENT=development → LocalStorage (always, no credentials needed)
+      2. ENVIRONMENT=production + R2 credentials set → R2Storage (photos survive redeploys)
+      3. ENVIRONMENT=production + R2 credentials MISSING → LocalStorage + loud warning
+         Photos will be lost on redeploy. Set R2_ACCOUNT_ID / R2_ACCESS_KEY_ID /
+         R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME / R2_PUBLIC_URL in Railway to fix.
+
+    Railway env vars required for R2:
+      R2_ACCOUNT_ID       — Cloudflare account ID (dash.cloudflare.com → right sidebar)
+      R2_ACCESS_KEY_ID    — R2 API token Access Key ID
+      R2_SECRET_ACCESS_KEY — R2 API token Secret
+      R2_BUCKET_NAME      — bucket name (e.g. "scopesnap-photos")
+      R2_PUBLIC_URL       — public bucket domain (e.g. "https://pub-xxx.r2.dev")
     """
     if settings.is_development:
         return LocalStorage()
-    else:
-        return R2Storage()
+
+    # Production: use R2 if credentials are present
+    r2_creds_set = all([
+        settings.r2_account_id,
+        settings.r2_access_key_id,
+        settings.r2_secret_access_key,
+        settings.r2_bucket_name,
+        settings.r2_public_url,
+    ])
+
+    if not r2_creds_set:
+        print("\n" + "⚠️ " * 20)
+        print("  WARNING: ENVIRONMENT=production but R2 credentials are not set.")
+        print("  Photos are being stored locally and WILL BE LOST on next redeploy.")
+        print("  Fix: set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,")
+        print("       R2_BUCKET_NAME, R2_PUBLIC_URL in Railway environment variables.")
+        print("⚠️ " * 20 + "\n")
+        return LocalStorage()
+
+    return R2Storage()
 
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
