@@ -9,14 +9,15 @@
  */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
 import PresentMode from "@/components/PresentMode";
 
+const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
-const CT = { ...DEV_HEADER, "Content-Type": "application/json" };
 
 type Tab = "estimate" | "output" | "send" | "saved";
 type JobType = "repair" | "replace";
@@ -324,6 +325,13 @@ function CategoryHeader({ label, icon }: { label: string; icon: string }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function EstimatePage() {
   const { id } = useParams<{ id: string }>();
+  const { getToken } = useAuth();
+
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    if (IS_DEV) return DEV_HEADER;
+    const token = await getToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, [getToken]);
   const [estimate, setEstimate] = useState<EstimateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("estimate");
@@ -359,30 +367,33 @@ export default function EstimatePage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/estimates/${id}`, { headers: DEV_HEADER })
-      .then((r) => r.json())
-      .then((data: EstimateData) => {
-        setEstimate(data);
-        setMarkup(data.markup_percent || 35);
-        setLoading(false);
-        if (data.contractor_pdf_url) setDocsDone(true);
-        // Pre-fill send fields from property data returned by estimate endpoint
-        const d = data as EstimateData & { customer_email?: string; customer_phone?: string; customer_name?: string };
-        if (d.customer_email) setSendEmail(d.customer_email);
-        if (d.customer_phone) setSendPhone(d.customer_phone);
-        if (d.customer_name) setHomeownerName(d.customer_name);
-        // Init local items & job types from API data
-        const items: Record<string, LineItem[]> = {};
-        const jt: Record<string, JobType> = {};
-        (data.options || []).forEach((opt) => {
-          items[opt.tier] = [...(opt.line_items || [])];
-          jt[opt.tier] = opt.job_type || "replace";
-        });
-        setLocalItems(items);
-        setJobTypes(jt);
-      })
-      .catch(() => setLoading(false));
-  }, [id]);
+    (async () => {
+      const headers = await getAuthHeaders();
+      fetch(`${API_URL}/api/estimates/${id}`, { headers })
+        .then((r) => r.json())
+        .then((data: EstimateData) => {
+          setEstimate(data);
+          setMarkup(data.markup_percent || 35);
+          setLoading(false);
+          if (data.contractor_pdf_url) setDocsDone(true);
+          // Pre-fill send fields from property data returned by estimate endpoint
+          const d = data as EstimateData & { customer_email?: string; customer_phone?: string; customer_name?: string };
+          if (d.customer_email) setSendEmail(d.customer_email);
+          if (d.customer_phone) setSendPhone(d.customer_phone);
+          if (d.customer_name) setHomeownerName(d.customer_name);
+          // Init local items & job types from API data
+          const items: Record<string, LineItem[]> = {};
+          const jt: Record<string, JobType> = {};
+          (data.options || []).forEach((opt) => {
+            items[opt.tier] = [...(opt.line_items || [])];
+            jt[opt.tier] = opt.job_type || "replace";
+          });
+          setLocalItems(items);
+          setJobTypes(jt);
+        })
+        .catch(() => setLoading(false));
+    })();
+  }, [id, getAuthHeaders]);
 
   // Recompute option totals from local items + markup
   function computeTotal(tier: string): number {
@@ -395,9 +406,10 @@ export default function EstimatePage() {
     if (!estimate) return;
     setMarkupUpdating(true);
     try {
+      const authHeaders = await getAuthHeaders();
       const r = await fetch(`${API_URL}/api/estimates/${id}`, {
         method: "PATCH",
-        headers: CT,
+        headers: { ...authHeaders, "Content-Type": "application/json" },
         body: JSON.stringify({ markup_percent: val }),
       });
       if (r.ok) {
@@ -415,9 +427,10 @@ export default function EstimatePage() {
     setDocsLoading(true);
     setError(null);
     try {
+      const authHeaders = await getAuthHeaders();
       const r = await fetch(`${API_URL}/api/estimates/${id}/documents`, {
         method: "POST",
-        headers: DEV_HEADER,
+        headers: authHeaders,
       });
       if (!r.ok) throw new Error((await r.json()).detail);
       const data = await r.json();
@@ -439,9 +452,10 @@ export default function EstimatePage() {
     setSending(true);
     setError(null);
     try {
+      const authHeaders = await getAuthHeaders();
       const r = await fetch(`${API_URL}/api/estimates/${id}/send`, {
         method: "POST",
-        headers: CT,
+        headers: { ...authHeaders, "Content-Type": "application/json" },
         body: JSON.stringify({ homeowner_email: sendEmail, homeowner_phone: sendPhone }),
       });
       if (!r.ok) {
@@ -458,9 +472,10 @@ export default function EstimatePage() {
 
   const saveToHistory = async () => {
     try {
+      const authHeaders = await getAuthHeaders();
       await fetch(`${API_URL}/api/assessments/${estimate?.assessment_id}/complete`, {
         method: "POST",
-        headers: DEV_HEADER,
+        headers: authHeaders,
       });
     } catch { /* ignore */ }
     setTab("saved");
