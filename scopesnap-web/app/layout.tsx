@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -36,7 +37,9 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="bg-surface-bg text-text-primary font-sans antialiased">
+        <ClerkProvider>
         {children}
+        </ClerkProvider>
         {/* PWA Service Worker Registration */}
         <script
           dangerouslySetInnerHTML={{

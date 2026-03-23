@@ -67,7 +67,10 @@ export async function middleware(request: NextRequest) {
 
     return clerkMiddleware(async (auth, req) => {
       if (isProtectedRoute(req)) {
-        auth().protect();
+        // Explicitly redirect to our embedded /sign-in page (not the external Clerk hosted page)
+        auth().protect({
+          unauthenticatedUrl: new URL("/sign-in", req.url).toString(),
+        });
       }
       return NextResponse.next();
     })(request, {} as never);
