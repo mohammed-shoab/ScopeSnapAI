@@ -156,7 +156,7 @@ async def get_pricing_rule(
                 PricingRule.job_type == job_type,
             )
         )
-        rule = result.scalar_one_or_none()
+        rule = result.scalars().first()
         if rule:
             return rule
 
@@ -178,7 +178,7 @@ async def get_pricing_rule(
                     PricingRule.region == region,
                 )
             )
-            rule = result.scalar_one_or_none()
+            rule = result.scalars().first()
             if rule:
                 return rule
 
@@ -191,7 +191,7 @@ async def get_pricing_rule(
             PricingRule.region == "national",
         )
     )
-    return result.scalar_one_or_none()
+    return result.scalars().first()
 
 
 # ── Line Item Calculation ──────────────────────────────────────────────────────
