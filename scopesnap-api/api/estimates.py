@@ -22,6 +22,7 @@ from db.database import get_db
 from db.models import Assessment, Company, Estimate, EstimateLineItem, FollowUp, Property
 from api.auth import get_current_user, AuthContext
 from services.estimate_engine import generate_estimate as run_estimate_engine, calculate_line_items, apply_markup, get_pricing_rule
+from config import get_settings
 
 router = APIRouter(prefix="/api/estimates", tags=["estimates"])
 
@@ -282,7 +283,7 @@ async def process_followups_early(
         )
         company = company_result.scalar_one_or_none()
         company_name = company.name if company else "ScopeSnap HVAC"
-        base_url = "http://localhost:3000"
+        base_url = get_settings().frontend_url
 
         to_email = (property_record.customer_email if property_record else None) or "homeowner@example.com"
         customer_name = (property_record.customer_name if property_record else None) or "Valued Customer"
@@ -677,7 +678,7 @@ async def send_estimate(
     )
     company = company_result.scalar_one_or_none()
     company_name = company.name if company else "ScopeSnap HVAC"
-    base_url = "http://localhost:3000"  # dev default
+    base_url = get_settings().frontend_url
 
     # ── Resolve recipient email ───────────────────────────────────────────────
     to_email = (
@@ -839,7 +840,7 @@ async def process_followups(
             or "Valued Customer"
         )
 
-        base_url = "http://localhost:3000"
+        base_url = get_settings().frontend_url
         if estimate.homeowner_report_url:
             report_url = (
                 estimate.homeowner_report_url
