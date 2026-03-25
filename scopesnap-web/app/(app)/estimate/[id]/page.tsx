@@ -1,6 +1,6 @@
 /**
- * v3 — Estimate Builder
- * Screens 5+6+8 — Builder → Output → Send
+ * v3 â Estimate Builder
+ * Screens 5+6+8 â Builder â Output â Send
  * Redesigned with:
  *   - Full labor / parts / permit cost breakdown per line item
  *   - Inline edit & delete per line item
@@ -76,7 +76,7 @@ interface EstimateData {
 }
 
 function fmt(n?: number) {
-  return n != null ? "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "—";
+  return n != null ? "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "â";
 }
 
 function fmtHr(n?: number) {
@@ -110,7 +110,7 @@ function blankItem(type: ItemCategory = "labor"): LineItem {
   };
 }
 
-// ─── Category grouping helpers ────────────────────────────────────────────────
+// âââ Category grouping helpers ââââââââââââââââââââââââââââââââââââââââââââââââ
 const LABOR_KEYWORDS = ["install", "labor", "work", "service", "repair", "wiring", "hook", "charge"];
 const PARTS_KEYWORDS = ["unit", "coil", "refrigerant", "freon", "capacitor", "contactor", "filter",
   "compressor", "motor", "blower", "board", "sensor", "valve", "drain", "duct", "equipment"];
@@ -141,7 +141,7 @@ function groupItems(items: LineItem[]): Record<string, LineItem[]> {
   return groups;
 }
 
-// ─── Inline Edit Form ─────────────────────────────────────────────────────────
+// âââ Inline Edit Form âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 interface EditFormProps {
   draft: LineItem;
   onChange: (d: LineItem) => void;
@@ -173,7 +173,7 @@ function EditForm({ draft, onChange, onSave, onCancel, onDelete, isNew }: EditFo
                 : "bg-surface-secondary text-text-secondary hover:bg-surface-border"
             }`}
           >
-            {t === "labor" ? "⏱ Labor" : t === "parts" ? "🔧 Parts" : t === "permit" ? "📋 Permit" : "🗑 Disposal"}
+            {t === "labor" ? "â± Labor" : t === "parts" ? "ð§ Parts" : t === "permit" ? "ð Permit" : "ð Disposal"}
           </button>
         ))}
       </div>
@@ -192,7 +192,7 @@ function EditForm({ draft, onChange, onSave, onCancel, onDelete, isNew }: EditFo
         className="w-full border border-surface-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green focus:ring-opacity-30"
       />
 
-      {/* Labor-specific: hours × rate */}
+      {/* Labor-specific: hours Ã rate */}
       {type === "labor" && (
         <div className="flex gap-2">
           <div className="flex-1">
@@ -309,7 +309,7 @@ function EditForm({ draft, onChange, onSave, onCancel, onDelete, isNew }: EditFo
   );
 }
 
-// ─── Category Section Header ──────────────────────────────────────────────────
+// âââ Category Section Header ââââââââââââââââââââââââââââââââââââââââââââââââââ
 function CategoryHeader({ label, icon }: { label: string; icon: string }) {
   return (
     <div className="flex items-center gap-2 mt-4 mb-1 first:mt-0">
@@ -322,7 +322,7 @@ function CategoryHeader({ label, icon }: { label: string; icon: string }) {
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// âââ Main Page ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 export default function EstimatePage() {
   const { id } = useParams<{ id: string }>();
   const { getToken } = useAuth();
@@ -336,7 +336,7 @@ export default function EstimatePage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("estimate");
 
-  // Markup — collapsed by default (Steve Jobs: hide complexity)
+  // Markup â collapsed by default (Steve Jobs: hide complexity)
   const [markup, setMarkup] = useState(35);
   const [markupOpen, setMarkupOpen] = useState(false);
   const [markupUpdating, setMarkupUpdating] = useState(false);
@@ -456,7 +456,7 @@ export default function EstimatePage() {
       const r = await fetch(`${API_URL}/api/estimates/${id}/send`, {
         method: "POST",
         headers: { ...authHeaders, "Content-Type": "application/json" },
-        body: JSON.stringify({ homeowner_email: sendEmail, homeowner_phone: sendPhone }),
+        body: JSON.stringify({ homeowner_name: homeownerName, homeowner_email: sendEmail, homeowner_phone: sendPhone }),
       });
       if (!r.ok) {
         const body = await r.json().catch(() => ({}));
@@ -481,7 +481,7 @@ export default function EstimatePage() {
     setTab("saved");
   };
 
-  // ── Helpers for line item editing ──────────────────────────────────────────
+  // ââ Helpers for line item editing ââââââââââââââââââââââââââââââââââââââââââ
   function startEdit(tier: string, idx: number) {
     const items = localItems[tier] || [];
     setEditingItem({ tier, idx });
@@ -526,7 +526,7 @@ export default function EstimatePage() {
     setEditDraft(null);
   }
 
-  // ── Loading / Not found ────────────────────────────────────────────────────
+  // ââ Loading / Not found ââââââââââââââââââââââââââââââââââââââââââââââââââââ
   if (loading)
     return (
       <div className="pt-20 text-center text-text-secondary">
@@ -538,18 +538,18 @@ export default function EstimatePage() {
     return (
       <div className="pt-20 text-center">
         <p className="text-brand-red font-medium">Estimate not found.</p>
-        <Link href="/dashboard" className="text-sm text-brand-green mt-2 block">← Back to Dashboard</Link>
+        <Link href="/dashboard" className="text-sm text-brand-green mt-2 block">â Back to Dashboard</Link>
       </div>
     );
 
   const options = estimate.options || [];
   const selectedOption = options.find((o) => o.tier === selectedTier) || options[0];
 
-  // ── Saved Screen ──────────────────────────────────────────────────────────
+  // ââ Saved Screen ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
   if (tab === "saved")
     return (
       <div className="max-w-md mx-auto pt-16 text-center space-y-6">
-        <div className="text-6xl">✅</div>
+        <div className="text-6xl">â</div>
         <h2 className="text-2xl font-extrabold">Job Saved!</h2>
         <p className="text-text-secondary">The assessment has been saved to property history.</p>
         <div className="card p-4 text-left space-y-2">
@@ -569,12 +569,12 @@ export default function EstimatePage() {
           )}
         </div>
         <Link href="/dashboard" className="block w-full bg-brand-green text-white font-bold py-4 rounded-xl text-center">
-          Back to Dashboard →
+          Back to Dashboard â
         </Link>
       </div>
     );
 
-  // ── Main Layout ────────────────────────────────────────────────────────────
+  // ââ Main Layout ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
   return (
     <div className="max-w-2xl mx-auto space-y-4 pb-8">
       {/* Present Mode overlay */}
@@ -588,7 +588,7 @@ export default function EstimatePage() {
       )}
       {/* Header */}
       <div className="flex items-center gap-3 pt-4">
-        <Link href="/dashboard" className="text-sm text-text-secondary hover:text-text-primary">← Back</Link>
+        <Link href="/dashboard" className="text-sm text-text-secondary hover:text-text-primary">â Back</Link>
         <h1 className="text-xl font-extrabold flex-1">Estimate Builder</h1>
         <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
           estimate.status === "approved" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
@@ -607,30 +607,30 @@ export default function EstimatePage() {
               tab === t ? "bg-white shadow-sm text-text-primary" : "text-text-secondary"
             }`}
           >
-            {t === "estimate" ? "📊 Builder" : t === "output" ? "📄 Output" : "📤 Send"}
+            {t === "estimate" ? "ð Builder" : t === "output" ? "ð Output" : "ð¤ Send"}
           </button>
         ))}
       </div>
 
-      {/* ══ BUILDER TAB ══════════════════════════════════════════════════════ */}
+      {/* ââ BUILDER TAB ââââââââââââââââââââââââââââââââââââââââââââââââââââââ */}
       {tab === "estimate" && (
         <>
-          {/* Markup — collapsed disclosure */}
+          {/* Markup â collapsed disclosure */}
           <div className="card overflow-hidden">
             <button
               onClick={() => setMarkupOpen((o) => !o)}
               className="w-full flex items-center justify-between px-4 py-3 hover:bg-surface-secondary transition-colors"
             >
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-text-primary">⚙ Company Markup</span>
+                <span className="text-sm font-semibold text-text-primary">â Company Markup</span>
                 <span className="text-xs text-text-secondary font-mono bg-surface-secondary px-2 py-0.5 rounded-full">
                   {markup}% applied
                 </span>
                 {markupUpdating && (
-                  <span className="text-xs text-brand-green animate-pulse">saving…</span>
+                  <span className="text-xs text-brand-green animate-pulse">savingâ¦</span>
                 )}
               </div>
-              <span className="text-text-secondary text-xs">{markupOpen ? "▲" : "▼"}</span>
+              <span className="text-text-secondary text-xs">{markupOpen ? "â²" : "â¼"}</span>
             </button>
             {markupOpen && (
               <div className="px-4 pb-4 border-t border-surface-border">
@@ -700,7 +700,7 @@ export default function EstimatePage() {
                   onClick={() => setSelectedTier(opt.tier)}
                   className={`card cursor-pointer transition-all border-2 ${borderColor} ${ringClass}`}
                 >
-                  {/* ── Card Header ── */}
+                  {/* ââ Card Header ââ */}
                   <div className={`px-4 py-3 ${headerBg}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
@@ -708,7 +708,7 @@ export default function EstimatePage() {
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                           <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${badgeBg}`}>
                             Option {opt.tier === "good" ? "A" : opt.tier === "better" ? "B" : "C"}
-                            {isRec && " — ★ REC"}
+                            {isRec && " â â REC"}
                           </span>
                           {/* Repair / Replace segmented control */}
                           <div
@@ -725,7 +725,7 @@ export default function EstimatePage() {
                                     : "text-text-secondary hover:text-text-primary"
                                 }`}
                               >
-                                {jt === "repair" ? "🔧 Repair" : "🔄 Replace"}
+                                {jt === "repair" ? "ð§ Repair" : "ð Replace"}
                               </button>
                             ))}
                           </div>
@@ -754,7 +754,7 @@ export default function EstimatePage() {
                     </div>
                   </div>
 
-                  {/* ── Line Items ── */}
+                  {/* ââ Line Items ââ */}
                   <div
                     className="px-4 pt-2 pb-3 bg-white space-y-0"
                     onClick={(e) => e.stopPropagation()}
@@ -762,7 +762,7 @@ export default function EstimatePage() {
                     {/* Labor section */}
                     {(groups.labor.length > 0 || groups.other.length > 0) && (
                       <>
-                        <CategoryHeader label="Labor" icon="⏱" />
+                        <CategoryHeader label="Labor" icon="â±" />
                         {[...groups.labor, ...groups.other].map((item) => {
                           const globalIdx = items.indexOf(item);
                           const type = inferItemType(item);
@@ -786,8 +786,8 @@ export default function EstimatePage() {
                                     </span>
                                     {type === "labor" && item.labor_hours != null && item.labor_rate != null && (
                                       <span className="text-xs text-text-secondary ml-2 font-mono">
-                                        {fmtHr(item.labor_hours)} × ${item.labor_rate}/hr
-                                        {(item.quantity || 1) > 1 && ` × ${item.quantity}`}
+                                        {fmtHr(item.labor_hours)} Ã ${item.labor_rate}/hr
+                                        {(item.quantity || 1) > 1 && ` Ã ${item.quantity}`}
                                       </span>
                                     )}
                                   </div>
@@ -799,7 +799,7 @@ export default function EstimatePage() {
                                     className="text-text-secondary hover:text-brand-green transition-colors opacity-0 group-hover:opacity-100 text-xs px-1.5 py-1 rounded hover:bg-surface-secondary"
                                     title="Edit"
                                   >
-                                    ✏
+                                    â
                                   </button>
                                 </div>
                               )}
@@ -812,7 +812,7 @@ export default function EstimatePage() {
                     {/* Parts & Equipment section */}
                     {groups.parts.length > 0 && (
                       <>
-                        <CategoryHeader label="Parts & Equipment" icon="🔧" />
+                        <CategoryHeader label="Parts & Equipment" icon="ð§" />
                         {groups.parts.map((item) => {
                           const globalIdx = items.indexOf(item);
                           const cost = itemRawCost(item);
@@ -835,7 +835,7 @@ export default function EstimatePage() {
                                     </span>
                                     {(item.quantity || 1) > 1 && (
                                       <span className="text-xs text-text-secondary ml-2 font-mono">
-                                        × {item.quantity}
+                                        Ã {item.quantity}
                                       </span>
                                     )}
                                   </div>
@@ -847,7 +847,7 @@ export default function EstimatePage() {
                                     className="text-text-secondary hover:text-brand-green transition-colors opacity-0 group-hover:opacity-100 text-xs px-1.5 py-1 rounded hover:bg-surface-secondary"
                                     title="Edit"
                                   >
-                                    ✏
+                                    â
                                   </button>
                                 </div>
                               )}
@@ -860,7 +860,7 @@ export default function EstimatePage() {
                     {/* Fees section */}
                     {groups.fees.length > 0 && (
                       <>
-                        <CategoryHeader label="Fees" icon="📋" />
+                        <CategoryHeader label="Fees" icon="ð" />
                         {groups.fees.map((item) => {
                           const globalIdx = items.indexOf(item);
                           const cost = itemRawCost(item);
@@ -890,7 +890,7 @@ export default function EstimatePage() {
                                     className="text-text-secondary hover:text-brand-green transition-colors opacity-0 group-hover:opacity-100 text-xs px-1.5 py-1 rounded hover:bg-surface-secondary"
                                     title="Edit"
                                   >
-                                    ✏
+                                    â
                                   </button>
                                 </div>
                               )}
@@ -912,14 +912,14 @@ export default function EstimatePage() {
                       />
                     )}
 
-                    {/* Add line item — one tap, opens inline form defaulting to Labor */}
+                    {/* Add line item â one tap, opens inline form defaulting to Labor */}
                     {!isAddingThis && (
                       <div className="mt-3">
                         <button
                           onClick={() => startAdd(opt.tier, "labor")}
                           className="text-xs font-semibold text-brand-green hover:underline flex items-center gap-1"
                         >
-                          <span className="text-base leading-none">＋</span> Add line item
+                          <span className="text-base leading-none">ï¼</span> Add line item
                         </button>
                       </div>
                     )}
@@ -999,13 +999,13 @@ export default function EstimatePage() {
                             {fmt(opt.total)}
                           </td>
                           <td className="px-2 py-3 text-right font-mono text-text-secondary text-xs md:text-sm">
-                            {opt.five_year_total ? fmt(opt.five_year_total) : "—"}
+                            {opt.five_year_total ? fmt(opt.five_year_total) : "â"}
                           </td>
                           <td className="px-2 py-3 text-right">
                             {annualSavings && annualSavings > 0 ? (
                               <span className="text-xs font-semibold text-brand-green">${annualSavings.toLocaleString()}/yr</span>
                             ) : (
-                              <span className="text-xs text-text-secondary">—</span>
+                              <span className="text-xs text-text-secondary">â</span>
                             )}
                           </td>
                         </tr>
@@ -1016,7 +1016,7 @@ export default function EstimatePage() {
               </div>
               <div className="px-4 py-2.5 bg-surface-bg border-t border-surface-border">
                 <p className="text-xs text-text-secondary">
-                  5-year total = install cost + estimated operating costs − energy savings. Lower is better value.
+                  5-year total = install cost + estimated operating costs â energy savings. Lower is better value.
                 </p>
               </div>
             </div>
@@ -1028,13 +1028,13 @@ export default function EstimatePage() {
             className="w-full bg-brand-green text-white font-bold py-4 rounded-xl text-base shadow-lg shadow-green-200 hover:shadow-xl transition-shadow"
           >
             {selectedOption
-              ? `Continue with ${selectedOption.name} (${fmt(selectedOption.total)}) →`
-              : "Continue →"}
+              ? `Continue with ${selectedOption.name} (${fmt(selectedOption.total)}) â`
+              : "Continue â"}
           </button>
         </>
       )}
 
-      {/* ══ OUTPUT TAB ═══════════════════════════════════════════════════════ */}
+      {/* ââ OUTPUT TAB âââââââââââââââââââââââââââââââââââââââââââââââââââââââ */}
       {tab === "output" && (
         <>
           <div className="card p-4 space-y-4">
@@ -1050,12 +1050,12 @@ export default function EstimatePage() {
                 disabled={docsLoading}
                 className="w-full bg-brand-green text-white font-bold py-3 rounded-xl disabled:opacity-50 hover:shadow-lg transition-shadow"
               >
-                {docsLoading ? "Generating..." : "Generate Documents →"}
+                {docsLoading ? "Generating..." : "Generate Documents â"}
               </button>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-brand-green font-semibold">
-                  <span className="text-lg">✓</span> Documents ready
+                  <span className="text-lg">â</span> Documents ready
                 </div>
                 {estimate.contractor_pdf_url && (
                   <a
@@ -1064,12 +1064,12 @@ export default function EstimatePage() {
                     rel="noreferrer"
                     className="flex items-center gap-3 p-3 bg-surface-secondary rounded-xl text-sm font-medium hover:bg-surface-border transition-colors group"
                   >
-                    <span className="text-xl">📄</span>
+                    <span className="text-xl">ð</span>
                     <div className="flex-1">
                       <p className="font-semibold text-text-primary">Contractor Estimate</p>
                       <p className="text-xs text-text-secondary">{estimate.report_short_id}.pdf</p>
                     </div>
-                    <span className="text-text-secondary group-hover:translate-x-1 transition-transform">↗</span>
+                    <span className="text-text-secondary group-hover:translate-x-1 transition-transform">â</span>
                   </a>
                 )}
                 {estimate.homeowner_report_url && (
@@ -1090,7 +1090,7 @@ export default function EstimatePage() {
                 )}
               </div>
             )}
-            {error && <p className="text-sm text-brand-red">⚠ {error}</p>}
+            {error && <p className="text-sm text-brand-red">â  {error}</p>}
           </div>
 
           <div className="card p-4">
@@ -1101,7 +1101,7 @@ export default function EstimatePage() {
               className="w-full py-3 rounded-xl text-sm font-bold text-white transition-shadow hover:shadow-lg"
               style={{ background: "linear-gradient(135deg,#1a1a18 0%,#2a2a28 100%)" }}
             >
-              🖥 Present to Homeowner →
+              ð¥ Present to Homeowner â
             </button>
           </div>
 
@@ -1110,17 +1110,17 @@ export default function EstimatePage() {
               onClick={() => setTab("send")}
               className="w-full bg-brand-green text-white font-bold py-4 rounded-xl text-base shadow-lg shadow-green-200 hover:shadow-xl transition-shadow"
             >
-              Send to Homeowner →
+              Send to Homeowner â
             </button>
           )}
         </>
       )}
 
-      {/* ══ SEND TAB ═════════════════════════════════════════════════════════ */}
+      {/* ââ SEND TAB âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ */}
       {tab === "send" && (
         <>
           {sent ? (
-            /* ── Success State ── */
+            /* ââ Success State ââ */
             <div className="card p-6 text-center space-y-4">
               <div
                 className="mx-auto flex items-center justify-center rounded-full"
@@ -1137,7 +1137,7 @@ export default function EstimatePage() {
                 )}
               </div>
               <p className="text-xs text-text-secondary">
-                Auto follow-ups: 24h if not viewed · 48h if viewed · 7 days final check-in.
+                Auto follow-ups: 24h if not viewed Â· 48h if viewed Â· 7 days final check-in.
               </p>
               {estimate.homeowner_report_url && (
                 <>
@@ -1156,11 +1156,11 @@ export default function EstimatePage() {
                 onClick={saveToHistory}
                 className="w-full bg-brand-green text-white font-bold py-3 rounded-xl hover:shadow-lg transition-shadow"
               >
-                Save to History →
+                Save to History â
               </button>
             </div>
           ) : (
-            /* ── Send Form ── */
+            /* ââ Send Form ââ */
             <div className="space-y-4">
               {/* Header */}
               <div className="card p-4 space-y-1">
@@ -1205,7 +1205,7 @@ export default function EstimatePage() {
                   />
                 </div>
                 <p className="text-xs text-text-secondary">
-                  Auto follow-ups: 24h if not viewed · 48h if viewed · 7 days final check-in.
+                  Auto follow-ups: 24h if not viewed Â· 48h if viewed Â· 7 days final check-in.
                 </p>
               </div>
 
@@ -1228,7 +1228,7 @@ export default function EstimatePage() {
               )}
 
               {error && (
-                <p className="text-sm text-brand-red bg-brand-red-light p-3 rounded-xl">⚠ {error}</p>
+                <p className="text-sm text-brand-red bg-brand-red-light p-3 rounded-xl">â  {error}</p>
               )}
 
               <button
@@ -1236,7 +1236,7 @@ export default function EstimatePage() {
                 disabled={sending || (!sendEmail && !sendPhone)}
                 className="w-full bg-brand-green text-white font-bold py-4 rounded-xl text-base shadow-lg shadow-green-200 hover:shadow-xl disabled:opacity-40 transition-shadow"
               >
-                {sending ? "Sending..." : `Send${homeownerName ? ` to ${homeownerName}` : ""} →`}
+                {sending ? "Sending..." : `Send${homeownerName ? ` to ${homeownerName}` : ""} â`}
               </button>
             </div>
           )}
