@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Prevent crypto-js (Clerk dependency) from being split into a server-side vendor chunk.
+  // Without this, Vercel's build cache can contain a stale webpack-runtime.js that references
+  // vendor-chunks/crypto-js.js which no longer exists in subsequent cached builds —
+  // causing "Cannot find module './vendor-chunks/crypto-js.js'" on the homeowner report page.
+  serverExternalPackages: ['crypto-js'],
   // Standalone output for Docker production image (smaller image, faster cold starts)
   output: process.env.NEXT_STANDALONE === "true" ? "standalone" : undefined,
   // Enable polling-based webpack file watcher for Docker on Windows.
@@ -9,7 +14,7 @@ const nextConfig = {
     if (dev) {
       config.watchOptions = {
         ...config.watchOptions,
-        poll: 1000,        // check for changes every 1 second
+        poll: 1000, // check for changes every 1 second
         aggregateTimeout: 300,
       };
     }
