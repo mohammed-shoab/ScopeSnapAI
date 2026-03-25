@@ -1,5 +1,5 @@
 """
-ScopeSnap — Estimate API Endpoints
+ScopeSnap â Estimate API Endpoints
 WP-04: Full estimate generation pipeline + CRUD
 WP-05: Document generation + sending (placeholders)
 """
@@ -26,7 +26,7 @@ from services.estimate_engine import generate_estimate as run_estimate_engine, c
 router = APIRouter(prefix="/api/estimates", tags=["estimates"])
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ââ Helpers âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def _make_report_token(n: int = 32) -> str:
     """Generates a cryptographically random URL-safe token."""
@@ -63,7 +63,7 @@ def _estimate_to_dict(estimate: Estimate) -> dict:
     }
 
 
-# ── Request Models ────────────────────────────────────────────────────────────
+# ââ Request Models ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 class GenerateEstimateRequest(BaseModel):
     assessment_id: str
@@ -77,7 +77,7 @@ class UpdateEstimateRequest(BaseModel):
     # Tech can manually choose recommended option
 
 
-# ── POST /api/estimates/generate ─────────────────────────────────────────────
+# ââ POST /api/estimates/generate âââââââââââââââââââââââââââââââââââââââââââââ
 
 @router.post("/generate", status_code=status.HTTP_201_CREATED)
 async def generate_estimate(
@@ -88,10 +88,10 @@ async def generate_estimate(
     """
     Generates Good/Better/Best estimate options from assessment AI results.
 
-    9-step pipeline (Tech Spec §05) — pure math + DB lookups, zero AI cost:
+    9-step pipeline (Tech Spec Â§05) â pure math + DB lookups, zero AI cost:
     1. Load assessment + AI analysis
-    2. Determine job types from condition → options mapping
-    3. Look up pricing (cascade: company → region → national)
+    2. Determine job types from condition â options mapping
+    3. Look up pricing (cascade: company â region â national)
     4. Calculate line items (parts, labor, permits, disposal, refrigerant)
     5. Apply markup percentage
     6. Calculate energy savings (SEER comparison formula)
@@ -99,7 +99,7 @@ async def generate_estimate(
     8. Build Good/Better/Best options array
     9. Calculate 5-year total cost per option
     """
-    # ── Load assessment ───────────────────────────────────────────────────────
+    # ââ Load assessment âââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     result = await db.execute(
         select(Assessment).where(
             Assessment.id == body.assessment_id,
@@ -119,7 +119,7 @@ async def generate_estimate(
             detail="Assessment has not been analyzed yet. Run POST /api/assessments/{id}/analyze first.",
         )
 
-    # ── Check for existing estimate ───────────────────────────────────────────
+    # ââ Check for existing estimate âââââââââââââââââââââââââââââââââââââââââââ
     existing_result = await db.execute(
         select(Estimate).where(Estimate.assessment_id == body.assessment_id)
     )
@@ -130,7 +130,7 @@ async def generate_estimate(
             detail=f"Estimate already exists for this assessment. Use PATCH /api/estimates/{existing.id} to update.",
         )
 
-    # ── Get company for settings ──────────────────────────────────────────────
+    # ââ Get company for settings ââââââââââââââââââââââââââââââââââââââââââââââ
     company_result = await db.execute(
         select(Company).where(Company.id == auth.company_id)
     )
@@ -146,7 +146,7 @@ async def generate_estimate(
 
     company_state = company.state
 
-    # ── Run engine ────────────────────────────────────────────────────────────
+    # ââ Run engine ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     engine_result = await run_estimate_engine(
         assessment_id=body.assessment_id,
         assessment=assessment,
@@ -156,7 +156,7 @@ async def generate_estimate(
         db=db,
     )
 
-    # ── Create Estimate record ────────────────────────────────────────────────
+    # ââ Create Estimate record ââââââââââââââââââââââââââââââââââââââââââââââââ
     # Ensure unique short IDs with retry
     for _ in range(10):
         short_id = _make_report_short_id()
@@ -178,7 +178,7 @@ async def generate_estimate(
     db.add(estimate)
     await db.flush()  # Get ID without full commit
 
-    # ── Create EstimateLineItem records ───────────────────────────────────────
+    # ââ Create EstimateLineItem records âââââââââââââââââââââââââââââââââââââââ
     for sort_idx, option in enumerate(engine_result["options"]):
         tier = option["tier"]
         for item_idx, item in enumerate(option.get("line_items", [])):
@@ -195,10 +195,10 @@ async def generate_estimate(
             )
             db.add(line_item)
 
-    # ── Update assessment status ──────────────────────────────────────────────
+    # ââ Update assessment status ââââââââââââââââââââââââââââââââââââââââââââââ
     assessment.status = "estimated"
 
-    # ── Increment company estimate count ─────────────────────────────────────
+    # ââ Increment company estimate count âââââââââââââââââââââââââââââââââââââ
     company.monthly_estimate_count = (company.monthly_estimate_count or 0) + 1
 
     await db.commit()
@@ -219,14 +219,14 @@ async def generate_estimate(
     }
 
 
-# ── GET /api/estimates/process-followups (WP-09 cron) — MUST BE BEFORE /{id} ─
+# ââ GET /api/estimates/process-followups (WP-09 cron) â MUST BE BEFORE /{id} â
 
 @router.get("/process-followups")
 async def process_followups_early(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    WP-09: Cron endpoint — processes due follow-up emails.
+    WP-09: Cron endpoint â processes due follow-up emails.
     Registered here (before /{estimate_id}) so FastAPI matches it correctly.
     """
     from services.email import get_email_sender
@@ -285,7 +285,11 @@ async def process_followups_early(
         base_url = "http://localhost:3000"
 
         to_email = (property_record.customer_email if property_record else None) or "homeowner@example.com"
-        customer_name = (property_record.customer_name if property_record else None) or "Valued Customer"
+        customer_name = (
+            body.homeowner_name
+            or (property_record.customer_name if property_record else None)
+            or "Valued Customer"
+        )
 
         if estimate.homeowner_report_url:
             report_url = (
@@ -318,7 +322,7 @@ async def process_followups_early(
     }
 
 
-# ── GET /api/estimates/{id} ───────────────────────────────────────────────────
+# ââ GET /api/estimates/{id} âââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @router.get("/{estimate_id}")
 async def get_estimate(
@@ -340,7 +344,7 @@ async def get_estimate(
     return _estimate_to_dict(estimate)
 
 
-# ── PATCH /api/estimates/{id} ─────────────────────────────────────────────────
+# ââ PATCH /api/estimates/{id} âââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @router.patch("/{estimate_id}")
 async def update_estimate(
@@ -367,7 +371,7 @@ async def update_estimate(
 
     updated_fields = []
 
-    # ── Update markup + recalculate ───────────────────────────────────────────
+    # ââ Update markup + recalculate âââââââââââââââââââââââââââââââââââââââââââ
     if body.markup_percent is not None and body.markup_percent != float(estimate.markup_percent):
         old_markup = float(estimate.markup_percent)
         new_markup = body.markup_percent
@@ -391,7 +395,7 @@ async def update_estimate(
             old_five_yr = option.get("five_year_total", old_upfront)
             running_costs = old_five_yr - old_upfront  # energy + repairs component
             option["five_year_total"] = round(float(new_total) + running_costs, 2)
-            # NOTE: do NOT append here — options are mutated in-place on the deepcopy
+            # NOTE: do NOT append here â options are mutated in-place on the deepcopy
 
         estimate.options = updated_options
         # Force SQLAlchemy to detect the JSON mutation
@@ -419,7 +423,7 @@ async def update_estimate(
     return _estimate_to_dict(estimate)
 
 
-# ── GET /api/estimates/ ───────────────────────────────────────────────────────
+# ââ GET /api/estimates/ âââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 @router.get("/")
 async def list_estimates(
@@ -447,7 +451,7 @@ async def list_estimates(
     }
 
 
-# ── POST /api/estimates/{id}/documents ───────────────────────────────────────
+# ââ POST /api/estimates/{id}/documents âââââââââââââââââââââââââââââââââââââââ
 
 @router.post("/{estimate_id}/documents")
 async def generate_documents(
@@ -468,7 +472,7 @@ async def generate_documents(
     import logging as _logging
     from config import get_settings
 
-    # Import pdf_generator lazily — WeasyPrint's module-level imports may fail
+    # Import pdf_generator lazily â WeasyPrint's module-level imports may fail
     # in some Docker environments (missing Cairo/Pango libs). We catch that here
     # so the endpoint still returns a valid HTTP response instead of closing the connection.
     try:
@@ -597,7 +601,7 @@ async def generate_documents(
         pdf_size_kb = round(os.path.getsize(pdf_path) / 1024, 1)
     except Exception as exc:
         # WeasyPrint may fail due to missing system libs in some environments.
-        # We log the error but do NOT block the flow — the homeowner report URL
+        # We log the error but do NOT block the flow â the homeowner report URL
         # is still set so the Send tab remains accessible.
         pdf_error = str(exc)
         logging.warning(f"PDF generation failed for {estimate.report_short_id}: {exc}")
@@ -623,10 +627,11 @@ async def generate_documents(
     return response
 
 
-# ── POST /api/estimates/{id}/send (WP-09) ────────────────────────────────────
+# ââ POST /api/estimates/{id}/send (WP-09) ââââââââââââââââââââââââââââââââââââ
 
 class SendEstimateRequest(BaseModel):
     homeowner_email: Optional[str] = None
+    homeowner_name: Optional[str] = None  # From Send tab form — overrides property record name
     homeowner_phone: Optional[str] = None
     # If omitted, uses property customer_email / customer_phone from DB
 
@@ -646,7 +651,7 @@ async def send_estimate(
     """
     from services.email import get_email_sender
 
-    # ── Load estimate ─────────────────────────────────────────────────────────
+    # ââ Load estimate âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     result = await db.execute(
         select(Estimate).where(
             Estimate.id == estimate_id,
@@ -657,7 +662,7 @@ async def send_estimate(
     if not estimate:
         raise HTTPException(status_code=404, detail="Estimate not found.")
 
-    # ── Load assessment + property ────────────────────────────────────────────
+    # ââ Load assessment + property ââââââââââââââââââââââââââââââââââââââââââââ
     assessment = None
     property_record = None
     if estimate.assessment_id:
@@ -671,7 +676,7 @@ async def send_estimate(
         )
         property_record = prop_result.scalar_one_or_none()
 
-    # ── Load company ──────────────────────────────────────────────────────────
+    # ââ Load company ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     company_result = await db.execute(
         select(Company).where(Company.id == auth.company_id)
     )
@@ -679,7 +684,7 @@ async def send_estimate(
     company_name = company.name if company else "ScopeSnap HVAC"
     base_url = "http://localhost:3000"  # dev default
 
-    # ── Resolve recipient email ───────────────────────────────────────────────
+    # ââ Resolve recipient email âââââââââââââââââââââââââââââââââââââââââââââââ
     to_email = (
         body.homeowner_email
         or (property_record.customer_email if property_record else None)
@@ -690,7 +695,7 @@ async def send_estimate(
         or "Valued Customer"
     )
 
-    # ── Build report URL ──────────────────────────────────────────────────────
+    # ââ Build report URL ââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     # Ensure documents are generated first (homeowner_report_url may already be set)
     if estimate.homeowner_report_url:
         # Absolute URL for email
@@ -703,7 +708,7 @@ async def send_estimate(
         slug = company.slug if company else "hvac"
         report_url = f"{base_url}/r/{slug}/{estimate.report_short_id}"
 
-    # ── Send email ────────────────────────────────────────────────────────────
+    # ââ Send email ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     sender = get_email_sender()
     # options is a list: [{tier: 'good', total: ...}, ...]
     options_list = estimate.options if isinstance(estimate.options, list) else []
@@ -719,7 +724,7 @@ async def send_estimate(
         estimate_total=estimate_total,
     )
 
-    # ── Create 3 follow-up records ────────────────────────────────────────────
+    # ââ Create 3 follow-up records ââââââââââââââââââââââââââââââââââââââââââââ
     now = datetime.now(timezone.utc)
     follow_up_schedule = [
         ("24h_reminder",  now + timedelta(hours=24)),
@@ -736,7 +741,7 @@ async def send_estimate(
         )
         db.add(fu)
 
-    # ── Update estimate status ────────────────────────────────────────────────
+    # ââ Update estimate status ââââââââââââââââââââââââââââââââââââââââââââââââ
     estimate.status = "sent"
     estimate.sent_at = now
     estimate.sent_via = "email"
@@ -757,14 +762,14 @@ async def send_estimate(
     }
 
 
-# ── GET /api/estimates/process-followups (WP-09 cron) ────────────────────────
+# ââ GET /api/estimates/process-followups (WP-09 cron) ââââââââââââââââââââââââ
 
 @router.get("/process-followups")
 async def process_followups(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    WP-09: Cron endpoint — processes due follow-up emails.
+    WP-09: Cron endpoint â processes due follow-up emails.
     Call this endpoint on a schedule (e.g., every hour via cron or a task queue).
 
     - Finds follow-ups where scheduled_at <= now AND sent_at IS NULL AND cancelled = False
@@ -874,7 +879,7 @@ async def process_followups(
     }
 
 
-# ── GET /api/estimates/export/csv ─────────────────────────────────────────────
+# ââ GET /api/estimates/export/csv âââââââââââââââââââââââââââââââââââââââââââââ
 # SOW Task 1.11: Data export for privacy compliance.
 # Returns all estimates for the authenticated company as a CSV download.
 
