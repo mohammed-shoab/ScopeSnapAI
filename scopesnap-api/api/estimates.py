@@ -647,10 +647,15 @@ async def generate_documents(
         with open(pdf_path, "rb") as fh:
             pdf_bytes = fh.read()
         company_slug = company.slug if company else "hvac"
+        # Use a timestamp suffix so each generation is stored as a new file.
+        # Old files are retained in R2 (10 GB free), so email links to previous
+        # versions continue to work even after the estimate is regenerated.
+        import datetime as _dt
+        _ts = _dt.datetime.utcnow().strftime("%Y%m%d-%H%M%S")
         storage_path = generate_document_path(
             company_slug=company_slug,
             estimate_id=str(estimate.id),
-            doc_type=f"estimate-{estimate.report_short_id}.pdf",
+            doc_type=f"estimate-{estimate.report_short_id}-{_ts}.pdf",
         )
         pdf_url = await get_storage().upload(
             file_bytes=pdf_bytes,
