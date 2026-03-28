@@ -75,6 +75,7 @@ class GenerateEstimateRequest(BaseModel):
 class UpdateEstimateRequest(BaseModel):
     markup_percent: Optional[float] = Field(None, ge=0, le=200)
     selected_option: Optional[str] = Field(None, pattern="^(good|better|best)$")
+    options: Optional[list] = None  # Full options array replacement (e.g. to rename option names)
     # Tech can manually choose recommended option
 
 
@@ -408,6 +409,27 @@ async def update_estimate(
                 estimate.deposit_amount = round(option["total"] * 0.20, 2)
                 break
         updated_fields.append("selected_option")
+
+    if body.options is not None:
+        # Allow direct replacement of the options array (e.g. to rename option names)
+        # Preserve existing tier/totals structure; only allow safe field overrides
+        existing_by_tier = {o["tier"]: o for o in (estimate.options or [])}
+        merged = []
+        for new_opt in body.options:
+            tier = new_opt.get("tier")
+            if tier and tier in existing_by_tier:
+                # Merge: only allow overriding name and description
+                base = copy.deepcopy(existing_by_tier[tier])
+                if "name" in new_opt:
+                    base["name"] = new_opt["name"]
+                if "description" in new_opt:
+                    base["description"] = new_opt["description"]
+                merged.append(base)
+            else:
+                merged.append(new_opt)
+        estimate.options = merged
+        flag_modified(estimate, "options")
+        updated_fields.append("options")
 
     if not updated_fields:
         raise HTTPException(

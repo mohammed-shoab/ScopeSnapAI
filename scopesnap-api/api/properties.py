@@ -23,6 +23,10 @@ router = APIRouter(prefix="/api/properties", tags=["properties"])
 # ── Request Models ────────────────────────────────────────────────────────────
 
 class UpdatePropertyRequest(BaseModel):
+    address_line1: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip: Optional[str] = None
     customer_name: Optional[str] = None
     customer_email: Optional[str] = None
     customer_phone: Optional[str] = None
@@ -263,6 +267,14 @@ async def update_property(
     if not prop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
 
+    if body.address_line1 is not None:
+        prop.address_line1 = body.address_line1
+    if body.city is not None:
+        prop.city = body.city
+    if body.state is not None:
+        prop.state = body.state
+    if body.zip is not None:
+        prop.zip = body.zip
     if body.customer_name is not None:
         prop.customer_name = body.customer_name
     if body.customer_email is not None:

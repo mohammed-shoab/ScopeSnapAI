@@ -495,15 +495,28 @@ def generate_contractor_pdf(
 
         y += 4
 
-        # Page break check
-        if y > 720:
+        # Page break check — leave room for footer at y=750
+        if y > 700:
+            _draw_footer(p, M, RX, co_name, co_phone, short_id, today)
             p._flush_page()
             p.new_page()
             y = 40
 
     # ── 5-Year Comparison table ───────────────────────────────────────────────
+    # Determine if any option has real annual savings data
+    has_savings = False
+    for _o in options:
+        _es = _o.get("energy_savings")
+        if _es:
+            _ann = _es.get("annual_savings") if isinstance(_es, dict) else _es
+            if _ann and float(_ann or 0) > 0:
+                has_savings = True
+                break
+
     if len(options) > 1 and any(o.get("five_year_total") for o in options):
-        if y > 640:
+        comparison_height = 36 + 18 * len(options) + 10
+        if y + comparison_height > 700:
+            _draw_footer(p, M, RX, co_name, co_phone, short_id, today)
             p._flush_page()
             p.new_page()
             y = 40
@@ -513,17 +526,17 @@ def generate_contractor_pdf(
         p.text(M, y, "5-YEAR COST COMPARISON", size=8, color=_PdfWriter.GRAY, bold=True)
         y += 16
 
-        # Header row
+        # Header row — only show Annual Savings column if data exists
         p.rect_fill(M, y, W, 20, (0.93, 0.93, 0.91))
         p.text(M + 10, y + 5, "Option", size=9, bold=True)
-        p.text(232, y + 5, "Install", size=9, bold=True)
-        p.text(330, y + 5, "5-Year Total", size=9, bold=True)
-        p.text(450, y + 5, "Annual Savings", size=9, bold=True)
+        p.text(290, y + 5, "Today", size=9, bold=True)
+        p.text(370, y + 5, "5-Year Total", size=9, bold=True)
+        if has_savings:
+            p.text(470, y + 5, "Annual Savings", size=9, bold=True)
         y += 20
 
         for opt in options:
             tier   = (opt.get("tier") or "").lower()
-            name   = opt.get("name") or tier.title()
             total  = opt.get("total") or 0
             five_yr = opt.get("five_year_total")
             es = opt.get("energy_savings")
@@ -531,31 +544,62 @@ def generate_contractor_pdf(
             if es:
                 ann = es.get("annual_savings") if isinstance(es, dict) else es
             color = _tier_color(tier)
+            # Use tier label in comparison table so rows are always distinct
+            row_label = _tier_label(tier)
 
             bg = (0.97, 1.0, 0.97) if tier == "better" else (1.0, 1.0, 1.0)
             p.rect_fill(M, y, W, 18, bg)
-            p.text(M + 10, y + 4, name, size=9, bold=(tier == "better"), color=color)
-            p.text(232, y + 4, _fmt_money(total), size=9, bold=True)
-            p.text(330, y + 4, _fmt_money(five_yr) if five_yr else "—", size=9, color=_PdfWriter.GRAY)
-            if ann and float(ann or 0) > 0:
-                p.text(450, y + 4, f"${float(ann):,.0f}/yr", size=9, color=_PdfWriter.GREEN)
-            else:
-                p.text(450, y + 4, "—", size=9, color=_PdfWriter.GRAY)
+            p.text(M + 10, y + 4, row_label, size=9, bold=(tier == "better"), color=color)
+            p.text(290, y + 4, _fmt_money(total), size=9, bold=True)
+            p.text(370, y + 4, _fmt_money(five_yr) if five_yr else "—", size=9, color=_PdfWriter.GRAY)
+            if has_savings:
+                if ann and float(ann or 0) > 0:
+                    p.text(470, y + 4, f"${float(ann):,.0f}/yr", size=9, color=_PdfWriter.GREEN)
+                else:
+                    p.text(470, y + 4, "—", size=9, color=_PdfWriter.GRAY)
             p.line(M, y + 18, RX, y + 18, _PdfWriter.LIGHT_GRAY)
             y += 18
 
-        y += 10
+        y += 14
 
-    # ── Footer ────────────────────────────────────────────────────────────────
-    footer_y = 770
-    p.rect_fill(0, footer_y - 4, 612, 26, (0.95, 0.95, 0.93))
-    p.line(0, footer_y - 4, 612, footer_y - 4, _PdfWriter.LIGHT_GRAY)
-    footer_text = f"{co_name}  ·  {co_phone}  ·  Powered by ScopeSnap"
-    p.text(M, footer_y + 4, footer_text, size=8, color=_PdfWriter.GRAY)
-    p.text_right(RX, footer_y + 4, f"Estimate #{short_id}  ·  {today}", size=8, color=_PdfWriter.GRAY)
+    # ── Next Steps box ────────────────────────────────────────────────────────
+    next_steps_height = 72
+    if y + next_steps_height < 730:
+        p.rect_fill(M, y, W, 1, _PdfWriter.LIGHT_GRAY)
+        y += 10
+        p.text(M, y, "NEXT STEPS", size=8, color=_PdfWriter.GRAY, bold=True)
+        y += 14
+        p.rect_fill(M, y, W, next_steps_height - 24, (0.97, 0.98, 0.97))
+        p.rect_stroke(M, y, W, next_steps_height - 24, _PdfWriter.LIGHT_GRAY)
+        p.text(M + 14, y + 10, "1.  Review the options above and choose what works best for your budget.", size=9)
+        p.text(M + 14, y + 24, "2.  Call or text us to schedule — we'll confirm your appointment within 24 hours.", size=9)
+        p.text(M + 14, y + 38, "3.  Your homeowner report is available online at the link in your email.", size=9, color=_PdfWriter.GRAY)
+        y += next_steps_height - 24 + 10
+
+    # ── Disclaimer ────────────────────────────────────────────────────────────
+    if y + 30 < 740:
+        p.text(M, y + 10,
+               "This estimate is valid for 30 days. Prices subject to change based on final inspection.",
+               size=7, color=_PdfWriter.GRAY, italic=True)
+
+    # ── Footer (on every page — drawn on the current/last page here) ──────────
+    _draw_footer(p, M, RX, co_name, co_phone, short_id, today)
 
     p.save(output_path)
     return output_path
+
+
+def _draw_footer(p: _PdfWriter, M: float, RX: float, co_name: str, co_phone: str,
+                 short_id: str, today: str):
+    """Draw the branded footer bar at the bottom of the current page."""
+    footer_y = 762
+    p.rect_fill(0, footer_y - 2, 612, 30, (0.102, 0.529, 0.329))  # green bar
+    footer_parts = [co_name]
+    if co_phone:
+        footer_parts.append(co_phone)
+    footer_parts.append("Powered by ScopeSnap")
+    p.text(M, footer_y + 8, "  ·  ".join(footer_parts), size=8, color=_PdfWriter.WHITE)
+    p.text_right(RX, footer_y + 8, f"#{short_id}  ·  {today}", size=8, color=(0.8, 0.95, 0.85))
 
 
 # ── Legacy helpers kept for compatibility ─────────────────────────────────────

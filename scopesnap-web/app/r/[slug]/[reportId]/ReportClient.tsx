@@ -213,6 +213,7 @@ const EQUIP_LABELS: Record<string, string> = {
   mini_split: "Mini-Split",
   package_unit: "Package Unit",
   other: "Equipment",
+  unknown: "System",
 };
 
 function equipLabel(type: string): string {
