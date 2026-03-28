@@ -583,6 +583,20 @@ async def generate_documents(
         if isinstance(urls, list) and urls:
             photo_url = urls[0] or ""
 
+    # Normalize legacy private R2 URLs → public URL.
+    # Old uploads mistakenly stored the S3-compatible cloudflarestorage.com endpoint
+    # instead of the public r2.dev URL. Convert those so the PDF generator can fetch them.
+    _cfg = get_settings()
+    if (
+        photo_url
+        and _cfg.r2_account_id
+        and "r2.cloudflarestorage.com" in photo_url
+        and _cfg.r2_public_url
+    ):
+        _private_prefix = f"https://{_cfg.r2_account_id}.r2.cloudflarestorage.com/"
+        if photo_url.startswith(_private_prefix):
+            photo_url = f"{_cfg.r2_public_url.rstrip('/')}/{photo_url[len(_private_prefix):]}"
+
     # Assemble data for the PDF generator
     estimate_context = {
         "report_short_id": estimate.report_short_id,
