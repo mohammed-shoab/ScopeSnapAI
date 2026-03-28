@@ -437,8 +437,8 @@ def generate_contractor_pdf(
         # Option header bar
         p.rect_fill(M, y, W, 26, color)
         label = _tier_label(tier)
-        p.text(M + 10, y + 7, label, size=10, color=_PdfWriter.WHITE, bold=True)
-        p.text_right(RX - 8, y + 7, _fmt_money(total), size=12, color=_PdfWriter.WHITE, bold=True)
+        p.text(M + 10, y + 16, label, size=10, color=_PdfWriter.WHITE, bold=True)
+        p.text_right(RX - 8, y + 16, _fmt_money(total), size=12, color=_PdfWriter.WHITE, bold=True)
         y += 26
 
         # Name + description
@@ -487,8 +487,8 @@ def generate_contractor_pdf(
                 y += 14
             # Total line
             p.rect_fill(M + 10, y, W - 20, 22, (0.96, 0.96, 0.94))
-            p.text(M + 16, y + 6, "TOTAL", size=10, bold=True)
-            p.text_right(RX - 8, y + 6, _fmt_money(total), size=12, bold=True, color=color)
+            p.text(M + 16, y + 14, "TOTAL", size=10, bold=True)
+            p.text_right(RX - 8, y + 14, _fmt_money(total), size=12, bold=True, color=color)
             y += 30
         else:
             y += 6
@@ -528,11 +528,11 @@ def generate_contractor_pdf(
 
         # Header row — only show Annual Savings column if data exists
         p.rect_fill(M, y, W, 20, (0.93, 0.93, 0.91))
-        p.text(M + 10, y + 5, "Option", size=9, bold=True)
-        p.text(290, y + 5, "Today", size=9, bold=True)
-        p.text(370, y + 5, "5-Year Total", size=9, bold=True)
+        p.text(M + 10, y + 13, "Option", size=9, bold=True)
+        p.text(290, y + 13, "Today", size=9, bold=True)
+        p.text(370, y + 13, "5-Year Total", size=9, bold=True)
         if has_savings:
-            p.text(470, y + 5, "Annual Savings", size=9, bold=True)
+            p.text(470, y + 13, "Annual Savings", size=9, bold=True)
         y += 20
 
         for opt in options:
@@ -549,14 +549,14 @@ def generate_contractor_pdf(
 
             bg = (0.97, 1.0, 0.97) if tier == "better" else (1.0, 1.0, 1.0)
             p.rect_fill(M, y, W, 18, bg)
-            p.text(M + 10, y + 4, row_label, size=9, bold=(tier == "better"), color=color)
-            p.text(290, y + 4, _fmt_money(total), size=9, bold=True)
-            p.text(370, y + 4, _fmt_money(five_yr) if five_yr else "—", size=9, color=_PdfWriter.GRAY)
+            p.text(M + 10, y + 11, row_label, size=9, bold=(tier == "better"), color=color)
+            p.text(290, y + 11, _fmt_money(total), size=9, bold=True)
+            p.text(370, y + 11, _fmt_money(five_yr) if five_yr else "—", size=9, color=_PdfWriter.GRAY)
             if has_savings:
                 if ann and float(ann or 0) > 0:
-                    p.text(470, y + 4, f"${float(ann):,.0f}/yr", size=9, color=_PdfWriter.GREEN)
+                    p.text(470, y + 11, f"${float(ann):,.0f}/yr", size=9, color=_PdfWriter.GREEN)
                 else:
-                    p.text(470, y + 4, "—", size=9, color=_PdfWriter.GRAY)
+                    p.text(470, y + 11, "—", size=9, color=_PdfWriter.GRAY)
             p.line(M, y + 18, RX, y + 18, _PdfWriter.LIGHT_GRAY)
             y += 18
 
@@ -628,8 +628,8 @@ def _draw_footer(p: _PdfWriter, M: float, RX: float, co_name: str, co_phone: str
     if co_phone:
         footer_parts.append(co_phone)
     footer_parts.append("Powered by ScopeSnap")
-    p.text(M, footer_y + 8, "  ·  ".join(footer_parts), size=8, color=_PdfWriter.WHITE)
-    p.text_right(RX, footer_y + 8, f"#{short_id}  ·  {today}", size=8, color=(0.8, 0.95, 0.85))
+    p.text(M, footer_y + 15, "  ·  ".join(footer_parts), size=8, color=_PdfWriter.WHITE)
+    p.text_right(RX, footer_y + 15, f"#{short_id}  ·  {today}", size=8, color=(0.8, 0.95, 0.85))
 
 
 # ── Legacy helpers kept for compatibility ─────────────────────────────────────
