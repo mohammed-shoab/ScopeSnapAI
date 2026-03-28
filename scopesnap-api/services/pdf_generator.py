@@ -413,8 +413,8 @@ def generate_contractor_pdf(
             sev   = iss.get("severity", "medium")
             sev_color = _PdfWriter.RED if sev in ("high", "critical") else (
                 _PdfWriter.ORANGE if sev == "medium" else _PdfWriter.GREEN)
-            # bullet dot
-            p.rect_fill(M, y + 4, 5, 5, sev_color)
+            # bullet dot — top of square at y-6 so its center aligns with 9pt cap midpoint
+            p.rect_fill(M, y - 6, 5, 5, sev_color)
             label = f"{comp} — {issue}" if issue else comp
             p.text(M + 10, y, label, size=9)
             y += 14
@@ -437,12 +437,14 @@ def generate_contractor_pdf(
         # Option header bar
         p.rect_fill(M, y, W, 26, color)
         label = _tier_label(tier)
-        p.text(M + 10, y + 16, label, size=10, color=_PdfWriter.WHITE, bold=True)
-        p.text_right(RX - 8, y + 16, _fmt_money(total), size=12, color=_PdfWriter.WHITE, bold=True)
+        # Center text in 26pt bar: baseline = bar_top + (bar_h + cap_h) / 2
+        # size=10 → cap=7.18 → (26+7.18)/2 = 16.6; size=12 → cap=8.6 → (26+8.6)/2 = 17.3
+        p.text(M + 10, y + 17, label, size=10, color=_PdfWriter.WHITE, bold=True)
+        p.text_right(RX - 8, y + 17, _fmt_money(total), size=12, color=_PdfWriter.WHITE, bold=True)
         y += 26
 
-        # Name + description
-        p.text(M + 10, y + 5, name, size=10, bold=True)
+        # Name + description — baseline at y+10 so 10pt cap (7.2pt) clears bar bottom
+        p.text(M + 10, y + 10, name, size=10, bold=True)
         if desc:
             desc_end_y = p.multiline_text(M + 10, y + 18, desc, size=9,
                                           max_width=W - 120, line_height=13,
