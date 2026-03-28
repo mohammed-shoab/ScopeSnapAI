@@ -402,7 +402,7 @@ def _fetch_and_annotate_photo(photo_url: str, issues: list, max_w: int = 516):
         STRIP_H = 30
         new_img = _PILImage.new("RGB", (img.width, img.height + STRIP_H), (28, 28, 26))
         new_img.paste(img, (0, 0))
-        draw   = _Draw(new_img)
+        draw   = _Draw.Draw(new_img)
         x_cur  = 10
         strip_y = img.height
 
