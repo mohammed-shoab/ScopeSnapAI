@@ -593,11 +593,12 @@ async def generate_documents(
         "options": estimate.options or [],
     }
 
-    # Generate PDF in a thread (WeasyPrint is sync)
+    # Generate PDF in a thread then upload to persistent storage (R2 in prod, local in dev)
     import asyncio
     import logging
+    import tempfile
     settings = get_settings()
-    pdf_dir = os.path.join(settings.upload_dir, "pdfs")
+    from services.storage import get_storage, generate_document_path
 
     pdf_url = None
     pdf_size_kb = 0
@@ -605,26 +606,47 @@ async def generate_documents(
 
     try:
         if not _pdf_available or generate_contractor_pdf is None:
-            raise RuntimeError("WeasyPrint / pdf_generator not available in this environment")
+            raise RuntimeError("pdf_generator not available in this environment")
+
+        # Step 1: write PDF to a temp directory (synchronous generator runs in thread)
+        tmp_dir = tempfile.mkdtemp()
         loop = asyncio.get_event_loop()
         pdf_path = await loop.run_in_executor(
             None,
             lambda: generate_contractor_pdf(
                 estimate_data=estimate_context,
-                output_dir=pdf_dir,
+                output_dir=tmp_dir,
                 filename=f"estimate-{estimate.report_short_id}.pdf",
             )
         )
-        pdf_filename = os.path.basename(pdf_path)
-        pdf_url = f"/files/pdfs/{pdf_filename}"
         pdf_size_kb = round(os.path.getsize(pdf_path) / 1024, 1)
+
+        # Step 2: upload to R2 (or LocalStorage in dev) so PDF survives redeployments
+        with open(pdf_path, "rb") as fh:
+            pdf_bytes = fh.read()
+        company_slug = company.slug if company else "hvac"
+        storage_path = generate_document_path(
+            company_slug=company_slug,
+            estimate_id=str(estimate.id),
+            doc_type=f"estimate-{estimate.report_short_id}.pdf",
+        )
+        pdf_url = await get_storage().upload(
+            file_bytes=pdf_bytes,
+            path=storage_path,
+            content_type="application/pdf",
+        )
+
+        # Step 3: clean up temp file
+        try:
+            os.unlink(pdf_path)
+        except Exception:
+            pass
+
     except Exception as exc:
-        # WeasyPrint may fail due to missing system libs in some environments.
-        # We log the error but do NOT block the flow — the homeowner report URL
-        # is still set so the Send tab remains accessible.
+        # PDF generation or upload failed — log and continue so the rest of
+        # the flow (homeowner report URL, Send tab) still works.
         pdf_error = str(exc)
         logging.warning(f"PDF generation failed for {estimate.report_short_id}: {exc}")
-        # Dev fallback: stub URL that signals PDF is unavailable
         pdf_url = f"/files/pdfs/estimate-{estimate.report_short_id}-unavailable.pdf"
 
     # Build homeowner report URL (always generated, regardless of PDF success)
