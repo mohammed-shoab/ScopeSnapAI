@@ -576,10 +576,40 @@ def generate_contractor_pdf(
         p.text(M + 14, y + 38, "3.  Your homeowner report is available online at the link in your email.", size=9, color=_PdfWriter.GRAY)
         y += next_steps_height - 24 + 10
 
+    # ── Acceptance / Signature block ──────────────────────────────────────────
+    sig_height = 90
+    if y + sig_height + 40 < 740:
+        y += 8
+        p.rect_fill(M, y, W, 1, _PdfWriter.LIGHT_GRAY)
+        y += 10
+        p.text(M, y, "AUTHORIZATION", size=8, color=_PdfWriter.GRAY, bold=True)
+        y += 14
+        p.rect_fill(M, y, W, sig_height, (0.99, 0.99, 0.99))
+        p.rect_stroke(M, y, W, sig_height, _PdfWriter.LIGHT_GRAY)
+        p.text(M + 14, y + 10,
+               "I authorize the work described in this estimate. I understand that final pricing may vary",
+               size=9, color=_PdfWriter.GRAY)
+        p.text(M + 14, y + 23, "based on actual conditions found on-site.", size=9, color=_PdfWriter.GRAY)
+
+        # Signature line
+        sig_y = y + 48
+        p.line(M + 14, sig_y, M + 200, sig_y, _PdfWriter.LIGHT_GRAY, lw=0.75)
+        p.text(M + 14, sig_y + 8, "Homeowner Signature", size=7, color=_PdfWriter.GRAY)
+
+        # Date line
+        p.line(M + 230, sig_y, M + 360, sig_y, _PdfWriter.LIGHT_GRAY, lw=0.75)
+        p.text(M + 230, sig_y + 8, "Date", size=7, color=_PdfWriter.GRAY)
+
+        # Option chosen line
+        p.line(M + 390, sig_y, RX - 14, sig_y, _PdfWriter.LIGHT_GRAY, lw=0.75)
+        p.text(M + 390, sig_y + 8, "Option Selected (A / B / C)", size=7, color=_PdfWriter.GRAY)
+
+        y += sig_height + 12
+
     # ── Disclaimer ────────────────────────────────────────────────────────────
-    if y + 30 < 740:
-        p.text(M, y + 10,
-               "This estimate is valid for 30 days. Prices subject to change based on final inspection.",
+    if y + 20 < 748:
+        p.text(M, y + 6,
+               "This estimate is valid for 30 days. Prices subject to change based on final on-site inspection.",
                size=7, color=_PdfWriter.GRAY, italic=True)
 
     # ── Footer (on every page — drawn on the current/last page here) ──────────
