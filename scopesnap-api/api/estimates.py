@@ -576,11 +576,19 @@ async def generate_documents(
                     "description_plain": issue.get("description_plain", issue.get("description", "")),
                 })
 
+    # Best inspection photo URL — first entry from assessment.photo_urls (R2 or local)
+    photo_url = ""
+    if assessment and assessment.photo_urls:
+        urls = assessment.photo_urls
+        if isinstance(urls, list) and urls:
+            photo_url = urls[0] or ""
+
     # Assemble data for the PDF generator
     estimate_context = {
         "report_short_id": estimate.report_short_id,
         "report_token": estimate.report_token,
         "assessment_id": str(estimate.assessment_id),
+        "photo_url": photo_url,           # inspection photo for annotated embed
         "company": {
             "name": company.name if company else "",
             "phone": company.phone if company else "",

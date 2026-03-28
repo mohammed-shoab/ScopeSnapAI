@@ -42,10 +42,12 @@ class _PdfWriter:
     WHITE       = (1.0,   1.0,   1.0)
 
     def __init__(self):
-        self._objects = []   # list of (obj_id, bytes)
-        self._pages   = []   # list of page obj_ids
-        self._obj_id  = 1
-        self._buf     = None  # current page content buffer
+        self._objects       = []   # list of (obj_id, bytes)
+        self._pages         = []   # list of page obj_ids
+        self._obj_id        = 1
+        self._buf           = None  # current page content buffer
+        self._images        = {}    # name -> (obj_id, pixel_w, pixel_h)
+        self._cur_page_imgs = []    # image names used on the current page
 
     # ── Object helpers ────────────────────────────────────────────────────────
 
@@ -92,6 +94,7 @@ class _PdfWriter:
         """Start a new page. Flush any previous page first."""
         self._buf = io.StringIO()
         self._cur_y = self.PAGE_H  # tracks current y for next_line()
+        self._cur_page_imgs = []   # reset image list for this page
 
     def _flush_page(self):
         """Finalize the current page and add it to the PDF."""
@@ -107,6 +110,14 @@ class _PdfWriter:
         # Rewrite as raw - store pre-serialized
         self._objects[-1] = (cs_id, cs_bytes)
 
+        # XObject (image) resources for this page
+        xobj_str = ""
+        if self._cur_page_imgs:
+            entries = " ".join(
+                f"/{n} {self._images[n][0]} 0 R" for n in self._cur_page_imgs
+            )
+            xobj_str = f" /XObject << {entries} >>"
+
         # Page object
         pg_id = self._new_obj()
         page_obj = (
@@ -118,7 +129,7 @@ class _PdfWriter:
             f"/F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> "
             f"/F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> "
             f"/F3 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >> "
-            f">> >> >>\n"
+            f">>{xobj_str} >> >>\n"
             "endobj\n"
         )
         self._objects.append((pg_id, page_obj.encode("latin-1")))
@@ -152,6 +163,45 @@ class _PdfWriter:
             f"{lw:.2f} w\n"
             f"{r:.3f} {g:.3f} {b:.3f} RG\n"
             f"{x1:.2f} {self._y(y1):.2f} m {x2:.2f} {self._y(y2):.2f} l S\n"
+        )
+
+    def add_jpeg_image(self, jpeg_bytes: bytes, width: int, height: int) -> str:
+        """
+        Embed a JPEG image in the PDF and return its resource name (e.g. 'Im0').
+        PDF readers support JPEG natively via /DCTDecode — no re-encoding needed.
+        """
+        name   = f"Im{len(self._images)}"
+        img_id = self._new_obj()
+        header = (
+            f"{img_id} 0 obj\n"
+            f"<< /Type /XObject /Subtype /Image\n"
+            f"   /Width {width} /Height {height}\n"
+            f"   /ColorSpace /DeviceRGB\n"
+            f"   /BitsPerComponent 8\n"
+            f"   /Filter /DCTDecode\n"
+            f"   /Length {len(jpeg_bytes)}\n"
+            f">>\nstream\n"
+        ).encode("latin-1")
+        raw = header + jpeg_bytes + b"\nendstream\nendobj\n"
+        self._objects.append((img_id, raw))
+        self._images[name] = (img_id, width, height)
+        return name
+
+    def draw_image(self, x: float, y: float, w: float, h: float, name: str):
+        """
+        Draw a previously-added image at screen position (x, y) with display size (w×h).
+        y is the TOP of the image in screen (top-left origin) coordinates.
+        """
+        if name not in self._cur_page_imgs:
+            self._cur_page_imgs.append(name)
+        # PDF transform matrix: [sx 0 0 sy tx ty] cm
+        # where ty = bottom-left y in PDF (bottom-left origin) space
+        y_bottom = self._y(y + h)
+        self._buf.write(
+            f"q\n"
+            f"{w:.2f} 0 0 {h:.2f} {x:.2f} {y_bottom:.2f} cm\n"
+            f"/{name} Do\n"
+            f"Q\n"
         )
 
     def text(self, x: float, y: float, s: str, size: float = 10,
@@ -308,6 +358,76 @@ def _tier_color(tier: str):
 # Main public API  (same signature as the old WeasyPrint version)
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _fetch_and_annotate_photo(photo_url: str, issues: list, max_w: int = 516):
+    """
+    Fetch the inspection photo from storage, draw a severity legend strip at the
+    bottom, and return (jpeg_bytes, pixel_width, pixel_height).
+
+    Returns None if anything fails (Bill Gates' fallback contract: never block PDF).
+    Quality gate: skips if image is below 400×300 px or any step raises.
+    """
+    try:
+        import urllib.request as _urlreq
+        import io as _io
+
+        if not photo_url or not photo_url.startswith("http"):
+            return None
+
+        # ── Fetch ─────────────────────────────────────────────────────────────
+        req = _urlreq.Request(photo_url, headers={"User-Agent": "ScopeSnap-PDF/1.0"})
+        with _urlreq.urlopen(req, timeout=10) as resp:
+            img_bytes = resp.read()
+
+        # ── Load with Pillow ──────────────────────────────────────────────────
+        from PIL import Image as _PILImage, ImageDraw as _Draw
+        img = _PILImage.open(_io.BytesIO(img_bytes)).convert("RGB")
+
+        # Quality gate
+        if img.width < 400 or img.height < 300:
+            return None
+
+        # Resize to max_w preserving aspect ratio
+        if img.width > max_w:
+            ratio = max_w / img.width
+            img = img.resize((max_w, int(img.height * ratio)), _PILImage.LANCZOS)
+
+        # ── Severity-legend strip at the bottom ───────────────────────────────
+        # Each issue gets a colored square + component label in a dark strip.
+        SEV_COLORS = {
+            "high":     (198, 40,  40),   # red
+            "critical": (198, 40,  40),
+            "medium":   (196, 96,  10),   # orange
+            "low":      (26,  135, 84),   # green
+        }
+        STRIP_H = 30
+        new_img = _PILImage.new("RGB", (img.width, img.height + STRIP_H), (28, 28, 26))
+        new_img.paste(img, (0, 0))
+        draw   = _Draw(new_img)
+        x_cur  = 10
+        strip_y = img.height
+
+        for iss in (issues or [])[:5]:
+            sev   = iss.get("severity", "medium")
+            color = SEV_COLORS.get(sev, SEV_COLORS["medium"])
+            label = _fmt_slug(iss.get("component", ""))[:16]
+            sq_x1, sq_y1 = x_cur, strip_y + 9
+            sq_x2, sq_y2 = sq_x1 + 11, sq_y1 + 11
+            draw.rectangle([sq_x1, sq_y1, sq_x2, sq_y2], fill=color)
+            draw.text((sq_x1 + 14, sq_y1 - 1), label, fill=(210, 210, 205))
+            x_cur += 14 + len(label) * 6 + 14
+            if x_cur > img.width - 60:
+                break
+
+        # ── Encode as JPEG ────────────────────────────────────────────────────
+        out = _io.BytesIO()
+        new_img.save(out, format="JPEG", quality=82, optimize=True)
+        return out.getvalue(), new_img.width, new_img.height
+
+    except Exception:
+        # Silently swallow ALL errors — PDF must generate even without the photo
+        return None
+
+
 def generate_contractor_pdf(
     estimate_data: dict,
     output_dir: str = "/tmp/scopesnap_uploads/pdfs",
@@ -419,6 +539,19 @@ def generate_contractor_pdf(
             p.text(M + 10, y, label, size=9)
             y += 14
         y += 6
+
+    # ── Annotated inspection photo (Bill Gates fallback: silently skip on any error) ──
+    photo_url = estimate_data.get("photo_url") or ""
+    if photo_url:
+        photo_result = _fetch_and_annotate_photo(photo_url, issues, max_w=int(W))
+        if photo_result:
+            jpeg_bytes, px_w, px_h = photo_result
+            # Scale to fit content width; max height = 180pt to stay on page 1
+            draw_w = W
+            draw_h = min(180, int(draw_w * px_h / px_w))
+            img_name = p.add_jpeg_image(jpeg_bytes, px_w, px_h)
+            p.draw_image(M, y, draw_w, draw_h, img_name)
+            y += draw_h + 10
 
     # ── Options table ─────────────────────────────────────────────────────────
     p.rect_fill(M, y, W, 1, _PdfWriter.LIGHT_GRAY)

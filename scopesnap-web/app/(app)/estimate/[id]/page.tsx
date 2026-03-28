@@ -1059,7 +1059,7 @@ export default function EstimatePage() {
                 </div>
                 {estimate.contractor_pdf_url && (
                   <a
-                    href={`${API_URL}${estimate.contractor_pdf_url}`}
+                    href={estimate.contractor_pdf_url?.startsWith('http') ? estimate.contractor_pdf_url : `${API_URL}${estimate.contractor_pdf_url}`}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-3 p-3 bg-surface-secondary rounded-xl text-sm font-medium hover:bg-surface-border transition-colors group"
