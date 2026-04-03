@@ -35,7 +35,7 @@ def upgrade() -> None:
                 equipment_type,
                 job_type,
                 region,
-                created_at DESC NULLS LAST
+                updated_at DESC NULLS LAST
         )
     """)
 
