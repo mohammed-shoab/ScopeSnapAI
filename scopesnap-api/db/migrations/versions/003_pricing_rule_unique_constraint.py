@@ -1,7 +1,7 @@
 """Add unique constraint to pricing_rules
 
-Revision ID: 003_pricing_rule_unique
-Revises: 002_app_events
+Revision ID: 003
+Revises: 002
 Create Date: 2026-04-03
 
 BUG-04 fix: Prevent duplicate pricing rule entries for the same
@@ -11,8 +11,8 @@ BUG-04 fix: Prevent duplicate pricing rule entries for the same
 from alembic import op
 
 # revision identifiers
-revision = "003_pricing_rule_unique"
-down_revision = "002_app_events"
+revision = "003"
+down_revision = "002"
 branch_labels = None
 depends_on = None
 
