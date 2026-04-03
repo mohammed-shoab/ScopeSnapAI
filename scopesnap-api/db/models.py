@@ -567,6 +567,7 @@ class PricingRule(Base):
     __tablename__ = "pricing_rules"
 
     __table_args__ = (
+        UniqueConstraint("company_id", "equipment_type", "job_type", "region", name="uq_pricing_rule"),
         Index("idx_pricing_rules_lookup", "company_id", "equipment_type", "job_type", "region"),
     )
 

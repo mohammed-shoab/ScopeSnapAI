@@ -422,22 +422,16 @@ PRICING_RULES = [
 
 
 from sqlalchemy import select, func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 async def run():
     async with AsyncSessionLocal() as db:
         try:
-            result = await db.execute(
-                select(func.count()).select_from(PricingRule).where(PricingRule.company_id == None)
-            )
-            existing = result.scalar()
-            if existing > 0:
-                print(f"⚠  {existing} global pricing rules already exist — skipping.")
-                print("   To re-seed, delete rows with company_id IS NULL or run with --force")
-                return
-
-            print(f"Seeding {len(PRICING_RULES)} pricing rules…")
+            print(f"Upserting {len(PRICING_RULES)} pricing rules (ON CONFLICT DO NOTHING)…")
+            inserted = 0
+            skipped = 0
             for pr in PRICING_RULES:
-                rule = PricingRule(
+                stmt = pg_insert(PricingRule).values(
                     company_id=None,   # NULL = global default
                     equipment_type=pr["equipment_type"],
                     job_type=pr["job_type"],
@@ -448,11 +442,17 @@ async def run():
                     permit_cost=pr.get("permit_cost"),
                     refrigerant_cost_per_lb=pr.get("refrigerant_cost_per_lb"),
                     additional_costs=pr.get("additional_costs"),
+                ).on_conflict_do_nothing(
+                    constraint="uq_pricing_rule"
                 )
-                db.add(rule)
+                result = await db.execute(stmt)
+                if result.rowcount == 1:
+                    inserted += 1
+                else:
+                    skipped += 1
 
             await db.commit()
-            print(f"✅ {len(PRICING_RULES)} pricing rules seeded successfully.")
+            print(f"✅ Done: {inserted} inserted, {skipped} already existed (skipped).")
 
         except Exception as e:
             await db.rollback()
