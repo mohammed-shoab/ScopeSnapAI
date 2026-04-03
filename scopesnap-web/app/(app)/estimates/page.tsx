@@ -110,7 +110,7 @@ export default function EstimatesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold text-text-primary">Estimates</h1>
+          <h1 className="text-2xl font-extrabold text-text-primary">Assessments</h1>
           <p className="text-sm text-text-secondary mt-0.5">
             {estimates.length} total · {counts.sent || 0} sent · {counts.approved || 0} approved
           </p>

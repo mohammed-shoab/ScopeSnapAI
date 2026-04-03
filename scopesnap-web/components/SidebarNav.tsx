@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { featureFlags } from "@/lib/featureFlags";
+import FeedbackModal from "@/components/FeedbackModal";
 
 // ── SVG icon definitions (no emojis — clean, professional, accessible) ────────
 const NavIcons: Record<string, React.ReactNode> = {
@@ -169,8 +170,9 @@ function buildNavSections(): NavSection[] {
 
 export default function SidebarNav() {
   const pathname = usePathname();
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [isMobileOpen, setIsMobileOpen]   = useState(false);
+  const [mounted, setMounted]             = useState(false);
+  const [feedbackOpen, setFeedbackOpen]   = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -301,8 +303,8 @@ export default function SidebarNav() {
 
           {/* ── Feedback Button ──────────────────────────────────────────── */}
           <div className="px-3 pb-2">
-            <a
-              href="mailto:feedback@scopesnap.ai?subject=ScopeSnap Beta Feedback"
+            <button
+              onClick={() => { setFeedbackOpen(true); setIsMobileOpen(false); }}
               className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/5"
               style={{ color: "rgba(255,255,255,.4)" }}
             >
@@ -310,7 +312,7 @@ export default function SidebarNav() {
                 {NavIcons.feedback}
               </span>
               <span>Send Feedback</span>
-            </a>
+            </button>
           </div>
 
           {/* ── Footer / User Area ───────────────────────────────────────── */}
@@ -341,6 +343,9 @@ export default function SidebarNav() {
 
         </div>
       </aside>
+
+      {/* In-app feedback modal (BUG-01 fix) */}
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </>
   );
 }

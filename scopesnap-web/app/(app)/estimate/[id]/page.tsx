@@ -607,7 +607,22 @@ export default function EstimatePage() {
               tab === t ? "bg-white shadow-sm text-text-primary" : "text-text-secondary"
             }`}
           >
-            {t === "estimate" ? "ð Builder" : t === "output" ? "ð Output" : "ð¤ Send"}
+            {t === "estimate" ? (
+              <span className="flex items-center justify-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                Builder
+              </span>
+            ) : t === "output" ? (
+              <span className="flex items-center justify-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                Output
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                Send
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -1137,7 +1152,7 @@ export default function EstimatePage() {
                 )}
               </div>
               <p className="text-xs text-text-secondary">
-                Auto follow-ups: 24h if not viewed Â· 48h if viewed Â· 7 days final check-in.
+                Auto follow-ups: 24h if not viewed &middot; 48h if viewed &middot; 7 days final check-in.
               </p>
               {estimate.homeowner_report_url && (
                 <>
@@ -1205,7 +1220,7 @@ export default function EstimatePage() {
                   />
                 </div>
                 <p className="text-xs text-text-secondary">
-                  Auto follow-ups: 24h if not viewed Â· 48h if viewed Â· 7 days final check-in.
+                  Auto follow-ups: 24h if not viewed &middot; 48h if viewed &middot; 7 days final check-in.
                 </p>
               </div>
 
