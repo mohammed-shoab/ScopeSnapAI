@@ -1,6 +1,15 @@
 /**
- * Assess Page - Full camera capture, upload, AI analysis, intelligence results
- * Redesigned to match SnapAI_Prototype_Demo.html screens exactly
+ * Assess Page — 3-Photo Board-Approved Flow
+ *
+ * Consensus from 6-founder + HVAC-tech board meeting:
+ *   Required slot 1: Spec plate / nameplate
+ *   Required slot 2: Full outdoor unit
+ *   Required slot 3: Symptom-driven (dynamically labeled by complaint)
+ *   Optional:        "+ Add photos your homeowner will see" with confidence meter
+ *
+ * Refs: Musk (strip to 3 required), Jobs (complaint-first, progressive disclosure),
+ *       Bezos (design for real-world 2.47pm attic conditions), Zuckerberg (report quality),
+ *       Gates (low-friction adoption), Page (track photo-count vs edit-rate from day 1).
  */
 "use client";
 
@@ -14,7 +23,54 @@ import { track } from "@/lib/tracking";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
-type Phase = "capture" | "uploading" | "analyzing" | "results" | "estimating";
+
+type Phase = "complaint" | "capture" | "uploading" | "analyzing" | "results" | "estimating";
+
+// ── Complaint options (Jobs rule: 6 max, big icons, no dropdowns) ─────────────
+const COMPLAINT_OPTIONS = [
+  { id: "not_cooling", icon: "🥵", label: "Not Cooling", sub: "Weak or no cooling" },
+  { id: "not_heating", icon: "🔥", label: "Not Heating", sub: "No heat / cold air" },
+  { id: "water_leak",  icon: "💧", label: "Water Leaking", sub: "Dripping or pooling" },
+  { id: "wont_start",  icon: "⚡", label: "Won't Turn On", sub: "No response at all" },
+  { id: "noisy",       icon: "🔊", label: "Making Noise", sub: "Banging, squealing, humming" },
+  { id: "routine",     icon: "📋", label: "Routine Estimate", sub: "No specific complaint" },
+] as const;
+type ComplaintId = typeof COMPLAINT_OPTIONS[number]["id"];
+
+// ── What Photo 3 captures depends on the complaint ────────────────────────────
+const SYMPTOM_PHOTO: Record<ComplaintId, { label: string; hint: string; icon: string }> = {
+  not_cooling: { label: "Indoor coil / evaporator", hint: "Open the air handler access panel — ice or corrosion?", icon: "❄️" },
+  not_heating: { label: "Indoor coil / furnace", hint: "Open the air handler / furnace access panel", icon: "🔥" },
+  water_leak:  { label: "Drain pan", hint: "Look under the indoor unit — standing water or rust?", icon: "💧" },
+  wont_start:  { label: "Disconnect box", hint: "The electrical disconnect near the outdoor unit", icon: "⚡" },
+  noisy:       { label: "Noisy component", hint: "Fan, compressor, or duct area making the sound", icon: "🔊" },
+  routine:     { label: "Indoor unit overall", hint: "Step back — full air handler or furnace in frame", icon: "🏠" },
+};
+
+// ── Slot metadata for the 3 required photos ───────────────────────────────────
+const getSlotConfig = (complaint: ComplaintId | null) => [
+  {
+    slot: 0,
+    icon: "📋",
+    label: "Spec Plate",
+    hint: "Get close enough to read the model number clearly",
+    required: true,
+  },
+  {
+    slot: 1,
+    icon: "🏠",
+    label: "Full Outdoor Unit",
+    hint: "Step back 4 feet — get the whole unit in frame",
+    required: true,
+  },
+  {
+    slot: 2,
+    icon: complaint ? SYMPTOM_PHOTO[complaint].icon : "📸",
+    label: complaint ? SYMPTOM_PHOTO[complaint].label : "Symptom Photo",
+    hint: complaint ? SYMPTOM_PHOTO[complaint].hint : "Select a complaint above to get a specific prompt",
+    required: true,
+  },
+];
 
 interface PropertySuggestion {
   id: string;
@@ -64,42 +120,52 @@ export default function AssessPage() {
   const router = useRouter();
   const { getToken } = useAuth();
 
-  /** Returns the correct auth headers for API calls (dev bypass or real JWT). */
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (IS_DEV) return DEV_HEADER;
     const token = await getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, [getToken]);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // ── Refs ──────────────────────────────────────────────────────────────────
+  const fileInputRef   = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [phase, setPhase] = useState<Phase>("capture");
-  const [photos, setPhotos] = useState<File[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [address, setAddress] = useState("");
-  const [customerName, setCustomerName] = useState("");
+  const videoRef       = useRef<HTMLVideoElement>(null);
+  const activeSlotRef  = useRef<number | "extra">(0); // which slot is receiving the next photo
+
+  // ── Core phase + complaint ────────────────────────────────────────────────
+  const [phase, setPhase]             = useState<Phase>("complaint");
+  const [complaintType, setComplaintType] = useState<ComplaintId | null>(null);
+
+  // ── Photo slots (3 required + optional extras) ────────────────────────────
+  const [slotPhotos,   setSlotPhotos]   = useState<(File | null)[]>([null, null, null]);
+  const [slotPreviews, setSlotPreviews] = useState<(string | null)[]>([null, null, null]);
+  const [extraPhotos,  setExtraPhotos]  = useState<File[]>([]);
+  const [extraPreviews, setExtraPreviews] = useState<string[]>([]);
+
+  // ── Job info ───────────────────────────────────────────────────────────────
+  const [address,       setAddress]       = useState("");
+  const [customerName,  setCustomerName]  = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+
+  // ── UI helpers ─────────────────────────────────────────────────────────────
   const [draftRecovery, setDraftRecovery] = useState<{address:string;customerName:string;timestamp:number}|null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [analysisStep, setAnalysisStep] = useState(0);
-  const [suggestions, setSuggestions] = useState<PropertySuggestion[]>([]);
+  const [analysisStep,   setAnalysisStep]   = useState(0);
+  const [suggestions,    setSuggestions]    = useState<PropertySuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [assessment, setAssessment] = useState<AssessmentResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-  const [usingCamera, setUsingCamera] = useState(false);
+  const [assessment,     setAssessment]     = useState<AssessmentResult | null>(null);
+  const [error,          setError]          = useState<string | null>(null);
+  const [cameraStream,   setCameraStream]   = useState<MediaStream | null>(null);
+  const [usingCamera,    setUsingCamera]    = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<PropertySuggestion | null>(null);
   const [priorEstimates, setPriorEstimates] = useState<PriorEstimate[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [offlineQueued, setOfflineQueued] = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
+  const [pendingCount,  setPendingCount]  = useState(0);
 
-  // Draft recovery on mount + offline queue check + track session start
+  // Draft recovery + offline queue on mount
   useEffect(() => {
-    // SOW Task 1.10 — Bezos req: track assessment session started
     track.assessmentStarted();
-
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
@@ -108,13 +174,7 @@ export default function AssessPage() {
         if (ageHrs < 4 && draft.address) setDraftRecovery(draft);
       }
     } catch { /* ignore */ }
-
-    // Check for pending offline uploads
-    getOfflineQueueCount().then(count => {
-      if (count > 0) setPendingCount(count);
-    }).catch(() => {});
-
-    // Auto-sync offline queue when network reconnects
+    getOfflineQueueCount().then(count => { if (count > 0) setPendingCount(count); }).catch(() => {});
     const handleOnline = () => {
       getAuthHeaders().then(headers =>
         processOfflineQueue(API_URL, headers).then(({ uploaded }) => {
@@ -123,119 +183,138 @@ export default function AssessPage() {
       ).catch(() => {});
     };
     window.addEventListener("online", handleOnline);
-    // Attempt sync immediately if we're already online and have pending items
-    if (typeof navigator !== "undefined" && navigator.onLine) {
-      handleOnline();
-    }
+    if (typeof navigator !== "undefined" && navigator.onLine) handleOnline();
     return () => window.removeEventListener("online", handleOnline);
   }, []);
 
-  // Save draft whenever address/name changes
   useEffect(() => {
     if (address || customerName) {
-      try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({ address, customerName, timestamp: Date.now() }));
-      } catch { /* ignore */ }
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ address, customerName, timestamp: Date.now() })); }
+      catch { /* ignore */ }
     }
   }, [address, customerName]);
 
   useEffect(() => {
-    if (address.length < 3) {
-      setSuggestions([]);
-      return;
-    }
+    if (address.length < 3) { setSuggestions([]); return; }
     const t = setTimeout(async () => {
       try {
         const authHeaders = await getAuthHeaders();
-        const r = await fetch(
-          `${API_URL}/api/properties/search?q=${encodeURIComponent(address)}&limit=5`,
-          { headers: authHeaders }
-        );
-        if (r.ok) {
-          setSuggestions(await r.json());
-          setShowSuggestions(true);
-        }
-      } catch {
-        /* ignore */
-      }
+        const r = await fetch(`${API_URL}/api/properties/search?q=${encodeURIComponent(address)}&limit=5`, { headers: authHeaders });
+        if (r.ok) { setSuggestions(await r.json()); setShowSuggestions(true); }
+      } catch { /* ignore */ }
     }, 300);
     return () => clearTimeout(t);
   }, [address]);
 
+  // ── Camera helpers ─────────────────────────────────────────────────────────
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
       setCameraStream(stream);
       setUsingCamera(true);
       if (videoRef.current) videoRef.current.srcObject = stream;
-    } catch {
-      setError("Camera unavailable — use file upload.");
-    }
+    } catch { setError("Camera unavailable — use file upload."); }
   };
 
   const capturePhoto = () => {
     if (!videoRef.current) return;
     const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
+    canvas.width  = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
     canvas.getContext("2d")?.drawImage(videoRef.current, 0, 0);
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return;
-        addPhoto(
-          new File([blob], `capture-${Date.now()}.jpg`, {
-            type: "image/jpeg",
-          })
-        );
-      },
-      "image/jpeg",
-      0.9
-    );
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `capture-${Date.now()}.jpg`, { type: "image/jpeg" });
+      handleFileForSlot(file);
+    }, "image/jpeg", 0.9);
   };
 
   const stopCamera = useCallback(() => {
-    cameraStream?.getTracks().forEach((t) => t.stop());
+    cameraStream?.getTracks().forEach(t => t.stop());
     setCameraStream(null);
     setUsingCamera(false);
   }, [cameraStream]);
 
-  const addPhoto = (file: File) => {
-    if (photos.length >= 5) return;
-    setPhotos((p) => [...p, file]);
-    setPreviewUrls((p) => [...p, URL.createObjectURL(file)]);
-    // SOW Task 1.10 — Bezos req: track photo count + file size for field connection diagnostics
-    track.photoAdded(photos.length + 1, file.size);
+  // ── Slot photo management ─────────────────────────────────────────────────
+  const handleFileForSlot = (file: File) => {
+    const slot = activeSlotRef.current;
+    if (slot === "extra") {
+      if (extraPhotos.length >= 2) return; // max 2 extra
+      setExtraPhotos(p => [...p, file]);
+      setExtraPreviews(p => [...p, URL.createObjectURL(file)]);
+      track.photoAdded(3 + extraPhotos.length + 1, file.size);
+    } else {
+      const idx = slot as number;
+      setSlotPhotos(prev => { const n = [...prev]; n[idx] = file; return n; });
+      setSlotPreviews(prev => {
+        const n = [...prev];
+        if (n[idx]) URL.revokeObjectURL(n[idx]!);
+        n[idx] = URL.createObjectURL(file);
+        return n;
+      });
+      track.photoAdded(idx + 1, file.size);
+    }
   };
 
-  const removePhoto = (i: number) => {
-    setPhotos((p) => p.filter((_, idx) => idx !== i));
-    setPreviewUrls((p) => p.filter((_, idx) => idx !== i));
+  const clearSlot = (idx: number) => {
+    setSlotPhotos(prev => { const n = [...prev]; n[idx] = null; return n; });
+    setSlotPreviews(prev => { const n = [...prev]; if (n[idx]) URL.revokeObjectURL(n[idx]!); n[idx] = null; return n; });
   };
 
+  const removeExtra = (i: number) => {
+    setExtraPhotos(p => p.filter((_, idx) => idx !== i));
+    setExtraPreviews(p => p.filter((_, idx) => idx !== i));
+  };
+
+  const triggerSlotCapture = (slot: number | "extra") => {
+    activeSlotRef.current = slot;
+    if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      cameraInputRef.current?.click();
+    } else {
+      startCamera();
+    }
+  };
+
+  const triggerSlotFile = (slot: number | "extra") => {
+    activeSlotRef.current = slot;
+    fileInputRef.current?.click();
+  };
+
+  // ── Validation ─────────────────────────────────────────────────────────────
+  const allRequiredFilled = slotPhotos.every(s => s !== null);
+  const filledCount = slotPhotos.filter(Boolean).length;
+
+  // confidence grows from 70% (3 photos) to 94% (5 photos)
+  const confidencePct = filledCount === 0 ? 0
+    : filledCount === 1 ? 40
+    : filledCount === 2 ? 65
+    : filledCount === 3 ? 70 + Math.min(extraPhotos.length * 12, 24)
+    : 70 + Math.min(extraPhotos.length * 12, 24);
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!photos.length) {
-      setError("Add at least 1 photo of the equipment.");
+    if (!allRequiredFilled) {
+      setError("Complete all 3 required photos to continue.");
       return;
     }
-    // SOW Task 1.10 — track submission attempt with photo count
-    track.assessmentSubmitted(photos.length);
+    const allPhotos = [...(slotPhotos as File[]), ...extraPhotos];
+    track.assessmentSubmitted(allPhotos.length);
     setError(null);
     setPhase("uploading");
     setUploadProgress(0);
     setAnalysisStep(0);
+
     const fd = new FormData();
-    photos.forEach((p) => fd.append("photos", p));
-    if (address) fd.append("property_address", address);
-    if (customerName) fd.append("homeowner_name", customerName);
+    allPhotos.forEach(p => fd.append("photos", p));
+    if (address)       fd.append("property_address", address);
+    if (customerName)  fd.append("homeowner_name", customerName);
     if (customerPhone) fd.append("homeowner_phone", customerPhone);
+    if (complaintType) fd.append("complaint_type", complaintType);
 
     let uploaded: { id: string } | null = null;
     try {
       if (typeof navigator !== "undefined" && !navigator.onLine) {
-        // Save to offline IndexedDB queue for auto-sync when reconnected
-        await saveToOfflineQueue(photos, { address, customerName, customerPhone });
+        await saveToOfflineQueue(allPhotos, { address, customerName, customerPhone });
         setOfflineQueued(true);
         setPendingCount(c => c + 1);
         setPhase("capture");
@@ -245,14 +324,9 @@ export default function AssessPage() {
       const uploadAuthHeaders = await getAuthHeaders();
       let up: Response;
       try {
-        up = await fetch(`${API_URL}/api/assessments/`, {
-          method: "POST",
-          headers: uploadAuthHeaders,
-          body: fd,
-        });
+        up = await fetch(`${API_URL}/api/assessments/`, { method: "POST", headers: uploadAuthHeaders, body: fd });
       } catch {
-        // Network error mid-upload — queue for later
-        await saveToOfflineQueue(photos, { address, customerName, customerPhone });
+        await saveToOfflineQueue(allPhotos, { address, customerName, customerPhone });
         setOfflineQueued(true);
         setPendingCount(c => c + 1);
         setPhase("capture");
@@ -274,37 +348,26 @@ export default function AssessPage() {
       return;
     }
 
-    // ── Analyze with 30s timeout and one retry ────────────────────────────
     setPhase("analyzing");
     setAnalysisStep(1);
-
     const analyzeAuthHeaders = await getAuthHeaders();
     const analyzeWithTimeout = async (attempt: number): Promise<Response> => {
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const timer = setTimeout(() => controller.abort(), 30000);
       try {
-        const r = await fetch(
-          `${API_URL}/api/assessments/${uploaded!.id}/analyze`,
-          { method: "POST", headers: analyzeAuthHeaders, signal: controller.signal }
-        );
+        const r = await fetch(`${API_URL}/api/assessments/${uploaded!.id}/analyze`, { method: "POST", headers: analyzeAuthHeaders, signal: controller.signal });
         clearTimeout(timer);
         return r;
       } catch (e: unknown) {
         clearTimeout(timer);
         const isAbort = e instanceof Error && e.name === "AbortError";
-        if (isAbort && attempt === 1) {
-          // First timeout — retry once
-          setAnalysisStep(s => Math.min(s + 1, 4));
-          return analyzeWithTimeout(2);
-        }
+        if (isAbort && attempt === 1) { setAnalysisStep(s => Math.min(s + 1, 4)); return analyzeWithTimeout(2); }
         throw e;
       }
     };
 
     try {
-      const stepTimer = setInterval(() => {
-        setAnalysisStep(s => Math.min(s + 1, 4));
-      }, 3500);
+      const stepTimer = setInterval(() => { setAnalysisStep(s => Math.min(s + 1, 4)); }, 3500);
       let an: Response;
       try {
         an = await analyzeWithTimeout(1);
@@ -321,9 +384,7 @@ export default function AssessPage() {
       }
       const assessmentResult = await an.json();
       setAssessment(assessmentResult);
-      // SOW Task 1.10 — track successful AI analysis completion
       track.assessmentCompleted(assessmentResult.id);
-      // Clear the draft now that assessment is created
       try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       setPhase("results");
     } catch (err: unknown) {
@@ -346,10 +407,8 @@ export default function AssessPage() {
         headers: { ...estAuthHeaders, "Content-Type": "application/json" },
         body: JSON.stringify({ assessment_id: assessment.id }),
       });
-      if (!r.ok)
-        throw new Error((await r.json()).detail || "Generate failed");
+      if (!r.ok) throw new Error((await r.json()).detail || "Generate failed");
       const est = await r.json();
-      // SOW Task 1.10 — track estimate generation with total value
       track.estimateGenerated(est.id, est.total_amount || 0);
       router.push(`/estimate/${est.id}`);
     } catch (err: unknown) {
@@ -358,359 +417,233 @@ export default function AssessPage() {
     }
   };
 
-  // Uploading / Analyzing screen
+  // ── Uploading / Analyzing screen ───────────────────────────────────────────
   if (phase === "uploading" || phase === "analyzing") {
-    const STEPS = [
-      "Uploading photos…",
-      "Reading equipment details…",
-      "Identifying brand & model…",
-      "Checking condition & wear…",
-      "Building your estimate…",
-    ];
-    const currentMsg = phase === "uploading" ? STEPS[0] : (STEPS[analysisStep] || STEPS[1]);
+    const STEPS = ["Uploading photos…", "Reading equipment details…", "Identifying brand & model…", "Checking condition & wear…", "Building your estimate…"];
+    const currentMsg  = phase === "uploading" ? STEPS[0] : (STEPS[analysisStep] || STEPS[1]);
     const progressPct = phase === "uploading" ? uploadProgress : Math.min(20 + analysisStep * 20, 90);
-
     return (
       <div className="max-w-md mx-auto pt-16 text-center space-y-6 px-4">
-        {/* Pulsing dots animation — SOW Task 1.8 */}
         <div className="flex gap-3 justify-center" aria-label="Loading">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="w-4 h-4 rounded-full bg-brand-green"
-              style={{
-                animation: `pulseDot 1.4s ease-in-out ${i * 0.2}s infinite`,
-              }}
-            />
+          {[0,1,2].map(i => (
+            <div key={i} className="w-4 h-4 rounded-full bg-brand-green"
+              style={{ animation: `pulseDot 1.4s ease-in-out ${i * 0.2}s infinite` }} />
           ))}
-          <style>{`
-            @keyframes pulseDot {
-              0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-              40% { transform: scale(1.2); opacity: 1; }
-            }
-          `}</style>
+          <style>{`@keyframes pulseDot{0%,80%,100%{transform:scale(0.6);opacity:.4}40%{transform:scale(1.2);opacity:1}}`}</style>
         </div>
-
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight mb-2">
             {phase === "uploading" ? "Uploading Photos" : "Analyzing Equipment"}
           </h2>
           <p className="text-sm text-text-secondary">{currentMsg}</p>
         </div>
-
-        {/* Step checklist */}
         <div className="card p-4 space-y-2.5 text-left">
-          {[
-            "Reading photos",
-            "Identifying brand & model",
-            "Checking condition & wear",
-            "Finding issues",
-            "Building estimate",
-          ].map((task, i) => {
-            const done = phase === "analyzing" && i < analysisStep;
+          {["Reading photos","Identifying brand & model","Checking condition & wear","Finding issues","Building estimate"].map((task, i) => {
+            const done   = phase === "analyzing" && i < analysisStep;
             const active = phase === "analyzing" && i === analysisStep;
             return (
               <div key={i} className="flex items-center gap-3 text-sm">
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                  done ? "bg-brand-green" : active ? "bg-brand-green animate-pulse" : "bg-surface-border"
-                }`} />
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${done ? "bg-brand-green" : active ? "bg-brand-green animate-pulse" : "bg-surface-border"}`} />
                 <span className={done ? "text-text-primary font-semibold" : active ? "text-text-primary" : "text-text-secondary"}>
-                  {task}
-                  {done && " ✓"}
+                  {task}{done && " ✓"}
                 </span>
               </div>
             );
           })}
         </div>
-
-        {/* Progress bar */}
         <div className="w-48 h-1.5 mx-auto bg-surface-secondary rounded-full overflow-hidden">
-          <div
-            className="h-full bg-brand-green rounded-full transition-all duration-700"
-            style={{ width: `${progressPct}%` }}
-          />
+          <div className="h-full bg-brand-green rounded-full transition-all duration-700" style={{ width: `${progressPct}%` }} />
         </div>
         <p className="text-xs text-text-secondary font-mono">Usually takes 8–15 seconds</p>
       </div>
     );
   }
 
-  // Estimating screen
+  // ── Estimating screen ──────────────────────────────────────────────────────
   if (phase === "estimating") {
     return (
       <div className="max-w-md mx-auto pt-16 text-center space-y-4">
         <div className="text-5xl">⚙️</div>
         <h2 className="text-xl font-black">Building Estimate...</h2>
-        <p className="text-sm text-gray-600">
-          Calculating Good/Better/Best pricing
-        </p>
+        <p className="text-sm text-gray-600">Calculating Good/Better/Best pricing</p>
       </div>
     );
   }
 
-  // Results screen - Intelligence cards
+  // ── Results screen ─────────────────────────────────────────────────────────
   if (phase === "results" && assessment) {
-    const eq = (assessment.ai_equipment_id || {}) as Record<
-      string,
-      string | number
-    >;
-    const cond = assessment.ai_condition || {};
-    const issues = assessment.ai_issues || [];
+    const eq      = (assessment.ai_equipment_id || {}) as Record<string, string | number>;
+    const cond    = assessment.ai_condition || {};
+    const issues  = assessment.ai_issues || [];
     const overall = (cond.overall || "unknown").toLowerCase();
-
     const conditionColor: Record<string, string> = {
-      excellent: "#1a8754",
-      good: "#1a8754",
-      fair: "#c4600a",
-      poor: "#c4600a",
-      critical: "#c62828",
-      failed: "#c62828",
+      excellent:"#1a8754", good:"#1a8754", fair:"#c4600a", poor:"#c4600a", critical:"#c62828", failed:"#c62828"
     };
     const color = conditionColor[overall] || "#7a7770";
+    void color;
 
     return (
       <div className="max-w-2xl mx-auto space-y-4 px-4">
-        {/* Header */}
         <div className="flex items-center gap-3 pt-4">
-          <button
-            onClick={() => {
-              setPhase("capture");
-              setAssessment(null);
-            }}
-            className="text-sm text-gray-600 hover:text-gray-900"
-          >
-            ← Back
-          </button>
+          <button onClick={() => { setPhase("capture"); setAssessment(null); }} className="text-sm text-gray-600 hover:text-gray-900">← Back</button>
           <h1 className="text-2xl font-black flex-1">Intelligence Results</h1>
         </div>
-
-        {/* GREEN CARD: Equipment Identification */}
+        {/* Equipment ID */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-          <div
-            className="px-4 py-3 border-b-2 font-mono text-xs font-bold uppercase tracking-wider text-green-600"
-            style={{ borderBottomColor: "#1a8754" }}
-          >
-            ✓ Equipment Identified
-          </div>
+          <div className="px-4 py-3 border-b-2 font-mono text-xs font-bold uppercase tracking-wider text-green-600" style={{ borderBottomColor: "#1a8754" }}>✓ Equipment Identified</div>
           <div className="p-4 space-y-3">
-            <div className="font-mono text-2xl font-black text-gray-900">
-              {String(eq.brand || "Unknown")}
-              {eq.model ? ` ${eq.model}` : ""}
-            </div>
+            <div className="font-mono text-2xl font-black text-gray-900">{String(eq.brand || "Unknown")}{eq.model ? ` ${eq.model}` : ""}</div>
             <div className="flex flex-wrap gap-2">
-              {eq.serial && (
-                <span className="px-2 py-1 bg-gray-100 rounded-lg text-xs font-semibold text-gray-600 font-mono">
-                  SN: {eq.serial}
-                </span>
-              )}
-              {eq.install_year && (
-                <span className="px-2 py-1 bg-gray-100 rounded-lg text-xs font-semibold text-gray-600 font-mono">
-                  Mfg: {eq.install_year}
-                </span>
-              )}
-              {eq.confidence && (
-                <span className="px-2 py-1 bg-gray-100 rounded-lg text-xs font-semibold text-gray-600 font-mono">
-                  {Math.round(Number(eq.confidence))}% confidence
-                </span>
-              )}
+              {eq.serial     && <span className="px-2 py-1 bg-gray-100 rounded-lg text-xs font-semibold text-gray-600 font-mono">SN: {eq.serial}</span>}
+              {eq.install_year && <span className="px-2 py-1 bg-gray-100 rounded-lg text-xs font-semibold text-gray-600 font-mono">Mfg: {eq.install_year}</span>}
+              {eq.confidence && <span className="px-2 py-1 bg-gray-100 rounded-lg text-xs font-semibold text-gray-600 font-mono">{Math.round(Number(eq.confidence))}% confidence</span>}
             </div>
-
-            {/* Confidence bar */}
             {eq.confidence && (
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-600">ID Confidence</span>
-                  <span className="font-mono font-bold text-green-600">
-                    {Math.round(Number(eq.confidence))}%
-                  </span>
+                  <span className="font-mono font-bold text-green-600">{Math.round(Number(eq.confidence))}%</span>
                 </div>
                 <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-green-600 rounded-full"
-                    style={{
-                      width: `${Math.round(Number(eq.confidence))}%`,
-                    }}
-                  />
+                  <div className="h-full bg-green-600 rounded-full" style={{ width: `${Math.round(Number(eq.confidence))}%` }} />
                 </div>
               </div>
             )}
           </div>
         </div>
-
-        {/* ORANGE CARD: Condition Assessment */}
+        {/* Condition */}
         {(cond.components || []).length > 0 && (
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-            <div
-              className="px-4 py-3 border-b-2 font-mono text-xs font-bold uppercase tracking-wider text-orange-600"
-              style={{ borderBottomColor: "#c4600a" }}
-            >
-              ⚠ Condition Assessment
-            </div>
+            <div className="px-4 py-3 border-b-2 font-mono text-xs font-bold uppercase tracking-wider text-orange-600" style={{ borderBottomColor: "#c4600a" }}>⚠ Condition Assessment</div>
             <div className="p-4 space-y-3">
               {(cond.components || []).map((comp, i) => (
                 <div key={i} className="flex gap-3 items-start">
-                  <div
-                    className="w-7 h-7 rounded flex items-center justify-center flex-shrink-0 text-sm font-bold"
-                    style={{
-                      backgroundColor:
-                        comp.condition === "normal"
-                          ? "#e8f5ee"
-                          : comp.condition.includes("minor")
-                            ? "#fef3e8"
-                            : "#fce8e8",
-                      color:
-                        comp.condition === "normal"
-                          ? "#1a8754"
-                          : comp.condition.includes("minor")
-                            ? "#c4600a"
-                            : "#c62828",
-                    }}
-                  >
+                  <div className="w-7 h-7 rounded flex items-center justify-center flex-shrink-0 text-sm font-bold"
+                    style={{ backgroundColor: comp.condition === "normal" ? "#e8f5ee" : comp.condition.includes("minor") ? "#fef3e8" : "#fce8e8", color: comp.condition === "normal" ? "#1a8754" : comp.condition.includes("minor") ? "#c4600a" : "#c62828" }}>
                     {comp.condition === "normal" ? "✓" : "⚠"}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-bold text-gray-900">
-                      {comp.name.replace(/_/g, " ")}
-                    </h4>
-                    <p className="text-sm text-gray-600 mt-0.5">
-                      {comp.description_plain}
-                    </p>
+                    <h4 className="text-sm font-bold text-gray-900">{comp.name.replace(/_/g, " ")}</h4>
+                    <p className="text-sm text-gray-600 mt-0.5">{comp.description_plain}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
         )}
-
-        {/* BLUE CARD: Lifecycle Intelligence */}
+        {/* Lifecycle */}
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-          <div
-            className="px-4 py-3 border-b-2 font-mono text-xs font-bold uppercase tracking-wider text-blue-600"
-            style={{ borderBottomColor: "#1565c0" }}
-          >
-            Lifecycle Intelligence
-          </div>
+          <div className="px-4 py-3 border-b-2 font-mono text-xs font-bold uppercase tracking-wider text-blue-600" style={{ borderBottomColor: "#1565c0" }}>Lifecycle Intelligence</div>
           <div className="p-4 space-y-2">
-            <div className="flex justify-between items-center py-2 border-b border-gray-200">
-              <span className="text-sm text-gray-600">Expected Lifespan</span>
-              <span className="text-sm font-bold text-gray-900 font-mono">
-                15–20 years
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-200">
-              <span className="text-sm text-gray-600">Current Age</span>
-              <span className="text-sm font-bold text-gray-900 font-mono">
-                {eq.install_year
-                  ? new Date().getFullYear() - Number(eq.install_year)
-                  : "Unknown"}{" "}
-                years
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-gray-200">
-              <span className="text-sm text-gray-600">Remaining Life (est.)</span>
-              <span className="text-sm font-bold font-mono" style={{ color: "#f9a825" }}>
-                6–11 years
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-sm text-gray-600">Active Recalls</span>
-              <span className="text-sm font-bold text-green-600 font-mono">
-                None ✓
-              </span>
-            </div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-200"><span className="text-sm text-gray-600">Expected Lifespan</span><span className="text-sm font-bold text-gray-900 font-mono">15–20 years</span></div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-200"><span className="text-sm text-gray-600">Current Age</span><span className="text-sm font-bold text-gray-900 font-mono">{eq.install_year ? new Date().getFullYear() - Number(eq.install_year) : "Unknown"} years</span></div>
+            <div className="flex justify-between items-center py-2 border-b border-gray-200"><span className="text-sm text-gray-600">Remaining Life (est.)</span><span className="text-sm font-bold font-mono" style={{ color: "#f9a825" }}>6–11 years</span></div>
+            <div className="flex justify-between items-center py-2"><span className="text-sm text-gray-600">Active Recalls</span><span className="text-sm font-bold text-green-600 font-mono">None ✓</span></div>
           </div>
         </div>
-
-        {/* PURPLE CARD: Recalls & History (if issues) */}
+        {/* Issues */}
         {issues.length > 0 && (
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-            <div
-              className="px-4 py-3 border-b-2 font-mono text-xs font-bold uppercase tracking-wider text-purple-600"
-              style={{ borderBottomColor: "#6a1b9a" }}
-            >
-              Issues Found ({issues.length})
-            </div>
+            <div className="px-4 py-3 border-b-2 font-mono text-xs font-bold uppercase tracking-wider text-purple-600" style={{ borderBottomColor: "#6a1b9a" }}>Issues Found ({issues.length})</div>
             <div className="p-4 space-y-3">
               {issues.map((iss, i) => (
                 <div key={i} className="flex gap-3 items-start">
-                  <div
-                    className="w-2 h-2 rounded-full mt-2 flex-shrink-0"
-                    style={{
-                      backgroundColor:
-                        iss.severity === "high" || iss.severity === "critical"
-                          ? "#c62828"
-                          : iss.severity === "low"
-                            ? "#1a8754"
-                            : "#c4600a",
-                    }}
-                  />
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">
-                      {iss.component} — {iss.issue}
-                    </p>
-                    <p className="text-xs text-gray-600 mt-0.5">
-                      {iss.description_plain || iss.description}
-                    </p>
-                  </div>
+                  <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0"
+                    style={{ backgroundColor: iss.severity === "high" || iss.severity === "critical" ? "#c62828" : iss.severity === "low" ? "#1a8754" : "#c4600a" }} />
+                  <div><p className="text-sm font-bold text-gray-900">{iss.component} — {iss.issue}</p><p className="text-xs text-gray-600 mt-0.5">{iss.description_plain || iss.description}</p></div>
                 </div>
               ))}
             </div>
           </div>
         )}
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600 font-medium">
-            ⚠ {error}
-          </div>
-        )}
-
-        {/* Build Estimate CTA */}
-        <button
-          onClick={handleGenerateEstimate}
+        {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600 font-medium">⚠ {error}</div>}
+        <button onClick={handleGenerateEstimate}
           className="w-full text-white font-bold py-4 rounded-xl text-base shadow-lg transition-shadow hover:shadow-xl"
-          style={{ background: "linear-gradient(135deg, #1a8754 0%, #159a5e 100%)", boxShadow: "0 4px 14px rgba(26,135,84,.45)" }}
-        >
+          style={{ background: "linear-gradient(135deg, #1a8754 0%, #159a5e 100%)", boxShadow: "0 4px 14px rgba(26,135,84,.45)" }}>
           Build Estimate →
         </button>
       </div>
     );
   }
 
-  // ── Drag-drop handlers (desktop fallback) ────────────────────────────────
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-  const handleDragLeave = (e: React.DragEvent) => {
+  // ── Drag-drop helpers ──────────────────────────────────────────────────────
+  const handleDragOver  = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
+  const handleDrop      = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-  };
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = Array.from(e.dataTransfer.files)
-      .filter(f => f.type.startsWith("image/"))
-      .slice(0, 5 - photos.length);
-    files.forEach(addPhoto);
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("image/"));
+    // Fill empty required slots first, then extras
+    let fi = 0;
+    for (let si = 0; si < 3 && fi < files.length; si++) {
+      if (!slotPhotos[si]) { activeSlotRef.current = si; handleFileForSlot(files[fi++]); }
+    }
+    while (fi < files.length && extraPhotos.length < 2) {
+      activeSlotRef.current = "extra";
+      handleFileForSlot(files[fi++]);
+    }
   };
 
-  // Capture screen
+  // ══════════════════════════════════════════════════════════════════════════
+  // PHASE: complaint selector
+  // ══════════════════════════════════════════════════════════════════════════
+  if (phase === "complaint") {
+    return (
+      <div className="max-w-lg mx-auto space-y-5 px-4 pb-6">
+        <div className="pt-4">
+          <h1 className="text-3xl font-extrabold tracking-tight">New Assessment</h1>
+          <p className="text-text-secondary text-sm mt-1">What's the complaint? We'll guide your photos.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {COMPLAINT_OPTIONS.map(opt => (
+            <button
+              key={opt.id}
+              onClick={() => {
+                setComplaintType(opt.id);
+                setPhase("capture");
+              }}
+              className="bg-white border-2 border-gray-200 hover:border-green-500 rounded-2xl p-4 text-left transition-all active:scale-95 focus:outline-none"
+            >
+              <div className="text-3xl mb-2">{opt.icon}</div>
+              <p className="font-bold text-gray-900 text-sm leading-tight">{opt.label}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{opt.sub}</p>
+            </button>
+          ))}
+        </div>
+
+        <p className="text-center text-xs text-gray-400">Tap a complaint to continue</p>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // PHASE: capture — guided 3-slot photo flow
+  // ══════════════════════════════════════════════════════════════════════════
+  const slotConfigs = getSlotConfig(complaintType);
+  const selectedComplaint = COMPLAINT_OPTIONS.find(o => o.id === complaintType);
+
   return (
-    <div className="max-w-lg mx-auto space-y-4 px-4 pb-4">
+    <div className="max-w-lg mx-auto space-y-4 px-4 pb-6">
+
+      {/* Shared file inputs — one camera, one file picker; slot tracked via activeSlotRef */}
+      <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
+        onChange={e => { Array.from(e.target.files || []).forEach(f => handleFileForSlot(f)); e.target.value = ""; }} />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFileForSlot(f); e.target.value = ""; }} />
+
       {/* Offline queued banner */}
       {offlineQueued && (
         <div className="flex items-center gap-3 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 mt-2">
           <span className="text-base">📡</span>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-yellow-900">Saved for when you&apos;re back online</p>
-            <p className="text-xs text-yellow-700">
-              {pendingCount} assessment{pendingCount !== 1 ? "s" : ""} will upload automatically when connected.
-            </p>
+            <p className="text-xs text-yellow-700">{pendingCount} assessment{pendingCount !== 1 ? "s" : ""} will upload automatically when connected.</p>
           </div>
         </div>
       )}
 
-      {/* Draft Recovery Banner */}
+      {/* Draft recovery */}
       {draftRecovery && (
         <div className="flex items-center gap-3 bg-brand-gold-light border border-brand-gold rounded-xl px-4 py-3 mt-2">
           <span className="text-base">📋</span>
@@ -718,334 +651,216 @@ export default function AssessPage() {
             <p className="text-xs font-bold text-text-primary">Unsaved draft found</p>
             <p className="text-xs text-text-secondary truncate">{draftRecovery.address}</p>
           </div>
-          <button
-            onClick={() => {
-              setAddress(draftRecovery.address);
-              setCustomerName(draftRecovery.customerName || "");
-              setDraftRecovery(null);
-            }}
-            className="text-xs font-bold text-brand-orange hover:underline flex-shrink-0"
-          >
-            Continue
-          </button>
-          <button
-            onClick={() => {
-              localStorage.removeItem(DRAFT_KEY);
-              setDraftRecovery(null);
-            }}
-            className="text-xs text-text-secondary hover:text-text-primary flex-shrink-0"
-          >
-            Discard
-          </button>
+          <button onClick={() => { setAddress(draftRecovery.address); setCustomerName(draftRecovery.customerName || ""); setDraftRecovery(null); }} className="text-xs font-bold text-brand-orange hover:underline flex-shrink-0">Continue</button>
+          <button onClick={() => { localStorage.removeItem(DRAFT_KEY); setDraftRecovery(null); }} className="text-xs text-text-secondary hover:text-text-primary flex-shrink-0">Discard</button>
         </div>
       )}
 
       {/* Header */}
-      <div className="pt-2">
-        <h1 className="text-3xl font-extrabold tracking-tight">New Assessment</h1>
-        <p className="text-text-secondary text-sm mt-1">
-          Photo → AI analysis in under 15 seconds
-        </p>
+      <div className="pt-2 flex items-center gap-3">
+        <button onClick={() => setPhase("complaint")} className="text-sm text-gray-500 hover:text-gray-800 transition-colors">← Back</button>
+        <div className="flex-1">
+          <h1 className="text-2xl font-extrabold tracking-tight">
+            {selectedComplaint ? `${selectedComplaint.icon} ${selectedComplaint.label}` : "New Assessment"}
+          </h1>
+          <p className="text-text-secondary text-xs mt-0.5">Take 3 photos below — usually done in 60 seconds</p>
+        </div>
       </div>
 
-      {/* Camera or upload area */}
-      {usingCamera ? (
+      {/* ── Desktop camera stream (shown when active) ── */}
+      {usingCamera && (
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            className="w-full aspect-video object-cover bg-gray-900"
-          />
+          <video ref={videoRef} autoPlay playsInline className="w-full aspect-video object-cover bg-gray-900" />
           <div className="p-3 flex gap-2">
-            <button
-              onClick={capturePhoto}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:5,verticalAlign:"middle"}}><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>Capture ({photos.length}/5)
+            <button onClick={capturePhoto} className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:5,verticalAlign:"middle"}}><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>Capture Photo
             </button>
-            <button
-              onClick={stopCamera}
-              className="px-4 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-semibold transition-colors"
-            >
-              Done
-            </button>
+            <button onClick={stopCamera} className="px-4 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-semibold transition-colors">Done</button>
           </div>
-        </div>
-      ) : (
-        <div
-          className="bg-white border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors"
-          style={{ borderColor: isDragging ? "#1a8754" : "#d1d5db", background: isDragging ? "rgba(26,135,84,.04)" : "white" }}
-          onClick={() => fileInputRef.current?.click()}
-          onDragOver={handleDragOver}
-          onDragEnter={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        >
-          <div className="mb-3 flex justify-center">
-            {isDragging ? (
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#1a8754" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
-                <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
-              </svg>
-            ) : (
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-            )}
-          </div>
-          <p className="font-bold text-gray-900 mb-1">
-            {isDragging ? "Drop photos here" : "Add Equipment Photos"}
-          </p>
-          <p className="text-sm text-gray-600 mb-4">
-            1–5 photos. Include the data plate if visible.
-            <span className="hidden md:inline"> Or drag &amp; drop files here.</span>
-          </p>
-          <div className="flex gap-2 justify-center">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                // On mobile: use native camera capture input (rear camera directly)
-                // On desktop: fall back to getUserMedia stream
-                if (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
-                  cameraInputRef.current?.click();
-                } else {
-                  startCamera();
-                }
-              }}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl text-sm transition-colors"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:"inline",marginRight:5,verticalAlign:"middle"}}><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>Camera
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                fileInputRef.current?.click();
-              }}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 font-semibold rounded-xl text-sm transition-colors"
-            >
-              Choose Files
-            </button>
-          </div>
-          {/* Standard file picker */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) =>
-              Array.from(e.target.files || [])
-                .slice(0, 5 - photos.length)
-                .forEach(addPhoto)
-            }
-          />
-          {/* Mobile rear camera — capture="environment" opens native camera directly */}
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) addPhoto(file);
-              e.target.value = "";
-            }}
-          />
         </div>
       )}
 
-      {/* Photo thumbnails */}
-      {previewUrls.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto py-1">
-          {previewUrls.map((url, i) => (
-            <div key={i} className="relative flex-shrink-0">
-              <img
-                src={url}
-                alt=""
-                className="w-20 h-20 object-cover rounded-xl"
-              />
-              <button
-                onClick={() => removePhoto(i)}
-                className="absolute -top-2 -right-2 w-5 h-5 bg-red-600 text-white rounded-full text-xs flex items-center justify-center font-bold hover:bg-red-700 transition-colors"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          {photos.length < 5 && (
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center flex-shrink-0 text-2xl text-gray-500 hover:border-green-500 transition-colors"
+      {/* ── 3 Required Photo Slots ── */}
+      <div className="space-y-3">
+        {slotConfigs.map(({ slot, icon, label, hint }) => {
+          const filled   = slotPhotos[slot] !== null;
+          const preview  = slotPreviews[slot];
+
+          return (
+            <div
+              key={slot}
+              className={`bg-white border-2 rounded-2xl overflow-hidden transition-colors ${filled ? "border-green-400" : "border-gray-200"}`}
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
-              +
+              {filled && preview ? (
+                /* Filled state */
+                <div className="flex items-center gap-3 p-3">
+                  <div className="relative flex-shrink-0">
+                    <img src={preview} alt="" className="w-16 h-16 object-cover rounded-xl" />
+                    <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">✓</div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="w-5 h-5 rounded-full bg-green-100 text-green-700 text-xs font-black flex items-center justify-center">{slot + 1}</span>
+                      <span className="text-xs font-mono font-bold text-green-700 uppercase tracking-wide">✓ {label}</span>
+                    </div>
+                    <p className="text-xs text-gray-500">Photo captured</p>
+                  </div>
+                  <button onClick={() => clearSlot(slot)} className="text-xs text-red-400 hover:text-red-600 font-semibold px-2 py-1 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0">Retake</button>
+                </div>
+              ) : (
+                /* Empty state */
+                <div className="p-4">
+                  <div className="flex items-start gap-3 mb-3">
+                    <div className="flex-shrink-0 text-2xl leading-none mt-0.5">{icon}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="w-5 h-5 rounded-full bg-gray-100 text-gray-500 text-xs font-black flex items-center justify-center">{slot + 1}</span>
+                        <span className="text-sm font-bold text-gray-900">Photo {slot + 1} — {label}</span>
+                        <span className="text-xs bg-red-100 text-red-600 rounded px-1.5 py-0.5 font-semibold ml-1">Required</span>
+                      </div>
+                      <p className="text-xs text-gray-500 leading-relaxed">{hint}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => triggerSlotCapture(slot)}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                      Take Photo
+                    </button>
+                    <button
+                      onClick={() => triggerSlotFile(slot)}
+                      className="px-3 bg-gray-100 hover:bg-gray-200 border border-gray-300 font-semibold rounded-xl text-sm transition-colors text-gray-700"
+                    >
+                      Upload
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Optional extra photos ── */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-4">
+        {/* Header row */}
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <p className="text-sm font-bold text-gray-900">Add photos your homeowner will see</p>
+            <p className="text-xs text-gray-500">Optional · up to 2 more · higher accuracy</p>
+          </div>
+          {extraPhotos.length < 2 && (
+            <button
+              onClick={() => triggerSlotCapture("extra")}
+              className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg px-2.5 py-1.5 transition-colors"
+            >
+              <span className="text-base leading-none">+</span> Add
             </button>
           )}
         </div>
-      )}
 
-      {/* Property/customer info section */}
+        {/* Confidence meter */}
+        <div className="space-y-1 mb-3">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-gray-500">Estimate accuracy</span>
+            <span className={`font-mono font-bold ${confidencePct >= 80 ? "text-green-600" : confidencePct >= 60 ? "text-yellow-600" : "text-gray-400"}`}>
+              {allRequiredFilled ? `~${confidencePct}%` : "–"}
+            </span>
+          </div>
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${confidencePct >= 80 ? "bg-green-500" : confidencePct >= 60 ? "bg-yellow-400" : "bg-gray-300"}`}
+              style={{ width: allRequiredFilled ? `${confidencePct}%` : "0%" }}
+            />
+          </div>
+        </div>
+
+        {/* Extra photo thumbnails */}
+        {extraPreviews.length > 0 && (
+          <div className="flex gap-2">
+            {extraPreviews.map((url, i) => (
+              <div key={i} className="relative flex-shrink-0">
+                <img src={url} alt="" className="w-16 h-16 object-cover rounded-xl" />
+                <button onClick={() => removeExtra(i)} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center font-bold hover:bg-red-600">×</button>
+              </div>
+            ))}
+            {extraPhotos.length < 2 && (
+              <button onClick={() => triggerSlotFile("extra")} className="w-16 h-16 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center text-2xl text-gray-400 hover:border-green-400 hover:text-green-500 transition-colors">+</button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Job info ── */}
       <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
-        <p className="text-xs font-mono text-gray-600 uppercase tracking-widest font-bold">
-          Job Info
-        </p>
-
-        {/* Address search */}
+        <p className="text-xs font-mono text-gray-600 uppercase tracking-widest font-bold">Job Info</p>
         <div className="relative">
-          <input
-            type="text"
-            placeholder="Property address (search existing...)"
-            value={address}
-            onChange={(e) => {
-              setAddress(e.target.value);
-              setShowSuggestions(true);
-            }}
+          <input type="text" placeholder="Property address (search existing...)" value={address}
+            onChange={e => { setAddress(e.target.value); setShowSuggestions(true); }}
             onFocus={() => setShowSuggestions(true)}
-            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500 transition-colors"
-          />
+            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500 transition-colors" />
           {showSuggestions && suggestions.length > 0 && (
             <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-xl mt-1 shadow-lg">
-              {suggestions.map((s) => (
-                <button
-                  key={s.id}
-                  onMouseDown={async () => {
-                    setAddress(s.address_line1 || "");
-                    setCustomerName(s.customer_name || "");
-                    setShowSuggestions(false);
-                    setSelectedProperty(s);
-                    // Fetch prior estimates for this property
-                    try {
-                      const priorAuthHeaders = await getAuthHeaders();
-                      const r = await fetch(
-                        `${API_URL}/api/estimates/?property_id=${s.id}&limit=5`,
-                        { headers: priorAuthHeaders }
-                      );
-                      if (r.ok) {
-                        const data = await r.json();
-                        const items = Array.isArray(data.items) ? data.items : Array.isArray(data) ? data : [];
-                        setPriorEstimates(items);
-                      }
-                    } catch {
-                      /* ignore */
-                    }
-                  }}
-                  className="w-full text-left px-3 py-2.5 hover:bg-gray-100 text-sm border-b border-gray-200 last:border-0 transition-colors"
-                >
-                  <p className="font-semibold text-gray-900">
-                    {s.address_line1}
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    {[
-                      s.customer_name,
-                      s.returning_customer && "⚡ Previous visit found",
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
+              {suggestions.map(s => (
+                <button key={s.id} onMouseDown={async () => {
+                  setAddress(s.address_line1 || ""); setCustomerName(s.customer_name || "");
+                  setShowSuggestions(false); setSelectedProperty(s);
+                  try {
+                    const h = await getAuthHeaders();
+                    const r = await fetch(`${API_URL}/api/estimates/?property_id=${s.id}&limit=5`, { headers: h });
+                    if (r.ok) { const d = await r.json(); setPriorEstimates(Array.isArray(d.items) ? d.items : Array.isArray(d) ? d : []); }
+                  } catch { /* ignore */ }
+                }} className="w-full text-left px-3 py-2.5 hover:bg-gray-100 text-sm border-b border-gray-200 last:border-0 transition-colors">
+                  <p className="font-semibold text-gray-900">{s.address_line1}</p>
+                  <p className="text-xs text-gray-600">{[s.customer_name, s.returning_customer && "⚡ Previous visit found"].filter(Boolean).join(" · ")}</p>
                 </button>
               ))}
             </div>
           )}
         </div>
-
-        {/* Name and phone grid */}
         <div className="grid grid-cols-2 gap-2">
-          <input
-            type="text"
-            placeholder="Homeowner name"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500 transition-colors"
-          />
-          <input
-            type="tel"
-            placeholder="Phone number"
-            value={customerPhone}
-            onChange={(e) => setCustomerPhone(e.target.value)}
-            className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500 transition-colors"
-          />
+          <input type="text" placeholder="Homeowner name" value={customerName} onChange={e => setCustomerName(e.target.value)} className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500 transition-colors" />
+          <input type="tel" placeholder="Phone number" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500 transition-colors" />
         </div>
       </div>
 
-      {/* Prior Property History Card */}
+      {/* Prior property history */}
       {selectedProperty && (
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-base">🏠</span>
               <div>
-                <p className="text-xs font-mono text-gray-600 uppercase tracking-widest font-bold">
-                  Returning Customer
-                </p>
-                <p className="text-sm font-bold text-gray-900">
-                  {selectedProperty.customer_name || selectedProperty.address_line1}
-                </p>
+                <p className="text-xs font-mono text-gray-600 uppercase tracking-widest font-bold">Returning Customer</p>
+                <p className="text-sm font-bold text-gray-900">{selectedProperty.customer_name || selectedProperty.address_line1}</p>
               </div>
             </div>
-            <button
-              onClick={() => { setSelectedProperty(null); setPriorEstimates([]); }}
-              className="text-xs text-gray-500 hover:text-gray-700 font-semibold"
-            >
-              ✕
-            </button>
+            <button onClick={() => { setSelectedProperty(null); setPriorEstimates([]); }} className="text-xs text-gray-500 hover:text-gray-700 font-semibold">✕</button>
           </div>
           <div className="p-4">
             {priorEstimates.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-2">
-                No prior estimates on file for this property.
-              </p>
+              <p className="text-sm text-gray-500 text-center py-2">No prior estimates on file for this property.</p>
             ) : (
               <div className="space-y-2">
-                <p className="text-xs text-gray-500 font-semibold mb-2">
-                  Prior Estimates ({priorEstimates.length})
-                </p>
-                {priorEstimates.map((est) => {
-                  const statusColors: Record<string, string> = {
-                    approved: "bg-green-100 text-green-700",
-                    deposit_paid: "bg-green-100 text-green-700",
-                    sent: "bg-blue-100 text-blue-700",
-                    viewed: "bg-blue-100 text-blue-700",
-                    estimated: "bg-yellow-100 text-yellow-700",
-                    draft: "bg-gray-100 text-gray-600",
-                  };
-                  const daysAgo = est.created_at
-                    ? Math.floor((Date.now() - new Date(est.created_at).getTime()) / 86400000)
-                    : null;
+                <p className="text-xs text-gray-500 font-semibold mb-2">Prior Estimates ({priorEstimates.length})</p>
+                {priorEstimates.map(est => {
+                  const statusColors: Record<string, string> = { approved:"bg-green-100 text-green-700", deposit_paid:"bg-green-100 text-green-700", sent:"bg-blue-100 text-blue-700", viewed:"bg-blue-100 text-blue-700", estimated:"bg-yellow-100 text-yellow-700", draft:"bg-gray-100 text-gray-600" };
+                  const daysAgo = est.created_at ? Math.floor((Date.now() - new Date(est.created_at).getTime()) / 86400000) : null;
                   return (
-                    <a
-                      key={est.id}
-                      href={`/estimate/${est.id}`}
-                      className="flex items-center justify-between gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
-                    >
+                    <a key={est.id} href={`/estimate/${est.id}`} className="flex items-center justify-between gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-bold text-gray-900">
-                          {est.report_short_id}
-                        </span>
-                        <span
-                          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                            statusColors[est.status] || "bg-gray-100 text-gray-600"
-                          }`}
-                        >
-                          {est.status.replace(/_/g, " ")}
-                        </span>
+                        <span className="font-mono text-xs font-bold text-gray-900">{est.report_short_id}</span>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusColors[est.status] || "bg-gray-100 text-gray-600"}`}>{est.status.replace(/_/g, " ")}</span>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-gray-500">
-                        {est.total_amount != null && (
-                          <span className="font-mono font-bold text-gray-900">
-                            ${est.total_amount.toLocaleString()}
-                          </span>
-                        )}
-                        {daysAgo != null && (
-                          <span>
-                            {daysAgo === 0
-                              ? "today"
-                              : daysAgo === 1
-                              ? "yesterday"
-                              : `${daysAgo}d ago`}
-                          </span>
-                        )}
+                        {est.total_amount != null && <span className="font-mono font-bold text-gray-900">${est.total_amount.toLocaleString()}</span>}
+                        {daysAgo != null && <span>{daysAgo === 0 ? "today" : daysAgo === 1 ? "yesterday" : `${daysAgo}d ago`}</span>}
                         <span className="text-gray-400">↗</span>
                       </div>
                     </a>
@@ -1057,21 +872,28 @@ export default function AssessPage() {
         </div>
       )}
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600 font-medium">
-          ⚠ {error}
-        </div>
-      )}
+      {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600 font-medium">⚠ {error}</div>}
 
-      {/* Submit button */}
+      {/* ── Progress indicator above submit ── */}
+      <div className="flex items-center gap-2 px-1">
+        {[0,1,2].map(i => (
+          <div key={i} className={`flex-1 h-1.5 rounded-full transition-all duration-300 ${slotPhotos[i] ? "bg-green-500" : "bg-gray-200"}`} />
+        ))}
+        <span className="text-xs font-mono font-semibold text-gray-500 ml-1 whitespace-nowrap">{filledCount}/3 required</span>
+      </div>
+
+      {/* Submit */}
       <button
         onClick={handleSubmit}
-        disabled={!photos.length}
-        className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold py-4 rounded-xl text-base shadow-lg transition-colors"
+        disabled={!allRequiredFilled}
+        className="w-full text-white font-bold py-4 rounded-xl text-base shadow-lg transition-all"
+        style={allRequiredFilled
+          ? { background: "linear-gradient(135deg, #1a8754 0%, #159a5e 100%)", boxShadow: "0 4px 14px rgba(26,135,84,.45)" }
+          : { background: "#d1d5db", boxShadow: "none", cursor: "not-allowed" }}
       >
-        {!photos.length
-          ? "Add Photos to Continue"
-          : `Analyze ${photos.length} Photo${photos.length > 1 ? "s" : ""} →`}
+        {!allRequiredFilled
+          ? `${3 - filledCount} more photo${3 - filledCount !== 1 ? "s" : ""} needed`
+          : `Analyze ${3 + extraPhotos.length} Photo${3 + extraPhotos.length > 1 ? "s" : ""} →`}
       </button>
     </div>
   );
