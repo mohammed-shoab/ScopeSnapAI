@@ -12,7 +12,6 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-const CLERK_FRONTEND_API_HOST = "frontend-api.clerk.services";
 const CLERK_CUSTOM_HOST = "clerk.snapai.mainnov.tech";
 
 // Headers that should not be forwarded to/from Clerk
@@ -34,9 +33,9 @@ async function proxyRequest(
 ): Promise<NextResponse> {
   const path = slug.join("/");
 
-  // Build target URL
+  // Build target URL — use the custom domain directly so TLS SNI matches the cert
   const targetUrl = new URL(
-    `https://${CLERK_FRONTEND_API_HOST}/${path}`
+    `https://${CLERK_CUSTOM_HOST}/${path}`
   );
 
   // Forward query params
@@ -44,10 +43,8 @@ async function proxyRequest(
     targetUrl.searchParams.set(key, value);
   });
 
-  // Build forwarded headers — set Host so Clerk knows which instance this is
-  const forwardHeaders: Record<string, string> = {
-    host: CLERK_CUSTOM_HOST,
-  };
+  // Build forwarded headers
+  const forwardHeaders: Record<string, string> = {};
   request.headers.forEach((value, key) => {
     if (!HOP_BY_HOP.has(key.toLowerCase())) {
       forwardHeaders[key] = value;
