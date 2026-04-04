@@ -469,13 +469,41 @@ def generate_contractor_pdf(
     # Dark green header bar
     p.rect_fill(0, 0, 612, 72, _PdfWriter.GREEN_DARK)
 
-    # Logo box
-    p.rect_fill(M, 14, 38, 38, _PdfWriter.GREEN)
-    p.text(M + 12, 38, "S", size=22, color=_PdfWriter.WHITE, bold=True)
+    # ── Phase 1 Branding: contractor company name/logo in header ─────────────
+    co_name    = company.get("name") or "Your HVAC Company"
+    co_phone   = company.get("phone") or ""
+    co_license = company.get("license_number") or ""
+    co_logo    = company.get("logo_url") or ""
 
-    # Brand name
-    p.text(M + 48, 28, "Scope", size=18, color=_PdfWriter.WHITE, bold=True)
-    p.text(M + 98, 28, "Snap", size=18, color=(0.4, 0.9, 0.6))
+    logo_embedded = False
+    if co_logo:
+        try:
+            jpeg_bytes, px_w, px_h = _fetch_photo(co_logo)
+            if jpeg_bytes and px_w and px_h:
+                # Fit logo into 44×44 square, preserve aspect ratio
+                ratio = min(44 / px_w, 44 / px_h)
+                logo_w = int(px_w * ratio)
+                logo_h = int(px_h * ratio)
+                img_name = p.add_jpeg_image(jpeg_bytes, px_w, px_h)
+                # Center the logo vertically in the 72pt header bar
+                logo_y = (72 - logo_h) // 2
+                p.draw_image(M, logo_y, logo_w, logo_h, img_name)
+                logo_embedded = True
+        except Exception:
+            pass  # Fall back to initial letter
+
+    if not logo_embedded:
+        # Fallback: colored square with company initial
+        initial = co_name[0].upper() if co_name else "?"
+        p.rect_fill(M, 14, 38, 38, _PdfWriter.GREEN)
+        p.text(M + (12 if len(initial) == 1 else 8), 38, initial, size=22, color=_PdfWriter.WHITE, bold=True)
+
+    # Company name in header (right of logo)
+    name_x = M + 50
+    # Truncate long names to fit in header
+    display_name = co_name[:30] + ("…" if len(co_name) > 30 else "")
+    p.text(name_x, 26, display_name, size=15, color=_PdfWriter.WHITE, bold=True)
+    p.text(name_x, 44, "HVAC Estimate", size=9, color=(0.6, 0.85, 0.7))
 
     # Estimate ID + Date (top right)
     p.text_right(RX, 25, f"ESTIMATE  #{short_id}", size=9, color=(0.8, 0.95, 0.85))
@@ -484,10 +512,6 @@ def generate_contractor_pdf(
     y = 90
 
     # ── Company info row ──────────────────────────────────────────────────────
-    co_name = company.get("name") or "Your HVAC Company"
-    co_phone = company.get("phone") or ""
-    co_license = company.get("license_number") or ""
-
     p.text(M, y, co_name, size=13, bold=True)
     info_parts = [x for x in [co_phone, f"License #{co_license}" if co_license else ""] if x]
     if info_parts:

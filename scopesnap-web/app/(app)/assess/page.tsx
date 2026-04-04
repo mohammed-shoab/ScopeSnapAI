@@ -95,8 +95,11 @@ export default function AssessPage() {
   const [offlineQueued, setOfflineQueued] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
 
-  // Draft recovery on mount + offline queue check
+  // Draft recovery on mount + offline queue check + track session start
   useEffect(() => {
+    // SOW Task 1.10 — Bezos req: track assessment session started
+    track.assessmentStarted();
+
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
@@ -216,6 +219,8 @@ export default function AssessPage() {
       setError("Add at least 1 photo of the equipment.");
       return;
     }
+    // SOW Task 1.10 — track submission attempt with photo count
+    track.assessmentSubmitted(photos.length);
     setError(null);
     setPhase("uploading");
     setUploadProgress(0);
@@ -314,7 +319,10 @@ export default function AssessPage() {
         const detail = await an.json().then(d => d.detail).catch(() => "Analysis failed");
         throw new Error(detail || "AI analysis failed. Try again.");
       }
-      setAssessment(await an.json());
+      const assessmentResult = await an.json();
+      setAssessment(assessmentResult);
+      // SOW Task 1.10 — track successful AI analysis completion
+      track.assessmentCompleted(assessmentResult.id);
       // Clear the draft now that assessment is created
       try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       setPhase("results");
@@ -341,6 +349,8 @@ export default function AssessPage() {
       if (!r.ok)
         throw new Error((await r.json()).detail || "Generate failed");
       const est = await r.json();
+      // SOW Task 1.10 — track estimate generation with total value
+      track.estimateGenerated(est.id, est.total_amount || 0);
       router.push(`/estimate/${est.id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error");

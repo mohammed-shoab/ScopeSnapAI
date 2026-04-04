@@ -14,7 +14,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -339,7 +339,23 @@ async def get_estimate(
     if not estimate:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Estimate not found")
 
-    return _estimate_to_dict(estimate)
+    data = _estimate_to_dict(estimate)
+
+    # Attach homeowner view count from app_events (report_viewed events)
+    try:
+        vc_result = await db.execute(
+            text(
+                "SELECT COUNT(*) FROM app_events "
+                "WHERE event_name = 'report_viewed' "
+                "AND event_data->>'report_short_id' = :short_id"
+            ),
+            {"short_id": estimate.report_short_id},
+        )
+        data["view_count"] = int(vc_result.scalar_one() or 0)
+    except Exception:
+        data["view_count"] = 0
+
+    return data
 
 
 # ── PATCH /api/estimates/{id} ─────────────────────────────────────────────────
@@ -608,6 +624,7 @@ async def generate_documents(
             "phone": company.phone if company else "",
             "email": company.email if company else "",
             "license_number": company.license_number if company else "",
+            "logo_url": company.logo_url if company else None,  # Phase 1 branding
         },
         "property": property_data,
         "equipment": equipment_data,

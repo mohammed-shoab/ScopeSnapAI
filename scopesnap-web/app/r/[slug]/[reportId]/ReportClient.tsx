@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DataConfidenceLabel from "@/components/DataConfidenceLabel";
+import { track } from "@/lib/tracking";
 
 /**
  * ReportQRCode — SOW Task 1.9 (Zuckerberg requirement)
@@ -366,6 +367,11 @@ export default function ReportClient({ report }: { report: Report }) {
   const [approvedTier, setApprovedTier] = useState<string | undefined>(report.selected_option);
   const [error, setError] = useState<string | null>(null);
 
+  // SOW Task 1.10 — track homeowner report view on mount
+  useEffect(() => {
+    track.reportViewed(report.report_short_id);
+  }, [report.report_short_id]);
+
   const condition = report.equipment?.condition?.toLowerCase() || "unknown";
   const conditionColor = CONDITION_COLORS[condition] || "#7a7770";
   const selectedOption = report.options?.find((o) => o.tier === selectedTier);
@@ -420,23 +426,40 @@ export default function ReportClient({ report }: { report: Report }) {
           zIndex: 10,
         }}
       >
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 10,
-            background: "#1a8754",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white",
-            fontWeight: 800,
-            fontSize: 18,
-            flexShrink: 0,
-          }}
-        >
-          {company.name ? company.name[0].toUpperCase() : "S"}
-        </div>
+        {/* Phase 1 branding: show contractor logo or fallback to initial */}
+        {company.logo_url ? (
+          <img
+            src={company.logo_url}
+            alt={company.name || "Company logo"}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              objectFit: "contain",
+              background: "#f7f6f2",
+              border: "1px solid #e5e2da",
+              flexShrink: 0,
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: "#1a8754",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "white",
+              fontWeight: 800,
+              fontSize: 18,
+              flexShrink: 0,
+            }}
+          >
+            {company.name ? company.name[0].toUpperCase() : "S"}
+          </div>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{company.name || "Your HVAC Company"}</h3>
           <p style={{ fontSize: 10, color: "#7a7770", margin: 0 }}>
@@ -965,7 +988,7 @@ export default function ReportClient({ report }: { report: Report }) {
           <span style={{ color: "#c8c4bc" }}>
             Verified Assessment by{" "}
             <a
-              href="https://scopesnap.ai"
+              href="https://snapai.mainnov.tech"
               style={{ color: "#1a8754", fontWeight: 700, textDecoration: "none" }}
             >
               SnapAI
@@ -973,7 +996,7 @@ export default function ReportClient({ report }: { report: Report }) {
           </span>
           <br />
           <span style={{ color: "#b0aca4" }}>
-            Professional HVAC assessments for contractors &mdash; scopesnap.ai
+            Professional HVAC assessments for contractors — snapai.mainnov.tech
           </span>
           {/* QR code — Zuckerberg req: homeowner scans to re-open report on any device */}
           {/* UTM params: utm_source=report&utm_medium=qr for attribution tracking */}

@@ -14,6 +14,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
+import { trackEvent } from "@/lib/tracking";
 import PresentMode from "@/components/PresentMode";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
@@ -73,6 +74,8 @@ interface EstimateData {
   contractor_pdf_url?: string;
   homeowner_report_url?: string;
   created_at?: string;
+  viewed_at?: string;
+  view_count?: number;
 }
 
 function fmt(n?: number) {
@@ -365,6 +368,8 @@ export default function EstimatePage() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Feedback loop — "Did you send as-is or adjust?" (Zuckerberg req: estimate quality signal)
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -462,8 +467,11 @@ export default function EstimatePage() {
         const body = await r.json().catch(() => ({}));
         throw new Error(body.detail || `Send failed (${r.status})`);
       }
+      // SOW Task 1.10 — track successful email send
+      trackEvent("email_sent", { estimate_id: id, homeowner_name: homeownerName });
       setSent(true);
     } catch (e: unknown) {
+      trackEvent("email_failed", { estimate_id: id });
       setError(e instanceof Error ? e.message : "Send failed. Check connection and try again.");
     } finally {
       setSending(false);
@@ -1072,6 +1080,17 @@ export default function EstimatePage() {
                 <div className="flex items-center gap-2 text-sm text-brand-green font-semibold">
                   <span className="text-lg">â</span> Documents ready
                 </div>
+                {/* View count — Zuckerberg req: show contractor when homeowner views */}
+                {estimate.view_count !== undefined && (
+                  <div className="flex items-center gap-2 text-xs rounded-lg px-3 py-2 bg-surface-secondary">
+                    <span className="text-base">{estimate.view_count > 0 ? "👀" : "⏳"}</span>
+                    <span className="text-text-secondary">
+                      {estimate.view_count > 0
+                        ? <><strong className="text-text-primary">Homeowner</strong>{" viewed the report "}<strong className="text-brand-green">{estimate.view_count}x</strong></>
+                        : "Not yet viewed by homeowner"}
+                    </span>
+                  </div>
+                )}
                 {estimate.contractor_pdf_url && (
                   <a
                     href={estimate.contractor_pdf_url?.startsWith('http') ? estimate.contractor_pdf_url : `${API_URL}${estimate.contractor_pdf_url}`}
@@ -1151,6 +1170,39 @@ export default function EstimatePage() {
                   <p className="text-sm text-text-secondary mt-1">{homeownerName} will receive their report shortly.</p>
                 )}
               </div>
+
+              {/* ── Feedback Loop (Zuckerberg req: estimate quality signal) ── */}
+              {!feedbackSubmitted ? (
+                <div className="bg-surface-secondary rounded-xl p-4 text-left space-y-3">
+                  <p className="text-sm font-semibold text-text-primary">Quick question — did you adjust the estimate?</p>
+                  <p className="text-xs text-text-secondary">Helps us improve AI accuracy for your next job.</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        trackEvent("estimate_feedback", { estimate_id: id, adjusted: false, decision: "sent_as_is" });
+                        setFeedbackSubmitted(true);
+                      }}
+                      className="flex-1 py-2.5 text-sm font-semibold rounded-xl border border-surface-border bg-white hover:bg-surface-secondary transition-colors"
+                    >
+                      ✓ Sent as-is
+                    </button>
+                    <button
+                      onClick={() => {
+                        trackEvent("estimate_feedback", { estimate_id: id, adjusted: true, decision: "adjusted" });
+                        setFeedbackSubmitted(true);
+                      }}
+                      className="flex-1 py-2.5 text-sm font-semibold rounded-xl border border-brand-green text-brand-green bg-white hover:bg-green-50 transition-colors"
+                    >
+                      ✏ Adjusted it
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-text-secondary bg-surface-secondary rounded-xl py-2.5 px-4">
+                  Thanks — that helps us learn.
+                </p>
+              )}
+
               <p className="text-xs text-text-secondary">
                 Auto follow-ups: 24h if not viewed &middot; 48h if viewed &middot; 7 days final check-in.
               </p>
