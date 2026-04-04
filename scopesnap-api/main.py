@@ -1,5 +1,5 @@
 """
-ScopeSnap API — FastAPI Application Entry Point
+SnapAI API — FastAPI Application Entry Point
 
 Run locally: uvicorn main:app --reload --port 8000
 API docs:    http://localhost:8000/docs
@@ -26,7 +26,7 @@ settings = get_settings()
 
 # ── App Setup ─────────────────────────────────────────────────────────────────
 app = FastAPI(
-    title="ScopeSnap API",
+    title="SnapAI API",
     description="AI-powered HVAC estimation platform for contractors",
     version="0.1.0",
     docs_url="/docs" if settings.is_development else None,
@@ -39,6 +39,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         settings.frontend_url,
+        "https://snapai.mainnov.tech",
+        "https://scope-snap-ai.vercel.app",  # keep old domain during transition
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
@@ -94,7 +96,7 @@ async def health_check():
 @app.get("/", tags=["system"])
 async def root():
     return {
-        "name": "ScopeSnap API",
+        "name": "SnapAI API",
         "version": "0.1.0",
         "docs": "http://localhost:8000/docs",
         "health": "http://localhost:8000/health",
@@ -105,7 +107,7 @@ async def root():
 @app.on_event("startup")
 async def on_startup():
     print(f"\n{'='*50}")
-    print(f"  ScopeSnap API starting up")
+    print(f"  SnapAI API starting up")
     print(f"  Environment: {settings.environment}")
     print(f"  Database: {settings.database_url[:50]}...")
     if settings.is_development:

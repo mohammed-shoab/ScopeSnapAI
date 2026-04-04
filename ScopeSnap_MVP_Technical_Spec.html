@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ScopeSnap — MVP Technical Specification</title>
+<title>SnapAI — MVP Technical Specification</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 :root {
@@ -77,13 +77,13 @@ td{padding:8px 10px;border:1px solid var(--b);vertical-align:top}
 <body>
 <div class="wrap">
 
-<h1>ScopeSnap — MVP Technical Specification</h1>
+<h1>SnapAI — MVP Technical Specification</h1>
 <p class="sub">The bridge from prototype to production code. Every API endpoint, every database table, every AI prompt.</p>
 
 <div class="ver">
 <strong>VERSION:</strong> V1.1 — March 21, 2026<br>
 <strong>STATUS:</strong> Draft — Pre-development<br>
-<strong>COMPANION FILES:</strong> ScopeSnap_Product_Bible.html (strategy), ScopeSnap_Prototype_Demo.html (tech app), ScopeSnap_Owner_Dashboard.html (owner dashboard), ScopeSnap_Homeowner_Report.html (homeowner report)<br>
+<strong>COMPANION FILES:</strong> SnapAI_Product_Bible.html (strategy), SnapAI_Prototype_Demo.html (tech app), SnapAI_Owner_Dashboard.html (owner dashboard), SnapAI_Homeowner_Report.html (homeowner report)<br>
 <strong>SCOPE:</strong> MVP (Days 1-30) + P1 Features (Days 31-60). Does NOT cover LeakSense (Phase 2) or BenchmarkIQ (Phase 3) — those have separate specs when ready.<br>
 <strong>PRINCIPLE:</strong> Deterministic for execution, AI for interpretation. Never use an LLM for something a SQL query or formula can answer.<br>
 <strong>INFRASTRUCTURE PRINCIPLE:</strong> Build locally first, deploy to cloud when ready. $0/month until first paying customer. Scale on Google Cloud Run — pays per request, not per hour.
@@ -293,7 +293,7 @@ model = genai.GenerativeModel(<span class="str">"gemini-2.5-flash"</span>)</code
 </table>
 </div>
 
-<div class="ok"><strong>KEY INSIGHT:</strong> Cloud Run is the reason this stack stays cheap at scale. HVAC contractors use ScopeSnap during business hours (7am-6pm). Cloud Run scales to zero during the 12+ hours of dead time. Railway, EC2, and traditional hosting charge 24/7. At 2,000 users, Cloud Run's per-request model saves ~$50-100/month vs always-on alternatives. The saving grows as you scale because dead-hours traffic never increases proportionally.</div>
+<div class="ok"><strong>KEY INSIGHT:</strong> Cloud Run is the reason this stack stays cheap at scale. HVAC contractors use SnapAI during business hours (7am-6pm). Cloud Run scales to zero during the 12+ hours of dead time. Railway, EC2, and traditional hosting charge 24/7. At 2,000 users, Cloud Run's per-request model saves ~$50-100/month vs always-on alternatives. The saving grows as you scale because dead-hours traffic never increases proportionally.</div>
 
 <h3>Cloud Run Deployment (When Ready)</h3>
 <pre><code><span class="cm"># Dockerfile for FastAPI (this is all you need)</span>
@@ -318,7 +318,7 @@ gcloud run deploy scopesnap-api \
 <span class="cm"># That's it. Auto-scales 0→10 instances. Scales to zero when idle.</span>
 <span class="cm"># Set billing alert at $1 to catch any surprises:</span>
 gcloud billing budgets create --billing-account=ACCT_ID \
-  --display-name="ScopeSnap Alert" \
+  --display-name="SnapAI Alert" \
   --budget-amount=1.00USD</code></pre>
 
 <div class="warn"><strong>BILLING SAFETY:</strong> Google Cloud requires a credit card even for free tier. Set up a $1 billing alert immediately after creating the account. Cloud Run's free tier is permanent (not a trial), but a billing alert catches any unexpected overages from misconfiguration. Also: disable any services you're not using (Cloud SQL, Compute Engine, etc.) to avoid accidental charges.</div>
@@ -782,7 +782,7 @@ CREATE POLICY company_isolation ON assessments
 <!-- ============================================================ -->
 <div class="sec" id="s4">
 <h2>04 — Vision AI — Prompt Engineering</h2>
-<p>The single most important piece of code in the entire product. This prompt determines whether ScopeSnap identifies "Carrier 24ACC636" or returns "air conditioner."</p>
+<p>The single most important piece of code in the entire product. This prompt determines whether SnapAI identifies "Carrier 24ACC636" or returns "air conditioner."</p>
 
 <div class="warn"><strong>PROMPT ENGINEERING IS ITERATIVE.</strong> These are V1 prompts. They WILL need tuning after real field testing. The structure and approach are right; the specific instructions will evolve. Every prompt change should be A/B tested against a labeled dataset of at least 50 equipment photos.</div>
 
@@ -1138,7 +1138,7 @@ CARRIER_YEAR_MAP = {
 
 <h3>Products & Prices</h3>
 <pre><code><span class="cm"># Create in Stripe Dashboard (one-time setup)</span>
-Product: ScopeSnap
+Product: SnapAI
   Price: Free         — $0/mo  (no Stripe subscription, just count in DB)
   Price: Early Bird   — $9.99/mo  (stripe_price_id: price_early_bird_monthly)
   Price: Pro          — $149/mo   (stripe_price_id: price_pro_monthly)
@@ -1190,12 +1190,12 @@ Product: Estimate Deposit
 <table>
 <thead><tr><th>Template</th><th>Trigger</th><th>From</th><th>Subject</th></tr></thead>
 <tbody>
-<tr><td>estimate_sent</td><td>Tech taps "Send"</td><td>ABC HVAC via ScopeSnap</td><td>Your AC Equipment Health Report — {address}</td></tr>
-<tr><td>reminder_24h</td><td>Scheduled (24h after send)</td><td>ABC HVAC via ScopeSnap</td><td>Quick follow-up: Your AC report for {address}</td></tr>
-<tr><td>reminder_48h</td><td>Scheduled (48h after send)</td><td>ABC HVAC via ScopeSnap</td><td>Your options are still available — {address}</td></tr>
-<tr><td>reminder_7d</td><td>Scheduled (7d after send)</td><td>ABC HVAC via ScopeSnap</td><td>Last chance: Your AC estimate expires soon</td></tr>
-<tr><td>deposit_receipt</td><td>Stripe payment success</td><td>ABC HVAC via ScopeSnap</td><td>Deposit received — {company} will schedule your {job_type}</td></tr>
-<tr><td>tech_notification</td><td>Customer views/approves</td><td>ScopeSnap</td><td>Sarah Johnson viewed your estimate / approved Option B</td></tr>
+<tr><td>estimate_sent</td><td>Tech taps "Send"</td><td>ABC HVAC via SnapAI</td><td>Your AC Equipment Health Report — {address}</td></tr>
+<tr><td>reminder_24h</td><td>Scheduled (24h after send)</td><td>ABC HVAC via SnapAI</td><td>Quick follow-up: Your AC report for {address}</td></tr>
+<tr><td>reminder_48h</td><td>Scheduled (48h after send)</td><td>ABC HVAC via SnapAI</td><td>Your options are still available — {address}</td></tr>
+<tr><td>reminder_7d</td><td>Scheduled (7d after send)</td><td>ABC HVAC via SnapAI</td><td>Last chance: Your AC estimate expires soon</td></tr>
+<tr><td>deposit_receipt</td><td>Stripe payment success</td><td>ABC HVAC via SnapAI</td><td>Deposit received — {company} will schedule your {job_type}</td></tr>
+<tr><td>tech_notification</td><td>Customer views/approves</td><td>SnapAI</td><td>Sarah Johnson viewed your estimate / approved Option B</td></tr>
 </tbody>
 </table>
 </div>
@@ -1268,7 +1268,7 @@ Product: Estimate Deposit
 <tr><td><strong>Week 9</strong></td><td>Google Ads launch</td><td>Turn on campaigns. $30-50/day budget. Monitor CPA. A/B test landing page headlines. Track: impression → click → signup → estimate → paid conversion.</td><td>Ads running. First organic signups arriving from SEO calculators.</td></tr>
 <tr><td><strong>Week 10</strong></td><td>Community seeding + Content</td><td>First posts on HVAC-Talk, Reddit r/HVAC. Publish first 3 blog posts. First YouTube demo video. Upwork network warm outreach (5-10 emails to past HVAC clients).</td><td>Active presence in 2+ HVAC communities. 3 blog posts live. 1 YouTube video.</td></tr>
 <tr><td><strong>Week 11</strong></td><td>Iterate based on real usage data</td><td>Analyze: which equipment models is the AI getting wrong? Which pricing is off? What do techs override most? Update prompts, pricing defaults, and equipment DB based on real data.</td><td>AI accuracy improved by measurable amount (tracked via tech_overrides reduction).</td></tr>
-<tr><td><strong>Week 12</strong></td><td>Hit 3-5 paying customers</td><td>This is the milestone. Not 50. Not 100. Just 3-5 real HVAC contractors paying $9.99/month and using ScopeSnap on real jobs. If we have this, the product has legs.</td><td>3+ paying customers. 50+ real estimates generated. First homeowner report approved + deposit paid through the system.</td></tr>
+<tr><td><strong>Week 12</strong></td><td>Hit 3-5 paying customers</td><td>This is the milestone. Not 50. Not 100. Just 3-5 real HVAC contractors paying $9.99/month and using SnapAI on real jobs. If we have this, the product has legs.</td><td>3+ paying customers. 50+ real estimates generated. First homeowner report approved + deposit paid through the system.</td></tr>
 </tbody>
 </table>
 </div>
@@ -1278,9 +1278,9 @@ Product: Estimate Deposit
 
 <!-- FOOTER -->
 <div class="ft">
-ScopeSnap MVP Technical Specification — V1.1 — March 21, 2026<br>
+SnapAI MVP Technical Specification — V1.1 — March 21, 2026<br>
 Mainnov Tech — Confidential — For internal development use only<br>
-Companion to: ScopeSnap Product Bible V1.9<br>
+Companion to: SnapAI Product Bible V1.9<br>
 <strong style="color:var(--g)">BUILD PRINCIPLE:</strong> Develop locally. Deploy to cloud when ready. $0/month until revenue. Ship something every Friday.
 </div>
 

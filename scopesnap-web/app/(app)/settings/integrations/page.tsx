@@ -5,7 +5,7 @@ export default function IntegrationsPage() {
     <ComingSoonPage
       icon="🔗"
       title="Integrations"
-      description="Connect ScopeSnap to your existing tools — CRMs, accounting software, and field service platforms."
+      description="Connect SnapAI to your existing tools — CRMs, accounting software, and field service platforms."
       features={[
         "ServiceTitan two-way sync",
         "QuickBooks Online invoice export",

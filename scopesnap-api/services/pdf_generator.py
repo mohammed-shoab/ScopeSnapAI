@@ -1,5 +1,5 @@
 """
-ScopeSnap — PDF Generator (Pure Python, zero system dependencies)
+SnapAI — PDF Generator (Pure Python, zero system dependencies)
 
 Generates the contractor-facing PDF estimate using a hand-written PDF writer.
 No WeasyPrint, no Cairo, no Pango — works in any Python environment.
@@ -374,7 +374,7 @@ def _fetch_and_annotate_photo(photo_url: str, issues: list, max_w: int = 516):
             return None
 
         # ── Fetch ─────────────────────────────────────────────────────────────
-        req = _urlreq.Request(photo_url, headers={"User-Agent": "ScopeSnap-PDF/1.0"})
+        req = _urlreq.Request(photo_url, headers={"User-Agent": "SnapAI-PDF/1.0"})
         with _urlreq.urlopen(req, timeout=10) as resp:
             img_bytes = resp.read()
 
@@ -762,7 +762,7 @@ def _draw_footer(p: _PdfWriter, M: float, RX: float, co_name: str, co_phone: str
     footer_parts = [co_name]
     if co_phone:
         footer_parts.append(co_phone)
-    footer_parts.append("Powered by ScopeSnap")
+    footer_parts.append("Powered by SnapAI")
     p.text(M, footer_y + 15, "  ·  ".join(footer_parts), size=8, color=_PdfWriter.WHITE)
     p.text_right(RX, footer_y + 15, f"#{short_id}  ·  {today}", size=8, color=(0.8, 0.95, 0.85))
 

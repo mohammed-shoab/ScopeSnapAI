@@ -1,5 +1,5 @@
 /**
- * ScopeSnap — Public Homeowner Report (SSR)
+ * SnapAI — Public Homeowner Report (SSR)
  * WP-06: Full implementation.
  *
  * This page is PUBLIC — no auth required.

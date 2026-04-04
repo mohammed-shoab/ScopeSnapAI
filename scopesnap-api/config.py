@@ -1,5 +1,5 @@
 """
-ScopeSnap — Application Configuration
+SnapAI — Application Configuration
 Reads all settings from environment variables / .env file.
 Uses pydantic-settings for type-safe config with validation.
 """

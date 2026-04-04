@@ -1,5 +1,5 @@
 """
-ScopeSnap — Database Connection & Session Management
+SnapAI — Database Connection & Session Management
 AsyncSession with SQLAlchemy 2.0 async engine.
 Supports both PostgreSQL (production) and SQLite (local testing).
 """

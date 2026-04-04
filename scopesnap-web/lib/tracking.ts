@@ -1,5 +1,5 @@
 /**
- * ScopeSnap — Event Tracking Utility
+ * SnapAI — Event Tracking Utility
  * SOW Task 1.10: Send behavioral events to POST /api/events.
  *
  * Design:

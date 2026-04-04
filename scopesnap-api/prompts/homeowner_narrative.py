@@ -1,5 +1,5 @@
 """
-ScopeSnap — Homeowner Narrative Prompt (V1)
+SnapAI — Homeowner Narrative Prompt (V1)
 Sent to Gemini 2.5 Flash-Lite AFTER equipment analysis.
 Generates 2-3 sentences of plain-English explanation for homeowner report.
 

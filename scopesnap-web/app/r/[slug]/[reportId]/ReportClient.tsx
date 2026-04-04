@@ -950,7 +950,7 @@ export default function ReportClient({ report }: { report: Report }) {
           </div>
         </div>
 
-        {/* Footer — SOW Decision #2: two-line ScopeSnap footer + QR code (Task 1.9 / Zuckerberg) */}
+        {/* Footer — SOW Decision #2: two-line SnapAI footer + QR code (Task 1.9 / Zuckerberg) */}
         <div style={{ textAlign: "center", padding: "20px 16px", fontSize: 10, color: "#a8a49c", lineHeight: 1.8 }}>
           <span style={{ fontFamily: "IBM Plex Mono, monospace" }}>
             Report ID: {report.report_short_id}
@@ -968,7 +968,7 @@ export default function ReportClient({ report }: { report: Report }) {
               href="https://scopesnap.ai"
               style={{ color: "#1a8754", fontWeight: 700, textDecoration: "none" }}
             >
-              ScopeSnap AI
+              SnapAI
             </a>
           </span>
           <br />

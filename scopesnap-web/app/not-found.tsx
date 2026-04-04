@@ -1,5 +1,5 @@
 /**
- * ScopeSnap — Branded 404 Not Found Page
+ * SnapAI — Branded 404 Not Found Page
  * Replaces the default Next.js "404: This page could not be found." plain text.
  */
 import Link from "next/link";
@@ -99,7 +99,7 @@ export default function NotFound() {
       </div>
 
       <p style={{ fontSize: 11, color: "#b0aca4", marginTop: 40, fontFamily: "IBM Plex Mono, monospace" }}>
-        ScopeSnap AI — Professional HVAC assessments for contractors
+        SnapAI — Professional HVAC assessments for contractors
       </p>
     </div>
   );

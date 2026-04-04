@@ -1,5 +1,5 @@
 /**
- * ScopeSnap — Offline Queue (IndexedDB)
+ * SnapAI — Offline Queue (IndexedDB)
  * SOW Task 1.8: Store pending assessment uploads when offline.
  * Auto-syncs when network reconnects.
  *

@@ -1,4 +1,4 @@
-# ScopeSnap Remaining Work — Build Log
+# SnapAI Remaining Work — Build Log
 ## All 7 work packages complete. Zero new TypeScript errors.
 
 ---

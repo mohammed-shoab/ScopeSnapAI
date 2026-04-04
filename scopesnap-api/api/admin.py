@@ -1,5 +1,5 @@
 """
-ScopeSnap — Admin Endpoints
+SnapAI — Admin Endpoints
 Protected utility endpoints for production database management.
 All routes require X-Admin-Secret header matching ADMIN_SECRET env var.
 

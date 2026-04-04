@@ -1,5 +1,5 @@
 """
-ScopeSnap — Serial Number Decoder
+SnapAI — Serial Number Decoder
 Decodes HVAC equipment serial numbers to extract manufacture year and week.
 Implements patterns for all 5 major brands: Carrier, Trane, Lennox, Goodman, Rheem.
 

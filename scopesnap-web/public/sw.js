@@ -1,5 +1,5 @@
 /**
- * ScopeSnap Service Worker
+ * SnapAI Service Worker
  * Provides offline shell caching for the PWA.
  * Caches the app shell (HTML, CSS, JS) for offline access.
  * API calls are always network-first (no offline data caching).

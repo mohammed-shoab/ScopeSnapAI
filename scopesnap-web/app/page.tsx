@@ -1,5 +1,5 @@
 /**
- * ScopeSnap — Beta Landing Page
+ * SnapAI — Beta Landing Page
  * SOW Task 1.5: Replace dev placeholder with proper beta landing page.
  *
  * Sections:
@@ -62,7 +62,7 @@ export default function LandingPage() {
             <div className="w-8 h-8 bg-brand-green rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">S</span>
             </div>
-            <span className="font-bold text-lg tracking-tight">ScopeSnap</span>
+            <span className="font-bold text-lg tracking-tight">SnapAI</span>
             <span className="text-[10px] font-bold tracking-widest uppercase bg-brand-green/10 text-brand-green border border-brand-green/20 rounded px-1.5 py-0.5 ml-1">
               BETA
             </span>
@@ -87,7 +87,7 @@ export default function LandingPage() {
             No guessing. No spreadsheets.
           </h1>
           <p className="text-lg text-text-secondary leading-relaxed mb-10 max-w-xl mx-auto">
-            Photograph any HVAC unit. ScopeSnap's AI identifies the equipment,
+            Photograph any HVAC unit. SnapAI identifies the equipment,
             generates a Good / Better / Best estimate, and sends the homeowner a
             beautiful report — all before you leave the driveway.
           </p>
@@ -209,7 +209,7 @@ export default function LandingPage() {
             <div className="w-5 h-5 bg-brand-green rounded flex items-center justify-center">
               <span className="text-white font-bold text-[10px]">S</span>
             </div>
-            <span>ScopeSnap AI — Professional HVAC assessments for contractors</span>
+            <span>SnapAI — Professional HVAC assessments for contractors</span>
           </div>
           <div className="flex gap-4">
             <Link href="/privacy" className="hover:text-text-primary transition-colors">Privacy</Link>

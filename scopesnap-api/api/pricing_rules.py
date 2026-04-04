@@ -1,9 +1,9 @@
 """
-ScopeSnap — Pricing Rules API
+SnapAI — Pricing Rules API
 GET/POST/PATCH/DELETE /api/pricing-rules/
 
 Company-specific labor rates, parts costs, and markup overrides.
-Contractors use this to customize how ScopeSnap estimates are priced
+Contractors use this to customize how SnapAI estimates are priced
 relative to national defaults.
 """
 

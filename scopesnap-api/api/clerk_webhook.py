@@ -1,10 +1,10 @@
 """
-ScopeSnap — Clerk Webhook Handler
+SnapAI — Clerk Webhook Handler
 WP-11: Auto-provisions users and companies when they sign up via Clerk.
 
 Clerk sends a webhook POST to /api/webhooks/clerk on these events:
-- user.created  → create Company + User record in ScopeSnap DB
-- user.updated  → update email/name in ScopeSnap DB
+- user.created  → create Company + User record in SnapAI DB
+- user.updated  → update email/name in SnapAI DB
 - user.deleted  → (soft) deactivate user
 
 Security: Webhook signature verified via svix (Clerk's delivery provider).
@@ -106,7 +106,7 @@ async def clerk_webhook(
     WP-11: Handles Clerk webhook events for user lifecycle.
 
     Events handled:
-    - user.created  → provision Company + User in ScopeSnap DB
+    - user.created  → provision Company + User in SnapAI DB
     - user.updated  → sync email/name changes
     - user.deleted  → no-op (data retained for billing)
     """

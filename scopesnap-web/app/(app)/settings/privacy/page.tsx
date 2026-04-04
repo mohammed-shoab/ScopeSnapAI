@@ -1,11 +1,11 @@
 "use client";
 /**
- * ScopeSnap — Privacy Settings Page
+ * SnapAI — Privacy Settings Page
  * SOW Task 1.11: Data privacy controls for beta users.
  *
  * Controls:
  * - Export all assessment data as CSV
- * - View what data ScopeSnap stores
+ * - View what data SnapAI stores
  * - Delete account (links to support for now — full delete in Phase 2)
  * - Analytics opt-out (stored in localStorage — disables trackEvent calls)
  */
@@ -119,7 +119,7 @@ export default function PrivacySettingsPage() {
         </div>
         <h1 className="text-2xl font-bold tracking-tight">Privacy & Data</h1>
         <p className="text-text-secondary text-sm mt-1">
-          Control your data, download a copy, or understand what ScopeSnap stores.
+          Control your data, download a copy, or understand what SnapAI stores.
         </p>
       </div>
 
@@ -161,7 +161,7 @@ export default function PrivacySettingsPage() {
           <div>
             <h2 className="font-bold text-base mb-1">Usage analytics</h2>
             <p className="text-text-secondary text-sm">
-              ScopeSnap collects anonymized usage data (pages visited, features used) to
+              SnapAI collects anonymized usage data (pages visited, features used) to
               improve the product during beta. No personal data or assessment content is included.
             </p>
           </div>
@@ -187,7 +187,7 @@ export default function PrivacySettingsPage() {
       {/* What we store */}
       <div className="bg-white border border-surface-border rounded-2xl overflow-hidden">
         <div className="px-5 py-4 border-b border-surface-border">
-          <h2 className="font-bold text-base">What ScopeSnap stores</h2>
+          <h2 className="font-bold text-base">What SnapAI stores</h2>
           <p className="text-text-secondary text-sm mt-0.5">
             We only store data you enter or generate within the app.
           </p>
@@ -217,7 +217,7 @@ export default function PrivacySettingsPage() {
           During beta, account deletion is handled by our team.
         </p>
         <a
-          href="mailto:support@scopesnap.ai?subject=Delete My ScopeSnap Account"
+          href="mailto:support@scopesnap.ai?subject=Delete My SnapAI Account"
           className="inline-flex items-center gap-2 border border-red-200 text-red-600 font-semibold px-4 py-2.5 rounded-xl text-sm hover:bg-red-50 transition-colors"
         >
           Request account deletion

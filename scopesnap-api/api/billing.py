@@ -1,5 +1,5 @@
 """
-ScopeSnap — Subscription Billing API
+SnapAI — Subscription Billing API
 WP-15: Stripe subscription management for the SaaS platform.
 
 Plans:

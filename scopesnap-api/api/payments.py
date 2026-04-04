@@ -1,5 +1,5 @@
 """
-ScopeSnap — Stripe Payment API Endpoints
+SnapAI — Stripe Payment API Endpoints
 WP-10: Deposit collection flow.
 
 Endpoints:
@@ -77,7 +77,7 @@ async def create_checkout(
         select(Company).where(Company.id == auth.company_id)
     )
     company = company_result.scalar_one_or_none()
-    company_name = company.name if company else "ScopeSnap HVAC"
+    company_name = company.name if company else "SnapAI HVAC"
 
     # Load customer email from property
     customer_email = None
@@ -95,7 +95,8 @@ async def create_checkout(
                 customer_email = prop.customer_email
 
     # Build redirect URLs
-    base = "http://localhost:3000"
+    from config import get_settings as _gs; _settings = _gs()
+    base = _settings.frontend_url.rstrip("/")
     success_url = body.success_url or f"{base}/payment-success?estimate={estimate_id}&session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = body.cancel_url or f"{base}/r/hvac/{estimate.report_short_id}"
 

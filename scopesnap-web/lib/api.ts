@@ -1,6 +1,6 @@
 /**
- * ScopeSnap — API Client
- * Typed fetch wrapper for all ScopeSnap API calls.
+ * SnapAI — API Client
+ * Typed fetch wrapper for all SnapAI API calls.
  * Handles auth headers, error parsing, and dev mode shortcuts.
  */
 

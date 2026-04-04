@@ -1,5 +1,5 @@
 """
-ScopeSnap — SQLAlchemy ORM Models
+SnapAI — SQLAlchemy ORM Models
 ALL 12 tables from Tech Spec §02. Every column, every type, every constraint, every index.
 DO NOT simplify — the schema is designed for future features.
 """

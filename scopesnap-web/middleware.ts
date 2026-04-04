@@ -1,5 +1,5 @@
 /**
- * ScopeSnap — Next.js Middleware (WP-11)
+ * SnapAI — Next.js Middleware (WP-11)
  *
  * Authentication strategy:
  * - Development: No-op. Routes are accessible without auth.

@@ -1,5 +1,5 @@
 """
-Alembic Environment Configuration for ScopeSnap.
+Alembic Environment Configuration for SnapAI.
 Reads DATABASE_URL from .env file (via config.py).
 Supports both sync and async database URLs.
 """

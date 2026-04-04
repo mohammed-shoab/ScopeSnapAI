@@ -1,5 +1,5 @@
 """
-ScopeSnap — HVAC Equipment Analysis Prompt (V1)
+SnapAI — HVAC Equipment Analysis Prompt (V1)
 Sent to Gemini 2.5 Flash with 1-5 equipment photos.
 
 PROMPT ENGINEERING IS ITERATIVE. This is V1. It WILL need tuning after real

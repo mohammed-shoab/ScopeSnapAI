@@ -1,5 +1,5 @@
 /**
- * ScopeSnap — Public Privacy Policy Page
+ * SnapAI — Public Privacy Policy Page
  * SOW Task 1.11: Required for beta launch — linked from landing page footer.
  * Plain language, mobile-friendly. No cookies banner required (first-party only).
  */
@@ -12,7 +12,7 @@ export default function PrivacyPage() {
         {/* Header */}
         <div className="mb-8">
           <a href="/" className="text-brand-green text-sm font-semibold hover:underline">
-            ← Back to ScopeSnap
+            ← Back to SnapAI
           </a>
           <h1 className="text-3xl font-bold mt-4 mb-2">Privacy Policy</h1>
           <p className="text-text-secondary text-sm">Last updated: March 23, 2026</p>
@@ -22,7 +22,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-bold mb-2">What we collect</h2>
             <p className="text-sm text-text-secondary leading-relaxed">
-              ScopeSnap collects only the information necessary to provide the HVAC assessment service:
+              SnapAI collects only the information necessary to provide the HVAC assessment service:
               contractor account details (name, company, email), HVAC equipment photos you upload,
               and the homeowner information you enter into each job (name, address, phone). We also
               collect anonymized usage data (pages visited, features used) to improve the product.
@@ -64,7 +64,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-lg font-bold mb-2">Cookies</h2>
             <p className="text-sm text-text-secondary leading-relaxed">
-              ScopeSnap uses first-party session cookies only (for authentication). We do not use
+              SnapAI uses first-party session cookies only (for authentication). We do not use
               third-party tracking cookies or advertising cookies.
             </p>
           </section>

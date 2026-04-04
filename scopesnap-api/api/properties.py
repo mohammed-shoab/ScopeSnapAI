@@ -1,5 +1,5 @@
 """
-ScopeSnap — Property API Endpoints
+SnapAI — Property API Endpoints
 WP-05: Property History + Customer Management
 
 Enables address lookup so techs can see previous visits, equipment history, and customer info.

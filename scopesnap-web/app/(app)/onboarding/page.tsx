@@ -427,7 +427,7 @@ export default function OnboardingPage() {
                   disabled={saving || !profile.name.trim()}
                   className="flex-1 bg-brand-green text-white font-bold py-3 rounded-lg text-sm shadow-green hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {saving ? "Launching..." : "Launch ScopeSnap 🚀"}
+                  {saving ? "Launching..." : "Launch SnapAI 🚀"}
                 </button>
               </div>
 

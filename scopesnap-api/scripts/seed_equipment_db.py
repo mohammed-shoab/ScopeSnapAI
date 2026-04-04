@@ -1,5 +1,5 @@
 """
-ScopeSnap — Equipment Database Seed Script
+SnapAI — Equipment Database Seed Script
 Populates equipment_models with 50 entries (10 per major brand).
 Run once during setup. Safe to re-run (uses INSERT OR IGNORE / upsert).
 

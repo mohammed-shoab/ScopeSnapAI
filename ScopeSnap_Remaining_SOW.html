@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ScopeSnap — Remaining Work SOW (Beta-Ready MVP)</title>
+<title>SnapAI — Remaining Work SOW (Beta-Ready MVP)</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 :root {
@@ -89,17 +89,17 @@ td{padding:9px 11px;border:1px solid var(--b);vertical-align:top;font-size:12px}
 <body>
 <div class="wrap">
 
-<h1>ScopeSnap — Remaining Work SOW</h1>
+<h1>SnapAI — Remaining Work SOW</h1>
 <p class="sub">Everything left to reach Beta-Ready MVP. Feed to an AI agent one work package at a time in order.</p>
 
 <div class="ver">
 <strong>VERSION:</strong> V1.0 — March 22, 2026<br>
 <strong>CONTEXT:</strong> All WP-01 through WP-16 from the original SOW are implemented. The app runs cleanly, all 14+ screens render without hydration errors, all mobile overflow issues are fixed, and the estimate builder has been redesigned with labor/parts/fees breakdown, inline edit/delete, and repair/replace toggles. What remains are the gaps between "it runs" and "a beta HVAC tech can use it on a real job in the field."<br><br>
 <strong>REFERENCE DOCUMENTS (give all to the AI agent):</strong><br>
-• <code>ScopeSnap_Product_Bible.html</code> — Product strategy, Steve Jobs principles, competitive intel<br>
-• <code>ScopeSnap_MVP_Technical_Spec.html</code> — Database schema, API endpoints, AI prompts, architecture<br>
-• <code>ScopeSnap_Prototype_Demo.html</code> — Tech mobile app prototype — <strong>VISUAL LAW</strong> for all screens<br>
-• <code>ScopeSnap_Build_SOW.html</code> — Original build SOW (completed — read for context only)<br>
+• <code>SnapAI_Product_Bible.html</code> — Product strategy, Steve Jobs principles, competitive intel<br>
+• <code>SnapAI_MVP_Technical_Spec.html</code> — Database schema, API endpoints, AI prompts, architecture<br>
+• <code>SnapAI_Prototype_Demo.html</code> — Tech mobile app prototype — <strong>VISUAL LAW</strong> for all screens<br>
+• <code>SnapAI_Build_SOW.html</code> — Original build SOW (completed — read for context only)<br>
 • <code>STATUS.md</code> — Current completion state<br><br>
 <strong>INVIOLABLE DESIGN RULES (never break these):</strong><br>
 1. Every screen must match the prototype exactly — layout, card style, color tokens, typography, spacing<br>
@@ -137,7 +137,7 @@ td{padding:9px 11px;border:1px solid var(--b);vertical-align:top;font-size:12px}
 </div>
 
 <h4>What the Prototype Shows</h4>
-<p>Open <code>ScopeSnap_Prototype_Demo.html</code>. Every screen has a fixed bottom bar with exactly 5 tabs:</p>
+<p>Open <code>SnapAI_Prototype_Demo.html</code>. Every screen has a fixed bottom bar with exactly 5 tabs:</p>
 <div class="tw"><table>
   <tr><th>Tab #</th><th>Icon</th><th>Label</th><th>Route</th><th>Notes</th></tr>
   <tr><td>1</td><td>🏠 Home</td><td>Home</td><td><code>/dashboard</code></td><td>Active state: filled house icon</td></tr>
@@ -256,7 +256,7 @@ return (
   <li>The existing desktop sidebar layout is completely unaffected</li>
 </ul></div>
 
-<div class="warn"><strong>IMPORTANT:</strong> Match the prototype tab bar exactly — icon style, spacing, hero tab elevation, colors. Do not invent a different design. Open <code>ScopeSnap_Prototype_Demo.html</code> and replicate it pixel-for-pixel at the bottom of every screen.</div>
+<div class="warn"><strong>IMPORTANT:</strong> Match the prototype tab bar exactly — icon style, spacing, hero tab elevation, colors. Do not invent a different design. Open <code>SnapAI_Prototype_Demo.html</code> and replicate it pixel-for-pixel at the bottom of every screen.</div>
 </div>
 </div>
 
@@ -355,7 +355,7 @@ All error messages:
   <li>The results screen shows equipment ID, condition card, and issues list from the AI response</li>
   <li>If the API fails at any step, a human-readable error message with a Retry button appears — never a blank screen</li>
   <li>"Build Estimate →" creates the estimate and navigates to <code>/estimate/{id}</code></li>
-  <li>All 5 phases match the corresponding screens in <code>ScopeSnap_Prototype_Demo.html</code></li>
+  <li>All 5 phases match the corresponding screens in <code>SnapAI_Prototype_Demo.html</code></li>
 </ul></div>
 </div>
 </div>
@@ -396,7 +396,7 @@ All error messages:
 </pre>
 
 <h4>The 4 Slides — Exact Content per Prototype</h4>
-<p>Open <code>ScopeSnap_Prototype_Demo.html</code> and navigate to the Present Mode screens. Replicate exactly:</p>
+<p>Open <code>SnapAI_Prototype_Demo.html</code> and navigate to the Present Mode screens. Replicate exactly:</p>
 
 <p><strong>Slide 1 — Annotated Equipment Photo</strong></p>
 <pre>Layout: Full-screen dark background. Equipment photo fills top 60% of screen.
@@ -502,7 +502,7 @@ Bottom: Single CTA button (not navigation — just visual)
   <li>Tapping an option card on Slide 3 updates the selection (reflected in estimate builder)</li>
   <li>5-year bars on Slide 4 are proportional to actual five_year_total values</li>
   <li>Back arrow / swipe-down closes the overlay cleanly</li>
-  <li>Matches <code>ScopeSnap_Prototype_Demo.html</code> Present Mode screens as closely as possible</li>
+  <li>Matches <code>SnapAI_Prototype_Demo.html</code> Present Mode screens as closely as possible</li>
 </ul></div>
 </div>
 </div>
@@ -1034,9 +1034,9 @@ OfflinePlaceholder component:
 </div>
 
 <div class="ft">
-  ScopeSnap — Remaining Work SOW · V1.0 · March 22, 2026<br>
+  SnapAI — Remaining Work SOW · V1.0 · March 22, 2026<br>
   Feed one WP at a time to an AI agent. Do not move to the next WP until all acceptance criteria pass.<br>
-  Visual law: every screen must match ScopeSnap_Prototype_Demo.html exactly.
+  Visual law: every screen must match SnapAI_Prototype_Demo.html exactly.
 </div>
 
 </div>

@@ -1,5 +1,5 @@
 """
-ScopeSnap — Analytics API Endpoints
+SnapAI — Analytics API Endpoints
 WP-14: Owner Dashboard analytics.
 
 Provides company-level performance metrics for the owner dashboard:

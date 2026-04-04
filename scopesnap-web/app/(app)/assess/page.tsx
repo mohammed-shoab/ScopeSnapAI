@@ -1,6 +1,6 @@
 /**
  * Assess Page - Full camera capture, upload, AI analysis, intelligence results
- * Redesigned to match ScopeSnap_Prototype_Demo.html screens exactly
+ * Redesigned to match SnapAI_Prototype_Demo.html screens exactly
  */
 "use client";
 

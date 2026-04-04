@@ -584,7 +584,7 @@ export default function PricingRulesPage() {
               <div>
                 <p className="font-bold text-sm text-text-primary">How pricing rules work</p>
                 <p className="text-xs text-text-secondary mt-1 leading-relaxed">
-                  When ScopeSnap generates an estimate, it uses your company overrides first.
+                  When SnapAI generates an estimate, it uses your company overrides first.
                   If no override exists for a given job type, it falls back to national market
                   averages. Set your actual labor rate and common permit costs to get the most
                   accurate Good/Better/Best pricing.

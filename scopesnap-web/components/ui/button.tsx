@@ -1,5 +1,5 @@
 /**
- * ScopeSnap — Button Component
+ * SnapAI — Button Component
  * Shared across all screens. Matches prototype design.
  */
 import { forwardRef, ButtonHTMLAttributes } from "react";

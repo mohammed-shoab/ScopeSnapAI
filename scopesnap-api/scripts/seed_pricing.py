@@ -1,5 +1,5 @@
 """
-ScopeSnap — Pricing Rules Seed Script
+SnapAI — Pricing Rules Seed Script
 Populates pricing_rules with national defaults for common HVAC job types.
 All amounts are in USD.
 

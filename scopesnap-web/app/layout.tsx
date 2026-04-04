@@ -3,7 +3,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ScopeSnap — AI-Powered HVAC Estimation",
+  title: "SnapAI — AI-Powered HVAC Estimation",
   description:
     "Photograph any HVAC unit. Get an instant AI assessment with Good/Better/Best estimates. Send the homeowner a beautiful report in 90 seconds.",
   manifest: "/manifest.json",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "ScopeSnap",
+    title: "SnapAI",
   },
 };
 

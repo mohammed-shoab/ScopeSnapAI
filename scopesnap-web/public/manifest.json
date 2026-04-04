@@ -1,6 +1,6 @@
 {
-  "name": "ScopeSnap — HVAC Estimation",
-  "short_name": "ScopeSnap",
+  "name": "SnapAI — HVAC Estimation",
+  "short_name": "SnapAI",
   "description": "AI-powered HVAC assessment and estimation for contractors",
   "start_url": "/dashboard",
   "display": "standalone",

@@ -1,5 +1,5 @@
 """
-ScopeSnap — Dev Data Seeder
+SnapAI — Dev Data Seeder
 Populates the database with realistic estimates, properties, and assessments
 for test_user_mike so the dashboard KPIs and analytics show meaningful data.
 

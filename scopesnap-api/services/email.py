@@ -1,5 +1,5 @@
 """
-ScopeSnap — Email Service Abstraction
+SnapAI — Email Service Abstraction
 Local dev: prints email content to terminal (zero setup, zero cost).
 Cloud:     sends via Resend API (free tier: 3,000 emails/month).
 
@@ -140,7 +140,7 @@ class ConsoleSender(BaseEmailSender):
 
     async def send_welcome(self, to: str, contractor_name: str) -> bool:
         html = f"""
-        <h2>Welcome to ScopeSnap, {contractor_name}!</h2>
+        <h2>Welcome to SnapAI, {contractor_name}!</h2>
         <p>Your first AI assessment is 60 seconds away.</p>
         <p>Here is how to get started:</p>
         <ol>
@@ -149,11 +149,11 @@ class ConsoleSender(BaseEmailSender):
           <li>Tap Analyze — AI identifies the equipment and generates your estimate</li>
         </ol>
         <p>Questions? Reply to this email anytime.</p>
-        <p>— The ScopeSnap Team</p>
+        <p>— The SnapAI Team</p>
         """
         return await self.send(EmailMessage(
             to=to,
-            subject="Welcome to ScopeSnap — Your first AI assessment is 60 seconds away",
+            subject="Welcome to SnapAI — Your first AI assessment is 60 seconds away",
             html_body=html,
         ))
 
@@ -236,7 +236,7 @@ class ResendSender(BaseEmailSender):
           </p>
           <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 24px 0;" />
           <p style="font-size: 11px; color: #9e9e9e; margin: 0;">
-            Verified Assessment by ScopeSnap AI &nbsp;|&nbsp;
+            Verified Assessment by SnapAI &nbsp;|&nbsp;
             Professional HVAC assessments for contractors &mdash; scopesnap.ai
           </p>
         </body>
@@ -286,7 +286,7 @@ class ResendSender(BaseEmailSender):
         <!DOCTYPE html>
         <html>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #0D47A1;">Welcome to ScopeSnap, {contractor_name}!</h2>
+          <h2 style="color: #0D47A1;">Welcome to SnapAI, {contractor_name}!</h2>
           <p>Your first AI assessment is 60 seconds away.</p>
           <div style="background: #E3F2FD; border-left: 4px solid #0D47A1; padding: 16px; border-radius: 4px; margin: 20px 0;">
             <p style="margin: 0; font-weight: bold;">How to get started:</p>
@@ -297,13 +297,13 @@ class ResendSender(BaseEmailSender):
             </ol>
           </div>
           <p>Questions? Reply to this email anytime. We respond within 24 hours.</p>
-          <p>&#8212; The ScopeSnap Team</p>
+          <p>&#8212; The SnapAI Team</p>
         </body>
         </html>
         """
         return await self.send(EmailMessage(
             to=to,
-            subject="Welcome to ScopeSnap \u2014 Your first AI assessment is 60 seconds away",
+            subject="Welcome to SnapAI \u2014 Your first AI assessment is 60 seconds away",
             html_body=html,
         ))
 

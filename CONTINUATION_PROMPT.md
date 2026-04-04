@@ -1,6 +1,6 @@
-# ScopeSnap AI — Continuation Prompt
+# SnapAI AI — Continuation Prompt
 
-I'm working on a Next.js 14 / FastAPI / PostgreSQL app called ScopeSnap (AI-powered HVAC estimation tool) running via Docker Compose on Windows. The workspace is at `C:\Users\Shoab\Documents\Claude\Projects\ScopeSnapAI`. The app runs at `localhost:3000` (web), `localhost:8000` (API), `localhost:5432` (Postgres). Dev auth uses header `X-Dev-Clerk-User-Id: test_user_mike`.
+I'm working on a Next.js 14 / FastAPI / PostgreSQL app called SnapAI (AI-powered HVAC estimation tool) running via Docker Compose on Windows. The workspace is at `C:\Users\Shoab\Documents\Claude\Projects\SnapAIAI`. The app runs at `localhost:3000` (web), `localhost:8000` (API), `localhost:5432` (Postgres). Dev auth uses header `X-Dev-Clerk-User-Id: test_user_mike`.
 
 ## Current state after this session
 
@@ -32,7 +32,7 @@ I'm working on a Next.js 14 / FastAPI / PostgreSQL app called ScopeSnap (AI-powe
 ## Current state: APPROVED FOR BETA ✅
 
 All 6 founder personas signed off. The comprehensive UX/UI audit is complete.
-Sign-off document: `ScopeSnap_Beta_Readiness_SignOff.docx`
+Sign-off document: `SnapAI_Beta_Readiness_SignOff.docx`
 
 ### To run seed data
 ```
@@ -70,8 +70,64 @@ Then refresh dashboard and analytics.
 - `scopesnap-api/api/estimates.py` — Markup PATCH fix + PDF resilience
 - `scopesnap-api/scripts/seed_dev_data.py` — NEW: Dev data seeder
 
+---
+
+## 🤖 Corrosion v4 AI Model Training (ACTIVE — April 2026)
+
+### What is being trained
+YOLOv8m binary corrosion detector (`corrosion_v4`) for SnapAI's HVAC inspection feature.
+- **Model**: YOLOv8m, nc=1 (corrosion only), 640px, batch=16
+- **Dataset**: 17,198 train images / 1,844 val images (Roboflow corrosion dataset, polygon→bbox fixed)
+- **Training**: 112 epochs remaining (resumed from epoch 38 checkpoint after T4 crash on April 2 at ~2:24 AM PKT)
+- **Total target**: 150 epochs (38 already completed in previous run)
+
+### Colab notebook
+- URL: `https://colab.research.google.com/drive/1qHGI-IhCKF2rMP8XAq1vx4ro1uH6J69g?authuser=1`
+- **authuser=1 = ds.shoab@gmail.com** (ALWAYS use authuser=1, NOT authuser=0)
+- authuser=0 = shoab@omnisecurityinc.com (WRONG account)
+
+### Cell order (after a crash, re-run in this exact order)
+1. **Cell 1** — pip install ultralytics roboflow + mount Drive → `/content/drive/MyDrive/SnapAIAI`
+2. **Cell 2** — create directories in `/content/scopesnap_yolo`
+3. **Cell 3** — download 3 Roboflow datasets (Rust 10.1k, Corrosion 9.2k, Mould 6.2k) to `/content/raw_*`
+4. **Cell B** — build corrosion binary dataset with polygon→bbox fix → must print **"VERIFIED: Labels look good. Safe to run Cell C."**
+5. **Cell C** — training cell (load checkpoint, train 112 epochs)
+
+### Cell C — resume from checkpoint (ALWAYS use this after a crash)
+```python
+# Load from Drive checkpoint, NOT yolov8m.pt
+CKPT_PATH = Path('/content/drive/MyDrive/SnapAIAI/last_corrosion_v4.pt')
+model = YOLO(str(CKPT_PATH))
+# Then train with remaining epochs (112 if crashed at epoch 38, adjust if crashed later)
+results = model.train(epochs=112, ...)
+```
+
+### Drive checkpoints (ds.shoab@gmail.com Drive)
+- `My Drive/SnapAIAI/last_corrosion_v4.pt` — saved after every epoch (~155 MB)
+- `My Drive/SnapAIAI/best_corrosion_v4.pt` — best mAP checkpoint
+- Check: `https://drive.google.com/drive/u/1/search?q=corrosion_v4`
+
+### Automated monitoring (scheduled task)
+- Task ID: `corrosion-v4-monitor`
+- Runs every **10 minutes**
+- **IMPORTANT**: Uses bash/Python FIRST (checks Drive for Desktop sync folder), browser only as fallback
+- Root cause of previous failure: old monitor used browser as first step → hung when computer asleep → no checks ran for 7+ hours after 1:38 AM crash
+- **Google Drive File Stream** installed at `C:\Program Files\Google\Drive File Stream\` — mounts as a VIRTUAL DRIVE LETTER (G:, H:, etc.), NOT a local folder. Files are streamed, not cached locally.
+- Google Drive mounted as **G:** → checkpoint path is `G:\My Drive\SnapAIAI\last_corrosion_v4.pt`
+
+### Key fixes from previous failures
+- **v3 0% mAP bug**: Cell B was rejecting all polygon annotations (89–175 fields). Fixed with `poly_to_bbox()` conversion
+- **Early stopping bug (v3)**: Used `patience=50`, stopped at epoch 36. Fixed with `patience=0`
+- **Wrong lr (v3)**: Used `lr0=0.001`. Fixed to `lr0=0.01`
+- **OOM bug**: Fixed with `cache='disk'` instead of RAM
+
+### Training metrics (reference)
+- Epoch 1/112 (= epoch 39 overall): box_loss~0.82, cls_loss~0.73, mAP50 expected ~0.78+
+- Each epoch: ~11 minutes on T4 GPU
+- Estimated completion: ~20 hours from start of Cell C
+
 ## Prototype files (for reference)
-- `ScopeSnapAI/prototypes/ScopeSnap_Prototype_Demo.html`
-- `ScopeSnap_Owner_Dashboard.html`
-- `ScopeSnap_Homeowner_Report.html`
-- Review report: `ScopeSnapAI/scopesnap-review-report.html`
+- `SnapAIAI/prototypes/SnapAI_Prototype_Demo.html`
+- `SnapAI_Owner_Dashboard.html`
+- `SnapAI_Homeowner_Report.html`
+- Review report: `SnapAIAI/scopesnap-review-report.html`

@@ -1,1 +1,1 @@
-# ScopeSnap API routes package
+# SnapAI API routes package

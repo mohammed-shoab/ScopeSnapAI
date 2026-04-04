@@ -1,5 +1,5 @@
 """
-ScopeSnap — Public Homeowner Report Endpoints
+SnapAI — Public Homeowner Report Endpoints
 These endpoints are PUBLIC (no auth required) — homeowners access via magic link.
 The report_token in the URL is the security layer.
 

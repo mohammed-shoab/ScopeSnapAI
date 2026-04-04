@@ -1,6 +1,6 @@
 "use client";
 /**
- * ScopeSnap — In-App Feedback Modal
+ * SnapAI — In-App Feedback Modal
  * BUG-01 fix: Replaces mailto: links with a proper in-app form.
  *
  * Usage:
@@ -73,7 +73,7 @@ export default function FeedbackModal({ open, onClose }: Props) {
       setStatus("sent");
     } catch {
       // Fallback: open mail client (last resort)
-      const subject = encodeURIComponent(`ScopeSnap Beta Feedback — ${type}`);
+      const subject = encodeURIComponent(`SnapAI Beta Feedback — ${type}`);
       const body    = encodeURIComponent(message.trim() + `\n\nPage: ${window.location.href}`);
       window.open(`mailto:feedback@scopesnap.ai?subject=${subject}&body=${body}`);
       setStatus("sent");
@@ -101,7 +101,7 @@ export default function FeedbackModal({ open, onClose }: Props) {
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
           <div>
             <h2 className="text-[15px] font-semibold text-gray-900">Send Feedback</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Help us improve ScopeSnap</p>
+            <p className="text-xs text-gray-400 mt-0.5">Help us improve SnapAI</p>
           </div>
           <button
             onClick={onClose}
@@ -126,7 +126,7 @@ export default function FeedbackModal({ open, onClose }: Props) {
               </svg>
             </div>
             <p className="text-sm font-semibold text-gray-800">Thanks for the feedback!</p>
-            <p className="text-xs text-gray-400 text-center">We read every submission and use it to improve ScopeSnap.</p>
+            <p className="text-xs text-gray-400 text-center">We read every submission and use it to improve SnapAI.</p>
             <button
               onClick={onClose}
               className="mt-2 px-5 py-2 rounded-lg text-sm font-medium text-white transition-colors"

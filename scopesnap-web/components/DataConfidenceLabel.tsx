@@ -1,5 +1,5 @@
 /**
- * ScopeSnap — DataConfidenceLabel
+ * SnapAI — DataConfidenceLabel
  * SOW Task 1.9: Trust indicator shown on homeowner reports.
  *
  * Shows AI confidence level for the equipment identification in a compact

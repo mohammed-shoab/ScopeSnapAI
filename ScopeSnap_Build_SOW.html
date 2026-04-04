@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ScopeSnap — Build SOW (Statement of Work)</title>
+<title>SnapAI — Build SOW (Statement of Work)</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 :root {
@@ -76,18 +76,18 @@ td{padding:8px 10px;border:1px solid var(--b);vertical-align:top}
 <body>
 <div class="wrap">
 
-<h1>ScopeSnap — Build SOW</h1>
-<p class="sub">Sequential work packages for building ScopeSnap MVP. Feed to Cowork one at a time. Each package is self-contained.</p>
+<h1>SnapAI — Build SOW</h1>
+<p class="sub">Sequential work packages for building SnapAI MVP. Feed to Cowork one at a time. Each package is self-contained.</p>
 
 <div class="ver">
 <strong>VERSION:</strong> V1.0 — March 21, 2026<br>
 <strong>HOW TO USE:</strong> Give Cowork the reference documents listed below. Then feed work packages in order (WP-01 → WP-02 → ...). Each WP has clear acceptance criteria — don't move to the next until all checkboxes pass. WPs within the same week can run in parallel if marked.<br>
 <strong>REFERENCE DOCUMENTS (give all to Cowork):</strong><br>
-• ScopeSnap_Product_Bible.html — Product strategy, vision, competitive intel, pricing<br>
-• ScopeSnap_MVP_Technical_Spec.html — Database schema, API endpoints, AI prompts, architecture<br>
-• ScopeSnap_Prototype_Demo.html — Tech mobile app prototype (visual reference for all screens)<br>
-• ScopeSnap_Owner_Dashboard.html — Owner dashboard prototype (visual reference)<br>
-• ScopeSnap_Homeowner_Report.html — Homeowner report prototype (visual reference for report page)<br>
+• SnapAI_Product_Bible.html — Product strategy, vision, competitive intel, pricing<br>
+• SnapAI_MVP_Technical_Spec.html — Database schema, API endpoints, AI prompts, architecture<br>
+• SnapAI_Prototype_Demo.html — Tech mobile app prototype (visual reference for all screens)<br>
+• SnapAI_Owner_Dashboard.html — Owner dashboard prototype (visual reference)<br>
+• SnapAI_Homeowner_Report.html — Homeowner report prototype (visual reference for report page)<br>
 <strong>ENVIRONMENT:</strong> Local development. PostgreSQL local, FastAPI with uvicorn, Next.js dev server. See Tech Spec §00 for setup commands.<br>
 <strong>NOT IN SCOPE:</strong> LeakSense (Phase 2), BenchmarkIQ (Phase 3), cloud deployment (separate task after MVP), SEO calculators, landing page, Google Ads, community marketing.
 </div>
@@ -191,7 +191,7 @@ td{padding:8px 10px;border:1px solid var(--b);vertical-align:top}
 <p><span class="ref ref-g">Tech Spec §03</span> POST /api/assessments and POST /api/assessments/{id}/analyze<br>
 <span class="ref ref-g">Tech Spec §04</span> EQUIPMENT_ANALYSIS_PROMPT — use this exact prompt<br>
 <span class="ref ref-g">Tech Spec §01</span> Request Flow — steps 3-5<br>
-<span class="ref">Prototype</span> ScopeSnap_Prototype_Demo.html — Capture → Analyzing → Intelligence Results screens</p>
+<span class="ref">Prototype</span> SnapAI_Prototype_Demo.html — Capture → Analyzing → Intelligence Results screens</p>
 
 <h4>Deliverables</h4>
 <ol>
@@ -218,7 +218,7 @@ td{padding:8px 10px;border:1px solid var(--b);vertical-align:top}
 <h4>Test Data</h4>
 <p>Download 10-20 HVAC equipment photos from Google Images or manufacturer sites. Include: Carrier outdoor unit (model plate visible), Trane furnace, Goodman AC (corroded coil), blurry photo, non-HVAC photo (car engine). Save in <code>test_data/photos/</code>.</p>
 
-<div class="ok"><strong>THIS IS THE PRODUCT.</strong> If this work package produces accurate equipment identification from photos, ScopeSnap works. If it doesn't, nothing else matters. Spend extra time on prompt tuning here. Test with at least 20 different equipment photos before moving on.</div>
+<div class="ok"><strong>THIS IS THE PRODUCT.</strong> If this work package produces accurate equipment identification from photos, SnapAI works. If it doesn't, nothing else matters. Spend extra time on prompt tuning here. Test with at least 20 different equipment photos before moving on.</div>
 </div>
 </div>
 
@@ -361,7 +361,7 @@ td{padding:8px 10px;border:1px solid var(--b);vertical-align:top}
 <h4>Reference</h4>
 <p><span class="ref ref-g">Tech Spec §06</span> Homeowner Report Generation — architecture, annotation rendering, URL security<br>
 <span class="ref ref-g">Tech Spec §03</span> GET /r/{company_slug}/{report_short_id}<br>
-<span class="ref">Prototype</span> ScopeSnap_Homeowner_Report.html — Part 2 (mobile) and Part 3 (desktop) are the EXACT visual targets</p>
+<span class="ref">Prototype</span> SnapAI_Homeowner_Report.html — Part 2 (mobile) and Part 3 (desktop) are the EXACT visual targets</p>
 
 <h4>Deliverables</h4>
 <ol>
@@ -391,13 +391,13 @@ td{padding:8px 10px;border:1px solid var(--b);vertical-align:top}
 <li>Page loads in under 2 seconds (SSR, no heavy JS frameworks)</li>
 <li>Page works without JavaScript (options are visible, just not selectable without JS)</li>
 <li>Company logo and branding displayed correctly</li>
-<li>"ScopeSnap" branding in footer (subtle, not competing with company brand)</li>
+<li>"SnapAI" branding in footer (subtle, not competing with company brand)</li>
 </ul></div>
 
 <h4>Dependencies</h4>
 <p><strong>WP-02</strong> (AI analysis with annotations), <strong>WP-04</strong> (estimate with options and line items).</p>
 
-<div class="ok"><strong>VISUAL REFERENCE IS LAW.</strong> The prototypes (ScopeSnap_Homeowner_Report.html Part 2 and Part 3) are the design targets. Match them as closely as possible. The annotated photo with animated callouts, the health gauge, the selectable option cards with dynamic approve button, the 5-year cost bars — all of these must be present and look professional. This page is what the homeowner sees. It IS the product for them.</div>
+<div class="ok"><strong>VISUAL REFERENCE IS LAW.</strong> The prototypes (SnapAI_Homeowner_Report.html Part 2 and Part 3) are the design targets. Match them as closely as possible. The annotated photo with animated callouts, the health gauge, the selectable option cards with dynamic approve button, the 5-year cost bars — all of these must be present and look professional. This page is what the homeowner sees. It IS the product for them.</div>
 </div>
 </div>
 
@@ -454,7 +454,7 @@ td{padding:8px 10px;border:1px solid var(--b);vertical-align:top}
 <p>The complete tech-facing mobile experience as a Progressive Web App. All 9 screens from the prototype, wired to real API endpoints.</p>
 
 <h4>Reference</h4>
-<p><span class="ref">Prototype</span> ScopeSnap_Prototype_Demo.html — ALL 9 screens are the visual targets<br>
+<p><span class="ref">Prototype</span> SnapAI_Prototype_Demo.html — ALL 9 screens are the visual targets<br>
 <span class="ref ref-g">Tech Spec §03</span> All authenticated API endpoints<br>
 <span class="ref ref-g">Tech Spec §01</span> Request Flow — all 13 steps</p>
 
@@ -506,7 +506,7 @@ td{padding:8px 10px;border:1px solid var(--b);vertical-align:top}
 
 <h4>Reference</h4>
 <p><span class="ref ref-g">Tech Spec §11</span> Email templates, follow-up scheduler, cron logic<br>
-<span class="ref">Prototype</span> ScopeSnap_Homeowner_Report.html — Part 1 (text message + email notification)</p>
+<span class="ref">Prototype</span> SnapAI_Homeowner_Report.html — Part 1 (text message + email notification)</p>
 
 <h4>Deliverables</h4>
 <ol>
@@ -706,7 +706,7 @@ td{padding:8px 10px;border:1px solid var(--b);vertical-align:top}
 <h4>What to Build</h4>
 <p>Dave's laptop view. Not the full BenchmarkIQ dashboard from the prototype — V1 is the essentials only.</p>
 <h4>Reference</h4>
-<p><span class="ref">Prototype</span> ScopeSnap_Owner_Dashboard.html — visual target (implement top half only for V1)<br>
+<p><span class="ref">Prototype</span> SnapAI_Owner_Dashboard.html — visual target (implement top half only for V1)<br>
 <span class="ref ref-g">Tech Spec §03</span> GET /api/estimates, GET /api/techs/accuracy, GET /api/equipment/aging-alerts</p>
 <h4>V1 Scope (build this)</h4>
 <ul>
@@ -811,9 +811,9 @@ td{padding:8px 10px;border:1px solid var(--b);vertical-align:top}
 
 <!-- FOOTER -->
 <div class="ft">
-ScopeSnap Build SOW — V1.0 — March 21, 2026<br>
+SnapAI Build SOW — V1.0 — March 21, 2026<br>
 Mainnov Tech — Confidential<br>
-Companion to: ScopeSnap Product Bible V2.0 · ScopeSnap MVP Technical Spec V1.1<br>
+Companion to: SnapAI Product Bible V2.0 · SnapAI MVP Technical Spec V1.1<br>
 <strong style="color:var(--g)">EXECUTION RULE:</strong> Don't move to the next work package until all acceptance criteria pass on the current one.
 </div>
 

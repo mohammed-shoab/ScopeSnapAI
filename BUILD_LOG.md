@@ -1,4 +1,4 @@
-# ScopeSnap BUILD LOG
+# SnapAI BUILD LOG
 Last updated: 2026-03-21
 
 ## Environment
@@ -358,11 +358,11 @@ Last updated: 2026-03-21
 ---
 
 ## Files Created / Modified
-- /sessions/confident-quirky-allen/mnt/ScopeSnapAI/scopesnap-api/api/assessments.py (modified)
-- /sessions/confident-quirky-allen/mnt/ScopeSnapAI/scopesnap-api/services/vision.py (modified - mock mode)
-- /sessions/confident-quirky-allen/mnt/ScopeSnapAI/scopesnap-api/services/storage.py (modified - get_bytes)
-- /sessions/confident-quirky-allen/mnt/ScopeSnapAI/scopesnap-api/services/serial_decoder.py (created)
-- /sessions/confident-quirky-allen/mnt/ScopeSnapAI/scopesnap-api/services/equipment_matcher.py (created)
-- /sessions/confident-quirky-allen/mnt/ScopeSnapAI/scopesnap-api/scripts/seed_equipment_db.py (created)
-- /sessions/confident-quirky-allen/mnt/ScopeSnapAI/scopesnap-api/main.py (modified - redirect_slashes=False)
+- /sessions/confident-quirky-allen/mnt/SnapAIAI/scopesnap-api/api/assessments.py (modified)
+- /sessions/confident-quirky-allen/mnt/SnapAIAI/scopesnap-api/services/vision.py (modified - mock mode)
+- /sessions/confident-quirky-allen/mnt/SnapAIAI/scopesnap-api/services/storage.py (modified - get_bytes)
+- /sessions/confident-quirky-allen/mnt/SnapAIAI/scopesnap-api/services/serial_decoder.py (created)
+- /sessions/confident-quirky-allen/mnt/SnapAIAI/scopesnap-api/services/equipment_matcher.py (created)
+- /sessions/confident-quirky-allen/mnt/SnapAIAI/scopesnap-api/scripts/seed_equipment_db.py (created)
+- /sessions/confident-quirky-allen/mnt/SnapAIAI/scopesnap-api/main.py (modified - redirect_slashes=False)
 - /tmp/scopesnap_dev.db (SQLite dev database with all tables + test data)

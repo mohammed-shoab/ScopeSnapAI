@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FEEDBACK_TO    = "feedback@scopesnap.ai";
-const FEEDBACK_FROM  = "ScopeSnap App <noreply@scopesnap.ai>";
+const FEEDBACK_FROM  = "SnapAI App <noreply@scopesnap.ai>";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     const html = `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-        <h2 style="color:#1a8754;">ScopeSnap Beta Feedback — ${typeLabel}</h2>
+        <h2 style="color:#1a8754;">SnapAI Beta Feedback — ${typeLabel}</h2>
         <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
           <tr><td style="padding:8px;background:#f3f4f6;font-weight:600;width:120px;">Type</td>
               <td style="padding:8px;border:1px solid #e5e7eb;">${typeLabel}</td></tr>
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         from: FEEDBACK_FROM,
         to:   [FEEDBACK_TO],
-        subject: `[ScopeSnap Beta] ${typeLabel}`,
+        subject: `[SnapAI Beta] ${typeLabel}`,
         html,
       }),
     });

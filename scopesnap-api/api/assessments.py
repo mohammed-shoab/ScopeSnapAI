@@ -1,5 +1,5 @@
 """
-ScopeSnap — Assessment API Endpoints
+SnapAI — Assessment API Endpoints
 WP-02: Photo Upload + Vision AI Analysis
 """
 

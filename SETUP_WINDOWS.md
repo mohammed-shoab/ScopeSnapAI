@@ -1,4 +1,4 @@
-# ScopeSnap — Windows Setup Guide (WP-01)
+# SnapAI — Windows Setup Guide (WP-01)
 
 Run these commands in **Windows PowerShell** or **Command Prompt**.
 Everything installs locally — no cloud accounts, no credit card needed yet.
@@ -40,7 +40,7 @@ CREATE DATABASE scopesnap_dev;
 
 ```powershell
 # Navigate to the backend folder
-cd path\to\ScopeSnapAI\scopesnap-api
+cd path\to\SnapAIAI\scopesnap-api
 
 # Create virtual environment
 python -m venv venv
@@ -93,7 +93,7 @@ uvicorn main:app --reload --port 8000
 
 # You should see:
 # ==================================================
-#   ScopeSnap API starting up
+#   SnapAI API starting up
 #   Environment: development
 #   Storage: LocalStorage → ./uploads
 #   Email: ConsoleSender (emails printed to terminal)
@@ -113,7 +113,7 @@ uvicorn main:app --reload --port 8000
 
 ```powershell
 # Open a NEW PowerShell window (keep backend running)
-cd path\to\ScopeSnapAI\scopesnap-web
+cd path\to\SnapAIAI\scopesnap-web
 
 # Install dependencies (first time takes 1-2 minutes)
 npm install
@@ -127,7 +127,7 @@ npm run dev
 
 **Verify it works:**
 - Open browser: http://localhost:3000
-- You should see the ScopeSnap landing page
+- You should see the SnapAI landing page
 
 ---
 
@@ -169,12 +169,12 @@ Run through these to confirm WP-01 is complete:
 docker start scopesnap-db
 
 # Terminal 2: Start backend
-cd path\to\ScopeSnapAI\scopesnap-api
+cd path\to\SnapAIAI\scopesnap-api
 venv\Scripts\Activate.ps1
 uvicorn main:app --reload --port 8000
 
 # Terminal 3: Start frontend
-cd path\to\ScopeSnapAI\scopesnap-web
+cd path\to\SnapAIAI\scopesnap-web
 npm run dev
 ```
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# ── ScopeSnap API — Docker Startup Script ─────────────────────────────────────
+# ── SnapAI API — Docker Startup Script ─────────────────────────────────────
 # Runs migrations then starts the server.
 # Called by Dockerfile CMD.
 # Environment variable ENVIRONMENT controls dev vs prod behaviour.
@@ -7,7 +7,7 @@
 set -e
 
 echo "=================================================="
-echo "  ScopeSnap API — Starting up"
+echo "  SnapAI API — Starting up"
 echo "  ENVIRONMENT=${ENVIRONMENT:-development}"
 echo "  PORT=${PORT:-8000}"
 echo "=================================================="

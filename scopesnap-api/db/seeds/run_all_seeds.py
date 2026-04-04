@@ -11,7 +11,7 @@ from db.seeds import equipment_seed, pricing_seed
 
 async def main():
     print("=" * 60)
-    print("ScopeSnap Database Seed Runner")
+    print("SnapAI Database Seed Runner")
     print("=" * 60)
 
     print("\n[1/2] Equipment Models")

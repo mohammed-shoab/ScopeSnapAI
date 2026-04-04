@@ -1,5 +1,5 @@
 """
-ScopeSnap — Estimate Generation Engine
+SnapAI — Estimate Generation Engine
 Pure math + DB lookups. ZERO AI calls. All deterministic.
 
 Implements the 9-step pipeline from Tech Spec §05:

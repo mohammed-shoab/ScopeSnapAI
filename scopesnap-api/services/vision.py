@@ -1,5 +1,5 @@
 """
-ScopeSnap — Gemini Vision AI Service
+SnapAI — Gemini Vision AI Service
 Handles all calls to Gemini 2.5 Flash for equipment photo analysis.
 Includes retry logic, timeout handling, and graceful error recovery.
 

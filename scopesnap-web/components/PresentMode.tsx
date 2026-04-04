@@ -4,7 +4,7 @@
  * Full-screen 4-slide slideshow overlay for showing the homeowner.
  * Opens as an overlay (fixed inset-0 z-50) — no navigation away.
  * Slides: 1) Annotated Photo  2) Health Card  3) Options  4) 5-Year Value
- * Matches ScopeSnap_Prototype_Demo.html Present Mode screens.
+ * Matches SnapAI_Prototype_Demo.html Present Mode screens.
  */
 
 import { useState, useEffect, useCallback } from "react";

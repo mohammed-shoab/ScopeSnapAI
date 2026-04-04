@@ -1,6 +1,6 @@
 "use client";
 /**
- * ScopeSnap — Dashboard (Beta)
+ * SnapAI — Dashboard (Beta)
  * SOW Task 1.7: Simplified beta dashboard — 3 elements only.
  *
  * Elements:
@@ -233,7 +233,7 @@ export default function DashboardPage() {
         {/* Empty state — SOW Task 1.7 / Jobs req: line illustration of phone photographing HVAC unit */}
         {!loading && !error && !hasEstimates && (
           <div className="px-5 py-10 text-center flex flex-col items-center gap-4">
-            {/* Monochrome ScopeSnap blue illustration: phone + viewfinder + HVAC unit */}
+            {/* Monochrome SnapAI blue illustration: phone + viewfinder + HVAC unit */}
             <svg
               width="96" height="116" viewBox="0 0 96 116"
               fill="none" xmlns="http://www.w3.org/2000/svg"

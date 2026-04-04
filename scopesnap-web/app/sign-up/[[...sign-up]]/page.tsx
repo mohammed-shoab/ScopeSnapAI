@@ -1,6 +1,6 @@
 /**
- * ScopeSnap — Embedded Sign-Up Page
- * Uses Clerk's <SignUp /> component rendered within the ScopeSnap app.
+ * SnapAI — Embedded Sign-Up Page
+ * Uses Clerk's <SignUp /> component rendered within the SnapAI app.
  *
  * Route: /sign-up (catch-all handles multi-step Clerk sign-up flow)
  */
@@ -21,7 +21,7 @@ export default function SignUpPage() {
         padding: "24px 16px",
       }}
     >
-      {/* ScopeSnap Logo */}
+      {/* SnapAI Logo */}
       <div
         style={{
           display: "flex",
@@ -89,7 +89,7 @@ export default function SignUpPage() {
           fontFamily: "IBM Plex Mono, monospace",
         }}
       >
-        ScopeSnap AI — Professional HVAC assessments for contractors
+        SnapAI — Professional HVAC assessments for contractors
       </p>
     </div>
   );

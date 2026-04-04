@@ -1,5 +1,5 @@
 """
-ScopeSnap — Equipment Model Matcher
+SnapAI — Equipment Model Matcher
 Matches Vision AI brand+model results to known equipment_models records.
 Uses regex patterns stored in equipment_models.model_pattern.
 

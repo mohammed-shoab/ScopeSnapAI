@@ -5,7 +5,7 @@ export default function EquipmentDatabasePage() {
     <ComingSoonPage
       icon="⚙️"
       title="Equipment Database"
-      description="Browse and search the full ScopeSnap equipment database — 50,000+ HVAC models with specs, recall history, and failure rates."
+      description="Browse and search the full SnapAI equipment database — 50,000+ HVAC models with specs, recall history, and failure rates."
       features={[
         "Search by brand, model, SEER rating, and age",
         "View failure probability curves by model",

@@ -4,7 +4,7 @@ Revision ID: 001
 Revises:
 Create Date: 2026-03-21
 
-Creates all 12 ScopeSnap tables matching Tech Spec §02 exactly.
+Creates all 12 SnapAI tables matching Tech Spec §02 exactly.
 Run with: alembic upgrade head
 """
 from typing import Sequence, Union
@@ -303,7 +303,7 @@ def upgrade() -> None:
             USING (company_id = current_setting('app.current_company_id', true)::uuid)
         """)
 
-    print("✅ All 12 ScopeSnap tables created successfully.")
+    print("✅ All 12 SnapAI tables created successfully.")
     print("   Verify with: \\dt in psql")
 
 

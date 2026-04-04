@@ -1,5 +1,5 @@
 """
-ScopeSnap — File Storage Abstraction
+SnapAI — File Storage Abstraction
 Local dev: saves files to ./uploads/ folder and serves via FastAPI static files.
 Cloud:     uploads to Cloudflare R2 (S3-compatible, zero egress fees).
 

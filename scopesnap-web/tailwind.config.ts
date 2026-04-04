@@ -9,7 +9,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // ScopeSnap brand colors (from prototype)
+        // SnapAI brand colors (from prototype)
         brand: {
           green: "#1a8754",
           "green-light": "#e8f5ee",

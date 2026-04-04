@@ -1,5 +1,5 @@
 /**
- * ScopeSnap — Feature Flags
+ * SnapAI — Feature Flags
  * SOW Task 1.6: Control visibility of non-essential pages during beta.
  *
  * All flags read from NEXT_PUBLIC_* env vars so they can be toggled per

@@ -1,5 +1,5 @@
 """
-ScopeSnap — Clerk JWT Authentication Middleware
+SnapAI — Clerk JWT Authentication Middleware
 Verifies Clerk session tokens and extracts company + user context.
 
 In local dev mode (ENVIRONMENT=development), you can bypass auth for testing

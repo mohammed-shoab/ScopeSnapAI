@@ -1,5 +1,5 @@
 """
-ScopeSnap — Stripe Payment Service
+SnapAI — Stripe Payment Service
 WP-10: Deposit collection via Stripe Checkout.
 
 Dev mode (no STRIPE_SECRET_KEY): returns mock checkout URL + fake session ID.

@@ -1,6 +1,6 @@
 "use client";
 /**
- * ScopeSnap — Sidebar Navigation
+ * SnapAI — Sidebar Navigation
  * SOW Task 1.6: Simplified for beta — 4 core items + feature-flagged extras.
  *
  * Changes from pre-beta version:

@@ -3,7 +3,7 @@
  * OfflineBanner — RW-06
  * Appears at the top of the screen when navigator.onLine is false.
  * Disappears immediately when connectivity returns.
- * Design: matches ScopeSnap brand, does not obscure nav.
+ * Design: matches SnapAI brand, does not obscure nav.
  */
 
 import { useState, useEffect } from "react";

@@ -1,5 +1,5 @@
 """
-ScopeSnap — Estimate API Endpoints
+SnapAI — Estimate API Endpoints
 WP-04: Full estimate generation pipeline + CRUD
 WP-05: Document generation + sending (placeholders)
 """
@@ -283,7 +283,7 @@ async def process_followups_early(
             select(Company).where(Company.id == estimate.company_id)
         )
         company = company_result.scalar_one_or_none()
-        company_name = company.name if company else "ScopeSnap HVAC"
+        company_name = company.name if company else "SnapAI HVAC"
         base_url = get_settings().frontend_url
 
         to_email = (property_record.customer_email if property_record else None) or "homeowner@example.com"
@@ -748,7 +748,7 @@ async def send_estimate(
         select(Company).where(Company.id == auth.company_id)
     )
     company = company_result.scalar_one_or_none()
-    company_name = company.name if company else "ScopeSnap HVAC"
+    company_name = company.name if company else "SnapAI HVAC"
     base_url = get_settings().frontend_url
 
     # ── Resolve recipient email ───────────────────────────────────────────────
@@ -900,7 +900,7 @@ async def process_followups(
             select(Company).where(Company.id == estimate.company_id)
         )
         company = company_result.scalar_one_or_none()
-        company_name = company.name if company else "ScopeSnap HVAC"
+        company_name = company.name if company else "SnapAI HVAC"
 
         to_email = (
             (property_record.customer_email if property_record else None)

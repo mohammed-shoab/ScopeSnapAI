@@ -1,5 +1,5 @@
 """
-ScopeSnap — Events API
+SnapAI — Events API
 SOW Task 1.10: POST /api/events — record behavioral analytics events.
 
 Design:

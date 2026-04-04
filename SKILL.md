@@ -1,19 +1,19 @@
 # SCOPESNAP — BUILD CONTEXT FOR COWORK
 
-## What Is ScopeSnap
+## What Is SnapAI
 An AI-powered HVAC equipment assessment and estimation tool. Technicians photograph equipment → AI identifies brand/model/condition → generates professional estimates (Good/Better/Best) → produces a visual homeowner report with annotated photos that closes deals. Built by Mainnov Tech (founder: Shoab, 12+ years data science, Pakistan-based, bootstrapped).
 
 ## Your Role
-You are the developer building ScopeSnap. Follow the SOW work packages in sequence. Write production-quality code. Match the prototypes visually. Do not make product decisions — the Product Bible has those. Do not change the tech stack — the Technical Spec has that. Your job is to execute, not strategize.
+You are the developer building SnapAI. Follow the SOW work packages in sequence. Write production-quality code. Match the prototypes visually. Do not make product decisions — the Product Bible has those. Do not change the tech stack — the Technical Spec has that. Your job is to execute, not strategize.
 
 ## Document Hierarchy (Read in This Order)
-1. **ScopeSnap_Build_SOW.html** — THE TASK LIST. 16 sequential work packages. Each has: what to build, acceptance criteria, dependencies, referenced docs. **START HERE for every coding session.**
-2. **ScopeSnap_Product_Bible.html** — Product strategy, competitive intelligence, pricing, positioning. Read when you need WHY something is designed a certain way. Don't change product decisions.
-3. **ScopeSnap_MVP_Technical_Spec.html** — Database schema (§02), API endpoints (§03), AI prompts (§04), estimate pipeline (§05), report architecture (§06), equipment DB (§07), file storage (§08), auth (§09), Stripe (§10), email (§11), build plan (§12). Section numbers are referenced in the SOW. **This is your implementation reference.**
+1. **SnapAI_Build_SOW.html** — THE TASK LIST. 16 sequential work packages. Each has: what to build, acceptance criteria, dependencies, referenced docs. **START HERE for every coding session.**
+2. **SnapAI_Product_Bible.html** — Product strategy, competitive intelligence, pricing, positioning. Read when you need WHY something is designed a certain way. Don't change product decisions.
+3. **SnapAI_MVP_Technical_Spec.html** — Database schema (§02), API endpoints (§03), AI prompts (§04), estimate pipeline (§05), report architecture (§06), equipment DB (§07), file storage (§08), auth (§09), Stripe (§10), email (§11), build plan (§12). Section numbers are referenced in the SOW. **This is your implementation reference.**
 4. **prototypes/** — HTML files showing what each screen looks like. Open in a browser. These are DESIGN TARGETS — match them as closely as possible.
-   - `ScopeSnap_Prototype_Demo.html` — 9-screen mobile app for the HVAC technician
-   - `ScopeSnap_Owner_Dashboard.html` — Laptop dashboard for the HVAC business owner
-   - `ScopeSnap_Homeowner_Report.html` — The report homeowners receive (mobile + desktop + email/text notifications)
+   - `SnapAI_Prototype_Demo.html` — 9-screen mobile app for the HVAC technician
+   - `SnapAI_Owner_Dashboard.html` — Laptop dashboard for the HVAC business owner
+   - `SnapAI_Homeowner_Report.html` — The report homeowners receive (mobile + desktop + email/text notifications)
 
 ## How to Execute Work Packages
 - Work on ONE work package at a time

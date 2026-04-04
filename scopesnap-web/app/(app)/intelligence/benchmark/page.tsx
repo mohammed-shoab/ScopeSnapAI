@@ -99,7 +99,7 @@ export default function BenchmarkPage() {
           <div>
             <p className="font-bold text-sm">Live Market Data Coming Soon</p>
             <p className="text-xs text-text-secondary mt-1">
-              BenchmarkIQ will pull real-time pricing from ScopeSnap network data across 10,000+
+              BenchmarkIQ will pull real-time pricing from SnapAI network data across 10,000+
               HVAC contractors. The data above uses regional market averages for illustration.
               Full live benchmarking ships in Q2 2026.
             </p>

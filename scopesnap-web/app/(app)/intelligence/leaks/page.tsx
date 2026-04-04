@@ -504,7 +504,7 @@ export default function ProfitLeaksPage() {
                   <p className="font-semibold text-sm">Deliver quotes within 24 hours</p>
                   <p className="text-xs text-text-secondary">
                     Set a team rule: all assessments → estimates → sent same day or next morning.
-                    ScopeSnap makes this easy.
+                    SnapAI makes this easy.
                   </p>
                 </div>
               </div>

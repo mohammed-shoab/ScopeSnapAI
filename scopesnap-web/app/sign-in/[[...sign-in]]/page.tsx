@@ -1,6 +1,6 @@
 /**
- * ScopeSnap — Embedded Sign-In Page
- * Uses Clerk's <SignIn /> component rendered within the ScopeSnap app.
+ * SnapAI — Embedded Sign-In Page
+ * Uses Clerk's <SignIn /> component rendered within the SnapAI app.
  * Replaces the external Clerk hosted page (glowing-cowbird-89.accounts.dev)
  * which had a black screen rendering issue.
  *
@@ -23,7 +23,7 @@ export default function SignInPage() {
         padding: "24px 16px",
       }}
     >
-      {/* ScopeSnap Logo */}
+      {/* SnapAI Logo */}
       <div
         style={{
           display: "flex",
@@ -91,7 +91,7 @@ export default function SignInPage() {
           fontFamily: "IBM Plex Mono, monospace",
         }}
       >
-        ScopeSnap AI — Professional HVAC assessments for contractors
+        SnapAI — Professional HVAC assessments for contractors
       </p>
     </div>
   );

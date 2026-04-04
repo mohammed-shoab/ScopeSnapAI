@@ -1,6 +1,6 @@
 "use client";
 /**
- * ScopeSnap — Bottom Navigation Bar
+ * SnapAI — Bottom Navigation Bar
  * SOW Task 1.6: Simplified for beta — 4 tabs only.
  *
  * Changes from pre-beta version:
