@@ -12,6 +12,8 @@ import FeedbackButton from "@/components/FeedbackButton";
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development" ||
   process.env.NODE_ENV === "development";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://scopesnap-api-production.up.railway.app";
+
 export default async function AppLayout({
   children,
 }: {
@@ -21,12 +23,31 @@ export default async function AppLayout({
     try {
       const { auth } = await import("@clerk/nextjs/server");
       const { redirect } = await import("next/navigation");
-      const { userId } = await auth();
+      // Clerk v5: auth() returns a promise — must await
+      const { userId, getToken } = await auth();
       if (!userId) {
         redirect("/sign-in");
       }
+
+      // Check backend has a user record — new OAuth users may not have completed registration
+      // Skip this check when already on /onboarding to avoid redirect loops
+      const { headers } = await import("next/headers");
+      const pathname = headers().get("x-pathname") ?? "";
+      if (!pathname.startsWith("/onboarding")) {
+        const token = await getToken();
+        if (token) {
+          const meRes = await fetch(`${API_URL}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            cache: "no-store",
+          });
+          if (meRes.status === 404) {
+            // User authenticated with Clerk but no backend record — send to onboarding
+            redirect("/onboarding");
+          }
+        }
+      }
     } catch {
-      // Clerk not configured — continue in dev mode
+      // Clerk not configured or redirect thrown — continue
     }
   }
 

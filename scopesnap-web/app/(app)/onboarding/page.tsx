@@ -105,7 +105,7 @@ export default function OnboardingPage() {
 
   const handleTradeContinue = () => {
     if (!selectedTrade) return;
-    setStep(2);
+    setStep(3);
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
