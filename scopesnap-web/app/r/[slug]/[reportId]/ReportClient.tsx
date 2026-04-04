@@ -104,6 +104,7 @@ interface Company {
   email?: string;
   license_number?: string;
   logo_url?: string;
+  custom_branding?: boolean;  // true = paid plan, show their branding; false = show SnapAI
 }
 
 interface Report {
@@ -426,8 +427,8 @@ export default function ReportClient({ report }: { report: Report }) {
           zIndex: 10,
         }}
       >
-        {/* Phase 1 branding: show contractor logo or fallback to initial */}
-        {company.logo_url ? (
+        {/* Phase 1 branding — paid plans only. Free plan shows SnapAI default branding. */}
+        {company.custom_branding && company.logo_url ? (
           <img
             src={company.logo_url}
             alt={company.name || "Company logo"}
@@ -457,16 +458,20 @@ export default function ReportClient({ report }: { report: Report }) {
               flexShrink: 0,
             }}
           >
-            {company.name ? company.name[0].toUpperCase() : "S"}
+            {company.custom_branding && company.name ? company.name[0].toUpperCase() : "S"}
           </div>
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>{company.name || "Your HVAC Company"}</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
+            {company.custom_branding ? (company.name || "Your HVAC Company") : "SnapAI"}
+          </h3>
           <p style={{ fontSize: 10, color: "#7a7770", margin: 0 }}>
-            {[company.license_number && `License #${company.license_number}`, company.phone].filter(Boolean).join(" · ")}
+            {company.custom_branding
+              ? [company.license_number && `License #${company.license_number}`, company.phone].filter(Boolean).join(" · ")
+              : "Professional HVAC Assessments"}
           </p>
         </div>
-        {company.phone && (
+        {company.custom_branding && company.phone && (
           <a
             href={`tel:${company.phone.replace(/\D/g, "")}`}
             style={{ fontSize: 12, fontWeight: 700, color: "#1a8754", textDecoration: "none", flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}
@@ -808,9 +813,9 @@ export default function ReportClient({ report }: { report: Report }) {
                   <p style={{ fontSize: 12, color: "#0f5c38", margin: 0 }}>
                     You selected{" "}
                     <strong>{report.options.find((o) => o.tier === approvedTier)?.name || approvedTier}</strong>.
-                    {company.name && ` ${company.name}`} will be in touch shortly to schedule.
+                    {company.custom_branding && company.name ? ` ${company.name}` : " SnapAI"} will be in touch shortly to schedule.
                   </p>
-                  {company.phone && (
+                  {company.custom_branding && company.phone && (
                     <p style={{ fontSize: 11, color: "#7a7770", marginTop: 8 }}>
                       Questions? Call us at{" "}
                       <a
@@ -920,9 +925,11 @@ export default function ReportClient({ report }: { report: Report }) {
         >
           <div style={{ padding: "20px 16px", textAlign: "center" }}>
             <p style={{ fontSize: 13, fontWeight: 600, margin: "0 0 4px" }}>Questions? We're here to help.</p>
-            <p style={{ fontSize: 12, color: "#7a7770", margin: 0 }}>{company.name || "Your HVAC Contractor"}</p>
+            <p style={{ fontSize: 12, color: "#7a7770", margin: 0 }}>
+              {company.custom_branding ? (company.name || "Your HVAC Contractor") : "SnapAI"}
+            </p>
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              {company.phone && (
+              {company.custom_branding && company.phone && (
                 <a
                   href={`tel:${company.phone.replace(/\D/g, "")}`}
                   style={{
@@ -945,7 +952,7 @@ export default function ReportClient({ report }: { report: Report }) {
                   Call
                 </a>
               )}
-              {company.phone && (
+              {company.custom_branding && company.phone && (
                 <a
                   href={`sms:${company.phone.replace(/\D/g, "")}`}
                   style={{

@@ -620,11 +620,20 @@ async def generate_documents(
         "assessment_id": str(estimate.assessment_id),
         "photo_url": photo_url,           # inspection photo for annotated embed
         "company": {
-            "name": company.name if company else "",
-            "phone": company.phone if company else "",
-            "email": company.email if company else "",
-            "license_number": company.license_number if company else "",
-            "logo_url": company.logo_url if company else None,  # Phase 1 branding
+            # Phase 1 branding is paid-only — free plan falls back to SnapAI defaults
+            **({
+                "name": company.name,
+                "phone": company.phone,
+                "email": company.email,
+                "license_number": company.license_number,
+                "logo_url": company.logo_url,
+            } if company and (company.plan or "free") in {"early_bird", "pro", "team"} else {
+                "name": "SnapAI",
+                "phone": "",
+                "email": "",
+                "license_number": "",
+                "logo_url": None,
+            }),
         },
         "property": property_data,
         "equipment": equipment_data,

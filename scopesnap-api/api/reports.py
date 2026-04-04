@@ -197,15 +197,19 @@ async def get_public_report(
             }
 
     # ── Company branding ──────────────────────────────────────────────────────
+    # Phase 1 branding is paid-only: free plan shows SnapAI default branding.
+    PAID_PLANS = {"early_bird", "pro", "team"}
     company_data = {}
     if company:
+        is_paid = (company.plan or "free") in PAID_PLANS
         company_data = {
-            "name": company.name,
+            "name": company.name if is_paid else None,
             "slug": company.slug,
-            "logo_url": company.logo_url,
-            "phone": company.phone,
-            "email": company.email,
-            "license_number": company.license_number,
+            "logo_url": company.logo_url if is_paid else None,
+            "phone": company.phone if is_paid else None,
+            "email": company.email if is_paid else None,
+            "license_number": company.license_number if is_paid else None,
+            "custom_branding": is_paid,  # frontend uses this to decide what to show
         }
 
     # ── Build response ────────────────────────────────────────────────────────
