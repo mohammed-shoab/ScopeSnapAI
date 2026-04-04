@@ -53,7 +53,13 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="bg-surface-bg text-text-primary font-sans antialiased">
-        <ClerkProvider>
+        <ClerkProvider
+          proxyUrl={
+            process.env.NEXT_PUBLIC_ENV === "production"
+              ? "https://snapai.mainnov.tech/clerk"
+              : undefined
+          }
+        >
         {children}
         </ClerkProvider>
         {/* PWA Service Worker Registration */}

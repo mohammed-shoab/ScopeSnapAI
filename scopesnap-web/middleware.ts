@@ -28,6 +28,7 @@ const PUBLIC_PATHS = [
   "/sign-up",     // Clerk sign-up
   "/payment-success",
   "/api/webhooks",
+  "/clerk",       // Clerk proxy — must be public so ClerkJS can load unauthenticated
   "/_next",
   "/favicon",
   "/manifest.json",

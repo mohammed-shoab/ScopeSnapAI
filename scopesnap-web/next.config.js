@@ -1,5 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Clerk proxy: route Clerk API calls through the main domain so the
+  // custom Clerk subdomain (clerk.snapai.mainnov.tech) isn't needed to serve
+  // ClerkJS. Requests to /clerk/:path* are forwarded to Clerk's frontend API.
+  async rewrites() {
+    return [
+      {
+        source: "/clerk/:path*",
+        destination: "https://frontend-api.clerk.services/:path*",
+      },
+    ];
+  },
   // Prevent crypto-js (Clerk dependency) from being split into a server-side vendor chunk.
   // Without this, Vercel's build cache can contain a stale webpack-runtime.js that references
   // vendor-chunks/crypto-js.js which no longer exists in subsequent cached builds —
