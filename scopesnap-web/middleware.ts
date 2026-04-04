@@ -68,8 +68,9 @@ export async function middleware(request: NextRequest) {
 
     return clerkMiddleware(async (auth, req) => {
       if (isProtectedRoute(req)) {
-        // Clerk v5: auth is async — use auth.protect() not auth().protect()
-        await auth.protect({
+        // Clerk v5: auth() returns AuthObject — must await protect() to allow
+        // the redirect to complete before continuing to NextResponse.next()
+        await auth().protect({
           unauthenticatedUrl: new URL("/sign-in", req.url).toString(),
         });
       }
