@@ -44,19 +44,19 @@ function isPublicPath(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Inject x-pathname so server layouts can read the current route path
+  // Inject x-pathname into request headers so server layouts can read the
+  // current route path without workarounds (used for /onboarding loop guard).
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
-  const withPath = NextResponse.next({ request: { headers: requestHeaders } });
 
   // Always allow public paths
   if (isPublicPath(pathname)) {
-    return withPath;
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   // Dev mode: skip auth entirely
   if (IS_DEV) {
-    return withPath;
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   // Production: use Clerk to protect routes
@@ -71,21 +71,19 @@ export async function middleware(request: NextRequest) {
       "/estimate(.*)",
     ]);
 
-    // Rebuild request with x-pathname header so Clerk middleware passes it through
-    const augmentedRequest = new Request(request, { headers: requestHeaders });
-
     return clerkMiddleware(async (auth, req) => {
       if (isProtectedRoute(req)) {
         await auth().protect({
           unauthenticatedUrl: new URL("/sign-in", req.url).toString(),
         });
       }
+      // Return with x-pathname header so layouts can read current pathname
       return NextResponse.next({ request: { headers: requestHeaders } });
-    })(augmentedRequest as NextRequest, {} as never);
+    })(request, {} as never);
   } catch {
     // Clerk not installed or misconfigured — fail open in dev, fail closed in prod
     if (IS_DEV) {
-      return withPath;
+      return NextResponse.next({ request: { headers: requestHeaders } });
     }
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }

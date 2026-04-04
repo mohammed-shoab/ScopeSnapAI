@@ -46,8 +46,10 @@ export default async function AppLayout({
           }
         }
       }
-    } catch {
-      // Clerk not configured or redirect thrown — continue
+    } catch (e) {
+      // Re-throw Next.js redirect/notFound signals (they have a `digest` property)
+      if (e && typeof e === "object" && "digest" in e) throw e;
+      // Clerk not configured — continue in dev mode
     }
   }
 
