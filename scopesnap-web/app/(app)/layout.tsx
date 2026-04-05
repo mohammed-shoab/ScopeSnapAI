@@ -38,7 +38,9 @@ export default async function AppLayout({
         if (token) {
           const meRes = await fetch(`${API_URL}/api/auth/me`, {
             headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            cache: "no-store",
+            // Cache for 30s per user to avoid hitting the backend on every page render.
+            // 404 (unregistered user) will still redirect to onboarding correctly.
+            next: { revalidate: 30 },
           });
           if (meRes.status === 404) {
             // User authenticated with Clerk but no backend record — send to onboarding
