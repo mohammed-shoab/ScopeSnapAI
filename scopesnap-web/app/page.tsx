@@ -16,6 +16,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import InstallPrompt from "@/components/InstallPrompt";
 
 export default function LandingPage() {
   const [email, setEmail] = useState("");
@@ -53,6 +54,9 @@ export default function LandingPage() {
     <>
       {/* ── Meta / SEO ────────────────────────────────────────────────────── */}
       {/* Note: use Next.js Metadata API in layout.tsx for full meta control */}
+
+      {/* PWA install prompt — shows on iOS/Android when not yet installed */}
+      <InstallPrompt />
 
       <main className="min-h-screen bg-surface-bg text-text-primary">
 
