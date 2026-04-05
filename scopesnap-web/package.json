@@ -16,7 +16,8 @@
     "@clerk/nextjs": "^5.7.2",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.2",
-    "lucide-react": "^0.454.0"
+    "lucide-react": "^0.454.0",
+    "posthog-js": "^1.240.6"
   },
   "devDependencies": {
     "typescript": "^5",

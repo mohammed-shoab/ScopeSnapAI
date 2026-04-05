@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
 import { trackEvent } from "@/lib/tracking";
+import { ph } from "@/providers/PostHogProvider";
 import PresentMode from "@/components/PresentMode";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
@@ -368,8 +369,10 @@ export default function EstimatePage() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Feedback loop — "Did you send as-is or adjust?" (Zuckerberg req: estimate quality signal)
+  // Feedback loop — "Did you send as-is or adjust?" (Musk/Zuckerberg req: AI training signal)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [feedbackStep, setFeedbackStep] = useState<"ask" | "amount">("ask");
+  const [correctionAmount, setCorrectionAmount] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -1171,35 +1174,86 @@ export default function EstimatePage() {
                 )}
               </div>
 
-              {/* ── Feedback Loop (Zuckerberg req: estimate quality signal) ── */}
+              {/* ── Estimate Correction Feedback Loop ── */}
+              {/* Musk req: capture actual vs AI price as training data */}
+              {/* Zuckerberg req: estimate quality signal for product analytics */}
               {!feedbackSubmitted ? (
                 <div className="bg-surface-secondary rounded-xl p-4 text-left space-y-3">
-                  <p className="text-sm font-semibold text-text-primary">Quick question — did you adjust the estimate?</p>
-                  <p className="text-xs text-text-secondary">Helps us improve AI accuracy for your next job.</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        trackEvent("estimate_feedback", { estimate_id: id, adjusted: false, decision: "sent_as_is" });
-                        setFeedbackSubmitted(true);
-                      }}
-                      className="flex-1 py-2.5 text-sm font-semibold rounded-xl border border-surface-border bg-white hover:bg-surface-secondary transition-colors"
-                    >
-                      ✓ Sent as-is
-                    </button>
-                    <button
-                      onClick={() => {
-                        trackEvent("estimate_feedback", { estimate_id: id, adjusted: true, decision: "adjusted" });
-                        setFeedbackSubmitted(true);
-                      }}
-                      className="flex-1 py-2.5 text-sm font-semibold rounded-xl border border-brand-green text-brand-green bg-white hover:bg-green-50 transition-colors"
-                    >
-                      ✏ Adjusted it
-                    </button>
-                  </div>
+                  {feedbackStep === "ask" ? (
+                    <>
+                      <p className="text-sm font-semibold text-text-primary">Did you adjust the estimate before sending?</p>
+                      <p className="text-xs text-text-secondary">Helps us improve AI accuracy for your next job.</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            const aiTotal = estimate?.options?.reduce((s, o) => s + (o.total ?? 0), 0) ?? 0;
+                            trackEvent("estimate_feedback", { estimate_id: id, adjusted: false, decision: "sent_as_is", ai_total: aiTotal });
+                            ph.estimateCorrection(String(id), false, aiTotal, aiTotal);
+                            setFeedbackSubmitted(true);
+                          }}
+                          className="flex-1 py-2.5 text-sm font-semibold rounded-xl border border-surface-border bg-white hover:bg-surface-secondary transition-colors"
+                        >
+                          ✓ Sent as-is
+                        </button>
+                        <button
+                          onClick={() => setFeedbackStep("amount")}
+                          className="flex-1 py-2.5 text-sm font-semibold rounded-xl border border-brand-green text-brand-green bg-white hover:bg-green-50 transition-colors"
+                        >
+                          ✏ Yes, I adjusted
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold text-text-primary">What was the final total you sent?</p>
+                      <p className="text-xs text-text-secondary">
+                        AI suggested {estimate?.options ? fmt(estimate.options.reduce((s, o) => Math.max(s, o.total ?? 0), 0)) : "—"} — what did you actually charge?
+                      </p>
+                      <div className="flex gap-2 items-center">
+                        <span className="text-text-secondary font-bold text-sm">$</span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          placeholder="e.g. 8500"
+                          value={correctionAmount}
+                          onChange={(e) => setCorrectionAmount(e.target.value)}
+                          className="flex-1 border border-surface-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-green bg-white"
+                          autoFocus
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setFeedbackStep("ask")}
+                          className="py-2 px-3 text-xs text-text-secondary rounded-xl border border-surface-border bg-white hover:bg-surface-secondary transition-colors"
+                        >
+                          ← Back
+                        </button>
+                        <button
+                          onClick={() => {
+                            const aiMax = estimate?.options ? estimate.options.reduce((s, o) => Math.max(s, o.total ?? 0), 0) : 0;
+                            const actual = correctionAmount ? parseFloat(correctionAmount) : undefined;
+                            trackEvent("estimate_feedback", {
+                              estimate_id: id,
+                              adjusted: true,
+                              decision: "adjusted",
+                              ai_total: aiMax,
+                              actual_total: actual,
+                              delta: actual != null ? actual - aiMax : undefined,
+                            });
+                            ph.estimateCorrection(String(id), true, aiMax, actual);
+                            setFeedbackSubmitted(true);
+                          }}
+                          className="flex-1 py-2.5 text-sm font-semibold rounded-xl bg-brand-green text-white hover:opacity-90 transition-opacity"
+                        >
+                          Submit →
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <p className="text-xs text-text-secondary bg-surface-secondary rounded-xl py-2.5 px-4">
-                  Thanks — that helps us learn.
+                  Thanks — that helps us make the AI smarter for your next job.
                 </p>
               )}
 
