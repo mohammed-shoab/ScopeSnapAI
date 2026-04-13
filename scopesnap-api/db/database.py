@@ -13,11 +13,25 @@ settings = get_settings()
 
 # ── Fix URL for async drivers ─────────────────────────────────────────────────
 def get_async_url(url: str) -> str:
-    """Ensure URL uses an async driver."""
+    """Ensure URL uses an async driver.
+
+    asyncpg does not accept the libpq/psycopg2 'sslmode' query parameter.
+    It uses 'ssl' instead. We normalise both here so either form of the
+    connection string works without manual intervention.
+    """
     if url.startswith("postgresql://"):
-        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    if url.startswith("sqlite://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif url.startswith("sqlite://"):
         return url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+
+    # Convert psycopg2-style sslmode → asyncpg-style ssl
+    url = url.replace("sslmode=require", "ssl=require")
+    url = url.replace("sslmode=verify-full", "ssl=require")
+    url = url.replace("sslmode=verify-ca", "ssl=require")
+    url = url.replace("sslmode=prefer", "ssl=prefer")
+    url = url.replace("sslmode=disable", "ssl=disable")
+    url = url.replace("sslmode=allow", "ssl=prefer")
+
     return url
 
 async_url = get_async_url(settings.database_url)
