@@ -1,5 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Redirect the raw Vercel deployment URL to the canonical production domain.
+  // Clerk production keys are domain-locked to snapai.mainnov.tech — anyone
+  // landing on scope-snap-ai.vercel.app would see a broken sign-in page without this.
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "scope-snap-ai.vercel.app" }],
+        destination: "https://snapai.mainnov.tech/:path*",
+        permanent: true,   // 308 — browsers cache this redirect
+      },
+    ];
+  },
   // Prevent crypto-js (Clerk dependency) from being split into a server-side vendor chunk.
   // Without this, Vercel's build cache can contain a stale webpack-runtime.js that references
   // vendor-chunks/crypto-js.js which no longer exists in subsequent cached builds —
