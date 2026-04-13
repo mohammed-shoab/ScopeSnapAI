@@ -1,12 +1,12 @@
 name: Supabase Keep-Alive
 
 # Supabase free tier pauses after 7 days of inactivity.
-# This workflow runs every 5 days to ping the database and prevent pausing.
+# This workflow runs every 2 days to ping the database and prevent pausing.
 
 on:
   schedule:
-    # Runs every 5 days at 08:00 UTC (well within the 7-day window)
-    - cron: '0 8 */5 * *'
+    # Runs every 2 days at 08:00 UTC (well within the 7-day window)
+    - cron: '0 8 */2 * *'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
