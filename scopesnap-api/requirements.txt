@@ -22,4 +22,5 @@ svix==1.90.0
 xgboost>=2.0.0            # Sensor fault detection model (90.09% accuracy)
 joblib>=1.3.0             # Loading .pkl model files
 numpy>=1.24.0             # Feature engineering for sensor model
+sentry-sdk[fastapi]==2.19.2
 slowapi==0.1.9            # Rate limiting for Gemini/AI endpoints

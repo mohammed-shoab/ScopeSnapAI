@@ -1,3 +1,4 @@
+import os
 """
 SnapAI API — FastAPI Application Entry Point
 
@@ -27,6 +28,22 @@ from api.pricing_rules import router as pricing_rules_router
 from api.events import router as events_router
 from api.admin import router as admin_router
 from api.sensor_diagnosis import router as sensor_diagnosis_router
+
+
+# ── Sentry Error Tracking ─────────────────────────────────────────────────────
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+_sentry_dsn = os.environ.get("SENTRY_DSN", "")
+if _sentry_dsn:
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[FastApiIntegration(), SqlalchemyIntegration()],
+        traces_sample_rate=0.1,
+        environment=os.environ.get("ENVIRONMENT", "development"),
+        release="snapai-api@1.0.0",
+    )
 
 settings = get_settings()
 
