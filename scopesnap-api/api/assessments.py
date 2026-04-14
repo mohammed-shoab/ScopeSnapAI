@@ -30,6 +30,16 @@ router = APIRouter(prefix="/api/assessments", tags=["assessments"])
 
 # ── Pydantic Schemas ───────────────────────────────────────────────────────────
 
+class SensorReadings(BaseModel):
+    """Optional sensor readings from the technician's field instruments."""
+    outdoor_ambient_temp: Optional[float] = None  # °F
+    supply_air_temp: Optional[float] = None       # °F
+    return_air_temp: Optional[float] = None       # °F
+    suction_pressure: Optional[float] = None      # PSI
+    discharge_pressure: Optional[float] = None    # PSI
+    unit_age_years: Optional[float] = None        # years
+
+
 class AssessmentOverride(BaseModel):
     """Fields a tech can override after AI analysis."""
     brand: Optional[str] = None
@@ -104,6 +114,7 @@ async def create_assessment(
     homeowner_name: Optional[str] = Form(None),    # Alias used by mobile app
     homeowner_email: Optional[str] = Form(None),   # Alias used by mobile app
     homeowner_phone: Optional[str] = Form(None),   # Alias used by mobile app
+    sensor_readings_json: Optional[str] = Form(None, description="JSON string of SensorReadings for AI cascade Track A"),
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -229,6 +240,14 @@ async def create_assessment(
             "original_name": photo_file.filename or f"photo_{i}.jpg",
         })
 
+    # ── Parse sensor readings if provided ───────────────────────────────────
+    parsed_sensor_readings = None
+    if sensor_readings_json:
+        try:
+            parsed_sensor_readings = SensorReadings.model_validate_json(sensor_readings_json)
+        except Exception as _se:
+            print(f"[Assessments] Could not parse sensor_readings_json: {_se}")
+
     # ── Create assessment record ─────────────────────────────────────────────
     assessment = Assessment(
         id=assessment_id,
@@ -239,6 +258,11 @@ async def create_assessment(
         status="pending",
         tech_overrides={},
     )
+    # Store sensor readings in tech_overrides for use in /analyze
+    if parsed_sensor_readings:
+        assessment.tech_overrides = {
+            "_sensor_readings": parsed_sensor_readings.model_dump(exclude_none=True)
+        }
     db.add(assessment)
 
     # Create assessment_photos records
@@ -317,23 +341,66 @@ async def analyze_assessment(
     if not image_bytes_list:
         raise HTTPException(status_code=400, detail="Could not load photos for analysis.")
 
-    # ── Call Gemini Vision AI ────────────────────────────────────────────────
-    vision = get_vision_service()
+    # ── Run AI Cascade (XGBoost → YOLO → Gemini as needed) ──────────────────
+    # Recover sensor readings stored during upload (if tech provided them)
+    sensor_readings = None
+    stored_readings = (assessment.tech_overrides or {}).get("_sensor_readings")
+    if stored_readings:
+        sensor_readings = SensorReadings(**stored_readings)
+
     try:
-        ai_result = await vision.analyze_equipment_photos(
-            image_bytes_list=image_bytes_list,
-            prompt=EQUIPMENT_ANALYSIS_PROMPT,
-            image_content_types=content_types,
+        from services.ai_cascade import AICascadeService
+        cascade = AICascadeService()
+        cascade_result = await cascade.analyze(
+            photos=image_bytes_list,
+            sensor_readings=sensor_readings,
         )
-    except VisionAnalysisError as e:
-        # Store error state but don't crash — tech can still manually enter data
-        assessment.status = "analysis_failed"
-        assessment.ai_analysis = {"error": str(e), "raw": None}
-        await db.commit()
-        raise HTTPException(
-            status_code=502,
-            detail=f"AI analysis failed: {str(e)}. You can manually enter equipment details."
-        )
+        # Build ai_result dict from cascade output — merge with Gemini report for
+        # equipment ID, condition, etc. (Gemini report is the richer data source).
+        gemini_data = cascade_result.gemini_report or {}
+        # Augment with cascade fault detection
+        gemini_data["_cascade_fault"] = cascade_result.fault_label
+        gemini_data["_cascade_confidence"] = cascade_result.confidence
+        gemini_data["_cascade_track"] = cascade_result.track_used
+        gemini_data["_cascade_method"] = cascade_result.method
+        gemini_data["_gemini_called"] = cascade_result.gemini_called
+        if cascade_result.bounding_boxes:
+            gemini_data["_bounding_boxes"] = cascade_result.bounding_boxes
+        ai_result = gemini_data
+
+        # If cascade didn't call Gemini, we still need equipment identification
+        # (brand, model, serial) — call Gemini with the standard equipment prompt
+        if not cascade_result.gemini_called:
+            vision = get_vision_service()
+            try:
+                equip_data = await vision.analyze_equipment_photos(
+                    image_bytes_list=image_bytes_list,
+                    prompt=EQUIPMENT_ANALYSIS_PROMPT,
+                    image_content_types=content_types,
+                )
+                ai_result = {**equip_data, **gemini_data}  # cascade data takes precedence
+            except VisionAnalysisError as _ve:
+                print(f"[Analyze] Equipment ID Gemini call failed (non-fatal): {_ve}")
+
+    except Exception as _cascade_err:
+        # Cascade failed — fall back to direct Gemini call (original behavior)
+        print(f"[Analyze] Cascade failed ({_cascade_err}), falling back to direct Gemini.")
+        vision = get_vision_service()
+        try:
+            ai_result = await vision.analyze_equipment_photos(
+                image_bytes_list=image_bytes_list,
+                prompt=EQUIPMENT_ANALYSIS_PROMPT,
+                image_content_types=content_types,
+            )
+        except VisionAnalysisError as e:
+            # Store error state but don't crash — tech can still manually enter data
+            assessment.status = "analysis_failed"
+            assessment.ai_analysis = {"error": str(e), "raw": None}
+            await db.commit()
+            raise HTTPException(
+                status_code=502,
+                detail=f"AI analysis failed: {str(e)}. You can manually enter equipment details."
+            )
 
     # ── Parse AI response into structured fields ─────────────────────────────
     ai_equipment_id = {

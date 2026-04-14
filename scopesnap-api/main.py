@@ -21,6 +21,7 @@ from api.billing import router as billing_router, webhook_router as billing_webh
 from api.pricing_rules import router as pricing_rules_router
 from api.events import router as events_router
 from api.admin import router as admin_router
+from api.sensor_diagnosis import router as sensor_diagnosis_router
 
 settings = get_settings()
 
@@ -71,6 +72,7 @@ app.include_router(billing_webhook_router)
 app.include_router(pricing_rules_router)
 app.include_router(events_router)  # POST /api/events + POST /api/waitlist
 app.include_router(admin_router)   # POST /admin/seed, GET /admin/status (protected)
+app.include_router(sensor_diagnosis_router)  # POST /api/sensor-diagnosis (XGBoost Track A)
 
 
 # ── Health Check ──────────────────────────────────────────────────────────────

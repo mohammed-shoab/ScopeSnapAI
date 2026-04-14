@@ -13,6 +13,11 @@ echo "  PORT=${PORT:-8000}"
 echo "=================================================="
 
 echo ""
+echo "Initializing AI models (downloading from GitHub Releases if needed)..."
+python /app/scripts/download_models.py
+echo "✅ AI models ready"
+
+echo ""
 echo "Running database migrations..."
 alembic upgrade head
 echo "✅ Migrations complete"

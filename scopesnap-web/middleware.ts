@@ -68,7 +68,7 @@ export async function middleware(request: NextRequest) {
     const isProtectedRoute = createRouteMatcher([
       "/dashboard(.*)",
       "/assess(.*)",
-      "/estimate(.*)",
+      "/assessment(.*)",
     ]);
 
     return clerkMiddleware(async (auth, req) => {
