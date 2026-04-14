@@ -75,7 +75,7 @@ export default function FeedbackModal({ open, onClose }: Props) {
       // Fallback: open mail client (last resort)
       const subject = encodeURIComponent(`SnapAI Beta Feedback — ${type}`);
       const body    = encodeURIComponent(message.trim() + `\n\nPage: ${window.location.href}`);
-      window.open(`mailto:feedback@scopesnap.ai?subject=${subject}&body=${body}`);
+      window.open(`mailto:ds.shoab@gmail.com?subject=${subject}&body=${body}`);
       setStatus("sent");
     }
   }

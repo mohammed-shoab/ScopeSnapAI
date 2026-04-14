@@ -111,9 +111,9 @@ function buildTabs(): Tab[] {
 
   if (featureFlags.showJobs) {
     tabs.splice(2, 0, {
-      href: "/estimates",
+      href: "/assessments",
       label: "Jobs",
-      activeOn: ["/estimates", "/estimate"],
+      activeOn: ["/assessments", "/assessment"],
       renderIcon: (active) => <JobsIcon active={active} />,
     });
   }

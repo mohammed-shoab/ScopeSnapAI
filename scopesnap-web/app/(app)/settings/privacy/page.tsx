@@ -35,7 +35,7 @@ const DATA_WE_STORE = [
     retention: "Until assessment deleted",
   },
   {
-    category: "Estimates",
+    category: "Assessments",
     items: ["Good/Better/Best pricing, line items, homeowner approval status"],
     retention: "Until assessment deleted",
   },
@@ -217,7 +217,7 @@ export default function PrivacySettingsPage() {
           During beta, account deletion is handled by our team.
         </p>
         <a
-          href="mailto:support@scopesnap.ai?subject=Delete My SnapAI Account"
+          href="mailto:hello@mainnov.tech?subject=Delete My SnapAI Account"
           className="inline-flex items-center gap-2 border border-red-200 text-red-600 font-semibold px-4 py-2.5 rounded-xl text-sm hover:bg-red-50 transition-colors"
         >
           Request account deletion

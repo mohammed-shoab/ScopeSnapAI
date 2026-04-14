@@ -208,7 +208,7 @@ export default function DashboardPage() {
         <div className="px-5 py-4 border-b border-surface-border flex items-center justify-between">
           <h2 className="font-bold text-base">Recent Assessments</h2>
           {hasEstimates && (
-            <Link href="/estimates" className="text-xs text-brand-green font-semibold hover:underline">
+            <Link href="/assessments" className="text-xs text-brand-green font-semibold hover:underline">
               View all →
             </Link>
           )}
@@ -283,7 +283,7 @@ export default function DashboardPage() {
               return (
                 <Link
                   key={est.id}
-                  href={`/estimate/${est.id}`}
+                  href={`/assessment/${est.id}`}
                   className="flex items-center gap-3 px-5 py-4 hover:bg-surface-bg transition-colors"
                 >
                   {/* Icon */}

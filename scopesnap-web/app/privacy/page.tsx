@@ -54,8 +54,8 @@ export default function PrivacyPage() {
             <p className="text-sm text-text-secondary leading-relaxed">
               You can export all your data as a CSV from Settings → Privacy at any time. You can request
               account deletion by emailing{" "}
-              <a href="mailto:support@scopesnap.ai" className="text-brand-green font-semibold hover:underline">
-                support@scopesnap.ai
+              <a href="mailto:hello@mainnov.tech" className="text-brand-green font-semibold hover:underline">
+                hello@mainnov.tech
               </a>
               . We will process deletion requests within 5 business days.
             </p>
@@ -73,8 +73,8 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-bold mb-2">Contact</h2>
             <p className="text-sm text-text-secondary leading-relaxed">
               Privacy questions:{" "}
-              <a href="mailto:privacy@scopesnap.ai" className="text-brand-green font-semibold hover:underline">
-                privacy@scopesnap.ai
+              <a href="mailto:hello@mainnov.tech" className="text-brand-green font-semibold hover:underline">
+                hello@mainnov.tech
               </a>
             </p>
           </section>

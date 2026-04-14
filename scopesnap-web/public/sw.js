@@ -5,7 +5,7 @@
  * API calls are always network-first (no offline data caching).
  */
 
-const CACHE_NAME = "scopesnap-shell-v1";
+const CACHE_NAME = "snapai-shell-v1";
 
 // App shell files to cache on install
 const SHELL_FILES = [

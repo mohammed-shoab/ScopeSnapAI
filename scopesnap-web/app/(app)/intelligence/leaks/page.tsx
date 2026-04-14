@@ -146,7 +146,7 @@ function computeLeaks(estimates: Estimate[]): {
     buckets.push({
       id: "sent-pending",
       icon: "📤",
-      title: "Estimates Awaiting Approval",
+      title: "Assessments Awaiting Approval",
       subtitle: "Revenue sitting in homeowner inboxes — follow up now",
       amount: sentLeakAmount,
       count: sentNotApproved.length,
@@ -168,7 +168,7 @@ function computeLeaks(estimates: Estimate[]): {
       id: "stalled",
       icon: "⏸",
       title: "Stalled in Draft",
-      subtitle: "Estimates created but never sent to homeowner",
+      subtitle: "Assessments created but never sent to homeowner",
       amount: stalledAmount,
       count: stalledDrafts.length,
       severity: stalledDrafts.length > 3 ? "high" : "medium",
@@ -438,7 +438,7 @@ export default function ProfitLeaksPage() {
                 {bucket.items.map((item) => (
                   <Link
                     key={item.id}
-                    href={`/estimate/${item.id}`}
+                    href={`/assessment/${item.id}`}
                     className="flex items-center justify-between px-5 py-3 hover:bg-white/80 transition-colors border-b border-white/40 last:border-0"
                   >
                     <div className="flex items-center gap-3">

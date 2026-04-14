@@ -8,11 +8,11 @@
  *  2. On reconnect → processQueue() uploads all queued items
  *  3. Each item removed from queue after successful upload
  *
- * Storage: IndexedDB DB="scopesnap_offline" store="pending_assessments"
+ * Storage: IndexedDB DB="snapai_offline" store="pending_assessments"
  * Each entry: { id, photos: File[], metadata, queuedAt }
  */
 
-const DB_NAME    = "scopesnap_offline";
+const DB_NAME    = "snapai_offline";
 const DB_VERSION = 1;
 const STORE_NAME = "pending_assessments";
 

@@ -117,7 +117,7 @@ function buildNavSections(): NavSection[] {
   // ── OVERVIEW (always visible) ─────────────────────────────────────────────
   const overviewItems: NavItem[] = [
     { label: "Dashboard",    href: "/dashboard",  iconKey: "dashboard" },
-    { label: "Assessments",  href: "/estimates",  iconKey: "assessments" },
+    { label: "Assessments",  href: "/assessments",  iconKey: "assessments" },
   ];
   if (featureFlags.showAnalytics) {
     overviewItems.push({ label: "Accuracy Tracker", href: "/analytics", iconKey: "analytics" });

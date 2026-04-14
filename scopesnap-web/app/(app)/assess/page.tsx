@@ -114,7 +114,7 @@ interface AssessmentResult {
   photo_urls?: string[];
 }
 
-const DRAFT_KEY = "scopesnap_draft_assessment";
+const DRAFT_KEY = "snapai_draft_assessment";
 
 export default function AssessPage() {
   const router = useRouter();
@@ -146,6 +146,15 @@ export default function AssessPage() {
   const [address,       setAddress]       = useState("");
   const [customerName,  setCustomerName]  = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+
+  // ── Sensor readings (Track A — boosts accuracy to 90-95%) ─────────────────
+  const [showSensorPanel, setShowSensorPanel] = useState(false);
+  const [sensorOutdoorTemp,   setSensorOutdoorTemp]   = useState("");
+  const [sensorSupplyTemp,    setSensorSupplyTemp]    = useState("");
+  const [sensorReturnTemp,    setSensorReturnTemp]    = useState("");
+  const [sensorSuction,       setSensorSuction]       = useState("");
+  const [sensorDischarge,     setSensorDischarge]     = useState("");
+  const [sensorUnitAge,       setSensorUnitAge]       = useState("");
 
   // ── UI helpers ─────────────────────────────────────────────────────────────
   const [draftRecovery, setDraftRecovery] = useState<{address:string;customerName:string;timestamp:number}|null>(null);
@@ -311,6 +320,18 @@ export default function AssessPage() {
     if (customerPhone) fd.append("homeowner_phone", customerPhone);
     if (complaintType) fd.append("complaint_type", complaintType);
 
+    // Sensor readings → Track A cascade (boosts accuracy to 90-95%)
+    const sensorData: Record<string, number> = {};
+    if (sensorOutdoorTemp)  sensorData.outdoor_ambient_temp = parseFloat(sensorOutdoorTemp);
+    if (sensorSupplyTemp)   sensorData.supply_air_temp      = parseFloat(sensorSupplyTemp);
+    if (sensorReturnTemp)   sensorData.return_air_temp      = parseFloat(sensorReturnTemp);
+    if (sensorSuction)      sensorData.suction_pressure     = parseFloat(sensorSuction);
+    if (sensorDischarge)    sensorData.discharge_pressure   = parseFloat(sensorDischarge);
+    if (sensorUnitAge)      sensorData.unit_age_years       = parseFloat(sensorUnitAge);
+    if (Object.keys(sensorData).length >= 4) {
+      fd.append("sensor_readings_json", JSON.stringify(sensorData));
+    }
+
     let uploaded: { id: string } | null = null;
     try {
       if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -410,7 +431,7 @@ export default function AssessPage() {
       if (!r.ok) throw new Error((await r.json()).detail || "Generate failed");
       const est = await r.json();
       track.estimateGenerated(est.id, est.total_amount || 0);
-      router.push(`/estimate/${est.id}`);
+      router.push(`/assessment/${est.id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error");
       setPhase("results");
@@ -830,6 +851,69 @@ export default function AssessPage() {
         </div>
       </div>
 
+      {/* Sensor Readings — Track A AI Cascade (boosts accuracy to 90-95%) */}
+      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowSensorPanel(p => !p)}
+          className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-base">📡</span>
+            <div className="text-left">
+              <p className="text-xs font-mono text-gray-600 uppercase tracking-widest font-bold">Sensor Readings</p>
+              <p className="text-xs text-gray-500">Have field gauges? Add readings to boost accuracy to 93–95%</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {(sensorOutdoorTemp || sensorSuction || sensorDischarge) && (
+              <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">✓ Added</span>
+            )}
+            <span className="text-gray-400 text-sm">{showSensorPanel ? "▲" : "▼"}</span>
+          </div>
+        </button>
+        {showSensorPanel && (
+          <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-3">
+            <p className="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2 font-medium">
+              ⚡ XGBoost sensor model: 90.09% accuracy — beats Gemini alone at 75–80%. Agreement with YOLO → 93–95%.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-gray-500 font-semibold block mb-1">Outdoor Ambient (°F)</label>
+                <input type="number" placeholder="e.g. 95" value={sensorOutdoorTemp} onChange={e => setSensorOutdoorTemp(e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 font-semibold block mb-1">Supply Air Temp (°F)</label>
+                <input type="number" placeholder="e.g. 58" value={sensorSupplyTemp} onChange={e => setSensorSupplyTemp(e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 font-semibold block mb-1">Return Air Temp (°F)</label>
+                <input type="number" placeholder="e.g. 75" value={sensorReturnTemp} onChange={e => setSensorReturnTemp(e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 font-semibold block mb-1">Unit Age (years)</label>
+                <input type="number" placeholder="e.g. 8" value={sensorUnitAge} onChange={e => setSensorUnitAge(e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 font-semibold block mb-1">Suction Pressure (PSI)</label>
+                <input type="number" placeholder="e.g. 58" value={sensorSuction} onChange={e => setSensorSuction(e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 font-semibold block mb-1">Discharge Pressure (PSI)</label>
+                <input type="number" placeholder="e.g. 260" value={sensorDischarge} onChange={e => setSensorDischarge(e.target.value)}
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500" />
+              </div>
+            </div>
+            <p className="text-xs text-gray-400">All fields optional — enter at least 4 to activate Track A. No sensor readings? AI still runs from photos alone.</p>
+          </div>
+        )}
+      </div>
+
       {/* Prior property history */}
       {selectedProperty && (
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
@@ -848,12 +932,12 @@ export default function AssessPage() {
               <p className="text-sm text-gray-500 text-center py-2">No prior estimates on file for this property.</p>
             ) : (
               <div className="space-y-2">
-                <p className="text-xs text-gray-500 font-semibold mb-2">Prior Estimates ({priorEstimates.length})</p>
+                <p className="text-xs text-gray-500 font-semibold mb-2">Prior Assessments ({priorEstimates.length})</p>
                 {priorEstimates.map(est => {
                   const statusColors: Record<string, string> = { approved:"bg-green-100 text-green-700", deposit_paid:"bg-green-100 text-green-700", sent:"bg-blue-100 text-blue-700", viewed:"bg-blue-100 text-blue-700", estimated:"bg-yellow-100 text-yellow-700", draft:"bg-gray-100 text-gray-600" };
                   const daysAgo = est.created_at ? Math.floor((Date.now() - new Date(est.created_at).getTime()) / 86400000) : null;
                   return (
-                    <a key={est.id} href={`/estimate/${est.id}`} className="flex items-center justify-between gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors">
+                    <a key={est.id} href={`/assessment/${est.id}`} className="flex items-center justify-between gap-3 p-3 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-xs font-bold text-gray-900">{est.report_short_id}</span>
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusColors[est.status] || "bg-gray-100 text-gray-600"}`}>{est.status.replace(/_/g, " ")}</span>

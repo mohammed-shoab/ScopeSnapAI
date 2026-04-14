@@ -237,7 +237,7 @@ class ResendSender(BaseEmailSender):
           <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 24px 0;" />
           <p style="font-size: 11px; color: #9e9e9e; margin: 0;">
             Verified Assessment by SnapAI &nbsp;|&nbsp;
-            Professional HVAC assessments for contractors &mdash; scopesnap.ai
+            Professional HVAC assessments for contractors Professional HVAC assessments for contractors &mdash; scopesnap.aimdash; snapai.mainnov.tech
           </p>
         </body>
         </html>

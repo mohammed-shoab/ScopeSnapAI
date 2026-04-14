@@ -194,7 +194,7 @@ export default function BillingPage() {
             {/* Usage */}
             <div className="bg-surface-bg rounded-ss p-4 border border-surface-border">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold">Estimates This Month</span>
+                <span className="text-sm font-semibold">Assessments This Month</span>
                 <span className="text-sm font-mono font-bold">
                   {sub.monthly_estimate_count}
                   {sub.estimate_limit !== null ? ` / ${sub.estimate_limit}` : " / ∞"}

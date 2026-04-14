@@ -1,14 +1,14 @@
 /**
  * POST /api/feedback
  * BUG-01 fix: Receives in-app feedback form submissions and forwards them
- * via Resend email to feedback@scopesnap.ai — no client mail app required.
+ * via Resend email to ds.shoab@gmail.com — no client mail app required.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FEEDBACK_TO    = "feedback@scopesnap.ai";
-const FEEDBACK_FROM  = "SnapAI App <noreply@scopesnap.ai>";
+const FEEDBACK_TO    = "ds.shoab@gmail.com";
+const FEEDBACK_FROM  = "SnapAI App <noreply@mainnov.tech>";
 
 export async function POST(req: NextRequest) {
   try {

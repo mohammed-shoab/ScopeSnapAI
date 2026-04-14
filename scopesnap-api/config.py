@@ -53,7 +53,7 @@ class Settings(BaseSettings):
 
     # ── Email (Resend) ────────────────────────────────────────
     resend_api_key: str = ""
-    from_email: str = "estimates@scopesnap.com"
+    from_email: str = "estimates@mainnov.tech"
 
     # ── URLs ──────────────────────────────────────────────────
     frontend_url: str = "http://localhost:3000"

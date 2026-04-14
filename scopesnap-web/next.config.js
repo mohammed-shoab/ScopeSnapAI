@@ -11,6 +11,18 @@ const nextConfig = {
         destination: "https://snapai.mainnov.tech/:path*",
         permanent: true,   // 308 — browsers cache this redirect
       },
+      // BUG-03 fix: rename /estimates → /assessments and /estimate → /assessment
+      // 301 redirects preserve bookmarks and old links
+      {
+        source: "/estimates",
+        destination: "/assessments",
+        permanent: true,
+      },
+      {
+        source: "/estimate/:id",
+        destination: "/assessment/:id",
+        permanent: true,
+      },
     ];
   },
   // Prevent crypto-js (Clerk dependency) from being split into a server-side vendor chunk.

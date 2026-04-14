@@ -274,11 +274,11 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Recent Estimates Table */}
+      {/* Recent Assessments Table */}
       <div className="bg-white rounded-ss shadow-ss border border-surface-border overflow-hidden">
         <div className="px-6 py-4 border-b border-surface-border">
           <p className="text-[9px] font-bold uppercase tracking-widest font-mono text-text-secondary mb-1">Recent Activity</p>
-          <h2 className="text-lg font-bold text-text-primary">Recent Estimates</h2>
+          <h2 className="text-lg font-bold text-text-primary">Recent Assessments</h2>
         </div>
         {data.recent_estimates.length === 0 ? (
           <div className="p-8 text-center text-text-secondary">No estimates yet.</div>
@@ -305,7 +305,7 @@ export default function AnalyticsPage() {
                 {data.recent_estimates.map((est) => (
                   <tr key={est.id} className="hover:bg-surface-bg transition-colors">
                     <td className="px-3 md:px-6 py-4">
-                      <Link href={`/estimate/${est.id}`} className="font-mono font-bold text-brand-green hover:underline">
+                      <Link href={`/assessment/${est.id}`} className="font-mono font-bold text-brand-green hover:underline">
                         {est.report_short_id}
                       </Link>
                     </td>

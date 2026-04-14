@@ -459,7 +459,7 @@ class Estimate(Base):
     contractor_pdf_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # Storage URL for contractor-facing PDF
     homeowner_report_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    # Public URL: report.scopesnap.com/{slug}/rpt-{short_id}
+    # Public URL: snapai.mainnov.tech/r/{slug}/rpt-{short_id}
 
     # Delivery tracking
     sent_via: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
