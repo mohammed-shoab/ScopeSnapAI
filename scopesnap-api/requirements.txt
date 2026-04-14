@@ -15,6 +15,7 @@ resend==2.4.0
 python-jose[cryptography]==3.3.0
 psycopg2-binary==2.9.9
 python-dotenv==1.0.1
+svix==1.90.0
 
 # AI Cascade — Dual-Track Detection (added 2026-04-05)
 ultralytics>=8.0.0        # YOLO inference (Corrosion v4 + Multi-class v1)
