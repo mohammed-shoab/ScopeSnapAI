@@ -338,6 +338,14 @@ class Assessment(Base):
 
     tech_overrides: Mapped[dict] = mapped_column(SmartJSON, nullable=False, default=dict)
     # Any fields the tech manually corrected. Used to train better prompts.
+    # tech_overrides._issue_change_log = [{field, from, to, tech_id, timestamp}, ...]
+
+    # ── Label editing tracking (retraining pipeline + accuracy analytics) ─────
+    label_edited: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # True whenever a tech overrides the AI fault diagnosis — flags for retraining
+
+    issue_change_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # How many times the label has been changed on this assessment
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pending")
     # 'pending' | 'analyzed' | 'estimated' | 'sent' | 'approved' | 'completed'

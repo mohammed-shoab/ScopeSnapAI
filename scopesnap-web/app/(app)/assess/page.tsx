@@ -24,7 +24,71 @@ import { track } from "@/lib/tracking";
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
 
-type Phase = "complaint" | "capture" | "uploading" | "analyzing" | "results" | "estimating";
+type Phase = "complaint" | "sensor" | "capture" | "uploading" | "analyzing" | "results" | "estimating";
+
+// ── Sensor field config (Jobs method: one field per screen, in walkup order) ──
+const SENSOR_FIELDS = [
+  {
+    key: "unitAge",
+    label: "Unit Age",
+    unit: "years",
+    placeholder: "e.g. 8",
+    hint: "Check the nameplate — usually on the side panel",
+    icon: "📋",
+    setter: "setSensorUnitAge",
+    getter: "sensorUnitAge",
+  },
+  {
+    key: "outdoorTemp",
+    label: "Outdoor Ambient Temp",
+    unit: "°F",
+    placeholder: "e.g. 95",
+    hint: "Air temperature outside near the condenser",
+    icon: "🌡️",
+    setter: "setSensorOutdoorTemp",
+    getter: "sensorOutdoorTemp",
+  },
+  {
+    key: "supplyTemp",
+    label: "Supply Air Temp",
+    unit: "°F",
+    placeholder: "e.g. 58",
+    hint: "Temperature at the supply duct register",
+    icon: "❄️",
+    setter: "setSensorSupplyTemp",
+    getter: "sensorSupplyTemp",
+  },
+  {
+    key: "returnTemp",
+    label: "Return Air Temp",
+    unit: "°F",
+    placeholder: "e.g. 75",
+    hint: "Temperature at the return air grille",
+    icon: "🔄",
+    setter: "setSensorReturnTemp",
+    getter: "sensorReturnTemp",
+  },
+  {
+    key: "suction",
+    label: "Suction Pressure",
+    unit: "PSI",
+    placeholder: "e.g. 58",
+    hint: "Low-side reading from manifold gauge set",
+    icon: "🔵",
+    setter: "setSensorSuction",
+    getter: "sensorSuction",
+  },
+  {
+    key: "discharge",
+    label: "Discharge Pressure",
+    unit: "PSI",
+    placeholder: "e.g. 260",
+    hint: "High-side reading from manifold gauge set",
+    icon: "🔴",
+    setter: "setSensorDischarge",
+    getter: "sensorDischarge",
+  },
+] as const;
 
 // ── Complaint options (Jobs rule: 6 max, big icons, no dropdowns) ─────────────
 const COMPLAINT_OPTIONS = [
@@ -148,13 +212,19 @@ export default function AssessPage() {
   const [customerPhone, setCustomerPhone] = useState("");
 
   // ── Sensor readings (Track A — boosts accuracy to 90-95%) ─────────────────
-  const [showSensorPanel, setShowSensorPanel] = useState(false);
+  const [showSensorPanel, setShowSensorPanel] = useState(false); // legacy — kept for old inline panel (now replaced by sensor phase)
   const [sensorOutdoorTemp,   setSensorOutdoorTemp]   = useState("");
   const [sensorSupplyTemp,    setSensorSupplyTemp]    = useState("");
   const [sensorReturnTemp,    setSensorReturnTemp]    = useState("");
   const [sensorSuction,       setSensorSuction]       = useState("");
   const [sensorDischarge,     setSensorDischarge]     = useState("");
   const [sensorUnitAge,       setSensorUnitAge]       = useState("");
+
+  // ── Sensor phase state (Jobs method: one field per screen) ─────────────────
+  const [sensorFieldIndex, setSensorFieldIndex] = useState(0); // current field 0–5
+  const [sensorCurrentValue, setSensorCurrentValue] = useState(""); // value being typed
+  // Collected values indexed by field key
+  const [sensorValues, setSensorValues] = useState<Record<string, string>>({});
 
   // ── UI helpers ─────────────────────────────────────────────────────────────
   const [draftRecovery, setDraftRecovery] = useState<{address:string;customerName:string;timestamp:number}|null>(null);
@@ -622,7 +692,10 @@ export default function AssessPage() {
               key={opt.id}
               onClick={() => {
                 setComplaintType(opt.id);
-                setPhase("capture");
+                setSensorFieldIndex(0);
+                setSensorCurrentValue("");
+                setSensorValues({});
+                setPhase("sensor");
               }}
               className="bg-white border-2 border-gray-200 hover:border-green-500 rounded-2xl p-4 text-left transition-all active:scale-95 focus:outline-none"
             >
@@ -634,6 +707,149 @@ export default function AssessPage() {
         </div>
 
         <p className="text-center text-xs text-gray-400">Tap a complaint to continue</p>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // PHASE: sensor — Jobs method (one field per screen, progress bar)
+  // ══════════════════════════════════════════════════════════════════════════
+  if (phase === "sensor") {
+    const TOTAL = SENSOR_FIELDS.length; // 6
+    const field = SENSOR_FIELDS[sensorFieldIndex];
+
+    // Helper: commit current value and move forward
+    const commitAndAdvance = () => {
+      // Save whatever was typed (blank = skipped)
+      const updated = { ...sensorValues, [field.key]: sensorCurrentValue };
+      setSensorValues(updated);
+
+      if (sensorFieldIndex < TOTAL - 1) {
+        // Load next field — pre-fill if already visited
+        const nextField = SENSOR_FIELDS[sensorFieldIndex + 1];
+        setSensorFieldIndex(sensorFieldIndex + 1);
+        setSensorCurrentValue(updated[nextField.key] ?? "");
+      } else {
+        // All fields done — apply values to individual state vars and go to capture
+        setSensorUnitAge(updated["unitAge"] ?? "");
+        setSensorOutdoorTemp(updated["outdoorTemp"] ?? "");
+        setSensorSupplyTemp(updated["supplyTemp"] ?? "");
+        setSensorReturnTemp(updated["returnTemp"] ?? "");
+        setSensorSuction(updated["suction"] ?? "");
+        setSensorDischarge(updated["discharge"] ?? "");
+        setPhase("capture");
+      }
+    };
+
+    const goBack = () => {
+      // Save current value before going back
+      const updated = { ...sensorValues, [field.key]: sensorCurrentValue };
+      setSensorValues(updated);
+      if (sensorFieldIndex === 0) {
+        // Back to complaint selection
+        setPhase("complaint");
+      } else {
+        const prevField = SENSOR_FIELDS[sensorFieldIndex - 1];
+        setSensorFieldIndex(sensorFieldIndex - 1);
+        setSensorCurrentValue(updated[prevField.key] ?? "");
+      }
+    };
+
+    const skipAll = () => {
+      // Clear all sensor values and proceed to capture
+      setSensorUnitAge(""); setSensorOutdoorTemp(""); setSensorSupplyTemp("");
+      setSensorReturnTemp(""); setSensorSuction(""); setSensorDischarge("");
+      setSensorValues({});
+      setPhase("capture");
+    };
+
+    const progressPct = ((sensorFieldIndex) / TOTAL) * 100;
+
+    return (
+      <div className="fixed inset-0 bg-[#f7f7f3] flex flex-col" style={{ zIndex: 50 }}>
+        {/* ── Top bar ──────────────────────────────────────────────────────── */}
+        <div className="px-5 pt-safe pt-4 pb-3">
+          <div className="flex items-center justify-between mb-3">
+            <button
+              onClick={goBack}
+              className="text-sm font-semibold text-gray-500 hover:text-gray-800 transition-colors"
+            >
+              ← Back
+            </button>
+            <span className="text-xs font-mono font-bold text-gray-400 uppercase tracking-widest">
+              {sensorFieldIndex + 1} / {TOTAL}
+            </span>
+            <button
+              onClick={skipAll}
+              className="text-sm font-semibold text-brand-green hover:text-green-700 transition-colors"
+            >
+              Skip All
+            </button>
+          </div>
+
+          {/* Progress bar */}
+          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-brand-green rounded-full transition-all duration-300"
+              style={{ width: `${progressPct + (100 / TOTAL)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* ── Field content ─────────────────────────────────────────────────── */}
+        <div className="flex-1 flex flex-col justify-center px-6 pb-6">
+          {/* Icon + label */}
+          <div className="text-center mb-8">
+            <div className="text-6xl mb-4">{field.icon}</div>
+            <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 mb-1">
+              {field.label}
+            </h2>
+            <p className="text-sm text-gray-500 max-w-xs mx-auto">{field.hint}</p>
+          </div>
+
+          {/* Large number input */}
+          <div className="relative mb-6">
+            <input
+              type="number"
+              inputMode="decimal"
+              value={sensorCurrentValue}
+              onChange={e => setSensorCurrentValue(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") commitAndAdvance(); }}
+              placeholder="—"
+              autoFocus
+              className="w-full text-center text-5xl font-bold tracking-tight bg-white border-2 border-gray-200 rounded-2xl py-6 focus:outline-none focus:border-brand-green transition-colors placeholder-gray-200"
+              style={{ caretColor: "#1a8754" }}
+            />
+            <span className="absolute right-5 top-1/2 -translate-y-1/2 text-lg font-semibold text-gray-400">
+              {field.unit}
+            </span>
+          </div>
+
+          {/* Accuracy badge */}
+          <div className="text-center mb-8">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-3 py-1">
+              <span>⚡</span>
+              Gauge readings boost accuracy to 93–95%
+            </span>
+          </div>
+
+          {/* Next / Done button */}
+          <button
+            onClick={commitAndAdvance}
+            className="w-full py-4 rounded-2xl font-bold text-base text-white shadow-lg transition-all active:scale-95"
+            style={{ background: "linear-gradient(135deg, #1a8754 0%, #159a5e 100%)" }}
+          >
+            {sensorFieldIndex < TOTAL - 1 ? "Next →" : "Done — Analyse Photos"}
+          </button>
+
+          {/* Skip this field */}
+          <button
+            onClick={commitAndAdvance}
+            className="mt-3 w-full py-2 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            Skip this reading
+          </button>
+        </div>
       </div>
     );
   }
@@ -851,68 +1067,26 @@ export default function AssessPage() {
         </div>
       </div>
 
-      {/* Sensor Readings — Track A AI Cascade (boosts accuracy to 90-95%) */}
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setShowSensorPanel(p => !p)}
-          className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-base">📡</span>
-            <div className="text-left">
-              <p className="text-xs font-mono text-gray-600 uppercase tracking-widest font-bold">Sensor Readings</p>
-              <p className="text-xs text-gray-500">Have field gauges? Add readings to boost accuracy to 93–95%</p>
-            </div>
+      {/* OLD inline sensor panel — replaced by full-screen sensor phase (Jobs method).
+          Sensor readings now collected before photos via the "sensor" phase.
+          Kept here commented out in case we want to restore the inline version.
+      {/* Sensor summary badge — shows in capture phase if readings were entered */}
+      {(sensorUnitAge || sensorOutdoorTemp || sensorSuction) && (
+        <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+          <span className="text-base">⚡</span>
+          <div className="flex-1">
+            <p className="text-xs font-bold text-green-800">Gauge readings added — high-confidence diagnosis active</p>
+            <p className="text-xs text-green-600">XGBoost + YOLO cascade: 93–95% accuracy</p>
           </div>
-          <div className="flex items-center gap-2">
-            {(sensorOutdoorTemp || sensorSuction || sensorDischarge) && (
-              <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">✓ Added</span>
-            )}
-            <span className="text-gray-400 text-sm">{showSensorPanel ? "▲" : "▼"}</span>
-          </div>
-        </button>
-        {showSensorPanel && (
-          <div className="px-4 pb-4 border-t border-gray-100 pt-3 space-y-3">
-            <p className="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2 font-medium">
-              ⚡ XGBoost sensor model: 90.09% accuracy — beats Gemini alone at 75–80%. Agreement with YOLO → 93–95%.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-gray-500 font-semibold block mb-1">Outdoor Ambient (°F)</label>
-                <input type="number" placeholder="e.g. 95" value={sensorOutdoorTemp} onChange={e => setSensorOutdoorTemp(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 font-semibold block mb-1">Supply Air Temp (°F)</label>
-                <input type="number" placeholder="e.g. 58" value={sensorSupplyTemp} onChange={e => setSensorSupplyTemp(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 font-semibold block mb-1">Return Air Temp (°F)</label>
-                <input type="number" placeholder="e.g. 75" value={sensorReturnTemp} onChange={e => setSensorReturnTemp(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 font-semibold block mb-1">Unit Age (years)</label>
-                <input type="number" placeholder="e.g. 8" value={sensorUnitAge} onChange={e => setSensorUnitAge(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 font-semibold block mb-1">Suction Pressure (PSI)</label>
-                <input type="number" placeholder="e.g. 58" value={sensorSuction} onChange={e => setSensorSuction(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 font-semibold block mb-1">Discharge Pressure (PSI)</label>
-                <input type="number" placeholder="e.g. 260" value={sensorDischarge} onChange={e => setSensorDischarge(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500" />
-              </div>
-            </div>
-            <p className="text-xs text-gray-400">All fields optional — enter at least 4 to activate Track A. No sensor readings? AI still runs from photos alone.</p>
-          </div>
-        )}
-      </div>
+          <button
+            onClick={() => { setSensorFieldIndex(0); setSensorCurrentValue(sensorUnitAge); setPhase("sensor"); }}
+            className="text-xs font-semibold text-green-700 hover:text-green-900"
+          >
+            Edit
+          </button>
+        </div>
+      )}
+
 
       {/* Prior property history */}
       {selectedProperty && (

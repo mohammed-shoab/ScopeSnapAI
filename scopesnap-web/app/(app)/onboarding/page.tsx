@@ -55,7 +55,9 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
+  // TRADE SELECTION DISABLED: defaulting to "hvac" — trade selection step is
+  // commented out below. Re-enable when multi-trade support is ready.
+  const [selectedTrade, setSelectedTrade] = useState<Trade | null>("hvac");
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   const [profile, setProfile] = useState<CompanyProfile>({
@@ -207,8 +209,8 @@ export default function OnboardingPage() {
                 <span className="text-white font-bold text-2xl">S</span>
               </div>
               <h1 className="text-4xl font-extrabold tracking-tight mb-2">
-                <span className="text-text-primary">Scope</span>
-                <span className="text-brand-green">Snap</span>
+                <span className="text-text-primary">Snap</span>
+                <span className="text-brand-green">AI</span>
               </h1>
               <p className="text-text-secondary text-sm leading-relaxed max-w-sm mx-auto">
                 AI-powered equipment intelligence. Photo → Estimate → Customer Report. In under 5 minutes.
@@ -234,7 +236,7 @@ export default function OnboardingPage() {
               </div>
 
               <button
-                onClick={() => setStep(2)}
+                onClick={() => setStep(3) /* skip trade selection — goes straight to company info */}
                 className="w-full bg-brand-green text-white font-bold py-3 rounded-xl text-sm shadow-green hover:bg-brand-green-dark transition-colors mb-3"
               >
                 Get Started →
@@ -250,7 +252,13 @@ export default function OnboardingPage() {
         )}
 
         {/* ── Step 2: Trade Selection ───────────────────────────────────────── */}
-        {step === 2 && (
+        {/* DISABLED: Trade selection removed for now — HVAC is the default.
+            Re-enable this block when multi-trade support is ready.
+            To re-enable: restore the onClick on "Get Started" button to setStep(2),
+            restore the Back button in Step 3 to setStep(2),
+            and remove the "hvac" default from useState above.
+        */}
+        {false && step === 2 && (
           <>
             <div className="text-center mb-8">
               <p className="text-xs font-mono font-semibold text-text-secondary tracking-wide uppercase mb-3">
@@ -417,7 +425,7 @@ export default function OnboardingPage() {
 
               <div className="flex gap-3 mb-3">
                 <button
-                  onClick={() => setStep(2)}
+                  onClick={() => setStep(1) /* back to Welcome — trade step is disabled */}
                   className="flex-1 border border-surface-border text-text-secondary font-semibold py-3 rounded-lg text-sm hover:bg-surface-bg transition-colors"
                 >
                   Back

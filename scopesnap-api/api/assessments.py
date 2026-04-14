@@ -631,18 +631,60 @@ async def update_assessment(
     existing_overrides = assessment.tech_overrides or {}
     new_values = {k: v for k, v in overrides.model_dump().items() if v is not None}
 
-    # Track what changed vs AI result for training data
-    override_log = {}
+    # ── Issue / label change tracking (feeds retraining pipeline) ────────────
+    from datetime import datetime, timezone
+    now_iso = datetime.now(timezone.utc).isoformat()
+    issue_change_log = list(existing_overrides.get("_issue_change_log", []))
+    label_was_edited = False
+
+    # Track fault/condition changes (the primary AI label)
+    if assessment.ai_condition:
+        ai_condition_overall = assessment.ai_condition.get("overall")
+        if "overall_condition" in new_values and new_values["overall_condition"] != ai_condition_overall:
+            issue_change_log.append({
+                "field": "overall_condition",
+                "from": ai_condition_overall,
+                "to": new_values["overall_condition"],
+                "tech_id": auth.user_id,
+                "timestamp": now_iso,
+            })
+            label_was_edited = True
+
+    # Track ai_issues changes (specific fault components)
+    if "ai_issues" in new_values and assessment.ai_issues:
+        issue_change_log.append({
+            "field": "ai_issues",
+            "from": assessment.ai_issues,
+            "to": new_values["ai_issues"],
+            "tech_id": auth.user_id,
+            "timestamp": now_iso,
+        })
+        label_was_edited = True
+
+    # Track brand/equipment changes (for equipment ID model retraining)
     if assessment.ai_equipment_id:
         ai_brand = assessment.ai_equipment_id.get("brand")
         if "brand" in new_values and new_values["brand"] != ai_brand:
-            override_log["brand_changed_from"] = ai_brand
-    if assessment.ai_condition:
-        ai_condition = assessment.ai_condition.get("overall")
-        if "overall_condition" in new_values and new_values["overall_condition"] != ai_condition:
-            override_log["condition_changed_from"] = ai_condition
+            issue_change_log.append({
+                "field": "brand",
+                "from": ai_brand,
+                "to": new_values["brand"],
+                "tech_id": auth.user_id,
+                "timestamp": now_iso,
+            })
 
-    merged = {**existing_overrides, **new_values, "_log": override_log}
+    # Persist label_edited flag and issue change log
+    if label_was_edited:
+        assessment.label_edited = True
+        assessment.issue_change_count = (assessment.issue_change_count or 0) + 1
+
+    merged = {
+        **existing_overrides,
+        **new_values,
+        "_issue_change_log": issue_change_log,
+        "_last_edited_by": auth.user_id,
+        "_last_edited_at": now_iso,
+    }
     assessment.tech_overrides = merged
 
     # If overriding brand/model, update ai_equipment_id reflected values too
