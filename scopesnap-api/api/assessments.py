@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from pydantic import BaseModel
 
+from fastapi import Request
 from db.database import get_db
 from db.models import Assessment, AssessmentPhoto, Property, EquipmentInstance
 from api.auth import get_current_user, AuthContext
@@ -23,6 +24,7 @@ from services.storage import get_storage
 from services.vision import get_vision_service, VisionAnalysisError
 from prompts.equipment_analysis import EQUIPMENT_ANALYSIS_PROMPT
 from config import get_settings
+from main import limiter
 
 settings = get_settings()
 router = APIRouter(prefix="/api/assessments", tags=["assessments"])
@@ -133,13 +135,24 @@ async def create_assessment(
     if len(photos) > 5:
         raise HTTPException(status_code=400, detail="Maximum 5 photos per assessment.")
 
-    # Validate file types
-    allowed_types = {"image/jpeg", "image/png", "image/heic", "image/heif", "image/webp"}
+    # Validate file types and size (BUG-FIX: enforce MIME + 10MB limit)
+    ALLOWED_MIME = {"image/jpeg", "image/jpg", "image/png", "image/heic", "image/heif", "image/webp"}
+    MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
     for photo in photos:
-        ct = photo.content_type or ""
-        if ct and ct.lower() not in allowed_types:
-            # Accept anyway — don't block on content type alone
-            pass
+        ct = (photo.content_type or "").lower()
+        if ct and ct not in ALLOWED_MIME:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File '{photo.filename}' has unsupported type '{ct}'. "
+                       f"Accepted: JPEG, PNG, HEIC, WEBP."
+            )
+        # Check size by reading Content-Length header (fast) or peek
+        if photo.size and photo.size > MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File '{photo.filename}' exceeds 10 MB limit "
+                       f"({photo.size / 1024 / 1024:.1f} MB)."
+            )
 
     # Normalize aliases
     address = address or property_address
@@ -290,7 +303,9 @@ async def create_assessment(
 # ── POST /api/assessments/{id}/analyze ────────────────────────────────────────
 
 @router.post("/{assessment_id}/analyze")
+@limiter.limit("10/minute")   # Gemini Vision is expensive — max 10 analyses/min per IP
 async def analyze_assessment(
+    request: Request,
     assessment_id: str,
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

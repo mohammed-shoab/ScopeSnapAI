@@ -6,10 +6,15 @@ API docs:    http://localhost:8000/docs
 Health:      http://localhost:8000/health
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from pathlib import Path
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from config import get_settings
 from db.database import check_db_connection
@@ -25,6 +30,10 @@ from api.sensor_diagnosis import router as sensor_diagnosis_router
 
 settings = get_settings()
 
+# ── Rate Limiter ──────────────────────────────────────────────────────────────
+# Protects expensive Gemini Vision calls from abuse/runaway costs.
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
+
 # ── App Setup ─────────────────────────────────────────────────────────────────
 app = FastAPI(
     title="SnapAI API",
@@ -34,6 +43,11 @@ app = FastAPI(
     redoc_url="/redoc" if settings.is_development else None,
     redirect_slashes=False,
 )
+
+# ── Rate Limit Middleware + Handler ──────────────────────────────────────────
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(

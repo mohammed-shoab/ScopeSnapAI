@@ -66,6 +66,47 @@ const nextConfig = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
   },
+  // Security headers — Content Security Policy + standard hardening
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(self), microphone=(), geolocation=()",
+          },
+          {
+            // CSP — allows Clerk, Google Fonts, PostHog, Resend-tracked images
+            // 'unsafe-inline' required for Clerk's embedded components + Tailwind
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://app.posthog.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "font-src 'self' https://fonts.gstatic.com",
+              "img-src 'self' data: blob: https://*.r2.dev https://img.clerk.com https://images.clerk.dev",
+              "connect-src 'self' https://scopesnap-api-production.up.railway.app https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://app.posthog.com",
+              "frame-src 'self' https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev",
+              "worker-src 'self' blob:",
+            ].join("; "),
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

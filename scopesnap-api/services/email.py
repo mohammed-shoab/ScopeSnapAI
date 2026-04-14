@@ -236,8 +236,13 @@ class ResendSender(BaseEmailSender):
           </p>
           <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 24px 0;" />
           <p style="font-size: 11px; color: #9e9e9e; margin: 0;">
-            Verified Assessment by SnapAI &nbsp;|&nbsp;
-            Professional HVAC assessments for contractors Professional HVAC assessments for contractors &mdash; scopesnap.aimdash; snapai.mainnov.tech
+            Verified Assessment by SnapAI &nbsp;|&nbsp; snapai.mainnov.tech
+          </p>
+          <p style="font-size: 10px; color: #bdbdbd; margin: 8px 0 0;">
+            You received this email because an HVAC contractor shared an assessment with you.
+            If you believe this was sent in error, you can
+            <a href="mailto:hello@mainnov.tech?subject=Unsubscribe&body=Please%20remove%20{to}%20from%20future%20emails."
+               style="color: #bdbdbd;">unsubscribe here</a>.
           </p>
         </body>
         </html>

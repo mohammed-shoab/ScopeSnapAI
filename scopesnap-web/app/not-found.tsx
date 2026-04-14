@@ -38,8 +38,8 @@ export default function NotFound() {
           S
         </div>
         <span style={{ fontWeight: 800, fontSize: 20, letterSpacing: -0.5 }}>
-          <span style={{ color: "#1a1a18" }}>Scope</span>
-          <span style={{ color: "#1a8754" }}>Snap</span>
+          <span style={{ color: "#1a1a18" }}>Snap</span>
+          <span style={{ color: "#1a8754" }}>AI</span>
         </span>
       </div>
 

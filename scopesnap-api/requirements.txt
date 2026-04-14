@@ -17,8 +17,9 @@ psycopg2-binary==2.9.9
 python-dotenv==1.0.1
 svix==1.90.0
 
-# AI Cascade — Dual-Track Detection (added 2026-04-05)
-ultralytics>=8.0.0        # YOLO inference (Corrosion v4 + Multi-class v1)
+# AI Cascade — lightweight deps only (ultralytics/PyTorch excluded: too large for Railway build)
+# YOLO inference is a lazy import — falls back to Gemini when model files not present
 xgboost>=2.0.0            # Sensor fault detection model (90.09% accuracy)
 joblib>=1.3.0             # Loading .pkl model files
 numpy>=1.24.0             # Feature engineering for sensor model
+slowapi==0.1.9            # Rate limiting for Gemini/AI endpoints

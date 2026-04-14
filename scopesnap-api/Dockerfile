@@ -1,6 +1,6 @@
-# ── ScopeSnap API — Dockerfile ────────────────────────────────────────────────
-# Local dev + Cloud Run compatible
-# Build: docker build -t scopesnap-api .
+# ── SnapAI API — Dockerfile ────────────────────────────────────────────────
+# Local dev + Railway compatible
+# Build: docker build -t snapai-api .
 
 FROM python:3.12-slim
 
