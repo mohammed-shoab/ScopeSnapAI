@@ -1,4 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="6" fill="#1a8754"/>
-  <text x="16" y="23" font-family="Arial, sans-serif" font-weight="bold" font-size="20" text-anchor="middle" fill="white">S</text>
+  <!-- Green rounded square background -->
+  <rect width="32" height="32" rx="7" fill="#1a8754"/>
+  <!-- Camera aperture / lens ring — nods to "Snap" (photo snap) -->
+  <circle cx="16" cy="16" r="9" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+  <!-- "S" lettermark — clean, bold, centred -->
+  <text x="16" y="22" font-family="Arial, sans-serif" font-weight="800" font-size="18" text-anchor="middle" fill="white">S</text>
 </svg>

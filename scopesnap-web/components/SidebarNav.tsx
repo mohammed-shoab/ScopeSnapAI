@@ -226,8 +226,8 @@ export default function SidebarNav() {
               </div>
               <div className="flex items-center gap-1.5">
                 <div>
-                  <span className="text-white/90 font-extrabold text-[17px] tracking-tight">Scope</span>
-                  <span style={{ color: "#1a8754" }} className="font-extrabold text-[17px] tracking-tight">Snap</span>
+                  <span className="text-white/90 font-extrabold text-[17px] tracking-tight">Snap</span>
+                  <span style={{ color: "#1a8754" }} className="font-extrabold text-[17px] tracking-tight">AI</span>
                 </div>
                 <span
                   className="text-[8px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded"

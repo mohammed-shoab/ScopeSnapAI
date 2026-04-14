@@ -56,7 +56,7 @@ export default function SignInPage() {
             color: "#1a1a18",
           }}
         >
-          Scope<span style={{ color: "#1a8754" }}>Snap</span>
+          Snap<span style={{ color: "#1a8754" }}>AI</span>
         </span>
       </div>
 
