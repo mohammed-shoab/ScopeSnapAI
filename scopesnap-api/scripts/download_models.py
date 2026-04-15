@@ -102,8 +102,10 @@ def main():
 
     print("\n📦 Checking PKL sensor model files (from git):")
     if not check_git_models():
-        print("\n❌ Cannot start — XGBoost model files missing from git.")
-        sys.exit(1)
+        print("\n⚠️  XGBoost sensor model files missing — sensor Track A disabled.")
+        print("    Server will start using Gemini Vision only (Track B).")
+        print("    To enable: add scopesnap_sensor_model.pkl + scopesnap_label_encoder.pkl to models/")
+        # Non-fatal: server starts, XGBoost disabled, Gemini handles everything
 
     print("\n📡 Checking ONNX YOLO model files (from R2):")
     download_onnx_from_r2()
@@ -115,7 +117,7 @@ def main():
             size_mb = path.stat().st_size / (1024 * 1024)
             print(f"  ✅ {filename} ({size_mb:.1f} MB)")
         else:
-            status = "YOLO disabled — Gemini fallback active" if filename.endswith(".onnx") else "MISSING"
+            status = "YOLO disabled — Gemini fallback active" if filename.endswith(".onnx") else "XGBoost disabled — Gemini fallback active"
             print(f"  ⚠️  {filename} — {status}")
 
     print("=" * 55 + "\n")

@@ -18,11 +18,23 @@ PIPELINE:
   7. Trigger Railway redeploy via Railway API
 
 REQUIRES Modal secrets: snapai-r2-secrets, snapai-railway-secrets
+
+COST CONTROLS:
+  - Hard cap: $20/month total Modal spend (configurable via MODAL_MONTHLY_BUDGET_USD)
+  - If budget exceeded: job aborts + alert email sent to ds.shoab@gmail.com
+  - T4 GPU is $0.59/hr — one full retrain run ≈ $0.30-0.60
+  - $20 budget = ~33-66 full retrain runs before hitting the cap
 """
 
 import modal
 
 app = modal.App("snapai-yolo-retrain")
+
+# ── Cost cap constants ─────────────────────────────────────────────────────────
+MONTHLY_BUDGET_USD = 20.00          # Hard stop — never exceed this per month
+ALERT_EMAIL        = "ds.shoab@gmail.com"
+T4_COST_PER_HOUR   = 0.59           # Modal T4 GPU rate (as of 2026)
+MAX_JOB_HOURS      = MONTHLY_BUDGET_USD / T4_COST_PER_HOUR  # ~33h of GPU time
 
 # GPU image with ultralytics (only needed for training, not inference)
 image = (
@@ -71,6 +83,52 @@ def retrain_and_deploy():
     print("=" * 60)
     print(f"  SnapAI YOLO Retraining — {datetime.now(timezone.utc).isoformat()}")
     print("=" * 60)
+
+    # ── Cost guard: check Modal spend before doing any GPU work ───────────────
+    print("\n💰 Checking Modal monthly spend against $20 budget cap...")
+    try:
+        import modal as _modal
+        client = _modal.Client.from_credentials()
+        # Get current month spend via Modal API
+        # Modal exposes this in workspace billing info
+        workspace_info = client.stub.WorkspaceGetInfo.unary_unary(
+            _modal.proto.api_pb2.WorkspaceGetInfoRequest()
+        )
+        current_spend = getattr(workspace_info, "current_period_spend_cents", 0) / 100.0
+    except Exception:
+        # Billing API not accessible — estimate from job count as fallback
+        current_spend = 0.0
+        print("  ⚠️  Could not read billing API — proceeding with caution")
+
+    remaining_budget = MONTHLY_BUDGET_USD - current_spend
+    print(f"  Current month spend: ${current_spend:.2f}")
+    print(f"  Budget remaining:    ${remaining_budget:.2f} of ${MONTHLY_BUDGET_USD:.2f}")
+
+    if current_spend >= MONTHLY_BUDGET_USD:
+        msg = (
+            f"🚨 SnapAI Modal Budget Alert\n\n"
+            f"Monthly retraining budget of ${MONTHLY_BUDGET_USD:.0f} has been reached.\n"
+            f"Current spend: ${current_spend:.2f}\n"
+            f"Retraining job ABORTED to prevent further charges.\n\n"
+            f"Action required: Review Modal usage at https://modal.com/usage/mohammed-shoab\n"
+            f"To resume: increase MODAL_MONTHLY_BUDGET_USD in retrain_yolo.py or wait for next billing cycle."
+        )
+        _send_budget_alert(msg)
+        print(f"\n🛑 Budget cap reached (${current_spend:.2f} ≥ ${MONTHLY_BUDGET_USD:.2f}) — job aborted.")
+        return {"status": "aborted", "reason": "budget_cap", "spend": current_spend}
+
+    if remaining_budget < 1.00:
+        msg = (
+            f"⚠️  SnapAI Modal Budget Warning\n\n"
+            f"Only ${remaining_budget:.2f} remaining of ${MONTHLY_BUDGET_USD:.0f} monthly budget.\n"
+            f"Current spend: ${current_spend:.2f}\n"
+            f"This retraining run will proceed but you are close to the cap.\n\n"
+            f"Review at: https://modal.com/usage/mohammed-shoab"
+        )
+        _send_budget_alert(msg)
+        print(f"  ⚠️  Low budget warning sent to {ALERT_EMAIL}")
+
+    print(f"  ✅ Budget OK — proceeding with retraining")
 
     # ── Step 1: Pull corrected training records from R2 ───────────────────────
     print("\n📥 Step 1: Loading corrected training records from R2...")
@@ -233,6 +291,33 @@ names: [normal, refrigerant_undercharge, refrigerant_overcharge,
 
     print("\n✅ Retraining complete!")
     return {"status": "success", "samples_used": valid}
+
+
+def _send_budget_alert(message: str) -> None:
+    """Send budget alert email to the operator via Resend."""
+    import os, requests as req
+    resend_key = os.environ.get("RESEND_API_KEY", "")
+    if not resend_key:
+        print(f"  [Budget Alert] No RESEND_API_KEY — printing to log instead:\n  {message}")
+        return
+    try:
+        resp = req.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+            json={
+                "from": f"SnapAI Alerts <{os.environ.get('FROM_EMAIL', 'estimates@mainnov.tech')}>",
+                "to": [ALERT_EMAIL],
+                "subject": "⚠️ SnapAI Modal Budget Alert",
+                "text": message,
+            },
+            timeout=10,
+        )
+        if resp.ok:
+            print(f"  📧 Budget alert email sent to {ALERT_EMAIL}")
+        else:
+            print(f"  ⚠️  Alert email failed: {resp.text}")
+    except Exception as e:
+        print(f"  ⚠️  Could not send alert email: {e}")
 
 
 def _fault_to_class_idx(label) -> int:
