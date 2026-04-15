@@ -64,7 +64,15 @@ class Company(Base):
     # 5 (free), 50 (early_bird), NULL (pro/team = unlimited)
 
     settings: Mapped[dict] = mapped_column(SmartJSON, nullable=False, default=dict)
-    # Default markup %, follow-up schedule, etc.
+    # Follow-up schedule, etc.
+
+    # Per-contractor markup — replaces hardcoded 35% in estimate builder
+    default_markup_pct: Mapped[float] = mapped_column(
+        Numeric(5, 2), nullable=False, default=35.00,
+    )
+    markup_updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -618,6 +626,14 @@ class PricingRule(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
+
+    # ── Price change audit trail ───────────────────────────────────────────────
+    changed_by_user_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    changed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    previous_value: Mapped[Optional[dict]] = mapped_column(SmartJSON, nullable=True)
+    # JSON snapshot before the edit: {parts_cost, labor_rate, labor_hours, ...}
+    change_note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Optional reason: "Customer negotiated", "Market rate update", etc.
 
     # Relationships
     company: Mapped[Optional["Company"]] = relationship("Company", back_populates="pricing_rules")

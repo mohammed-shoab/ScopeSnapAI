@@ -17,10 +17,11 @@ psycopg2-binary==2.9.9
 python-dotenv==1.0.1
 svix==1.90.0
 
-# AI Cascade — lightweight deps only (ultralytics/PyTorch excluded: too large for Railway build)
-# YOLO inference is a lazy import — falls back to Gemini when model files not present
+# AI Cascade dependencies
+# ultralytics/PyTorch (~2GB) excluded — ONNX Runtime used for inference instead
+onnxruntime==1.18.1       # YOLO inference via ONNX — 50MB, no PyTorch needed
 xgboost>=2.0.0            # Sensor fault detection model (90.09% accuracy)
 joblib>=1.3.0             # Loading .pkl model files
-numpy>=1.24.0             # Feature engineering for sensor model
+numpy>=1.24.0             # Feature engineering for sensor model + ONNX preprocessing
 sentry-sdk[fastapi]==2.19.2
 slowapi==0.1.9            # Rate limiting for Gemini/AI endpoints

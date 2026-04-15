@@ -45,6 +45,68 @@ async def _ensure_unique_slug(slug: str, db: AsyncSession) -> str:
     return f"{slug}-{suffix}"
 
 
+async def _send_welcome_email(email: str, name: str) -> None:
+    """Send a welcome email to a newly signed-up contractor via Resend."""
+    import os, httpx
+    resend_key = os.environ.get("RESEND_API_KEY", "")
+    from_email = os.environ.get("FROM_EMAIL", "estimates@mainnov.tech")
+
+    if not resend_key:
+        print("[Welcome Email] RESEND_API_KEY not set — skipping welcome email")
+        return
+
+    first_name = name.split()[0] if name else "there"
+
+    html = f"""
+    <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:560px;margin:0 auto;background:#f7f7f3;padding:32px 24px;">
+      <div style="text-align:center;margin-bottom:32px;">
+        <div style="display:inline-flex;align-items:center;gap:8px;">
+          <div style="width:40px;height:40px;background:#1a8754;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+            <span style="color:white;font-weight:800;font-size:20px;">S</span>
+          </div>
+          <span style="font-size:22px;font-weight:800;color:#1a1a18;">Snap<span style="color:#1a8754;">AI</span></span>
+        </div>
+      </div>
+      <div style="background:white;border-radius:16px;padding:32px;border:1px solid #e5e2da;">
+        <h1 style="font-size:24px;font-weight:800;color:#1a1a18;margin:0 0 8px;">Welcome, {first_name} 👋</h1>
+        <p style="color:#7a7770;font-size:15px;line-height:1.6;margin:0 0 24px;">
+          Your SnapAI account is ready. Take your first HVAC photo and get a professional
+          Good / Better / Best estimate in under 90 seconds.
+        </p>
+        <a href="https://snapai.mainnov.tech/assess"
+           style="display:inline-block;background:#1a8754;color:white;font-weight:700;
+                  padding:14px 28px;border-radius:10px;text-decoration:none;font-size:15px;">
+          Start Your First Assessment →
+        </a>
+        <hr style="border:none;border-top:1px solid #e5e2da;margin:28px 0;">
+        <p style="color:#b0aca4;font-size:12px;margin:0;">
+          Three steps: Photo → AI Analysis → Send report to homeowner.<br>
+          Questions? Reply to this email — we read every one.
+        </p>
+      </div>
+      <p style="text-align:center;color:#b0aca4;font-size:11px;margin-top:20px;font-family:monospace;">
+        SnapAI — snapai.mainnov.tech
+      </p>
+    </div>
+    """
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+            json={
+                "from": f"SnapAI <{from_email}>",
+                "to": [email],
+                "subject": f"Welcome to SnapAI, {first_name}! Your account is ready",
+                "html": html,
+            },
+            timeout=10,
+        )
+    if not resp.is_success:
+        raise Exception(f"Resend {resp.status_code}: {resp.text}")
+    print(f"[Welcome Email] Sent to {email}")
+
+
 async def _provision_user(clerk_user_id: str, email: str, name: str, db: AsyncSession) -> dict:
     """
     Creates Company + User records for a new Clerk user.
@@ -157,6 +219,14 @@ async def clerk_webhook(
             raise HTTPException(status_code=400, detail="Missing user ID in webhook payload.")
 
         result = await _provision_user(clerk_user_id, email, name, db)
+
+        # ── Send welcome email via Resend ─────────────────────────────────────
+        try:
+            await _send_welcome_email(email=email, name=name)
+        except Exception as e:
+            # Non-fatal — user is provisioned even if email fails
+            print(f"[Welcome Email] Failed to send to {email}: {e}")
+
         return {"received": True, "event": event_type, **result}
 
     # ── user.updated ─────────────────────────────────────────────────────────

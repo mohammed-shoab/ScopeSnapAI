@@ -120,3 +120,93 @@ async def seed_status(x_admin_secret: str = Header(default="")):
                 counts[name] = f"error: {e}"
 
     return {"table_counts": counts}
+
+
+# ── GET /admin/dashboard — operator metrics overview ─────────────────────────
+
+@router.get("/dashboard")
+async def admin_dashboard(x_admin_secret: str = Header(default="")):
+    """
+    Operator dashboard — key metrics across all companies and users.
+    Returns: total assessments, emails sent, label edit rate, active companies.
+    Protected by ADMIN_SECRET header.
+    """
+    _require_admin(x_admin_secret)
+
+    from db.models import Assessment, Estimate, Company, User
+    from sqlalchemy import func as sql_func, case
+
+    async with AsyncSessionLocal() as db:
+        # Total assessments
+        total_assessments = (await db.execute(
+            select(sql_func.count()).select_from(Assessment)
+        )).scalar_one()
+
+        # Assessments by status
+        status_counts_rows = (await db.execute(
+            select(Assessment.status, sql_func.count())
+            .group_by(Assessment.status)
+        )).all()
+        assessments_by_status = {row[0]: row[1] for row in status_counts_rows}
+
+        # Assessments with label edits (AI accuracy indicator)
+        label_edited_count = (await db.execute(
+            select(sql_func.count()).select_from(Assessment)
+            .where(Assessment.label_edited == True)  # noqa: E712
+        )).scalar_one()
+
+        # Estimates sent (emails delivered to homeowners)
+        sent_estimates = (await db.execute(
+            select(sql_func.count()).select_from(Estimate)
+            .where(Estimate.status.in_(["sent", "viewed", "approved", "deposit_paid"]))
+        )).scalar_one()
+
+        # Estimates with payments (deposit collected)
+        paid_estimates = (await db.execute(
+            select(sql_func.count()).select_from(Estimate)
+            .where(Estimate.status == "deposit_paid")
+        )).scalar_one()
+
+        # Active companies (at least 1 assessment)
+        active_companies = (await db.execute(
+            select(sql_func.count(sql_func.distinct(Assessment.company_id)))
+            .select_from(Assessment)
+        )).scalar_one()
+
+        # Total users
+        total_users = (await db.execute(
+            select(sql_func.count()).select_from(User)
+        )).scalar_one()
+
+        # Assessments last 7 days
+        from datetime import datetime, timezone, timedelta
+        seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+        recent_assessments = (await db.execute(
+            select(sql_func.count()).select_from(Assessment)
+            .where(Assessment.created_at >= seven_days_ago)
+        )).scalar_one()
+
+    label_edit_rate = round(label_edited_count / total_assessments * 100, 1) if total_assessments > 0 else 0
+    email_conversion = round(sent_estimates / total_assessments * 100, 1) if total_assessments > 0 else 0
+    deposit_rate = round(paid_estimates / sent_estimates * 100, 1) if sent_estimates > 0 else 0
+
+    return {
+        "summary": {
+            "total_assessments": total_assessments,
+            "assessments_last_7_days": recent_assessments,
+            "active_companies": active_companies,
+            "total_users": total_users,
+        },
+        "pipeline": {
+            "assessments_by_status": assessments_by_status,
+            "emails_sent": sent_estimates,
+            "deposits_collected": paid_estimates,
+            "email_conversion_pct": email_conversion,
+            "deposit_rate_pct": deposit_rate,
+        },
+        "ai_accuracy": {
+            "label_edits_total": label_edited_count,
+            "label_edit_rate_pct": label_edit_rate,
+            "note": "Lower edit rate = AI is more accurate. Target < 20%.",
+        },
+    }

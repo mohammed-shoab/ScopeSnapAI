@@ -132,8 +132,8 @@ async def create_assessment(
     # Validate photo count
     if not photos:
         raise HTTPException(status_code=400, detail="At least 1 photo required.")
-    if len(photos) > 5:
-        raise HTTPException(status_code=400, detail="Maximum 5 photos per assessment.")
+    if len(photos) > 10:
+        raise HTTPException(status_code=400, detail="Maximum 10 photos per assessment.")
 
     # Validate file types and size (BUG-FIX: enforce MIME + 10MB limit)
     ALLOWED_MIME = {"image/jpeg", "image/jpg", "image/png", "image/heic", "image/heif", "image/webp"}
@@ -707,9 +707,50 @@ async def update_assessment(
 
     await db.commit()
 
+    # ── Write corrected training data to R2 (retraining pipeline) ────────────
+    # When a tech changes the AI label, we write the photo URLs + correct label
+    # to R2 under training_data/ so the Modal retraining job can pick them up.
+    if label_was_edited and assessment.photo_urls:
+        try:
+            import json, os, boto3
+            account_id = os.environ.get("CLOUDFLARE_R2_ACCOUNT_ID", "")
+            access_key = os.environ.get("CLOUDFLARE_R2_ACCESS_KEY", "")
+            secret_key = os.environ.get("CLOUDFLARE_R2_SECRET_KEY", "")
+            bucket     = os.environ.get("CLOUDFLARE_R2_BUCKET", "")
+
+            if all([account_id, access_key, secret_key, bucket]):
+                s3 = boto3.client(
+                    "s3",
+                    endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
+                    aws_access_key_id=access_key,
+                    aws_secret_access_key=secret_key,
+                    region_name="auto",
+                )
+                training_record = {
+                    "assessment_id": assessment_id,
+                    "photo_urls": assessment.photo_urls,
+                    "correct_label": new_values.get("overall_condition") or assessment.ai_condition,
+                    "previous_label": issue_change_log[-1].get("from") if issue_change_log else None,
+                    "ai_issues": assessment.ai_issues,
+                    "tech_id": auth.user_id,
+                    "timestamp": now_iso,
+                    "source": "tech_correction",  # vs "confirmed" for unchanged labels
+                }
+                r2_key = f"training_data/corrected/{assessment_id}_{now_iso[:10]}.json"
+                s3.put_object(
+                    Bucket=bucket,
+                    Key=r2_key,
+                    Body=json.dumps(training_record),
+                    ContentType="application/json",
+                )
+        except Exception as e:
+            # Non-fatal — log but don't fail the request
+            print(f"[Retraining] Warning: failed to write training record to R2: {e}")
+
     return {
         "id": assessment_id,
         "tech_overrides": assessment.tech_overrides,
+        "label_edited": assessment.label_edited,
         "message": f"Override saved. {len(new_values)} field(s) updated.",
     }
 

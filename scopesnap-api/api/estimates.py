@@ -140,11 +140,11 @@ async def generate_estimate(
     if not company:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Company not found")
 
-    # Determine markup: request body > company default > 35%
+    # Determine markup: request body > company.default_markup_pct > 35%
+    # company.default_markup_pct is set via PATCH /api/pricing-rules/markup
     markup_percent = body.markup_percent
     if markup_percent is None:
-        company_settings = company.settings or {}
-        markup_percent = company_settings.get("default_markup_percent", 35.0)
+        markup_percent = float(company.default_markup_pct or 35.0)
 
     company_state = company.state
 

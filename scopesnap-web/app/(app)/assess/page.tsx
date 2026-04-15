@@ -318,7 +318,7 @@ export default function AssessPage() {
   const handleFileForSlot = (file: File) => {
     const slot = activeSlotRef.current;
     if (slot === "extra") {
-      if (extraPhotos.length >= 2) return; // max 2 extra
+      if (extraPhotos.length >= 7) return; // max 7 extra = 10 total (3 required + 7 optional)
       setExtraPhotos(p => [...p, file]);
       setExtraPreviews(p => [...p, URL.createObjectURL(file)]);
       track.photoAdded(3 + extraPhotos.length + 1, file.size);

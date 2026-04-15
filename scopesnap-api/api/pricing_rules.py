@@ -58,6 +58,12 @@ class PricingRulePatch(BaseModel):
     parts_cost: Optional[dict] = None
     labor_hours: Optional[dict] = None
     additional_costs: Optional[dict] = None
+    change_note: Optional[str] = None  # Reason for change — stored in audit trail
+
+
+class MarkupPatch(BaseModel):
+    markup_pct: float  # New markup percentage e.g. 30.0 for 30%
+    change_note: Optional[str] = None
 
 
 # ── GET /api/pricing-rules/ ───────────────────────────────────────────────────
@@ -154,9 +160,26 @@ async def update_pricing_rule(
             detail="Pricing rule not found or not owned by your company.",
         )
 
+    from datetime import datetime, timezone
+
     patch = body.model_dump(exclude_unset=True)
+
+    # ── Audit trail: snapshot previous values before overwriting ─────────────
+    audit_fields = ["parts_cost", "labor_hours", "labor_rate", "permit_cost",
+                    "refrigerant_cost_per_lb", "additional_costs"]
+    previous_snapshot = {
+        f: getattr(rule, f) for f in audit_fields if f in patch
+    }
+
     for field, value in patch.items():
         setattr(rule, field, value)
+
+    # Record who changed it, when, and what the previous values were
+    rule.changed_by_user_id = auth.user_id
+    rule.changed_at = datetime.now(timezone.utc)
+    rule.previous_value = previous_snapshot
+    if hasattr(body, "change_note") and body.change_note:
+        rule.change_note = body.change_note
 
     await db.commit()
     await db.refresh(rule)
@@ -190,3 +213,83 @@ async def delete_pricing_rule(
 
     await db.delete(rule)
     await db.commit()
+
+
+# ── PATCH /api/pricing-rules/markup — per-contractor markup setting ───────────
+
+@router.patch("/markup", tags=["pricing-rules"])
+async def update_company_markup(
+    body: MarkupPatch,
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Update the default markup % for the contractor's company.
+    This replaces the hardcoded 35% and applies to all new estimates.
+    Previous markup is stored in company.settings._markup_history for auditing.
+    """
+    from datetime import datetime, timezone
+    from db.models import Company
+
+    result = await db.execute(
+        select(Company).where(Company.id == auth.company_id)
+    )
+    company = result.scalar_one_or_none()
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found.")
+
+    if not (0 <= body.markup_pct <= 200):
+        raise HTTPException(status_code=400, detail="markup_pct must be between 0 and 200.")
+
+    now = datetime.now(timezone.utc)
+    previous_markup = float(company.default_markup_pct or 35.0)
+
+    # Append to markup history in settings JSON
+    settings = dict(company.settings or {})
+    history = settings.get("_markup_history", [])
+    history.append({
+        "from_pct": previous_markup,
+        "to_pct": body.markup_pct,
+        "changed_by": auth.user_id,
+        "changed_at": now.isoformat(),
+        "note": body.change_note,
+    })
+    settings["_markup_history"] = history
+    company.settings = settings
+
+    company.default_markup_pct = body.markup_pct
+    company.markup_updated_at = now
+
+    await db.commit()
+
+    return {
+        "previous_markup_pct": previous_markup,
+        "new_markup_pct": body.markup_pct,
+        "message": f"Markup updated from {previous_markup}% to {body.markup_pct}%",
+        "changed_at": now.isoformat(),
+    }
+
+
+# ── GET /api/pricing-rules/markup — get current markup ───────────────────────
+
+@router.get("/markup", tags=["pricing-rules"])
+async def get_company_markup(
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return current markup % and change history for this contractor."""
+    from db.models import Company
+
+    result = await db.execute(
+        select(Company).where(Company.id == auth.company_id)
+    )
+    company = result.scalar_one_or_none()
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found.")
+
+    settings = company.settings or {}
+    return {
+        "markup_pct": float(company.default_markup_pct or 35.0),
+        "markup_updated_at": company.markup_updated_at.isoformat() if company.markup_updated_at else None,
+        "history": settings.get("_markup_history", []),
+    }
