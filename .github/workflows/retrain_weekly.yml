@@ -1,0 +1,71 @@
+name: Weekly YOLO Retraining (Modal GPU)
+
+# Runs every Sunday at 02:00 UTC via Modal.
+# Pulls corrected training data from R2, fine-tunes YOLO,
+# exports to ONNX, uploads to R2, triggers Railway redeploy.
+# Budget cap: $20/month (enforced inside retrain_yolo.py).
+#
+# REQUIRES GitHub secrets:
+#   MODAL_TOKEN_ID, MODAL_TOKEN_SECRET
+#   CLOUDFLARE_R2_ACCOUNT_ID, CLOUDFLARE_R2_ACCESS_KEY
+#   CLOUDFLARE_R2_SECRET_KEY, CLOUDFLARE_R2_BUCKET
+#   RESEND_API_KEY   (for budget alert emails)
+#   RAILWAY_API_TOKEN
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'   # Every Sunday 02:00 UTC
+  workflow_dispatch:        # Manual trigger for testing
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Modal CLI
+        run: pip install modal==0.67.0
+
+      - name: Authenticate Modal
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: modal token set --token-id "$MODAL_TOKEN_ID" --token-secret "$MODAL_TOKEN_SECRET"
+
+      - name: Upsert Modal secrets (R2 + Resend + Railway)
+        env:
+          CLOUDFLARE_R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_R2_ACCOUNT_ID }}
+          CLOUDFLARE_R2_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY }}
+          CLOUDFLARE_R2_SECRET_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_KEY }}
+          CLOUDFLARE_R2_BUCKET: ${{ secrets.CLOUDFLARE_R2_BUCKET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+        run: |
+          modal secret create snapai-r2-secrets \
+            CLOUDFLARE_R2_ACCOUNT_ID="$CLOUDFLARE_R2_ACCOUNT_ID" \
+            CLOUDFLARE_R2_ACCESS_KEY="$CLOUDFLARE_R2_ACCESS_KEY" \
+            CLOUDFLARE_R2_SECRET_KEY="$CLOUDFLARE_R2_SECRET_KEY" \
+            CLOUDFLARE_R2_BUCKET="$CLOUDFLARE_R2_BUCKET" \
+            RESEND_API_KEY="$RESEND_API_KEY" \
+            FROM_EMAIL="estimates@mainnov.tech" \
+            --force 2>/dev/null || true
+
+          modal secret create snapai-railway-secrets \
+            RAILWAY_API_TOKEN="$RAILWAY_API_TOKEN" \
+            RAILWAY_SERVICE_ID="a23d5cad-d8c9-434e-a3dc-89634d8642ab" \
+            RAILWAY_ENVIRONMENT_ID="03c478ed-5720-427a-b567-d6bd2ebf3eb1" \
+            --force 2>/dev/null || true
+
+      - name: Run weekly retraining on Modal GPU
+        working-directory: scopesnap-api
+        run: modal run scripts/retrain_yolo.py
+
+      - name: Log completion
+        run: echo "✅ Weekly retraining complete — $(date)"
