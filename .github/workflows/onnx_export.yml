@@ -1,22 +1,7 @@
-name: Export YOLO → ONNX (one-time, run manually)
-
-# Run this ONCE after training new .pt models.
-# It converts them to .onnx and uploads to R2.
-# Railway then pulls the .onnx files on next deploy.
-#
-# HOW TO RUN:
-#   GitHub → Actions → "Export YOLO → ONNX" → Run workflow → Run workflow
-#
-# REQUIRES these GitHub secrets (Settings → Secrets → Actions):
-#   CLOUDFLARE_R2_ACCOUNT_ID   — from Cloudflare R2 dashboard
-#   CLOUDFLARE_R2_ACCESS_KEY   — R2 API token access key
-#   CLOUDFLARE_R2_SECRET_KEY   — R2 API token secret key
-#   CLOUDFLARE_R2_BUCKET       — bucket name (e.g. snapai-uploads)
-#   MODAL_TOKEN_ID             — from modal.com → Settings → Tokens
-#   MODAL_TOKEN_SECRET         — same
+name: Export YOLO to ONNX (run manually)
 
 on:
-  workflow_dispatch:   # Manual trigger only
+  workflow_dispatch:
     inputs:
       confirm:
         description: 'Type "export" to confirm'
@@ -27,26 +12,19 @@ jobs:
   export-onnx:
     runs-on: ubuntu-latest
     if: github.event.inputs.confirm == 'export'
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Install Modal CLI
+      - name: Install Modal
         run: pip install modal --upgrade
-
-      - name: Authenticate Modal
+      - name: Auth Modal
         env:
           MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
           MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
         run: modal token set --token-id "$MODAL_TOKEN_ID" --token-secret "$MODAL_TOKEN_SECRET"
-
-      - name: Create Modal R2 secret (upsert)
+      - name: Create Modal R2 secret
         env:
           CLOUDFLARE_R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_R2_ACCOUNT_ID }}
           CLOUDFLARE_R2_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY }}
@@ -58,17 +36,10 @@ jobs:
             CLOUDFLARE_R2_ACCESS_KEY="$CLOUDFLARE_R2_ACCESS_KEY" \
             CLOUDFLARE_R2_SECRET_KEY="$CLOUDFLARE_R2_SECRET_KEY" \
             CLOUDFLARE_R2_BUCKET="$CLOUDFLARE_R2_BUCKET" \
-            --force 2>/dev/null || \
-          modal secret create snapai-r2-secrets \
-            CLOUDFLARE_R2_ACCOUNT_ID="$CLOUDFLARE_R2_ACCOUNT_ID" \
-            CLOUDFLARE_R2_ACCESS_KEY="$CLOUDFLARE_R2_ACCESS_KEY" \
-            CLOUDFLARE_R2_SECRET_KEY="$CLOUDFLARE_R2_SECRET_KEY" \
-            CLOUDFLARE_R2_BUCKET="$CLOUDFLARE_R2_BUCKET"
-
+            --force 2>/dev/null || true
       - name: Run ONNX export on Modal GPU
         working-directory: scopesnap-api
         run: modal run scripts/export_to_onnx.py
-
       - name: Trigger Railway redeploy
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
@@ -76,5 +47,4 @@ jobs:
           curl -s -X POST https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_API_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"a23d5cad-d8c9-434e-a3dc-89634d8642ab\", environmentId: \"03c478ed-5720-427a-b567-d6bd2ebf3eb1\") }"}' \
-          && echo "✅ Railway redeploy triggered — YOLO bounding boxes will be live in ~3 min"
+            -d '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"a23d5cad-d8c9-434e-a3dc-89634d8642ab\", environmentId: \"03c478ed-5720-427a-b567-d6bd2ebf3eb1\") }"}' && echo "Done"
