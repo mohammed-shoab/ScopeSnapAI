@@ -330,6 +330,9 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* ── Estimate Markup % ─────────────────────────────────────────── */}
+          <MarkupSetting apiUrl={API_URL} getAuthHeaders={getAuthHeaders} />
+
           {/* Onboarding Link */}
           <div className="bg-white border border-surface-border rounded-ss shadow-ss p-4 border-dashed">
             <div className="flex items-center justify-between">
@@ -364,6 +367,167 @@ export default function SettingsPage() {
             </div>
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+// ── Markup Setting Component ───────────────────────────────────────────────────
+
+function MarkupSetting({
+  apiUrl,
+  getAuthHeaders,
+}: {
+  apiUrl: string;
+  getAuthHeaders: () => Promise<Record<string, string>>;
+}) {
+  const [markup, setMarkup] = useState<number | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<Array<{from_pct: number; to_pct: number; changed_at: string; note?: string}>>([]);
+
+  useEffect(() => {
+    (async () => {
+      const headers = await getAuthHeaders();
+      const r = await fetch(`${apiUrl}/api/pricing-rules/markup`, { headers });
+      if (r.ok) {
+        const d = await r.json();
+        setMarkup(d.markup_pct);
+        setHistory(d.history || []);
+      }
+    })();
+  }, [apiUrl, getAuthHeaders]);
+
+  const handleSave = async () => {
+    const pct = parseFloat(draft);
+    if (isNaN(pct) || pct < 0 || pct > 200) {
+      setError("Markup must be between 0% and 200%.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const headers = await getAuthHeaders();
+      const r = await fetch(`${apiUrl}/api/pricing-rules/markup`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ markup_pct: pct, change_note: note.trim() || null }),
+      });
+      if (!r.ok) throw new Error(await r.text());
+      const d = await r.json();
+      setMarkup(d.new_markup_pct);
+      setHistory(prev => [{
+        from_pct: d.previous_markup_pct,
+        to_pct: d.new_markup_pct,
+        changed_at: new Date().toISOString(),
+        note: note.trim() || undefined,
+      }, ...prev]);
+      setEditing(false);
+      setNote("");
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (e) {
+      setError("Failed to update markup. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="bg-white border border-surface-border rounded-ss shadow-ss p-5">
+      <h2 className="text-[9px] font-bold uppercase tracking-widest font-mono text-text-secondary mb-4">
+        Estimate Markup %
+      </h2>
+
+      {markup === null ? (
+        <p className="text-sm text-text-secondary">Loading…</p>
+      ) : editing ? (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <input
+                type="number"
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                min="0"
+                max="200"
+                step="0.5"
+                className="w-28 border border-surface-border rounded-lg px-3 py-2 text-sm text-center font-bold focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
+                placeholder={String(markup)}
+                autoFocus
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-secondary">%</span>
+            </div>
+            <span className="text-xs text-text-secondary">of base cost applied to all new estimates</span>
+          </div>
+          <input
+            type="text"
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="Reason for change (optional)"
+            className="w-full border border-surface-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green"
+          />
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              disabled={saving || !draft}
+              className="px-4 py-2 bg-brand-green text-white text-sm font-bold rounded-lg disabled:opacity-50 hover:bg-green-700 transition-colors"
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button
+              onClick={() => { setEditing(false); setError(null); setNote(""); }}
+              className="px-4 py-2 border border-surface-border text-sm font-semibold rounded-lg hover:bg-surface-bg transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl font-extrabold text-text-primary">{markup}%</span>
+            <div>
+              <p className="text-xs text-text-secondary">applied to all new estimates</p>
+              {success && <p className="text-xs text-brand-green font-semibold">✓ Saved</p>}
+            </div>
+          </div>
+          <button
+            onClick={() => { setDraft(String(markup)); setEditing(true); }}
+            className="text-sm text-brand-green font-semibold hover:underline"
+          >
+            Edit →
+          </button>
+        </div>
+      )}
+
+      {/* Change history */}
+      {history.length > 0 && !editing && (
+        <div className="mt-4 border-t border-surface-border pt-3">
+          <p className="text-[9px] font-bold uppercase tracking-widest font-mono text-text-secondary mb-2">
+            Recent Changes
+          </p>
+          <div className="space-y-1.5">
+            {history.slice(0, 3).map((h, i) => (
+              <div key={i} className="flex items-center justify-between text-xs text-text-secondary">
+                <span>
+                  <span className="font-semibold text-text-primary">{h.from_pct}%</span>
+                  {" → "}
+                  <span className="font-semibold text-brand-green">{h.to_pct}%</span>
+                  {h.note && <span className="text-gray-400"> — {h.note}</span>}
+                </span>
+                <span className="text-[10px] font-mono">
+                  {new Date(h.changed_at).toLocaleDateString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
