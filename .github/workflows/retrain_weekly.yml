@@ -31,7 +31,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Modal CLI
-        run: pip install modal==0.67.0
+        run: pip install modal --upgrade
 
       - name: Authenticate Modal
         env:
