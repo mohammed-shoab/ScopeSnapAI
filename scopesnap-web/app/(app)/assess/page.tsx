@@ -692,10 +692,7 @@ export default function AssessPage() {
               key={opt.id}
               onClick={() => {
                 setComplaintType(opt.id);
-                setSensorFieldIndex(0);
-                setSensorCurrentValue("");
-                setSensorValues({});
-                setPhase("sensor");
+                setPhase("capture"); // photos first — sensor is optional from the capture screen
               }}
               className="bg-white border-2 border-gray-200 hover:border-green-500 rounded-2xl p-4 text-left transition-all active:scale-95 focus:outline-none"
             >
@@ -746,8 +743,8 @@ export default function AssessPage() {
       const updated = { ...sensorValues, [field.key]: sensorCurrentValue };
       setSensorValues(updated);
       if (sensorFieldIndex === 0) {
-        // Back to complaint selection
-        setPhase("complaint");
+        // Back to photos (sensor is accessed from capture screen)
+        setPhase("capture");
       } else {
         const prevField = SENSOR_FIELDS[sensorFieldIndex - 1];
         setSensorFieldIndex(sensorFieldIndex - 1);
@@ -839,7 +836,7 @@ export default function AssessPage() {
             className="w-full py-4 rounded-2xl font-bold text-base text-white shadow-lg transition-all active:scale-95"
             style={{ background: "linear-gradient(135deg, #1a8754 0%, #159a5e 100%)" }}
           >
-            {sensorFieldIndex < TOTAL - 1 ? "Next →" : "Done — Analyse Photos"}
+            {sensorFieldIndex < TOTAL - 1 ? "Next →" : "Done — Back to Photos"}
           </button>
 
           {/* Skip this field */}
@@ -1067,24 +1064,47 @@ export default function AssessPage() {
         </div>
       </div>
 
-      {/* OLD inline sensor panel — replaced by full-screen sensor phase (Jobs method).
-          Sensor readings now collected before photos via the "sensor" phase.
-          Kept here commented out in case we want to restore the inline version.
-      {/* Sensor summary badge — shows in capture phase if readings were entered */}
-      {(sensorUnitAge || sensorOutdoorTemp || sensorSuction) && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl px-4 py-3 flex items-center gap-3">
-          <span className="text-base">⚡</span>
-          <div className="flex-1">
-            <p className="text-xs font-bold text-green-800">Gauge readings added — high-confidence diagnosis active</p>
-            <p className="text-xs text-green-600">XGBoost + YOLO cascade: 93–95% accuracy</p>
+      {/* ── Sensor readings — Jobs-style subtle trigger (photo page) ───────── */}
+      {(sensorUnitAge || sensorOutdoorTemp || sensorSuction) ? (
+        /* Readings already entered — show success badge with Edit */
+        <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-2xl px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">⚡</span>
+            <div>
+              <p className="text-xs font-bold text-green-800">Gauge readings added — 93–95% accuracy</p>
+              <p className="text-xs text-green-600">High-confidence diagnosis active</p>
+            </div>
           </div>
           <button
-            onClick={() => { setSensorFieldIndex(0); setSensorCurrentValue(sensorUnitAge); setPhase("sensor"); }}
-            className="text-xs font-semibold text-green-700 hover:text-green-900"
+            onClick={() => {
+              setSensorFieldIndex(0);
+              setSensorCurrentValue(sensorValues["unitAge"] ?? sensorUnitAge);
+              setPhase("sensor");
+            }}
+            className="text-xs font-semibold text-green-700 underline underline-offset-2 hover:text-green-900"
           >
             Edit
           </button>
         </div>
+      ) : (
+        /* No readings — subtle Jobs-style prompt, easy to miss (intentional) */
+        <button
+          onClick={() => {
+            setSensorFieldIndex(0);
+            setSensorCurrentValue("");
+            setSensorValues({});
+            setPhase("sensor");
+          }}
+          className="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl border border-dashed border-gray-200 hover:border-green-400 hover:bg-green-50 transition-all group"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400 group-hover:text-green-600 transition-colors">📡</span>
+            <span className="text-xs text-gray-400 group-hover:text-green-700 font-medium transition-colors">
+              Have gauge readings? Add them for higher accuracy
+            </span>
+          </div>
+          <span className="text-xs text-gray-300 group-hover:text-green-500 transition-colors">→</span>
+        </button>
       )}
 
 
