@@ -24,7 +24,7 @@ from services.storage import get_storage
 from services.vision import get_vision_service, VisionAnalysisError
 from prompts.equipment_analysis import EQUIPMENT_ANALYSIS_PROMPT
 from config import get_settings
-from main import limiter
+from rate_limit import limiter
 
 settings = get_settings()
 router = APIRouter(prefix="/api/assessments", tags=["assessments"])
