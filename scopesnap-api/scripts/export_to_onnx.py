@@ -29,7 +29,7 @@ app = modal.App("snapai-onnx-export")
 image = modal.Image.debian_slim().apt_install("libgl1", "libglib2.0-0").pip_install(
     "torch==2.3.1",
     "torchvision==0.18.1",
-    "ultralytics==8.2.0",
+    "ultralytics==8.3.0",
     "boto3==1.35.0",
     "onnx>=1.14.0",
     "onnxruntime==1.18.1",
