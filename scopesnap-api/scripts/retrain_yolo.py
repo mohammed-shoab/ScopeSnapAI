@@ -36,11 +36,15 @@ ALERT_EMAIL        = "ds.shoab@gmail.com"
 T4_COST_PER_HOUR   = 0.59           # Modal T4 GPU rate (as of 2026)
 MAX_JOB_HOURS      = MONTHLY_BUDGET_USD / T4_COST_PER_HOUR  # ~33h of GPU time
 
-# GPU image with ultralytics (only needed for training, not inference)
+# GPU image with ultralytics (only needed for training, not inference).
+# torch pinned <2.6 because PyTorch 2.6 changed torch.load default to weights_only=True,
+# which rejects ultralytics DetectionModel checkpoints (UnpicklingError).
 image = (
     modal.Image.debian_slim()
     .apt_install("libgl1", "libglib2.0-0")
     .pip_install(
+        "torch==2.3.1",
+        "torchvision==0.18.1",
         "ultralytics==8.2.0",
         "boto3==1.35.0",
         "onnx>=1.14.0",

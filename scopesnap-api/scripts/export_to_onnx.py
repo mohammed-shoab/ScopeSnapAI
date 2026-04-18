@@ -23,8 +23,12 @@ import modal
 
 app = modal.App("snapai-onnx-export")
 
-# Use a slim image with ultralytics (only needed for the conversion)
+# Use a slim image with ultralytics (only needed for the conversion).
+# torch pinned <2.6 because PyTorch 2.6 changed torch.load default to weights_only=True,
+# which rejects ultralytics DetectionModel checkpoints (UnpicklingError).
 image = modal.Image.debian_slim().apt_install("libgl1", "libglib2.0-0").pip_install(
+    "torch==2.3.1",
+    "torchvision==0.18.1",
     "ultralytics==8.2.0",
     "boto3==1.35.0",
     "onnx>=1.14.0",
