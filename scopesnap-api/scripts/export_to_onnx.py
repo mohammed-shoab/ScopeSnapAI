@@ -24,7 +24,7 @@ import modal
 app = modal.App("snapai-onnx-export")
 
 # Use a slim image with ultralytics (only needed for the conversion)
-image = modal.Image.debian_slim().pip_install(
+image = modal.Image.debian_slim().apt_install("libgl1", "libglib2.0-0").pip_install(
     "ultralytics==8.2.0",
     "boto3==1.35.0",
     "onnx>=1.14.0",

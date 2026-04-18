@@ -39,6 +39,7 @@ MAX_JOB_HOURS      = MONTHLY_BUDGET_USD / T4_COST_PER_HOUR  # ~33h of GPU time
 # GPU image with ultralytics (only needed for training, not inference)
 image = (
     modal.Image.debian_slim()
+    .apt_install("libgl1", "libglib2.0-0")
     .pip_install(
         "ultralytics==8.2.0",
         "boto3==1.35.0",
