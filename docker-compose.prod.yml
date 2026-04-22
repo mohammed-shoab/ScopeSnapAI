@@ -1,4 +1,4 @@
-# ── ScopeSnap — Production Docker Compose Override ───────────────────────────
+# ── SnapAI — Production Docker Compose Override ─────────────────────────────
 # Use alongside docker-compose.yml:
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
