@@ -1,4 +1,4 @@
-# ── ScopeSnap Web — Dockerfile ────────────────────────────────────────────────
+# ── SnapAI Web — Dockerfile ──────────────────────────────────────────────────
 # Multi-stage build: install deps → build → run
 # This keeps the final image small by discarding build tools
 
