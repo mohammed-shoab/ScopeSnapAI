@@ -1,4 +1,4 @@
-# ── ScopeSnap — Fly.io Deployment Configuration ───────────────────────────────
+# ── SnapAI — Fly.io Deployment Configuration ────────────────────────────────────
 # Deploy the API to Fly.io:
 #   fly launch  (first time — creates app)
 #   fly deploy  (subsequent deploys)
