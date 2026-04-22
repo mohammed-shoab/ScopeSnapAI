@@ -246,7 +246,8 @@ names: [normal, refrigerant_undercharge, refrigerant_overcharge,
                 print(f"  ✅ Uploaded {onnx_key}")
 
                 # Archive the old .pt as backup
-                archive_key = f"models/archive/{model_file.replace('.pt', f'_{datetime.now(timezone.utc).strftime(\"%Y%m%d\")}.pt')}"
+                date_str = datetime.now(timezone.utc).strftime("%Y%m%d")
+                archive_key = f"models/archive/{model_file.replace('.pt', f'_{date_str}.pt')}"
                 try:
                     s3.copy_object(Bucket=bucket, CopySource={"Bucket": bucket, "Key": f"models/{model_file}"}, Key=archive_key)
                 except Exception:
