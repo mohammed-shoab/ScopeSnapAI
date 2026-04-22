@@ -1041,7 +1041,7 @@ async def export_estimates_csv(
         ])
 
     output.seek(0)
-    filename = f"scopesnap_export_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
+    filename = f"snapai_export_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
 
     return StreamingResponse(
         iter([output.getvalue()]),
