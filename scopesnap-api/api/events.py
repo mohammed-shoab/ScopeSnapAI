@@ -125,7 +125,7 @@ async def record_event(payload: EventPayload, request: Request):
                 INSERT INTO app_events
                     (event_name, event_data, session_id, page_url, user_agent, ip_address, user_id)
                 VALUES
-                    (:event_name, :event_data::jsonb, :session_id, :page_url, :user_agent, :ip_address, :user_id)
+                    (:event_name, CAST(:event_data AS jsonb), :session_id, :page_url, :user_agent, :ip_address, :user_id)
                 """),
                 {
                     "event_name": payload.event_name,
