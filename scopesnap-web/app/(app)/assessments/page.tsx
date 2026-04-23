@@ -62,7 +62,7 @@ const EQUIP_LABELS: Record<string, string> = {
 
 export default function EstimatesPage() {
   const { getToken } = useAuth();
-  const [assessments, setEstimates] = useState<Estimate[]>([]);
+  const [assessments, setAssessments] = useState<Estimate[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
