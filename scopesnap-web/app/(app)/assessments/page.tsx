@@ -1,6 +1,6 @@
 /**
  * Assessments List Page
- * Shows all estimates for the authenticated company with status badges,
+ * Shows all assessments for the authenticated company with status badges,
  * amounts, and links to individual estimate builders.
  */
 "use client";
@@ -88,7 +88,7 @@ export default function EstimatesPage() {
     load();
   }, [getAuthHeaders]);
 
-  const filtered = estimates.filter((e) => {
+  const filtered = assessments.filter((e) => {
     const matchesFilter = filter === "all" || e.status === filter;
     const q = search.toLowerCase();
     const matchesSearch =
@@ -100,7 +100,7 @@ export default function EstimatesPage() {
     return matchesFilter && matchesSearch;
   });
 
-  const counts = estimates.reduce<Record<string, number>>((acc, e) => {
+  const counts = assessments.reduce<Record<string, number>>((acc, e) => {
     acc[e.status] = (acc[e.status] || 0) + 1;
     return acc;
   }, {});
@@ -112,7 +112,7 @@ export default function EstimatesPage() {
         <div>
           <h1 className="text-2xl font-extrabold text-text-primary">Assessments</h1>
           <p className="text-sm text-text-secondary mt-0.5">
-            {estimates.length} total · {counts.sent || 0} sent · {counts.approved || 0} approved
+            {assessments.length} total · {counts.sent || 0} sent · {counts.approved || 0} approved
           </p>
         </div>
         <Link
@@ -136,7 +136,7 @@ export default function EstimatesPage() {
                   : "text-text-secondary hover:text-text-primary"
               }`}
             >
-              {f === "all" ? `All (${estimates.length})` : `${STATUS_STYLES[f]?.label} (${counts[f] || 0})`}
+              {f === "all" ? `All (${assessments.length})` : `${STATUS_STYLES[f]?.label} (${counts[f] || 0})`}
             </button>
           ))}
         </div>
@@ -153,12 +153,12 @@ export default function EstimatesPage() {
       {loading ? (
         <div className="text-center py-16 text-text-secondary">
           <div className="w-8 h-8 border-2 border-brand-green border-t-transparent rounded-full mx-auto mb-3 animate-spin" />
-          Loading estimates...
+          Loading assessments...
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-text-secondary text-lg">
-            {search || filter !== "all" ? "No estimates match your filters." : "No estimates yet."}
+            {search || filter !== "all" ? "No assessments match your filters." : "No assessments yet."}
           </p>
           <Link
             href="/assess"
