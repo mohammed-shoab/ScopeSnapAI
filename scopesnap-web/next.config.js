@@ -1,4 +1,4 @@
-/** @type {import('next').NextConfig} */
+/** @type {import('next').NextConfig} */ // rebrand: SnapAI
 const nextConfig = {
   // Redirect the raw Vercel deployment URL to the canonical production domain.
   // Clerk production keys are domain-locked to snapai.mainnov.tech — anyone
