@@ -223,14 +223,34 @@ class _PdfWriter:
             "ET\n"
         )
 
+    # Helvetica character widths (per-char, in units where 1000 = 1em)
+    # Source: Adobe Helvetica AFM metrics — used for accurate right-alignment
+    _HELVETICA_WIDTHS = {
+        ' ':278,' ':278,'!':278,'"':355,'#':556,'$':556,'%':889,'&':667,
+        "'":222,'(':333,')':333,'*':389,'+':584,',':278,'-':333,'.':278,
+        '/':278,'0':556,'1':556,'2':556,'3':556,'4':556,'5':556,'6':556,
+        '7':556,'8':556,'9':556,':':278,';':278,'<':584,'=':584,'>':584,
+        '?':556,'@':1015,'A':667,'B':667,'C':722,'D':722,'E':667,'F':611,
+        'G':778,'H':722,'I':278,'J':500,'K':667,'L':556,'M':833,'N':722,
+        'O':778,'P':667,'Q':778,'R':722,'S':667,'T':611,'U':722,'V':667,
+        'W':944,'X':667,'Y':667,'Z':611,'[':278,'\\':278,']':278,'^':469,
+        '_':556,'`':222,'a':556,'b':556,'c':500,'d':556,'e':556,'f':278,
+        'g':556,'h':556,'i':222,'j':222,'k':500,'l':222,'m':833,'n':556,
+        'o':556,'p':556,'q':556,'r':333,'s':500,'t':278,'u':556,'v':500,
+        'w':722,'x':500,'y':500,'z':500,'{':334,'|':260,'}':334,'~':584,
+    }
+
+    def _text_width(self, s: str, size: float) -> float:
+        """Accurate text width using Helvetica AFM metrics."""
+        w = sum(self._HELVETICA_WIDTHS.get(c, 556) for c in str(s))
+        return w * size / 1000.0
+
     def text_right(self, x_right: float, y: float, s: str, size: float = 10,
                    color=None, bold: bool = False):
-        """Draw right-aligned text ending at x_right."""
+        """Draw right-aligned text ending at x_right (accurate AFM metrics)."""
         if not s:
             return
-        # Approximate character width (Helvetica avg ~0.55 × size)
-        approx_w = len(str(s)) * size * 0.52
-        x = x_right - approx_w
+        x = x_right - self._text_width(str(s), size)
         self.text(x, y, s, size=size, color=color, bold=bold)
 
     def multiline_text(self, x: float, y: float, s: str, size: float = 10,
@@ -394,12 +414,12 @@ def _fetch_and_annotate_photo(photo_url: str, issues: list, max_w: int = 516):
         # ── Severity-legend strip at the bottom ───────────────────────────────
         # Each issue gets a colored square + component label in a dark strip.
         SEV_COLORS = {
-            "high":     (198, 40,  40),   # red
+            "high":     (198, 40,  40),  # red
             "critical": (198, 40,  40),
-            "medium":   (196, 96,  10),   # orange
+            "medium":   (196, 96,  10),  # orange
             "low":      (26,  135, 84),   # green
         }
-        STRIP_H = 30
+        STRIP_H= 30
         new_img = _PILImage.new("RGB", (img.width, img.height + STRIP_H), (28, 28, 26))
         new_img.paste(img, (0, 0))
         draw   = _Draw.Draw(new_img)
@@ -585,72 +605,74 @@ def generate_contractor_pdf(
 
     for opt in options:
         tier  = (opt.get("tier") or "").lower()
-        name  = opt.get("name") or tier.title()
+        name  = opt.get("name") or opt.get("title") or tier.title()
         desc  = opt.get("description") or ""
         total = opt.get("total") or 0
         five_yr = opt.get("five_year_total")
         color = _tier_color(tier)
 
-        # Option header bar
-        p.rect_fill(M, y, W, 26, color)
+        # ── Option header bar ─────────────────────────────────────────────────�
+        # Shows: [tier label left]  [total right]  in a full-width colored bar
+        BAR_H = 30
+        p.rect_fill(M, y, W, BAR_H, color)
         label = _tier_label(tier)
-        # Center text in 26pt bar: baseline = bar_top + (bar_h + cap_h) / 2
-        # size=10 → cap=7.18 → (26+7.18)/2 = 16.6; size=12 → cap=8.6 → (26+8.6)/2 = 17.3
-        p.text(M + 10, y + 17, label, size=10, color=_PdfWriter.WHITE, bold=True)
-        p.text_right(RX - 8, y + 17, _fmt_money(total), size=12, color=_PdfWriter.WHITE, bold=True)
-        y += 26
+        # Vertical center: baseline = bar_top + (bar_h + cap_height) / 2
+        # size=10 cap≈7pt → (30+7)/2 = 18.5
+        p.text(M + 10, y + 19, label, size=10, color=_PdfWriter.WHITE, bold=True)
+        p.text_right(RX - 10, y + 19, _fmt_money(total), size=11, color=_PdfWriter.WHITE, bold=True)
+        y += BAR_H
 
-        # Name + description — baseline at y+10 so 10pt cap (7.2pt) clears bar bottom
-        p.text(M + 10, y + 10, name, size=10, bold=True)
-        if desc:
-            desc_end_y = p.multiline_text(M + 10, y + 18, desc, size=9,
-                                          max_width=W - 120, line_height=13,
-                                          color=_PdfWriter.GRAY)
-            desc_h = max(desc_end_y - (y + 18), 0) + 18
-        else:
-            desc_h = 18
-
-        # 5-year cost (right side)
+        # ── Name row + 5-yr cost on same line ────────────────────────────────
+        p.text(M + 10, y + 12, name, size=10, bold=True)
         if five_yr:
-            p.text_right(RX - 8, y + 5, f"5-yr: {_fmt_money(five_yr)}", size=8, color=_PdfWriter.GRAY)
+            p.text_right(RX - 10, y + 12, f"5-yr: {_fmt_money(five_yr)}", size=8, color=_PdfWriter.GRAY)
+        y += 20
 
-        # Energy savings
+        # ── Energy savings (if present) ───────────────────────────────────────
         es = opt.get("energy_savings")
         if es:
             ann = es.get("annual_savings") if isinstance(es, dict) else es
             if ann and float(ann or 0) > 0:
-                p.text_right(RX - 8, y + 18, f"Saves ${float(ann):,.0f}/yr", size=8, color=_PdfWriter.GREEN)
+                p.text_right(RX - 10, y, f"Saves ${float(ann):,.0f}/yr", size=8, color=_PdfWriter.GREEN)
+                y += 12
 
-        y += desc_h + 6
+        # ── Description ───────────────────────────────────────────────────────
+        if desc:
+            y = p.multiline_text(M + 10, y, desc, size=9,
+                                 max_width=W - 20, line_height=13,
+                                 color=_PdfWriter.GRAY)
+        y += 8
 
-        # Line items (if present)
+        # ── Line items ────────────────────────────────────────────────────────
         line_items = opt.get("line_items") or []
         if line_items:
+            # Separator
+            p.line(M + 10, y, RX - 10, y, _PdfWriter.LIGHT_GRAY)
+            y += 8
+
             for item in line_items:
                 item_label = item.get("description") or item.get("label") or item.get("category") or "Item"
                 item_amt   = item.get("total") or item.get("amount") or 0
                 p.text(M + 16, y, item_label, size=8, color=_PdfWriter.GRAY)
-                p.text_right(RX - 8, y, _fmt_money(item_amt), size=8, color=_PdfWriter.GRAY)
-                y += 12
-            # Subtotal / Markup / Total breakdown
-            subtotal = opt.get("subtotal") or 0
+                p.text_right(RX - 10, y, _fmt_money(item_amt), size=8, color=_PdfWriter.GRAY)
+                y += 13
+
+            # Subtotal + Markup rows (if available)
+            subtotal   = opt.get("subtotal") or 0
             markup_pct = opt.get("markup_percent") or 0
             if subtotal and markup_pct:
-                p.line(M + 16, y - 2, RX - 8, y - 2, _PdfWriter.LIGHT_GRAY)
-                p.text(M + 16, y + 4, f"Subtotal", size=8)
-                p.text_right(RX - 8, y + 4, _fmt_money(subtotal), size=8)
-                y += 14
-                p.text(M + 16, y, f"Markup ({markup_pct:.0f}%)", size=8, color=_PdfWriter.GRAY)
+                p.line(M + 10, y, RX - 10, y, _PdfWriter.LIGHT_GRAY)
+                y += 8
+                p.text(M + 16, y, "Subtotal", size=8, color=_PdfWriter.GRAY)
+                p.text_right(RX - 10, y, _fmt_money(subtotal), size=8, color=_PdfWriter.GRAY)
+                y += 13
                 markup_amt = float(total or 0) - float(subtotal or 0)
-                p.text_right(RX - 8, y, _fmt_money(markup_amt), size=8, color=_PdfWriter.GRAY)
-                y += 14
-            # Total line
-            p.rect_fill(M + 10, y, W - 20, 22, (0.96, 0.96, 0.94))
-            p.text(M + 16, y + 14, "TOTAL", size=10, bold=True)
-            p.text_right(RX - 8, y + 14, _fmt_money(total), size=12, bold=True, color=color)
-            y += 30
-        else:
-            y += 6
+                p.text(M + 16, y, f"Markup ({markup_pct:.0f}%)", size=8, color=_PdfWriter.GRAY)
+                p.text_right(RX - 10, y, _fmt_money(markup_amt), size=8, color=_PdfWriter.GRAY)
+                y += 13
+
+            # ── No duplicate TOTAL row — total is already in the header bar ──
+            y += 4
 
         y += 4
 
@@ -791,7 +813,4 @@ def _draw_footer(p: _PdfWriter, M: float, RX: float, co_name: str, co_phone: str
     p.text_right(RX, footer_y + 15, f"#{short_id}  ·  {today}", size=8, color=(0.8, 0.95, 0.85))
 
 
-# ── Legacy helpers kept for compatibility ─────────────────────────────────────
-
-def build_estimate_context_from_api_response(api_response: dict) -> dict:
-    return api_response
+# ── Legacy helpers kept for compat
