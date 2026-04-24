@@ -639,6 +639,11 @@ async def generate_documents(
         "equipment": equipment_data,
         "issues": issues_data,
         "options": estimate.options or [],
+        "overall_condition": (
+            assessment.ai_condition.get("overall", "fair")
+            if assessment and isinstance(assessment.ai_condition, dict)
+            else "fair"
+        ),
     }
 
     # Generate PDF in a thread then upload to persistent storage (R2 in prod, local in dev)
@@ -681,7 +686,7 @@ async def generate_documents(
         storage_path = generate_document_path(
             company_slug=company_slug,
             estimate_id=str(estimate.id),
-            doc_type=f"estimate-{estimate.report_short_id}-{_ts}.pdf",
+            doc_type=f"estimate-{estimate.reportShort_id}-{_ts}.pdf",
         )
         pdf_url = await get_storage().upload(
             file_bytes=pdf_bytes,
@@ -737,7 +742,7 @@ async def send_estimate(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    WP-09: Sends estimate to homeowner via email.
+    WP-09: Sends estimate to homeowner via email.
     - Emails via ConsoleSender (dev) or ResendSender (prod)
     - Creates 3 FollowUp records: 24h, 48h, 7d
     - Updates estimate.status = 'sent'
@@ -1041,10 +1046,4 @@ async def export_estimates_csv(
         ])
 
     output.seek(0)
-    filename = f"snapai_export_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv"
-
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+    filename = f"snapai_export_{datetime.now(timezone.utc).strftime('%Y%
