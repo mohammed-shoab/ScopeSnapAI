@@ -236,47 +236,32 @@ class _PdfWriter:
         'W':944,'X':667,'Y':667,'Z':611,'[':278,'\\':278,']':278,'^':469,
         '_':556,'`':222,'a':556,'b':556,'c':500,'d':556,'e':556,'f':278,
         'g':556,'h':556,'i':222,'j':222,'k':500,'l':222,'m':833,'n':556,
-        'o':556,'p':556,'q':556,'r':333,'s':500,'t':278,'u':556,'v':500,
-        'w':722,'x':500,'y':500,'z':500,'{':334,'|':260,'}':334,'~':584,
-    }
+        'o':556,'p':556,q':556,'r':333,'ss:500,'t':278,'u':556,'v,500,
+        'w':722,'x':500,'y':500,'z':500,'{'��	�	Ό��	�IΌ��	߉΍N
+�B��Y��^��Y
+�[�Έ���^�N���]
+HO���]�����X��\�]H^�Y\�[��[�]X�HQ�HY]�X�ˈ�����H�[J�[���S�UP�W��Q˙�]
+�
+MM�H�܈�[����JB��]\���
+��^�H�L���Y�^ܚY�
+�[�ܚY����]N���]Έ���^�N���]HL���܏S�ۙK������H�[�JN������]��Y�X[YۙY^[�[��]ܚY�
+X��\�]HQ�HY]�X��K�����Y���΂��]\���HܚY�H�[���^��Y
+���K�^�JB��[��^
+K��^�O\�^�K��܏X��܋��X��
+B��Y�][[[�W�^
+�[����]N���]Έ���^�N���]HL�X^��Y���]H
+[�W�ZY����]HM���܏S�ۙK������H�[�JHO���]������]�ܘ\Y^��]\����]�HY�\�\�[�K������ܙ�H���K��]
 
-    def _text_width(self, s: str, size: float) -> float:
-        """Accurate text width using Helvetica AFM metrics."""
-        w = sum(self._HELVETICA_WIDTHS.get(c, 556) for c in str(s))
-        return w * size / 1000.0
-
-    def text_right(self, x_right: float, y: float, s: str, size: float = 10,
-                   color=None, bold: bool = False):
-        """Draw right-aligned text ending at x_right (accurate AFM metrics)."""
-        if not s:
-            return
-        x = x_right - self._text_width(str(s), size)
-        self.text(x, y, s, size=size, color=color, bold=bold)
-
-    def multiline_text(self, x: float, y: float, s: str, size: float = 10,
-                       max_width: float = 400, line_height: float = 14,
-                       color=None, bold: bool = False) -> float:
-        """Draw wrapped text. Returns new y after last line."""
-        words = str(s).split()
-        lines, cur = [], []
-        for w in words:
-            cur.append(w)
-            # rough width estimate
-            if len(" ".join(cur)) * size * 0.52 > max_width:
-                if len(cur) > 1:
-                    lines.append(" ".join(cur[:-1]))
-                    cur = [w]
-                else:
-                    lines.append(" ".join(cur))
-                    cur = []
-        if cur:
-            lines.append(" ".join(cur))
-        for line in lines:
-            self.text(x, y, line, size=size, color=color, bold=bold)
-            y += line_height
-        return y
-
-    # ── Serialization ─────────────────────────────────────────────────────────
+B�[�\��\�H�K�B��܈�[��ܙ΂��\��\[�
+�B����Y��Y\�[X]B�Y�[������[��\�JH
+��^�H
+��L��X^��Y��Y�[��\�H�N��[�\˘\[�
+�����[��\�΋LWJJB��\�H��B�[�N��[�\˘\[�
+�����[��\�JB��\�H�B�Y��\���[�\˘\[�
+�����[��\�JB��܈[�H[�[�\΂��[��^
+K[�K�^�O\�^�K��܏X��܋��X��
+B�H
+�H[�W�ZY���]\��B���8� 8� �\�X[^�][ۈ8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� "��──
 
     def save(self, path: str):
         """Finalize and write the PDF to disk."""
@@ -296,7 +281,7 @@ class _PdfWriter:
 
         # Pages tree
         pages_id = self._new_obj()
-        kids = " ".join(f"{p} 0 R" for p in self._pages)
+        kids = " ".join([f"{p} 0 R" for p in self._pages])
         pages_obj = (
             f"{pages_id} 0 obj\n"
             f"<< /Type /Pages /Kids [{kids}] /Count {len(self._pages)} >>\n"
@@ -360,10 +345,27 @@ def _fmt_slug(s: str) -> str:
     return s.replace("_", " ").replace("-", " ").title()
 
 
-def _tier_label(tier: str) -> str:
-    return {"good": "Option A - Good", "better": "Option B - Better (Recommended)", "best": "Option C - Best"}.get(
+def _tier_label(tier: str, overall_condition: str = "fair") -> str:
+    """Return the display label for a pricing tier.
+
+    Appends '(Recommended)' to whichever tier best matches the AI condition:
+      excellent / good  →  Option A
+      fair              →  Option B
+      poor / critical    →  Option C
+    """
+    _RECOMMENDED = {
+        "excellent": "good",
+        "good":      "good",
+        "fair":      "better",
+        "poor":      "best",
+        "critical":  "best",
+    }
+    base = {"good": "Option A - Good", "better": "Option B - Better", "best": "Option C - Best"}.get(
         tier.lower(), tier.title()
     )
+    if tier.lower() == _RECOMMENDED.get(overall_condition.lower(), "better"):
+        return base + " (Recommended)"
+    return base
 
 
 def _tier_color(tier: str):
@@ -414,12 +416,12 @@ def _fetch_and_annotate_photo(photo_url: str, issues: list, max_w: int = 516):
         # ── Severity-legend strip at the bottom ───────────────────────────────
         # Each issue gets a colored square + component label in a dark strip.
         SEV_COLORS = {
-            "high":     (198, 40,  40),  # red
+            "high":     (198, 40,  40),   # red
             "critical": (198, 40,  40),
-            "medium":   (196, 96,  10),  # orange
+            "medium":   (196, 96,  10),   # orange
             "low":      (26,  135, 84),   # green
         }
-        STRIP_H= 30
+        STRIP_H = 30
         new_img = _PILImage.new("RGB", (img.width, img.height + STRIP_H), (28, 28, 26))
         new_img.paste(img, (0, 0))
         draw   = _Draw.Draw(new_img)
@@ -470,13 +472,14 @@ def generate_contractor_pdf(
         filename = f"estimate-{short_id}.pdf"
     output_path = os.path.join(output_dir, filename)
 
-    company    = estimate_data.get("company") or {}
-    prop       = estimate_data.get("property") or {}
-    equipment  = estimate_data.get("equipment") or {}
-    options    = estimate_data.get("options") or []
-    issues     = estimate_data.get("issues") or []
-    short_id   = estimate_data.get("report_short_id", "—")
-    today      = datetime.now(timezone.utc).strftime("%B %d, %Y")
+    company           = estimate_data.get("company") or {}
+    prop              = estimate_data.get("property") or {}
+    equipment         = estimate_data.get("equipment") or {}
+    options           = estimate_data.get("options") or []
+    issues            = estimate_data.get("issues") or []
+    short_id          = estimate_data.get("report_short_id", "—")
+    overall_condition = estimate_data.get("overall_condition") or "fair"
+    today             = datetime.now(timezone.utc).strftime("%B %d, %Y")
 
     p = _PdfWriter()
     M  = 48       # left margin
@@ -605,17 +608,17 @@ def generate_contractor_pdf(
 
     for opt in options:
         tier  = (opt.get("tier") or "").lower()
-        name  = opt.get("name") or opt.get("title") or tier.title()
+        name  = opt.get("name") or tier.title()
         desc  = opt.get("description") or ""
         total = opt.get("total") or 0
         five_yr = opt.get("five_year_total")
         color = _tier_color(tier)
 
-        # ── Option header bar ─────────────────────────────────────────────────�
+        # ── Option header bar ─────────────────────────────────────────────────
         # Shows: [tier label left]  [total right]  in a full-width colored bar
         BAR_H = 30
         p.rect_fill(M, y, W, BAR_H, color)
-        label = _tier_label(tier)
+        label = _tier_label(tier, overall_condition)
         # Vertical center: baseline = bar_top + (bar_h + cap_height) / 2
         # size=10 cap≈7pt → (30+7)/2 = 18.5
         p.text(M + 10, y + 19, label, size=10, color=_PdfWriter.WHITE, bold=True)
@@ -726,7 +729,7 @@ def generate_contractor_pdf(
                 ann = es.get("annual_savings") if isinstance(es, dict) else es
             color = _tier_color(tier)
             # Use tier label in comparison table so rows are always distinct
-            row_label = _tier_label(tier)
+            row_label = _tier_label(tier, overall_condition)
 
             bg = (0.97, 1.0, 0.97) if tier == "better" else (1.0, 1.0, 1.0)
             p.rect_fill(M, y, W, 18, bg)
@@ -794,23 +797,4 @@ def generate_contractor_pdf(
                size=7, color=_PdfWriter.GRAY, italic=True)
 
     # ── Footer (on every page — drawn on the current/last page here) ──────────
-    _draw_footer(p, M, RX, co_name, co_phone, short_id, today)
-
-    p.save(output_path)
-    return output_path
-
-
-def _draw_footer(p: _PdfWriter, M: float, RX: float, co_name: str, co_phone: str,
-                 short_id: str, today: str):
-    """Draw the branded footer bar at the bottom of the current page."""
-    footer_y = 762
-    p.rect_fill(0, footer_y - 2, 612, 30, (0.102, 0.529, 0.329))  # green bar
-    footer_parts = [co_name]
-    if co_phone:
-        footer_parts.append(co_phone)
-    footer_parts.append("Powered by SnapAI")
-    p.text(M, footer_y + 15, "  ·  ".join(footer_parts), size=8, color=_PdfWriter.WHITE)
-    p.text_right(RX, footer_y + 15, f"#{short_id}  ·  {today}", size=8, color=(0.8, 0.95, 0.85))
-
-
-# ── Legacy helpers kept for compat
+    _draw_footer(p, M, RX, co_
