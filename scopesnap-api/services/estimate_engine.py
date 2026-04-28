@@ -1,11 +1,11 @@
 """
-SnapAI — Estimate Generation Engine
+SnapAI â Estimate Generation Engine
 Pure math + DB lookups. ZERO AI calls. All deterministic.
 
-Implements the 9-step pipeline from Tech Spec §05:
+Implements the 9-step pipeline from Tech Spec Â§05:
 1. Get AI analysis results from assessment
-2. Determine job types from condition → options mapping
-3. Look up pricing (cascade: company → region → national)
+2. Determine job types from condition â options mapping
+3. Look up pricing (cascade: company â region â national)
 4. Calculate line items (parts + labor + permit + refrigerant + disposal)
 5. Apply markup
 6. Calculate energy savings (SEER comparison)
@@ -24,7 +24,7 @@ from sqlalchemy import select, and_, or_
 from db.models import PricingRule
 
 
-# ── EIA State Average Annual Cooling Costs (USD) ──────────────────────────────
+# ââ EIA State Average Annual Cooling Costs (USD) ââââââââââââââââââââââââââââââ
 # Source: EIA Residential Energy Consumption Survey 2020
 EIA_COOLING_COST_BY_STATE = {
     "TX": 700, "FL": 680, "LA": 620, "MS": 580, "GA": 540,
@@ -33,7 +33,7 @@ EIA_COOLING_COST_BY_STATE = {
     "DEFAULT": 380,
 }
 
-# ── Condition → Job Type Mapping (the "intelligence" layer) ───────────────────
+# ââ Condition â Job Type Mapping (the "intelligence" layer) âââââââââââââââââââ
 # Maps AI condition findings to recommended job options.
 # Each entry: (condition_trigger, job_type_good, job_type_better, job_type_best)
 CONDITION_TO_OPTIONS = {
@@ -123,8 +123,8 @@ TIER_DESCRIPTIONS = {
     },
     "better": {
         "label": "Better",
-        "badge": "Recommended",
-        "description": "Best value — resolves the root cause with durable parts."
+        "badge": "Better Value",
+        "description": "Best value â resolves the root cause with durable parts."
     },
     "best": {
         "label": "Best",
@@ -133,8 +133,21 @@ TIER_DESCRIPTIONS = {
     },
 }
 
+# ââ P1-B: Condition â Recommended tier mapping ââââââââââââââââââââââââââââââââ
+# Rule: excellent/good condition â Option A (maintenance is right answer).
+#       fair/minor issues        â Option B (root cause fix without full replacement).
+#       poor/critical            â Option C (system is too far gone for cheap fixes).
+# This drives the "Recommended" badge â never hardcoded to "better".
+CONDITION_TO_RECOMMENDED_TIER = {
+    "excellent": "good",
+    "good":      "good",
+    "fair":      "better",
+    "poor":      "best",
+    "critical":  "best",
+}
 
-# ── Pricing Lookup ─────────────────────────────────────────────────────────────
+
+# ââ Pricing Lookup âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 async def get_pricing_rule(
     equipment_type: str,
@@ -144,7 +157,7 @@ async def get_pricing_rule(
     db: AsyncSession,
 ) -> Optional[PricingRule]:
     """
-    Pricing cascade: company-specific → regional → national default.
+    Pricing cascade: company-specific â regional â national default.
     Returns the most specific pricing rule found.
     """
     # Company-specific pricing (highest priority)
@@ -194,7 +207,7 @@ async def get_pricing_rule(
     return result.scalars().first()
 
 
-# ── Line Item Calculation ──────────────────────────────────────────────────────
+# ââ Line Item Calculation ââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def calculate_line_items(
     rule: PricingRule,
@@ -296,7 +309,7 @@ def apply_markup(subtotal: Decimal, markup_percent: float) -> Decimal:
     return (subtotal * (1 + markup)).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
 
-# ── Energy Savings Calculation ─────────────────────────────────────────────────
+# ââ Energy Savings Calculation âââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def calculate_energy_savings(
     current_seer: Optional[float],
@@ -313,7 +326,7 @@ def calculate_energy_savings(
         return {"annual_savings": 0, "five_year_savings": 0, "seer_improvement_pct": 0}
 
     annual_cooling_cost = EIA_COOLING_COST_BY_STATE.get(state or "DEFAULT", 380)
-    # Savings = base_cost × (1 - old_seer / new_seer)
+    # Savings = base_cost Ã (1 - old_seer / new_seer)
     savings_pct = 1 - (current_seer / new_seer)
     annual_savings = round(annual_cooling_cost * savings_pct, 0)
     five_year_savings = annual_savings * 5
@@ -328,7 +341,7 @@ def calculate_energy_savings(
     }
 
 
-# ── Five-Year Total Cost ───────────────────────────────────────────────────────
+# ââ Five-Year Total Cost âââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 def calculate_five_year_cost(
     upfront: float,
@@ -337,7 +350,7 @@ def calculate_five_year_cost(
     equipment_age: Optional[int],
 ) -> float:
     """
-    5-year total = upfront + (annual_energy × 5) + estimated_future_repairs.
+    5-year total = upfront + (annual_energy Ã 5) + estimated_future_repairs.
     Future repairs estimated from condition + age.
     """
     # Estimate future repairs based on condition
@@ -350,7 +363,7 @@ def calculate_five_year_cost(
     }
     future_repairs = repair_probability_cost.get(condition, 500)
 
-    # Age multiplier — older = more likely to fail again
+    # Age multiplier â older = more likely to fail again
     age = equipment_age or 10
     age_multiplier = min(2.0, 1.0 + (age - 10) * 0.05) if age > 10 else 1.0
     future_repairs = round(future_repairs * age_multiplier, -1)
@@ -358,7 +371,7 @@ def calculate_five_year_cost(
     return round(upfront + (annual_energy_cost * 5) + future_repairs, 2)
 
 
-# ── Main Estimate Generation Function ────────────────────────────────────────
+# ââ Main Estimate Generation Function ââââââââââââââââââââââââââââââââââââââââ
 
 async def generate_estimate(
     assessment_id: str,
@@ -374,7 +387,7 @@ async def generate_estimate(
 
     Returns the complete estimate dict ready to store.
     """
-    # ── Step 1: Get AI analysis ──────────────────────────────────────────────
+    # ââ Step 1: Get AI analysis ââââââââââââââââââââââââââââââââââââââââââââââ
     equipment_type = "ac_unit"  # Default
     if assessment.ai_equipment_id:
         equipment_type = assessment.ai_equipment_id.get("equipment_type", "ac_unit")
@@ -398,7 +411,7 @@ async def generate_estimate(
             import datetime
             estimated_age = datetime.datetime.now().year - decoded["year"]
 
-    # ── Step 2: Determine job types ──────────────────────────────────────────
+    # ââ Step 2: Determine job types ââââââââââââââââââââââââââââââââââââââââââ
     # Find worst component issue
     job_types_for_tiers = None
     for comp in components:
@@ -418,7 +431,7 @@ async def generate_estimate(
             "best": "full_system",
         })
 
-    # ── Steps 3-8: Calculate options ────────────────────────────────────────
+    # ââ Steps 3-8: Calculate options ââââââââââââââââââââââââââââââââââââââââ
     tiers = ["good", "better", "best"]
     price_levels = {"good": "min", "better": "avg", "best": "max"}
     options = []
@@ -482,7 +495,7 @@ async def generate_estimate(
                 state=company_state,
             )
 
-        # Step 7: Rebate check (simplified — check for high SEER)
+        # Step 7: Rebate check (simplified â check for high SEER)
         rebate_available = 0
         if "premium" in job_type or job_type == "full_system_premium":
             rebate_available = 500  # Simplified IRA/ENERGYSTAR rebate estimate
@@ -536,6 +549,14 @@ async def generate_estimate(
                 opt["total"], post_install_annual, overall_condition, estimated_age
             )
             unique_options.append(opt)
+
+    # ââ P1-B fix: Stamp "Recommended" badge based on AI condition ââââââââââââ
+    # Do this AFTER dedup so badge assignment reflects the final options set.
+    recommended_tier = CONDITION_TO_RECOMMENDED_TIER.get(overall_condition, "better")
+    for opt in unique_options:
+        if opt["tier"] == recommended_tier:
+            opt["badge"] = "Recommended"
+        # All other tiers keep their TIER_DESCRIPTIONS defaults (Budget / Better Value / Premium)
 
     return {
         "options": unique_options,
