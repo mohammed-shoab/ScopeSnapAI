@@ -378,8 +378,6 @@ def _tier_label(tier: str, overall_condition: str = "fair") -> str:
     base = {"good": "Option A - Good", "better": "Option B - Better", "best": "Option C - Best"}.get(
         tier.lower(), tier.title()
     )
-    if tier.lower() == _RECOMMENDED.get(overall_condition.lower(), "better"):
-        return base + " (Recommended)"
     return base
 
 
@@ -867,3 +865,4 @@ def _draw_footer(p: _PdfWriter, M: float, RX: float, co_name: str, co_phone: str
 
 def build_estimate_context_from_api_response(api_response: dict) -> dict:
     return api_response
+                                                                                                                     
