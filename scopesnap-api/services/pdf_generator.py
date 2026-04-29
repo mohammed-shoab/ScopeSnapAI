@@ -236,32 +236,47 @@ class _PdfWriter:
         'W':944,'X':667,'Y':667,'Z':611,'[':278,'\\':278,']':278,'^':469,
         '_':556,'`':222,'a':556,'b':556,'c':500,'d':556,'e':556,'f':278,
         'g':556,'h':556,'i':222,'j':222,'k':500,'l':222,'m':833,'n':556,
-        'o':556,'p':556,q':556,'r':333,'ss:500,'t':278,'u':556,'v,500,
-        'w':722,'x':500,'y':500,'z':500,'{'��	�	Ό��	�IΌ��	߉΍N
-�B��Y��^��Y
-�[�Έ���^�N���]
-HO���]�����X��\�]H^�Y\�[��[�]X�HQ�HY]�X�ˈ�����H�[J�[���S�UP�W��Q˙�]
-�
-MM�H�܈�[����JB��]\���
-��^�H�L���Y�^ܚY�
-�[�ܚY����]N���]Έ���^�N���]HL���܏S�ۙK������H�[�JN������]��Y�X[YۙY^[�[��]ܚY�
-X��\�]HQ�HY]�X��K�����Y���΂��]\���HܚY�H�[���^��Y
-���K�^�JB��[��^
-K��^�O\�^�K��܏X��܋��X��
-B��Y�][[[�W�^
-�[����]N���]Έ���^�N���]HL�X^��Y���]H
-[�W�ZY����]HM���܏S�ۙK������H�[�JHO���]������]�ܘ\Y^��]\����]�HY�\�\�[�K������ܙ�H���K��]
+        'o':556,'p':556,'q':556,'r':333,'s':500,'t':278,'u':556,'v':500,
+        'w':722,'x':500,'y':500,'z':500,'{':334,'|':260,'}':334,'~':584,
+    }
 
-B�[�\��\�H�K�B��܈�[��ܙ΂��\��\[�
-�B����Y��Y\�[X]B�Y�[������[��\�JH
-��^�H
-��L��X^��Y��Y�[��\�H�N��[�\˘\[�
-�����[��\�΋LWJJB��\�H��B�[�N��[�\˘\[�
-�����[��\�JB��\�H�B�Y��\���[�\˘\[�
-�����[��\�JB��܈[�H[�[�\΂��[��^
-K[�K�^�O\�^�K��܏X��܋��X��
-B�H
-�H[�W�ZY���]\��B���8� 8� �\�X[^�][ۈ8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� 8� "��──
+    def _text_width(self, s: str, size: float) -> float:
+        """Accurate text width using Helvetica AFM metrics."""
+        w = sum(self._HELVETICA_WIDTHS.get(c, 556) for c in str(s))
+        return w * size / 1000.0
+
+    def text_right(self, x_right: float, y: float, s: str, size: float = 10,
+                   color=None, bold: bool = False):
+        """Draw right-aligned text ending at x_right (accurate AFM metrics)."""
+        if not s:
+            return
+        x = x_right - self._text_width(str(s), size)
+        self.text(x, y, s, size=size, color=color, bold=bold)
+
+    def multiline_text(self, x: float, y: float, s: str, size: float = 10,
+                       max_width: float = 400, line_height: float = 14,
+                       color=None, bold: bool = False) -> float:
+        """Draw wrapped text. Returns new y after last line."""
+        words = str(s).split()
+        lines, cur = [], []
+        for w in words:
+            cur.append(w)
+            # rough width estimate
+            if len(" ".join(cur)) * size * 0.52 > max_width:
+                if len(cur) > 1:
+                    lines.append(" ".join(cur[:-1]))
+                    cur = [w]
+                else:
+                    lines.append(" ".join(cur))
+                    cur = []
+        if cur:
+            lines.append(" ".join(cur))
+        for line in lines:
+            self.text(x, y, line, size=size, color=color, bold=bold)
+            y += line_height
+        return y
+
+    # ── Serialization ─────────────────────────────────────────────────────────
 
     def save(self, path: str):
         """Finalize and write the PDF to disk."""
@@ -281,7 +296,7 @@ B�H
 
         # Pages tree
         pages_id = self._new_obj()
-        kids = " ".join([f"{p} 0 R" for p in self._pages])
+        kids = " ".join(f"{p} 0 R" for p in self._pages)
         pages_obj = (
             f"{pages_id} 0 obj\n"
             f"<< /Type /Pages /Kids [{kids}] /Count {len(self._pages)} >>\n"
@@ -351,7 +366,7 @@ def _tier_label(tier: str, overall_condition: str = "fair") -> str:
     Appends '(Recommended)' to whichever tier best matches the AI condition:
       excellent / good  →  Option A
       fair              →  Option B
-      poor / critical    →  Option C
+      poor / critical   →  Option C
     """
     _RECOMMENDED = {
         "excellent": "good",
@@ -448,6 +463,32 @@ def _fetch_and_annotate_photo(photo_url: str, issues: list, max_w: int = 516):
     except Exception:
         # Silently swallow ALL errors — PDF must generate even without the photo
         return None
+
+
+def _fetch_photo(url: str):
+    """
+    Fetch a photo/logo from a URL and return (jpeg_bytes, pixel_width, pixel_height).
+    Returns (None, None, None) on any failure — callers must handle this gracefully.
+    Used for company logo embedding in the PDF header.
+    """
+    try:
+        import urllib.request as _urlreq
+        import io as _io
+        from PIL import Image as _PILImage
+
+        if not url or not url.startswith("http"):
+            return None, None, None
+
+        req = _urlreq.Request(url, headers={"User-Agent": "SnapAI-PDF/1.0"})
+        with _urlreq.urlopen(req, timeout=8) as resp:
+            img_bytes = resp.read()
+
+        img = _PILImage.open(_io.BytesIO(img_bytes)).convert("RGB")
+        out = _io.BytesIO()
+        img.save(out, format="JPEG", quality=85, optimize=True)
+        return out.getvalue(), img.width, img.height
+    except Exception:
+        return None, None, None
 
 
 def generate_contractor_pdf(
@@ -710,13 +751,19 @@ def generate_contractor_pdf(
         p.text(M, y, "5-YEAR COST COMPARISON", size=8, color=_PdfWriter.GRAY, bold=True)
         y += 16
 
+        # Column right-edges for the comparison table (right-aligned numbers)
+        # Option label: M+10 to 300 | Today: right-edge 360 | 5-yr: right-edge 460 | Savings: right-edge RX-10
+        COL_TODAY  = 360   # right-edge for "Today" amount
+        COL_FIVEYR = 460   # right-edge for "5-Year Total" amount
+        COL_SAVING = RX - 10  # right-edge for "Annual Savings"
+
         # Header row — only show Annual Savings column if data exists
         p.rect_fill(M, y, W, 20, (0.93, 0.93, 0.91))
         p.text(M + 10, y + 13, "Option", size=9, bold=True)
-        p.text(290, y + 13, "Today", size=9, bold=True)
-        p.text(370, y + 13, "5-Year Total", size=9, bold=True)
+        p.text_right(COL_TODAY,  y + 13, "Today",        size=9, bold=True)
+        p.text_right(COL_FIVEYR, y + 13, "5-Year Total", size=9, bold=True)
         if has_savings:
-            p.text(470, y + 13, "Annual Savings", size=9, bold=True)
+            p.text_right(COL_SAVING, y + 13, "Annual Savings", size=9, bold=True)
         y += 20
 
         for opt in options:
@@ -734,13 +781,13 @@ def generate_contractor_pdf(
             bg = (0.97, 1.0, 0.97) if tier == "better" else (1.0, 1.0, 1.0)
             p.rect_fill(M, y, W, 18, bg)
             p.text(M + 10, y + 11, row_label, size=9, bold=(tier == "better"), color=color)
-            p.text(290, y + 11, _fmt_money(total), size=9, bold=True)
-            p.text(370, y + 11, _fmt_money(five_yr) if five_yr else "—", size=9, color=_PdfWriter.GRAY)
+            p.text_right(COL_TODAY,  y + 11, _fmt_money(total), size=9, bold=True)
+            p.text_right(COL_FIVEYR, y + 11, _fmt_money(five_yr) if five_yr else "—", size=9, color=_PdfWriter.GRAY)
             if has_savings:
                 if ann and float(ann or 0) > 0:
-                    p.text(470, y + 11, f"${float(ann):,.0f}/yr", size=9, color=_PdfWriter.GREEN)
+                    p.text_right(COL_SAVING, y + 11, f"${float(ann):,.0f}/yr", size=9, color=_PdfWriter.GREEN)
                 else:
-                    p.text(470, y + 11, "—", size=9, color=_PdfWriter.GRAY)
+                    p.text_right(COL_SAVING, y + 11, "—", size=9, color=_PdfWriter.GRAY)
             p.line(M, y + 18, RX, y + 18, _PdfWriter.LIGHT_GRAY)
             y += 18
 
@@ -797,4 +844,26 @@ def generate_contractor_pdf(
                size=7, color=_PdfWriter.GRAY, italic=True)
 
     # ── Footer (on every page — drawn on the current/last page here) ──────────
-    _draw_footer(p, M, RX, co_
+    _draw_footer(p, M, RX, co_name, co_phone, short_id, today)
+
+    p.save(output_path)
+    return output_path
+
+
+def _draw_footer(p: _PdfWriter, M: float, RX: float, co_name: str, co_phone: str,
+                 short_id: str, today: str):
+    """Draw the branded footer bar at the bottom of the current page."""
+    footer_y = 762
+    p.rect_fill(0, footer_y - 2, 612, 30, (0.102, 0.529, 0.329))  # green bar
+    footer_parts = [co_name]
+    if co_phone:
+        footer_parts.append(co_phone)
+    footer_parts.append("Powered by SnapAI")
+    p.text(M, footer_y + 15, "  ·  ".join(footer_parts), size=8, color=_PdfWriter.WHITE)
+    p.text_right(RX, footer_y + 15, f"#{short_id}  ·  {today}", size=8, color=(0.8, 0.95, 0.85))
+
+
+# ── Legacy helper kept for compatibility ──────────────────────────────────────
+
+def build_estimate_context_from_api_response(api_response: dict) -> dict:
+    return api_response
