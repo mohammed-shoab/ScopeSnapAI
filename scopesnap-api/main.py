@@ -12,7 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from pathlib import Path
-from slowapi import _rate_limit_exceeded_handler
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
@@ -27,6 +28,7 @@ from api.pricing_rules import router as pricing_rules_router
 from api.events import router as events_router
 from api.admin import router as admin_router
 from api.sensor_diagnosis import router as sensor_diagnosis_router
+from api.repo import router as repo_router  # WS-A: GET /api/repo/version
 
 
 # ── Sentry Error Tracking ─────────────────────────────────────────────────────
@@ -47,10 +49,8 @@ if _sentry_dsn:
 settings = get_settings()
 
 # ── Rate Limiter ──────────────────────────────────────────────────────────────
-# The limiter is defined in rate_limit.py so individual API modules can
-# import it without circular-importing main.py. Imported here to wire it
-# into FastAPI state / middleware below.
-from rate_limit import limiter
+# Protects expensive Gemini Vision calls from abuse/runaway costs.
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 # ── App Setup ─────────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -105,6 +105,7 @@ app.include_router(pricing_rules_router)
 app.include_router(events_router)  # POST /api/events + POST /api/waitlist
 app.include_router(admin_router)   # POST /admin/seed, GET /admin/status (protected)
 app.include_router(sensor_diagnosis_router)  # POST /api/sensor-diagnosis (XGBoost Track A)
+app.include_router(repo_router)             # GET /api/repo/version (WS-A data foundation)
 
 
 # ── Health Check ──────────────────────────────────────────────────────────────
@@ -191,6 +192,4 @@ async def on_startup():
             await seed_equipment_db()
             print("✅ Equipment models seeded successfully")
         else:
-            print(f"✅ Equipment models: {model_count} models loaded")
-    except Exception as _equip_err:
-        print(f"⚠️  Equipment models seed failed (non-fatal): {_equip_err}")
+            print(f"✅ 
