@@ -42,11 +42,13 @@ PERSONAL_CLAUDE = REPO_DIR.parent / "Personal Claude"
 
 # Try multiple candidate paths for the data files
 _REPO_JSON_CANDIDATES = [
+    Path("/app/data/ac_data_repo.json"),                          # Railway container
     PERSONAL_CLAUDE / "ScopeSnapAI" / "ac_data_repo.json",
     Path(__file__).parent.parent.parent / "ac_data_repo.json",
     Path("/sessions/pensive-vigilant-cray/mnt/Personal Claude/ScopeSnapAI/ac_data_repo.json"),
 ]
 _PRICE_LIST_CANDIDATES = [
+    Path("/app/data/SnapAI_HVAC_Master_Price_List_2026.xlsx"),     # Railway container
     PERSONAL_CLAUDE / "SnapAI_HVAC_Master_Price_List_2026.xlsx",
     Path(__file__).parent.parent.parent / "SnapAI_HVAC_Master_Price_List_2026.xlsx",
     Path("/sessions/pensive-vigilant-cray/mnt/Personal Claude/SnapAI_HVAC_Master_Price_List_2026.xlsx"),

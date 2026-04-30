@@ -20,7 +20,12 @@ echo "✅ AI models ready"
 echo ""
 echo "Running database migrations..."
 alembic upgrade head
-echo "✅ Migrations complete"
+echo "Migrations complete"
+
+echo ""
+echo "Loading data repository (ac_data_repo.json v2.0)..."
+python /app/scripts/load_repo.py || echo "Data repo load skipped (non-fatal — run manually if needed)"
+echo "Data repo step complete"
 
 echo ""
 echo "Starting uvicorn..."
