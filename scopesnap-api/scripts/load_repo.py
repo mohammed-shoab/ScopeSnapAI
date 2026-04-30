@@ -28,6 +28,7 @@ import asyncio
 import json
 import sys
 import re
+import traceback
 from datetime import date
 from pathlib import Path
 
@@ -35,6 +36,32 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import text
 from db.database import AsyncSessionLocal
+
+
+# ── PostgreSQL ARRAY literal helpers ──────────────────────────────────────────
+# asyncpg + SQLAlchemy text() cannot infer the PG type for Python lists.
+# We convert them to properly-formatted PG array literal strings and use
+# CAST(:param AS type[]) in the SQL so asyncpg receives a plain string.
+
+def _pg_text_array(lst) -> str | None:
+    """['a', 'b'] → '{"a","b"}' for CAST(:x AS text[])"""
+    if not lst:
+        return None
+    items = []
+    for item in lst:
+        if item is None:
+            items.append("NULL")
+        else:
+            escaped = str(item).replace("\\", "\\\\").replace('"', '\\"')
+            items.append(f'"{escaped}"')
+    return "{" + ",".join(items) + "}"
+
+
+def _pg_int_array(lst) -> str | None:
+    """[1, 2] → '{1,2}' for CAST(:x AS integer[])"""
+    if not lst:
+        return None
+    return "{" + ",".join(str(int(i)) for i in lst if i is not None) + "}"
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
 REPO_DIR = Path(__file__).parent.parent.parent.parent  # ScopeSnapAI/..
@@ -92,19 +119,21 @@ async def load_brands(db, data: dict) -> int:
                      manufactured_in_tx, series, legacy_model_prefixes, legacy_years,
                      legacy_refrigerant, legacy_notes)
                 VALUES
-                    (:id, :name, :parent_company, :sister_brands, :houston_prevalence,
-                     :manufactured_in_tx, CAST(:series AS jsonb), :legacy_model_prefixes,
+                    (:id, :name, :parent_company, CAST(:sister_brands AS text[]),
+                     :houston_prevalence,
+                     :manufactured_in_tx, CAST(:series AS jsonb),
+                     CAST(:legacy_model_prefixes AS text[]),
                      :legacy_years, :legacy_refrigerant, :legacy_notes)
             """),
             {
                 "id": b["id"],
                 "name": b["name"],
                 "parent_company": b.get("parent_company"),
-                "sister_brands": b.get("sister_brands"),
+                "sister_brands": _pg_text_array(b.get("sister_brands")),
                 "houston_prevalence": b.get("houston_prevalence"),
                 "manufactured_in_tx": b.get("manufactured_in_tx", False),
                 "series": json.dumps(b.get("series", [])),
-                "legacy_model_prefixes": b.get("legacy_model_prefixes"),
+                "legacy_model_prefixes": _pg_text_array(b.get("legacy_model_prefixes")),
                 "legacy_years": b.get("legacy_years"),
                 "legacy_refrigerant": b.get("legacy_refrigerant"),
                 "legacy_notes": b.get("legacy_notes"),
@@ -126,7 +155,7 @@ async def load_parts(db, data: dict) -> int:
                      part_cost_wholesale, part_cost_retail,
                      total_installed_houston, labor_hours)
                 VALUES
-                    (:id, :name, :category, :fault_cards, :description,
+                    (:id, :name, :category, CAST(:fault_cards AS integer[]), :description,
                      CAST(:part_cost_wholesale AS jsonb),
                      CAST(:part_cost_retail AS jsonb),
                      CAST(:total_installed_houston AS jsonb),
@@ -136,7 +165,7 @@ async def load_parts(db, data: dict) -> int:
                 "id": p["id"],
                 "name": p["name"],
                 "category": p.get("category"),
-                "fault_cards": p.get("fault_cards") if isinstance(p.get("fault_cards"), list) else None,
+                "fault_cards": _pg_int_array(p.get("fault_cards") if isinstance(p.get("fault_cards"), list) else None),
                 "description": p.get("description"),
                 "part_cost_wholesale": json.dumps(p.get("part_cost_wholesale", {})),
                 "part_cost_retail": json.dumps(p.get("part_cost_retail", {})),
@@ -181,7 +210,7 @@ async def load_fault_cards(db, data: dict, price_rows: list) -> int:
                      phase, difficulty, tech_notes)
                 VALUES
                     (:card_id, :card_name, :houston_freq,
-                     :primary_parts, :optional_parts,
+                     CAST(:primary_parts AS text[]), CAST(:optional_parts AS text[]),
                      :labor_min, :labor_max, :labor_avg,
                      :est_min, :est_typical, :est_max,
                      :pl_min, :pl_typical, :pl_max,
@@ -192,8 +221,8 @@ async def load_fault_cards(db, data: dict, price_rows: list) -> int:
                 "card_id": c["card_id"],
                 "card_name": c["card_name"],
                 "houston_freq": c.get("houston_frequency_pct"),
-                "primary_parts": c.get("primary_parts"),
-                "optional_parts": c.get("optional_parts"),
+                "primary_parts": _pg_text_array(c.get("primary_parts")),
+                "optional_parts": _pg_text_array(c.get("optional_parts")),
                 "labor_min": lo or c["labor_hours"].get("min"),
                 "labor_max": hi or c["labor_hours"].get("max"),
                 "labor_avg": avg or c["labor_hours"].get("average"),
@@ -255,10 +284,11 @@ async def load_error_codes(db, data: dict) -> int:
     total = 0
 
     def _insert_codes(brand_family, brand_family_members, subsystem, codes_list):
+        members_pg = _pg_text_array(brand_family_members)
         return [
             {
                 "brand_family": brand_family,
-                "brand_family_members": brand_family_members,
+                "brand_family_members": members_pg,
                 "subsystem": subsystem,
                 "error_code": c.get("code", ""),
                 "meaning": c.get("meaning") or c.get("description"),
@@ -322,7 +352,7 @@ async def load_error_codes(db, data: dict) -> int:
                     (brand_family, brand_family_members, subsystem,
                      error_code, meaning, severity, action, decision_tree_card)
                 VALUES
-                    (:brand_family, :brand_family_members, :subsystem,
+                    (:brand_family, CAST(:brand_family_members AS text[]), :subsystem,
                      :error_code, :meaning, :severity, :action, :decision_tree_card)
             """),
             row,
@@ -542,52 +572,23 @@ async def main(dry_run: bool = False) -> None:
 
     # ── Write to DB ────────────────────────────────────────────────────────────
     print("Loading into database...")
-    async with AsyncSessionLocal() as db:
-        counts = {}
-        counts["brands"]    = await load_brands(db, data)
-        counts["parts"]     = await load_parts(db, data)
-        counts["fault_cards"] = await load_fault_cards(db, data, price_rows)
-        counts["pricing_tiers"] = await load_pricing_tiers(db, price_rows)
-        counts["error_codes"] = await load_error_codes(db, data)
-        counts["labor_rates"] = await load_labor_rates(db, data)
-        counts["legacy_prefixes"] = await load_legacy_prefixes(db, data)
-        counts["lifecycle_rules"] = await load_lifecycle_rules(db)
+    try:
+        async with AsyncSessionLocal() as db:
+            counts = {}
+            counts["brands"]        = await load_brands(db, data)
+            counts["parts"]         = await load_parts(db, data)
+            counts["fault_cards"]   = await load_fault_cards(db, data, price_rows)
+            counts["pricing_tiers"] = await load_pricing_tiers(db, price_rows)
+            counts["error_codes"]   = await load_error_codes(db, data)
+            counts["labor_rates"]   = await load_labor_rates(db, data)
+            counts["legacy_prefixes"] = await load_legacy_prefixes(db, data)
+            counts["lifecycle_rules"] = await load_lifecycle_rules(db)
 
-        await record_version(db, data, counts)
-        await db.commit()
-
-    # ── Acceptance check ───────────────────────────────────────────────────────
-    print()
-    print("=== Acceptance Check ===")
-    checks = [
-        ("brands",               counts["brands"],          15,  "=="),
-        ("parts_catalog",        counts["parts"],           40,  "=="),
-        ("fault_cards",          counts["fault_cards"],     19,  "=="),
-        ("pricing_tiers",        counts["pricing_tiers"],   57,  "=="),
-        ("error_codes",          counts["error_codes"],    159,  ">="),
-        ("labor_rates_houston",  counts["labor_rates"],      1,  "=="),
-        ("legacy_model_prefixes",counts["legacy_prefixes"], 65,  "=="),  # 65 unique (all_legacy_prefixes has 10 dups)
-    ]
-    all_pass = True
-    for table, actual, expected, op_ in checks:
-        if op_ == "==" and actual != expected:
-            status = f"❌ FAIL  (got {actual}, expected {expected})"
-            all_pass = False
-        elif op_ == ">=" and actual < expected:
-            status = f"❌ FAIL  (got {actual}, expected ≥{expected})"
-            all_pass = False
-        else:
-            status = f"✅ PASS  ({actual})"
-        print(f"  {table:<26} {status}")
-
-    print()
-    if all_pass:
-        print("✅ All acceptance checks passed. WS-A M1 complete.")
-    else:
-        print("❌ Some checks failed — review output above and re-run.")
+            await record_version(db, data, counts)
+            await db.commit()
+    except Exception:
+        print("\n❌ FATAL ERROR in load_repo.py — full traceback:")
+        traceback.print_exc()
         sys.exit(1)
 
-
-if __name__ == "__main__":
-    dry_run = "--dry-run" in sys.argv
-    asyncio.run(main(dry_run=dry_run))
+    # ── Acceptance check ───────────────────────�
