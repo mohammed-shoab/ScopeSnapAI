@@ -235,7 +235,7 @@ export default function AssessPage() {
   const [rLiquidLineF,  setRLiquidLineF]  = useState("");
   const [rRefrigerant,  setRRefrigerant]  = useState("R-410A");
   const [rMetering,     setRMetering]     = useState("piston");
-  const [rComputed, setRComputed] = useState<{ superheat_f?: number; subcooling_f?: number; delta_t_f?: number; pressure_diagnosis?: string } | null>(null);
+  const [rComputed, setRComputed] = useState<{ superheat_f?: number; superheat_status?: string; superheat_target?: { min: number; max: number; ideal: number }; subcooling_f?: number; subcooling_status?: string; subcooling_target?: { min: number; max: number; ideal: number }; delta_t_f?: number; pressure_diagnosis?: string; xgboost_diagnosis?: { fault_label?: string | null; confidence?: number; high_confidence?: boolean; error?: string } } | null>(null);
   const [rLoading, setRLoading] = useState(false);
   const [rError,   setRError]   = useState<string | null>(null);
   // Collected values indexed by field key
@@ -557,7 +557,7 @@ export default function AssessPage() {
       });
       if (!r.ok) throw new Error((await r.json()).detail || "Failed to save readings");
       const data = await r.json();
-      setRComputed(data);
+      setRComputed(data.computed ? { ...data.computed, xgboost_diagnosis: data.xgboost_diagnosis } : data);
       setReadingsCompleted(true);
       setShowReadingsGate(false);
       await handleGenerateEstimate();
@@ -806,32 +806,83 @@ export default function AssessPage() {
                   </div>
                 </div>
 
-                {/* Computed results (shown after previous submission) */}
+                {/* Computed results — full classification panel */}
                 {rComputed && (
-                  <div className="bg-[#111] border border-[#2a2a2a] rounded-xl p-4 space-y-2">
-                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">Calculated</p>
-                    {rComputed.superheat_f != null && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Superheat</span>
-                        <span className="font-mono font-bold text-white">{rComputed.superheat_f.toFixed(1)} °F</span>
+                  <div className="bg-[#111] border border-[#2a2a2a] rounded-xl p-4 space-y-3">
+                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Calculated Results</p>
+
+                    {/* Superheat row */}
+                    {rComputed.superheat_f != null && (() => {
+                      const st = rComputed.superheat_status;
+                      const tgt = rComputed.superheat_target;
+                      const color = st === "OK" ? "#1a8754" : "#c4600a";
+                      const icon = st === "OK" ? "✓" : st === "LOW" ? "▼" : "▲";
+                      return (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-400">Superheat</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-black text-white text-sm">{rComputed.superheat_f.toFixed(1)} °F</span>
+                              {st && <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ color, backgroundColor: color + "22" }}>{icon} {st}</span>}
+                            </div>
+                          </div>
+                          {tgt && <p className="text-xs text-gray-600">Target: {tgt.min}–{tgt.max} °F (ideal {tgt.ideal} °F)</p>}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Subcooling row */}
+                    {rComputed.subcooling_f != null && (() => {
+                      const st = rComputed.subcooling_status;
+                      const tgt = rComputed.subcooling_target;
+                      const color = st === "OK" ? "#1a8754" : "#c4600a";
+                      const icon = st === "OK" ? "✓" : st === "LOW" ? "▼" : "▲";
+                      return (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-400">Subcooling</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-black text-white text-sm">{rComputed.subcooling_f.toFixed(1)} °F</span>
+                              {st && <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ color, backgroundColor: color + "22" }}>{icon} {st}</span>}
+                            </div>
+                          </div>
+                          {tgt && <p className="text-xs text-gray-600">Target: {tgt.min}–{tgt.max} °F (ideal {tgt.ideal} °F)</p>}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Pressure diagnosis */}
+                    {rComputed.pressure_diagnosis && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-400">Pressure Pattern</span>
+                        <span className="text-xs font-bold px-1.5 py-0.5 rounded"
+                          style={{ color: rComputed.pressure_diagnosis === "normal" ? "#1a8754" : "#c4600a",
+                                   backgroundColor: rComputed.pressure_diagnosis === "normal" ? "#1a875422" : "#c4600a22" }}>
+                          {rComputed.pressure_diagnosis.replace(/_/g, " ").toUpperCase()}
+                        </span>
                       </div>
                     )}
-                    {rComputed.subcooling_f != null && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Subcooling</span>
-                        <span className="font-mono font-bold text-white">{rComputed.subcooling_f.toFixed(1)} °F</span>
-                      </div>
-                    )}
-                    {rComputed.delta_t_f != null && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Delta-T</span>
-                        <span className="font-mono font-bold text-white">{rComputed.delta_t_f.toFixed(1)} °F</span>
-                      </div>
-                    )}
-                    {rComputed.pressure_diagnosis && rComputed.pressure_diagnosis !== "normal" && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Pressure Flag</span>
-                        <span className="font-mono font-bold text-orange-400">{rComputed.pressure_diagnosis.replace(/_/g, " ")}</span>
+
+                    {/* XGBoost diagnosis */}
+                    {rComputed.xgboost_diagnosis?.fault_label && (
+                      <div className="pt-2 border-t border-[#2a2a2a] space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-500">AI Fault (XGBoost)</span>
+                          <span className="text-xs font-bold text-white font-mono">
+                            {rComputed.xgboost_diagnosis.fault_label.replace(/_/g, " ")}
+                          </span>
+                        </div>
+                        {rComputed.xgboost_diagnosis.confidence != null && (
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1 bg-[#2a2a2a] rounded-full overflow-hidden">
+                              <div className="h-full bg-green-600 rounded-full"
+                                style={{ width: `${Math.round(rComputed.xgboost_diagnosis.confidence * 100)}%` }} />
+                            </div>
+                            <span className="text-xs text-gray-500 font-mono w-10 text-right">
+                              {Math.round(rComputed.xgboost_diagnosis.confidence * 100)}%
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

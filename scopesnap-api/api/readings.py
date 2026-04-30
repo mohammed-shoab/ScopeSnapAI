@@ -323,11 +323,45 @@ async def save_readings(
 
     await db.commit()
 
+    # ── Pipe readings into XGBoost sensor-diagnosis model (Track A) ─────────
+    xgboost_result: dict = {}
+    try:
+        from services.sensor_service import SensorService
+        _svc = SensorService()
+        # Derive return_air_temp: use supply + estimated delta-T.
+        # Houston baseline: return ~75F, supply ~55-60F for a working system.
+        # If supply is known, we approximate return = supply + 20F (typical delta-T).
+        return_air_approx = float(body.supply_air_temp_f) + 20.0
+        # Derive unit age from assessment equipment data if available
+        unit_age = 10.0  # default
+        eq = assessment.ai_equipment_id or {}
+        if isinstance(eq, dict) and eq.get("install_year"):
+            import datetime
+            unit_age = float(datetime.datetime.now().year - int(eq["install_year"]))
+            unit_age = max(0.5, min(unit_age, 30.0))
+        pred = _svc.predict(
+            outdoor_ambient_temp=float(body.ambient_temp_f),
+            supply_air_temp=float(body.supply_air_temp_f),
+            return_air_temp=return_air_approx,
+            suction_pressure=float(body.suction_psig),
+            discharge_pressure=float(body.discharge_psig),
+            unit_age_years=unit_age,
+        )
+        xgboost_result = {
+            "fault_label": pred.fault_label,
+            "confidence": round(pred.confidence, 3),
+            "high_confidence": pred.high_confidence,
+        }
+    except Exception as _xgb_err:
+        # Non-fatal: XGBoost unavailable (model not yet downloaded, etc.)
+        xgboost_result = {"error": str(_xgb_err), "fault_label": None}
+
     return {
         "assessment_id": assessment_id,
         "readings_saved": True,
         "readings_completed": True,
         "computed": computed,
+        "xgboost_diagnosis": xgboost_result,
     }
 
 
