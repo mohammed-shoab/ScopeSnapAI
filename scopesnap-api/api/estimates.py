@@ -1046,4 +1046,9 @@ async def export_estimates_csv(
         ])
 
     output.seek(0)
-    filename = f"snapai_export_{datetime.now(timezone.utc).strftime('%Y%
+    filename = f"snapai_export_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
