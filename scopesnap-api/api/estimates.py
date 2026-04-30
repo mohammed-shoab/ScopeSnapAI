@@ -121,6 +121,16 @@ async def generate_estimate(
             detail="Assessment has not been analyzed yet. Run POST /api/assessments/{id}/analyze first.",
         )
 
+    # ── Phase 2 Readings Gate (WS-C) ─────────────────────────────────────────
+    if getattr(assessment, "readings_gate_triggered", False) and not getattr(assessment, "readings_completed", False):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "readings_required",
+                "message": "Pressure readings required before estimate can be generated. Complete the readings gate first.",
+            },
+        )
+
     # ── Check for existing estimate ───────────────────────────────────────────
     existing_result = await db.execute(
         select(Estimate).where(Estimate.assessment_id == body.assessment_id)

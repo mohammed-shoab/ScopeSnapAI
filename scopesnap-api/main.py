@@ -28,6 +28,7 @@ from api.events import router as events_router
 from api.admin import router as admin_router
 from api.sensor_diagnosis import router as sensor_diagnosis_router
 from api.repo import router as repo_router  # WS-A: GET /api/repo/version
+from api.readings import router as readings_router  # WS-C: Phase 2 Readings Gate
 
 
 # ── Sentry Error Tracking ─────────────────────────────────────────────────────
@@ -107,6 +108,7 @@ app.include_router(events_router)  # POST /api/events + POST /api/waitlist
 app.include_router(admin_router)   # POST /admin/seed, GET /admin/status (protected)
 app.include_router(sensor_diagnosis_router)  # POST /api/sensor-diagnosis (XGBoost Track A)
 app.include_router(repo_router)             # GET /api/repo/version (WS-A data foundation)
+app.include_router(readings_router)          # WS-C: Phase 2 Readings Gate (/api/readings)
 
 
 # ── Health Check ──────────────────────────────────────────────────────────────
