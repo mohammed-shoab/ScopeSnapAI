@@ -136,7 +136,7 @@ async def load_parts(db, data: dict) -> int:
                 "id": p["id"],
                 "name": p["name"],
                 "category": p.get("category"),
-                "fault_cards": p.get("fault_cards"),
+                "fault_cards": p.get("fault_cards") if isinstance(p.get("fault_cards"), list) else None,
                 "description": p.get("description"),
                 "part_cost_wholesale": json.dumps(p.get("part_cost_wholesale", {})),
                 "part_cost_retail": json.dumps(p.get("part_cost_retail", {})),
