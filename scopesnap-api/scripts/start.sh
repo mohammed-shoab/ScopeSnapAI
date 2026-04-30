@@ -24,7 +24,7 @@ echo "Migrations complete"
 
 echo ""
 echo "Loading data repository (ac_data_repo.json v2.0)..."
-python /app/scripts/load_repo.py || echo "Data repo load skipped (non-fatal — run manually if needed)"
+PYTHONUNBUFFERED=1 python -u /app/scripts/load_repo.py || echo "Data repo load skipped (non-fatal — run manually if needed)"
 echo "Data repo step complete"
 
 echo ""
@@ -41,13 +41,4 @@ if [ "${ENVIRONMENT}" = "production" ]; then
         --host 0.0.0.0 \
         --port "${PORT}" \
         --workers "${WORKERS}" \
-        --log-level info \
-        --access-log
-else
-    echo "  Mode: DEVELOPMENT (1 worker, --reload)"
-    exec uvicorn main:app \
-        --host 0.0.0.0 \
-        --port "${PORT}" \
-        --reload \
-        --log-level debug
-fi
+        --l
