@@ -566,7 +566,7 @@ async def main(dry_run: bool = False) -> None:
         ("pricing_tiers",        counts["pricing_tiers"],   57,  "=="),
         ("error_codes",          counts["error_codes"],    159,  ">="),
         ("labor_rates_houston",  counts["labor_rates"],      1,  "=="),
-        ("legacy_model_prefixes",counts["legacy_prefixes"], 75,  "=="),
+        ("legacy_model_prefixes",counts["legacy_prefixes"], 65,  "=="),  # 65 unique (all_legacy_prefixes has 10 dups)
     ]
     all_pass = True
     for table, actual, expected, op_ in checks:
