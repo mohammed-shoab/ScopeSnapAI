@@ -267,7 +267,7 @@ async def load_error_codes(db, data: dict) -> int:
                 "decision_tree_card": c.get("decision_tree_card"),
             }
             for c in codes_list
-            if c.get("code")
+            if isinstance(c, dict) and c.get("code")
         ]
 
     rows_to_insert = []
