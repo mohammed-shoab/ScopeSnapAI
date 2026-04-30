@@ -223,6 +223,21 @@ export default function AssessPage() {
   // ── Sensor phase state (Jobs method: one field per screen) ─────────────────
   const [sensorFieldIndex, setSensorFieldIndex] = useState(0); // current field 0–5
   const [sensorCurrentValue, setSensorCurrentValue] = useState(""); // value being typed
+
+  // -- WS-C: Phase 2 Readings Gate ------------------------------------------
+  const [showReadingsGate, setShowReadingsGate] = useState(false);
+  const [readingsCompleted, setReadingsCompleted] = useState(false);
+  const [rSuctionPsi,  setRSuctionPsi]  = useState("");
+  const [rDischargePsi, setRDischargePsi] = useState("");
+  const [rAmbientF,    setRAmbientF]    = useState("");
+  const [rSupplyF,     setRSupplyF]     = useState("");
+  const [rSuctionLineF, setRSuctionLineF] = useState("");
+  const [rLiquidLineF,  setRLiquidLineF]  = useState("");
+  const [rRefrigerant,  setRRefrigerant]  = useState("R-410A");
+  const [rMetering,     setRMetering]     = useState("piston");
+  const [rComputed, setRComputed] = useState<{ superheat_f?: number; subcooling_f?: number; delta_t_f?: number; pressure_diagnosis?: string } | null>(null);
+  const [rLoading, setRLoading] = useState(false);
+  const [rError,   setRError]   = useState<string | null>(null);
   // Collected values indexed by field key
   const [sensorValues, setSensorValues] = useState<Record<string, string>>({});
 
@@ -508,6 +523,51 @@ export default function AssessPage() {
     }
   };
 
+  // WS-C: trigger readings gate on the backend (non-fatal if it fails)
+  const triggerReadingsGate = async () => {
+    if (!assessment) return;
+    try {
+      const h = await getAuthHeaders();
+      await fetch(`${API_URL}/api/readings/${assessment.id}/trigger`, { method: "POST", headers: h });
+    } catch { /* non-fatal */ }
+  };
+
+  // WS-C: save readings + proceed to estimate
+  const handleReadingsSubmit = async () => {
+    if (!assessment) return;
+    setRLoading(true);
+    setRError(null);
+    try {
+      const h = await getAuthHeaders();
+      const body: Record<string, unknown> = {
+        suction_psig:      parseFloat(rSuctionPsi),
+        discharge_psig:    parseFloat(rDischargePsi),
+        ambient_temp_f:    parseFloat(rAmbientF),
+        supply_air_temp_f: parseFloat(rSupplyF),
+        refrigerant_type:  rRefrigerant,
+        metering_device:   rMetering,
+        gate_triggered:    true,
+      };
+      if (rSuctionLineF) body.suction_line_temp_f = parseFloat(rSuctionLineF);
+      if (rLiquidLineF)  body.liquid_line_temp_f  = parseFloat(rLiquidLineF);
+      const r = await fetch(`${API_URL}/api/readings/${assessment.id}`, {
+        method: "PUT",
+        headers: { ...h, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) throw new Error((await r.json()).detail || "Failed to save readings");
+      const data = await r.json();
+      setRComputed(data);
+      setReadingsCompleted(true);
+      setShowReadingsGate(false);
+      await handleGenerateEstimate();
+    } catch (err: unknown) {
+      setRError(err instanceof Error ? err.message : "Error saving readings");
+    } finally {
+      setRLoading(false);
+    }
+  };
+
   // ── Uploading / Analyzing screen ───────────────────────────────────────────
   if (phase === "uploading" || phase === "analyzing") {
     const STEPS = ["Uploading photos…", "Reading equipment details…", "Identifying brand & model…", "Checking condition & wear…", "Building your estimate…"];
@@ -648,11 +708,150 @@ export default function AssessPage() {
           </div>
         )}
         {error && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-600 font-medium">⚠ {error}</div>}
-        <button onClick={handleGenerateEstimate}
+        <button
+          onClick={() => {
+            const needsGate = (complaintType === "not_cooling" || complaintType === "not_heating") && !readingsCompleted;
+            if (needsGate) { triggerReadingsGate(); setShowReadingsGate(true); }
+            else handleGenerateEstimate();
+          }}
           className="w-full text-white font-bold py-4 rounded-xl text-base shadow-lg transition-shadow hover:shadow-xl"
           style={{ background: "linear-gradient(135deg, #1a8754 0%, #159a5e 100%)", boxShadow: "0 4px 14px rgba(26,135,84,.45)" }}>
-          Build Estimate →
+          {(complaintType === "not_cooling" || complaintType === "not_heating") && !readingsCompleted
+            ? "Enter Pressure Readings →"
+            : "Build Estimate →"}
         </button>
+
+        {/* WS-C Phase 2 Readings Gate Modal */}
+        {showReadingsGate && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm px-4 pb-4 sm:pb-0">
+            <div className="w-full max-w-md bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl shadow-2xl overflow-hidden">
+              {/* Header */}
+              <div className="px-5 py-4 border-b border-[#2a2a2a] flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-mono text-orange-400 uppercase tracking-widest mb-0.5">Phase 2 Gate</p>
+                  <h2 className="text-lg font-black text-white">Pressure Readings Required</h2>
+                </div>
+                <button onClick={() => setShowReadingsGate(false)} className="w-8 h-8 rounded-full bg-[#2a2a2a] flex items-center justify-center text-gray-400 hover:text-white text-lg font-bold transition-colors">&times;</button>
+              </div>
+
+              <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                {/* Refrigerant + Metering row */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 font-semibold mb-1.5 uppercase tracking-wide">Refrigerant</label>
+                    <select value={rRefrigerant} onChange={e => setRRefrigerant(e.target.value)}
+                      className="w-full bg-[#111] border border-[#333] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-500 appearance-none">
+                      <option value="R-410A">R-410A</option>
+                      <option value="R-22">R-22</option>
+                      <option value="R-32">R-32</option>
+                      <option value="R-454B">R-454B</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 font-semibold mb-1.5 uppercase tracking-wide">Metering</label>
+                    <select value={rMetering} onChange={e => setRMetering(e.target.value)}
+                      className="w-full bg-[#111] border border-[#333] text-white rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-500 appearance-none">
+                      <option value="piston">Piston</option>
+                      <option value="txv">TXV</option>
+                      <option value="eev">EEV</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Required readings */}
+                <div>
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">Required Readings</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: "Suction PSI", value: rSuctionPsi, set: setRSuctionPsi, placeholder: "e.g. 120" },
+                      { label: "Discharge PSI", value: rDischargePsi, set: setRDischargePsi, placeholder: "e.g. 380" },
+                      { label: "Ambient °F", value: rAmbientF, set: setRAmbientF, placeholder: "e.g. 95" },
+                      { label: "Supply Air °F", value: rSupplyF, set: setRSupplyF, placeholder: "e.g. 55" },
+                    ].map(({ label, value, set, placeholder }) => (
+                      <div key={label}>
+                        <label className="block text-xs text-gray-400 font-semibold mb-1.5">{label} <span className="text-red-400">*</span></label>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={value}
+                          onChange={e => set(e.target.value)}
+                          placeholder={placeholder}
+                          className="w-full bg-[#111] border border-[#333] text-white rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-green-500 placeholder-gray-600"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Optional readings */}
+                <div>
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-2">Optional — enables superheat / subcooling calc</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: "Suction Line °F", value: rSuctionLineF, set: setRSuctionLineF, placeholder: "e.g. 45" },
+                      { label: "Liquid Line °F", value: rLiquidLineF, set: setRLiquidLineF, placeholder: "e.g. 95" },
+                    ].map(({ label, value, set, placeholder }) => (
+                      <div key={label}>
+                        <label className="block text-xs text-gray-400 font-semibold mb-1.5">{label}</label>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          value={value}
+                          onChange={e => set(e.target.value)}
+                          placeholder={placeholder}
+                          className="w-full bg-[#111] border border-[#333] text-white rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-green-500 placeholder-gray-600"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Computed results (shown after previous submission) */}
+                {rComputed && (
+                  <div className="bg-[#111] border border-[#2a2a2a] rounded-xl p-4 space-y-2">
+                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">Calculated</p>
+                    {rComputed.superheat_f != null && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Superheat</span>
+                        <span className="font-mono font-bold text-white">{rComputed.superheat_f.toFixed(1)} °F</span>
+                      </div>
+                    )}
+                    {rComputed.subcooling_f != null && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Subcooling</span>
+                        <span className="font-mono font-bold text-white">{rComputed.subcooling_f.toFixed(1)} °F</span>
+                      </div>
+                    )}
+                    {rComputed.delta_t_f != null && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Delta-T</span>
+                        <span className="font-mono font-bold text-white">{rComputed.delta_t_f.toFixed(1)} °F</span>
+                      </div>
+                    )}
+                    {rComputed.pressure_diagnosis && rComputed.pressure_diagnosis !== "normal" && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Pressure Flag</span>
+                        <span className="font-mono font-bold text-orange-400">{rComputed.pressure_diagnosis.replace(/_/g, " ")}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {rError && <p className="text-sm text-red-400 font-medium">{rError}</p>}
+
+                {/* Submit */}
+                <button
+                  onClick={handleReadingsSubmit}
+                  disabled={rLoading || !rSuctionPsi || !rDischargePsi || !rAmbientF || !rSupplyF}
+                  className="w-full py-3.5 rounded-xl text-sm font-black text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: "linear-gradient(135deg, #1a8754 0%, #159a5e 100%)" }}>
+                  {rLoading ? "Saving readings…" : "Save & Build Estimate →"}
+                </button>
+                <p className="text-center text-xs text-gray-600">Readings are saved to this assessment for training and accuracy tracking.</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
