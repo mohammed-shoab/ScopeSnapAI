@@ -591,4 +591,4 @@ async def main(dry_run: bool = False) -> None:
         traceback.print_exc()
         sys.exit(1)
 
-    # ── Acceptance check ───────────────────────�
+    # ── Acceptance check ───────────────────────
