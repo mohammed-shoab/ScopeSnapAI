@@ -358,6 +358,25 @@ class Assessment(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pending")
     # 'pending' | 'analyzed' | 'estimated' | 'sent' | 'approved' | 'completed'
 
+    complaint_type: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    # 'not_cooling'|'not_heating'|'not_running'|'noisy'|'water_leak'|'high_bill'|'intermittent_shutdown'
+    # Set at assessment creation (Tab H / WS-J). Drives Phase 2 gate and WS-C readings requirement.
+
+    # -- WS-C: Phase 2 Readings Gate -----------------------------------------
+    suction_psig: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
+    discharge_psig: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
+    ambient_temp_f: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
+    supply_air_temp_f: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
+    suction_line_temp_f: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
+    liquid_line_temp_f: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
+    refrigerant_type: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    metering_device: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    superheat_f: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
+    subcooling_f: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
+    delta_t_f: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
+    readings_gate_triggered: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    readings_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
