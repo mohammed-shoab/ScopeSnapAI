@@ -100,6 +100,7 @@ app.mount("/files", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 # ── API Routers ───────────────────────────────────────────────────────────────
 app.include_router(assessments.router)
+app.include_router(recommend_router)        # WS-H: registered FIRST to prevent /{estimate_id} catch-all conflict
 app.include_router(estimates.router)
 app.include_router(reports.router)
 app.include_router(properties.router)
@@ -120,7 +121,6 @@ app.include_router(fault_estimate_router)   # WS-G estimate engine
 app.include_router(error_code_router)       # WS-D brand DB lookup
 app.include_router(thermal_router)          # WS-E thermal camera
 app.include_router(feedback_router)         # WS-F training feedback
-app.include_router(recommend_router)        # WS-H recommended badge
 app.include_router(followup_router)         # WS-I follow-up emails
 app.include_router(readings_router)          # WS-C: Phase 2 Readings Gate (/api/readings)
 
