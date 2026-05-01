@@ -105,13 +105,13 @@ type ComplaintId = typeof COMPLAINT_OPTIONS[number]["id"];
 
 // ── What Photo 3 captures depends on the complaint ────────────────────────────
 const SYMPTOM_PHOTO: Record<ComplaintId, { label: string; hint: string; icon: string }> = {
-  not_cooling:           { label: "Indoor coil / evaporator",    hint: "Open the air handler access panel — ice or corrosion?",              icon: "❄️" },
-  not_heating:           { label: "Indoor coil / furnace",        hint: "Open the air handler / furnace access panel",                        icon: "🔥" },
+  not_cooling:           { label: "Indoor coil / evaporator",    hint: "Open the air handler access panel — ice or corrosion?",               icon: "❄️" },
+  not_heating:           { label: "Indoor coil / furnace",        hint: "Open the air handler / furnace access panel",                         icon: "🔥" },
   intermittent_shutdown: { label: "Control board / contactor",    hint: "Open the electrical panel — look for burn marks or corroded contacts", icon: "⚡" },
-  water_leak:            { label: "Drain pan",                    hint: "Look under the indoor unit — standing water or rust?",               icon: "💧" },
-  wont_start:            { label: "Disconnect box",               hint: "The electrical disconnect near the outdoor unit",                     icon: "⚡" },
-  noisy:                 { label: "Noisy component",              hint: "Fan, compressor, or duct area making the sound",                      icon: "🔊" },
-  routine:               { label: "Indoor unit overall",          hint: "Step back — full air handler or furnace in frame",                    icon: "🏠" },
+  water_leak:            { label: "Drain pan",                    hint: "Look under the indoor unit — standing water or rust?",                icon: "💧" },
+  wont_start:            { label: "Disconnect box",               hint: "The electrical disconnect near the outdoor unit",                      icon: "⚡" },
+  noisy:                 { label: "Noisy component",              hint: "Fan, compressor, or duct area making the sound",                       icon: "🔊" },
+  routine:               { label: "Indoor unit overall",          hint: "Step back — full air handler or furnace in frame",                     icon: "🏠" },
 };
 
 // ── Slot metadata for the 3 required photos ───────────────────────────────────
@@ -1186,4 +1186,13 @@ export default function AssessPage() {
         disabled={!allRequiredFilled}
         className="w-full text-white font-bold py-4 rounded-xl text-base shadow-lg transition-all"
         style={allRequiredFilled
-          ? { background: "linear-gradient(135deg, #1a8754 0%, #1
+          ? { background: "linear-gradient(135deg, #1a8754 0%, #159a5e 100%)", boxShadow: "0 4px 14px rgba(26,135,84,.45)" }
+          : { background: "#d1d5db", boxShadow: "none", cursor: "not-allowed" }}
+      >
+        {!allRequiredFilled
+          ? `${3 - filledCount} more photo${3 - filledCount !== 1 ? "s" : ""} needed`
+          : `Analyze ${3 + extraPhotos.length} Photo${3 + extraPhotos.length > 1 ? "s" : ""} →`}
+      </button>
+    </div>
+  );
+}
