@@ -93,8 +93,9 @@ const SENSOR_FIELDS = [
 
 // ── Complaint options (Jobs rule: 6 max, big icons, no dropdowns) ─────────────
 const COMPLAINT_OPTIONS = [
-  { id: "not_cooling", icon: "🥵", label: "Not Cooling", sub: "Weak or no cooling" },
-  { id: "not_heating", icon: "🔥", label: "Not Heating", sub: "No heat / cold air" },
+  { id: "not_cooling",           icon: "🥵", label: "Not Cooling",           sub: "Weak or no cooling" },
+  { id: "not_heating",           icon: "🔥", label: "Not Heating",           sub: "No heat / cold air" },
+  { id: "intermittent_shutdown", icon: "⚡", label: "Intermittent Shutdown", sub: "Short cycling / random shutoffs" },
   { id: "water_leak",  icon: "💧", label: "Water Leaking", sub: "Dripping or pooling" },
   { id: "wont_start",  icon: "⚡", label: "Won't Turn On", sub: "No response at all" },
   { id: "noisy",       icon: "🔊", label: "Making Noise", sub: "Banging, squealing, humming" },
