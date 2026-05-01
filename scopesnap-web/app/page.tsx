@@ -208,14 +208,15 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-          <p className="text-center text-xs text-text-secondary mt-8">
-            Full demo video coming soon — <Link href="/dashboard" className="text-brand-green font-semibold hover:underline">try it live →</Link>
-          </p>
-        </section>
-
-        {/* ── Early Access Signup ─────────────────────────────────────────── */}
-        <section className="bg-surface-card border-y border-surface-border py-20">
-          <div className="max-w-lg mx-auto px-6 text-center">
-            <h2 className="text-2xl font-bold mb-3">Get early access</h2>
-            <p className="text-text-secondary mb-8 text-sm leading-relaxed">
-              We're onboarding HVAC contractors in small ba
+          {/* ── Video embed slot — swap this div for <iframe> when video is ready ── */}
+          <div className="mt-12 relative w-full rounded-2xl overflow-hidden"
+               style={{ paddingBottom: "56.25%", background: "#111210" }}>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+              {/* Subtle grid lines for depth */}
+              <svg className="absolute inset-0 w-full h-full opacity-5" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5"/>
+                  </pattern>
+                </defs>
+                <
