@@ -69,6 +69,16 @@ export async function middleware(request: NextRequest) {
       "/dashboard(.*)",
       "/assess(.*)",
       "/assessment(.*)",
+      "/assessments(.*)",
+      "/settings(.*)",
+      "/billing(.*)",
+      "/analytics(.*)",
+      "/intelligence(.*)",
+      "/equipment(.*)",
+      "/team(.*)",
+      "/onboarding(.*)",
+      "/estimates(.*)",
+      "/estimate(.*)",
     ]);
 
     return clerkMiddleware(async (auth, req) => {
@@ -90,11 +100,4 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except static files:
-     * /_next/static, /_next/image, .ico, .png, .jpg, etc.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
-  ],
-};
+  matcher:
