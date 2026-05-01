@@ -31,6 +31,7 @@ from api.repo import router as repo_router  # WS-A: GET /api/repo/version
 from api.ocr import router as ocr_router   # WS-B: POST /api/ocr/nameplate
 from api.fault_estimate import router as fault_estimate_router  # WS-G: POST /api/estimates/fault-card
 from api.error_code import router as error_code_router         # WS-D: GET /api/error-code/lookup
+from api.thermal import router as thermal_router               # WS-E: POST /api/thermal/analyze
 from api.readings import router as readings_router  # WS-C: Phase 2 Readings Gate
 
 
@@ -114,6 +115,7 @@ app.include_router(repo_router)             # GET /api/repo/version (WS-A data f
 app.include_router(ocr_router)              # POST /api/ocr/nameplate (WS-B Step Zero OCR)
 app.include_router(fault_estimate_router)   # POST /api/estimates/fault-card (WS-G estimate engine)
 app.include_router(error_code_router)       # GET /api/error-code/lookup (WS-D brand DB)
+app.include_router(thermal_router)          # POST /api/thermal/analyze (WS-E thermal camera)
 app.include_router(readings_router)          # WS-C: Phase 2 Readings Gate (/api/readings)
 
 
