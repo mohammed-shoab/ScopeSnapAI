@@ -54,12 +54,14 @@ export default function SignUpPage() {
             color: "#1a1a18",
           }}
         >
-          Scope<span style={{ color: "#1a8754" }}>Snap</span>
+          Snap<span style={{ color: "#1a8754" }}>AI</span>
         </span>
       </div>
 
       {/* Clerk Sign-Up Component */}
       <SignUp
+        afterSignUpUrl="/onboarding"
+        redirectUrl="/onboarding"
         appearance={{
           elements: {
             rootBox: { width: "100%", maxWidth: 400 },

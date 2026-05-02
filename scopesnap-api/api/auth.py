@@ -164,12 +164,52 @@ async def get_current_user(
 
 
 async def _load_auth_context(clerk_user_id: str, db: AsyncSession) -> AuthContext:
-    """Loads user and company from DB given a Clerk user ID."""
+    """
+    Loads user and company from DB given a Clerk user ID.
+    If user does not exist, auto-provisions via Clerk API (fallback when webhook missed).
+    """
+    import httpx as _httpx
     # Find user by Clerk ID
     result = await db.execute(
         select(User).where(User.clerk_user_id == clerk_user_id)
     )
     user = result.scalar_one_or_none()
+
+    if not user:
+        # Auto-provision: fetch user details from Clerk API and create DB records
+        # This handles cases where the user.created webhook did not fire
+        try:
+            async with _httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"https://api.clerk.com/v1/users/{clerk_user_id}",
+                    headers={"Authorization": f"Bearer {settings.clerk_secret_key}"},
+                    timeout=10.0,
+                )
+            if resp.status_code == 200:
+                data = resp.json()
+                email_list = data.get("email_addresses", [])
+                primary_id = data.get("primary_email_address_id")
+                email = next(
+                    (e.get("email_address", "") for e in email_list if e.get("id") == primary_id),
+                    email_list[0].get("email_address", "") if email_list else "",
+                )
+                first = data.get("first_name") or ""
+                last = data.get("last_name") or ""
+                name = f"{first} {last}".strip() or email.split("@")[0]
+
+                from api.clerk_webhook import _provision_user
+                await _provision_user(clerk_user_id, email, name, db)
+                logger.info(f"[auth] Auto-provisioned user {clerk_user_id} via Clerk API fallback")
+
+                # Reload
+                result = await db.execute(
+                    select(User).where(User.clerk_user_id == clerk_user_id)
+                )
+                user = result.scalar_one_or_none()
+            else:
+                logger.warning(f"[auth] Clerk API returned {resp.status_code} for {clerk_user_id}")
+        except Exception as exc:
+            logger.error(f"[auth] Auto-provision failed for {clerk_user_id}: {exc}")
 
     if not user:
         raise HTTPException(

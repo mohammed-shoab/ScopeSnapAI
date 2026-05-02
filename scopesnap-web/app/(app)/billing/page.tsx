@@ -9,14 +9,12 @@
  */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
 
-const DEV_HEADER: Record<string, string> = {
-  "X-Dev-Clerk-User-Id": "test_user_mike",
-  "Content-Type": "application/json",
-};
+const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 
 interface Plan {
   id: string;
@@ -48,11 +46,21 @@ export default function BillingPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  const { getToken } = useAuth();
+
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    if (IS_DEV) return { "X-Dev-Clerk-User-Id": "test_user_mike", "Content-Type": "application/json" };
+    const token = await getToken();
+    return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
+  }, [getToken]);
+
   useEffect(() => {
-    Promise.all([
-      fetch(`${API_URL}/api/billing/subscription`, { headers: DEV_HEADER }).then((r) => r.ok ? r.json() : null),
-      fetch(`${API_URL}/api/billing/plans`).then((r) => r.ok ? r.json() : null),
-    ])
+    const load = async () => {
+      const headers = await getAuthHeaders();
+      Promise.all([
+        fetch(`${API_URL}/api/billing/subscription`, { headers }).then((r) => r.ok ? r.json() : null),
+        fetch(`${API_URL}/api/billing/plans`).then((r) => r.ok ? r.json() : null),
+      ])
       .then(([subData, plansData]) => {
         setSub(subData && !subData.detail ? subData : null);
         setPlans(plansData?.plans || []);
@@ -62,15 +70,18 @@ export default function BillingPage() {
         setError("Could not load billing info — is the API running?");
         setLoading(false);
       });
-  }, []);
+    };
+    load();
+  }, [getAuthHeaders]);
 
   const handleSubscribe = async (planId: string) => {
     setActionLoading(true);
     setError(null);
     try {
+      const headers = await getAuthHeaders();
       const r = await fetch(`${API_URL}/api/billing/subscribe`, {
         method: "POST",
-        headers: DEV_HEADER,
+        headers,
         body: JSON.stringify({ plan_id: planId }),
       });
       const data = await r.json();
@@ -95,9 +106,10 @@ export default function BillingPage() {
     setActionLoading(true);
     setError(null);
     try {
+      const headers = await getAuthHeaders();
       const r = await fetch(`${API_URL}/api/billing/portal`, {
         method: "POST",
-        headers: DEV_HEADER,
+        headers,
       });
       const data = await r.json();
       if (!r.ok) {
