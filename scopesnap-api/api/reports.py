@@ -363,4 +363,20 @@ async def approve_report(
     tech_fu = FollowUp(
         estimate_id=estimate.id,
         type="email",
-        scheduled_
+        scheduled_        scheduled_at=now_utc + timedelta(hours=24),
+        template="tech_confirm_24h",
+        cancelled=False,
+    )
+    db.add(tech_fu)
+
+    await db.commit()
+
+    return {
+        "message": "Estimate approved",
+        "selected_option": body.selected_option,
+        "selected": selected_option_data,
+        "total": selected_option_data.get("total"),
+        "deposit_amount": estimate.deposit_amount,
+        "approved_at": estimate.approved_at.isoformat(),
+        "status": "approved",
+    }
