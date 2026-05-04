@@ -380,4 +380,3 @@ async def approve_report(
         "approved_at": estimate.approved_at.isoformat(),
         "status": "approved",
     }
-                  
