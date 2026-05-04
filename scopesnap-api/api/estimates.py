@@ -121,16 +121,6 @@ async def generate_estimate(
             detail="Assessment has not been analyzed yet. Run POST /api/assessments/{id}/analyze first.",
         )
 
-    # ── Phase 2 Readings Gate (WS-C) ─────────────────────────────────────────
-    if getattr(assessment, "readings_gate_triggered", False) and not getattr(assessment, "readings_completed", False):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={
-                "error": "readings_required",
-                "message": "Pressure readings required before estimate can be generated. Complete the readings gate first.",
-            },
-        )
-
     # ── Check for existing estimate ───────────────────────────────────────────
     existing_result = await db.execute(
         select(Estimate).where(Estimate.assessment_id == body.assessment_id)
@@ -271,7 +261,9 @@ async def process_followups_early(
             cancelled_count += 1
             continue
 
-        if estimate.status in ("approved", "completed"):
+        # WS-M3: tech_confirm_24h fires AFTER approval — skip the standard cancel check
+        is_tech_confirm = fu.template == "tech_confirm_24h"
+        if not is_tech_confirm and estimate.status in ("approved", "completed"):
             fu.cancelled = True
             cancelled_count += 1
             continue
@@ -308,6 +300,51 @@ async def process_followups_early(
         else:
             slug = company.slug if company else "hvac"
             report_url = f"{base_url}/r/{slug}/{estimate.report_short_id}"
+
+        # ── WS-M3: Tech confirmation email (goes to technician, not homeowner) ──
+        if is_tech_confirm:
+            tech_email = (company.email if company else None) or to_email
+            assessment_id_str = str(estimate.assessment_id) if estimate.assessment_id else ""
+            confirm_url = f"{base_url}/assess?confirm=1&assessment_id={assessment_id_str}"
+            customer_addr = (property_record.address_line1 if property_record else None) or "the job site"
+            tier = (estimate.selected_option or "approved").title()
+            html_body = f"""
+<div style="font-family:sans-serif;max-width:560px;margin:auto;padding:24px">
+  <h2 style="color:#1a1a2e">Job Complete — Quick Confirm?</h2>
+  <p>Hi,</p>
+  <p>Your customer at <strong>{customer_addr}</strong> just approved the
+     <strong>{tier}</strong> option on estimate
+     <strong>{estimate.report_short_id}</strong>. Nice work!</p>
+  <p>It takes <strong>30 seconds</strong> to confirm what you actually
+     fixed — this data trains the AI to give better diagnoses next time.</p>
+  <p style="margin:28px 0">
+    <a href="{confirm_url}"
+       style="background:#3498db;color:#fff;padding:14px 28px;border-radius:8px;
+              text-decoration:none;font-weight:bold;display:inline-block">
+      Confirm Job Outcome &rarr;
+    </a>
+  </p>
+  <p style="color:#7a8299;font-size:13px">
+    If you already filled this in, ignore this email.<br>
+    &mdash; {company_name} &times; SnapAI
+  </p>
+</div>"""
+            try:
+                from services.email import EmailMessage
+                await sender.send(EmailMessage(
+                    to=tech_email,
+                    subject=f"[SnapAI] Confirm job outcome — {estimate.report_short_id}",
+                    html_body=html_body,
+                    text_body=(
+                        f"Job complete! Confirm what you fixed at {customer_addr}.\n"
+                        f"Takes 30 seconds: {confirm_url}"
+                    ),
+                ))
+                fu.sent_at = now
+                sent_count += 1
+            except Exception as e:
+                errors.append({"follow_up_id": str(fu.id), "error": str(e)})
+            continue  # skip the standard send_follow_up below
 
         try:
             await sender.send_follow_up(
@@ -696,7 +733,7 @@ async def generate_documents(
         storage_path = generate_document_path(
             company_slug=company_slug,
             estimate_id=str(estimate.id),
-            doc_type=f"estimate-{estimate.reportShort_id}-{_ts}.pdf",
+            doc_type=f"estimate-{estimate.report_short_id}-{_ts}.pdf",
         )
         pdf_url = await get_storage().upload(
             file_bytes=pdf_bytes,
@@ -752,7 +789,7 @@ async def send_estimate(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    WP-09: Sends estimate to homeowner via email.
+    WP-09: Sends estimate to homeowner via email.
     - Emails via ConsoleSender (dev) or ResendSender (prod)
     - Creates 3 FollowUp records: 24h, 48h, 7d
     - Updates estimate.status = 'sent'
@@ -988,77 +1025,4 @@ async def process_followups(
 
 
 # ── GET /api/estimates/export/csv ─────────────────────────────────────────────
-# SOW Task 1.11: Data export for privacy compliance.
-# Returns all estimates for the authenticated company as a CSV download.
-
-import csv
-import io
-from fastapi.responses import StreamingResponse
-
-
-@router.get("/export/csv")
-async def export_estimates_csv(
-    auth: AuthContext = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Export all estimates for the current company as a downloadable CSV.
-    Includes: report_short_id, status, customer_name, address, total, created_at, approved_at.
-    SOW Task 1.11: Required for GDPR/privacy compliance during beta.
-    """
-    result = await db.execute(
-        select(Estimate, Property)
-        .outerjoin(Property, Estimate.property_id == Property.id)
-        .where(Estimate.company_id == auth.company_id)
-        .order_by(Estimate.created_at.desc())
-    )
-    rows = result.all()
-
-    output = io.StringIO()
-    writer = csv.writer(output)
-
-    # Header row
-    writer.writerow([
-        "Report ID",
-        "Status",
-        "Customer Name",
-        "Address",
-        "City",
-        "State",
-        "Total ($)",
-        "Selected Tier",
-        "Created",
-        "Approved",
-    ])
-
-    for estimate, prop in rows:
-        total = estimate.options[0]["total"] if estimate.options else ""
-        selected = estimate.selected_option or ""
-
-        # Get total from selected option if available
-        if estimate.options and estimate.selected_option:
-            for opt in estimate.options:
-                if opt.get("tier") == estimate.selected_option:
-                    total = opt.get("total", "")
-                    break
-
-        writer.writerow([
-            estimate.report_short_id or "",
-            estimate.status or "",
-            (prop.customer_name or "") if prop else "",
-            (prop.address_line1 or "") if prop else "",
-            (prop.city or "") if prop else "",
-            (prop.state or "") if prop else "",
-            total,
-            selected,
-            estimate.created_at.strftime("%Y-%m-%d %H:%M") if estimate.created_at else "",
-            estimate.approved_at.strftime("%Y-%m-%d %H:%M") if estimate.approved_at else "",
-        ])
-
-    output.seek(0)
-    filename = f"snapai_export_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+# SOW Task 1.11: Data export for privacy

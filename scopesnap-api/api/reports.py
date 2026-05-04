@@ -6,7 +6,7 @@ The report_token in the URL is the security layer.
 WP-06: Full report data + approval implementation.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -342,7 +342,7 @@ async def approve_report(
     estimate.total_amount = selected_option_data.get("total")
     estimate.deposit_amount = round(selected_option_data.get("total", 0) * 0.20, 2)
 
-    # WP-09: Cancel all pending follow-ups for this estimate
+    # WP-09: Cancel homeowner follow-ups (but NOT tech_confirm_24h)
     from sqlalchemy import and_
     fu_result = await db.execute(
         select(FollowUp).where(
@@ -350,20 +350,17 @@ async def approve_report(
                 FollowUp.estimate_id == estimate.id,
                 FollowUp.sent_at.is_(None),
                 FollowUp.cancelled == False,
+                FollowUp.template != "tech_confirm_24h",
             )
         )
     )
     for fu in fu_result.scalars().all():
         fu.cancelled = True
 
-    await db.commit()
-
-    return {
-        "message": "Estimate approved",
-        "selected_option": body.selected_option,
-        "selected": selected_option_data,
-        "total": selected_option_data.get("total"),
-        "deposit_amount": estimate.deposit_amount,
-        "approved_at": estimate.approved_at.isoformat(),
-        "status": "approved",
-    }
+    # WS-M3: Schedule tech confirmation email 24 h after homeowner approves
+    # The cron (process-followups) will send it to the company/tech email
+    now_utc = datetime.now(timezone.utc)
+    tech_fu = FollowUp(
+        estimate_id=estimate.id,
+        type="email",
+        scheduled_
