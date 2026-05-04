@@ -155,6 +155,8 @@ def evaluate_branch(question: dict, answer, computed_branch_key: Optional[str] =
 
     rule = branch_logic.get(branch_key)
     if rule is None:
+        rule = branch_logic.get("any")  # wildcard — photo steps that always route the same way
+    if rule is None:
         rule = branch_logic.get("default", {"escalate": True, "reason": "unhandled_answer"})
 
     if rule is None:

@@ -9,6 +9,15 @@ Endpoints:
   GET    /api/diagnostic/questions/{complaint_type}      — full question list (debug/training)
   GET    /api/diagnostic/complaints                      — complaint types + first question preview
   PATCH  /api/diagnostic/session/{session_id}/cancel     — cancel / restart session
+
+WS-D3/E3/F3 fixes (2026-05-04):
+  - _compute_branch_key: multi inputs now extract reading_N.branch_key from answer dict
+  - _compute_branch_key: photo inputs extract branch_key from answer if pre-computed
+  - _grade_single_photo(): fetches photo URL + calls Gemini, returns AI grade
+  - _grade_multi_photos(): for photo-only multi steps, grades each photo and
+    uses photo_branch_map in branch_logic_jsonb to derive compound branch key
+  - submit_answer: calls grading helpers when branch_key is still None after
+    _compute_branch_key (photo/multi-photo-only cases)
 """
 
 import json
@@ -16,6 +25,7 @@ import logging
 from typing import Optional, Any
 from datetime import datetime, timezone
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,15 +43,15 @@ router = APIRouter(prefix="/api/diagnostic", tags=["phase3-diagnostic"])
 # ── Complaint type metadata ────────────────────────────────────────────────────
 
 COMPLAINT_META = [
-    {"complaint_type": "not_cooling",         "label": "Not Cooling",          "icon": "🥵", "houston_pct": 38},
-    {"complaint_type": "water_dripping",      "label": "Water Dripping",       "icon": "💧", "houston_pct": 25},
-    {"complaint_type": "not_turning_on",      "label": "Not Turning On",       "icon": "❌", "houston_pct": 12},
-    {"complaint_type": "making_noise",        "label": "Making Noise",         "icon": "🔊", "houston_pct": 10},
-    {"complaint_type": "high_electric_bill",  "label": "High Electric Bill",   "icon": "💡", "houston_pct": 8},
-    {"complaint_type": "error_code",          "label": "Error Code",           "icon": "⚠️",  "houston_pct": 7},
-    {"complaint_type": "not_heating",         "label": "Not Heating",          "icon": "🥶", "houston_pct": 5},
-    {"complaint_type": "intermittent_shutdown","label": "Intermittent Shutdown","icon": "⚡", "houston_pct": 5},
-    {"complaint_type": "service",             "label": "Regular Service",      "icon": "🔧", "houston_pct": 15},
+    {"complaint_type": "not_cooling",          "label": "Not Cooling",           "icon": "\U0001f975", "houston_pct": 38},
+    {"complaint_type": "water_dripping",       "label": "Water Dripping",        "icon": "\U0001f4a7", "houston_pct": 25},
+    {"complaint_type": "not_turning_on",       "label": "Not Turning On",        "icon": "❌",     "houston_pct": 12},
+    {"complaint_type": "making_noise",         "label": "Making Noise",          "icon": "\U0001f50a", "houston_pct": 10},
+    {"complaint_type": "high_electric_bill",   "label": "High Electric Bill",    "icon": "\U0001f4a1", "houston_pct": 8},
+    {"complaint_type": "error_code",           "label": "Error Code",            "icon": "⚠️", "houston_pct": 7},
+    {"complaint_type": "not_heating",          "label": "Not Heating",           "icon": "\U0001f976", "houston_pct": 5},
+    {"complaint_type": "intermittent_shutdown","label": "Intermittent Shutdown", "icon": "⚡",     "houston_pct": 5},
+    {"complaint_type": "service",              "label": "Regular Service",       "icon": "\U0001f527", "houston_pct": 15},
 ]
 
 
@@ -69,7 +79,7 @@ class SessionStartResponse(BaseModel):
 
 
 class AnswerRequest(BaseModel):
-    answer: Any = Field(..., description="Varies by input_type: str for yesno/visual_select, dict for reading/photo/multi")
+    answer: Any = Field(..., description="Varies by input_type")
 
 
 class AnswerResponse(BaseModel):
@@ -105,7 +115,6 @@ class CancelRequest(BaseModel):
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _shape_question(row) -> QuestionOut:
-    """Convert a DB row into QuestionOut."""
     options = row.options_jsonb
     if isinstance(options, str):
         options = json.loads(options)
@@ -129,24 +138,28 @@ def _shape_question(row) -> QuestionOut:
 
 def _compute_branch_key(question_row, answer) -> Optional[str]:
     """
-    For reading-type questions, evaluate the numeric value against nameplate spec
-    and return the branch key. Returns None for non-reading inputs (caller uses raw answer).
+    Determine the branch key from an answer.
+    - yesno / visual_select: raw answer string
+    - reading (single): evaluate_reading via nameplate spec
+    - photo: extract pre-computed branch_key from answer dict if present
+    - multi: extract reading_N.branch_key from first reading sub-answer;
+             fall back to None (photo grading handled in submit_answer)
+    Returns None when photo grading is needed (async, done in submit_answer).
     """
     input_type = question_row.input_type
     reading_spec = question_row.reading_spec
     if isinstance(reading_spec, str):
-        reading_spec = json.loads(reading_spec)
+        reading_spec = json.loads(reading_spec) if reading_spec else {}
 
     if input_type == "reading" and isinstance(answer, dict):
         value = answer.get("value")
-        unit = answer.get("unit", "")
         if value is None:
             return None
         rs = reading_spec or {}
         rtype = rs.get("type", "unknown")
         subtype = rs.get("subtype")
         tol = rs.get("tolerance_pct", 10)
-        spec = answer.get("nameplate_spec")  # frontend may pass spec directly
+        spec = answer.get("nameplate_spec")
         eval_result = evaluate_reading(rtype, float(value), spec, subtype, tol)
         return eval_result.get("branch_key")
 
@@ -156,11 +169,144 @@ def _compute_branch_key(question_row, answer) -> Optional[str]:
     if input_type == "visual_select":
         return str(answer)
 
+    # ── multi: extract the first reading's branch_key ─────────────────────────
+    if input_type == "multi" and isinstance(answer, dict):
+        for key in sorted(answer.keys()):
+            if key.startswith("reading_"):
+                sub = answer[key]
+                if isinstance(sub, dict):
+                    # Frontend sends branch_key in reading sub-answer
+                    bk = sub.get("branch_key")
+                    if bk:
+                        return bk
+                    # Or compute it from value + reading_spec
+                    value = sub.get("value")
+                    if value is not None:
+                        # Find matching reading spec from options_jsonb
+                        options = question_row.options_jsonb
+                        if isinstance(options, str):
+                            options = json.loads(options) if options else []
+                        reading_items = [
+                            o for o in (options or [])
+                            if isinstance(o, dict) and o.get("kind") == "reading"
+                        ]
+                        # Use first reading spec that matches by index
+                        idx = int(key.split("_")[1])
+                        if idx < len(reading_items):
+                            rs = reading_items[idx].get("spec", {})
+                            rtype = rs.get("type", "unknown")
+                            subtype = rs.get("subtype")
+                            tol = rs.get("tolerance_pct", 10)
+                            spec = sub.get("nameplate_spec")
+                            eval_result = evaluate_reading(rtype, float(value), spec, subtype, tol)
+                            bk = eval_result.get("branch_key")
+                            if bk and bk != "ok":
+                                return bk
+        # No reading or all readings ok — photo grading may apply
+        return None
+
+    # ── photo: extract pre-computed branch_key if frontend included it ─────────
+    if input_type == "photo" and isinstance(answer, dict):
+        bk = answer.get("branch_key")
+        if bk:
+            return bk
+        # No pre-computed key — photo grading needed (async, done in submit_answer)
+        return None
+
     return None
 
 
+async def _grade_single_photo(photo_url: str, ai_prompt: str) -> Optional[str]:
+    """
+    Fetch photo bytes from URL and call Gemini with the ai_prompt.
+    Returns the grade string (first word of the class list that Gemini outputs)
+    or None on any failure.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            r = await client.get(photo_url)
+            r.raise_for_status()
+            image_bytes = r.content
+
+        from services.vision import GeminiVisionService
+        vision = GeminiVisionService()
+        if not vision._initialized:
+            logger.warning("[diagnostic] Gemini not initialized, skipping photo grade")
+            return None
+
+        structured_prompt = (
+            f"{ai_prompt}\n\n"
+            "Respond with JSON only: "
+            "{\"grade\": \"<exact_class_from_the_list_above>\", \"confidence\": 0.0}"
+        )
+        result = await vision.analyze_equipment_photos(
+            image_bytes_list=[image_bytes],
+            prompt=structured_prompt,
+        )
+        grade = result.get("grade") or result.get("classification") or result.get("result")
+        if grade:
+            return str(grade).lower().strip()
+    except Exception as e:
+        logger.warning(f"[diagnostic] Photo grading failed (non-fatal): {e}")
+    return None
+
+
+async def _grade_multi_photos(question_row, answer: dict) -> Optional[str]:
+    """
+    For multi-input questions with diagnostic photos and NO readings,
+    grade each photo and use photo_branch_map from branch_logic_jsonb
+    to derive the compound branch key.
+
+    photo_branch_map structure (in branch_logic_jsonb):
+      {
+        "photo_branch_map": {
+          "<ai_grade>": "<branch_key>",
+          "_default": "<fallback_branch_key>"
+        },
+        "<branch_key>": { ... routing ... },
+        ...
+      }
+    """
+    branch_logic = question_row.branch_logic_jsonb
+    if isinstance(branch_logic, str):
+        branch_logic = json.loads(branch_logic) if branch_logic else {}
+
+    photo_branch_map = branch_logic.get("photo_branch_map")
+    if not photo_branch_map:
+        return None
+
+    # Get photo specs from options_jsonb
+    options = question_row.options_jsonb
+    if isinstance(options, str):
+        options = json.loads(options) if options else []
+
+    photo_items = [o for o in (options or []) if isinstance(o, dict) and o.get("kind") == "photo"]
+
+    for item in photo_items:
+        spec = item.get("spec", {})
+        slot_name = spec.get("slot_name", "")
+        ai_prompt = spec.get("ai_prompt")
+        if not ai_prompt:
+            continue
+
+        photo_data = answer.get(slot_name, {})
+        if not isinstance(photo_data, dict):
+            continue
+        photo_url = photo_data.get("photo_url")
+        if not photo_url:
+            continue
+
+        grade = await _grade_single_photo(photo_url, ai_prompt)
+        if grade and grade in photo_branch_map:
+            mapped = photo_branch_map[grade]
+            if mapped != "_default":
+                return mapped
+
+    # No photo matched a non-default key — use _default
+    return photo_branch_map.get("_default")
+
+
 async def _get_question(db, complaint_type: str, step_id: str):
-    """Fetch a single question row."""
     result = await db.execute(
         text("""
             SELECT step_id, step_order, question_text, hint_text, input_type,
@@ -176,7 +322,6 @@ async def _get_question(db, complaint_type: str, step_id: str):
 
 
 async def _get_first_question(db, complaint_type: str):
-    """Fetch the first question for a complaint type (lowest step_order)."""
     result = await db.execute(
         text("""
             SELECT step_id, step_order, question_text, hint_text, input_type,
@@ -208,7 +353,6 @@ async def list_complaints(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_current_user),
 ):
-    """Return available complaint types + first question preview for the complaint chip screen."""
     result = []
     for meta in COMPLAINT_META:
         first_q = await _get_first_question(db, meta["complaint_type"])
@@ -225,8 +369,6 @@ async def start_session(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_current_user),
 ):
-    """Start a new diagnostic session for an assessment + complaint type."""
-    # Verify assessment + Step Zero completed
     row = await db.execute(
         text("SELECT company_id, ocr_nameplate FROM assessments WHERE id = :id"),
         {"id": body.assessment_id},
@@ -239,12 +381,10 @@ async def start_session(
     if not assessment.ocr_nameplate:
         raise HTTPException(status_code=422, detail="step_zero_required")
 
-    # Get first question
     first_q = await _get_first_question(db, body.complaint_type)
     if not first_q:
         raise HTTPException(status_code=422, detail=f"no_questions_for_{body.complaint_type}")
 
-    # Create session
     ins = await db.execute(
         text("""
             INSERT INTO diagnostic_sessions
@@ -275,7 +415,6 @@ async def get_session(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_current_user),
 ):
-    """Get current diagnostic session state (for back-button history restore)."""
     row = await db.execute(
         text("""
             SELECT id, assessment_id, company_id, complaint_type, current_step_id,
@@ -322,7 +461,6 @@ async def submit_answer(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_current_user),
 ):
-    """Submit an answer for the current question and get back the next step or resolution."""
     # Load session
     row = await db.execute(
         text("""
@@ -338,7 +476,6 @@ async def submit_answer(
     if session.status != "active":
         raise HTTPException(status_code=422, detail="session_not_active")
 
-    # Load current question
     q_row = await _get_question(db, session.complaint_type, session.current_step_id)
     if not q_row:
         raise HTTPException(status_code=422, detail="current_question_not_found")
@@ -347,18 +484,36 @@ async def submit_answer(
     if isinstance(branch_logic, str):
         branch_logic = json.loads(branch_logic)
 
-    # Build question dict for evaluator
     question_dict = {
         "input_type": q_row.input_type,
         "reading_spec": q_row.reading_spec,
         "branch_logic_jsonb": branch_logic,
     }
 
-    # Compute branch key for reading types; raw answer for others
+    # Compute branch key (sync for yesno/visual_select/reading)
     branch_key = _compute_branch_key(q_row, body.answer)
-    routing = evaluate_branch(question_dict, body.answer, branch_key)
 
-    # If this is a reading, persist to reading_inputs
+    # ── Async photo grading when branch_key still None ─────────────────────────
+    if branch_key is None and q_row.input_type == "photo":
+        photo_spec = q_row.photo_spec
+        if isinstance(photo_spec, str):
+            photo_spec = json.loads(photo_spec) if photo_spec else {}
+        ai_prompt = (photo_spec or {}).get("ai_prompt")
+        photo_url = (body.answer or {}).get("photo_url") if isinstance(body.answer, dict) else None
+        if ai_prompt and photo_url:
+            branch_key = await _grade_single_photo(photo_url, ai_prompt)
+            # Store AI grade back into answer for logging
+            if branch_key and isinstance(body.answer, dict):
+                body.answer["ai_grade"] = branch_key
+
+    if branch_key is None and q_row.input_type == "multi":
+        if isinstance(body.answer, dict):
+            # Check if it's a photo-only multi (no readings, has diagnostic photos)
+            has_reading = any(k.startswith("reading_") for k in body.answer)
+            if not has_reading:
+                branch_key = await _grade_multi_photos(q_row, body.answer)
+
+    # ── Persist reading_inputs rows for reading/multi answers ─────────────────
     if q_row.input_type == "reading" and isinstance(body.answer, dict) and "value" in body.answer:
         reading_spec = q_row.reading_spec
         if isinstance(reading_spec, str):
@@ -398,7 +553,7 @@ async def submit_answer(
             },
         )
 
-    # Update session answers + resolution_path
+    # Update session answers + path
     answers = session.answers_jsonb or {}
     if isinstance(answers, str):
         answers = json.loads(answers)
@@ -410,7 +565,9 @@ async def submit_answer(
     if q_row.step_id not in resolution_path:
         resolution_path.append(q_row.step_id)
 
-    # ── Route based on evaluator outcome ──────────────────────────────────────
+    routing = evaluate_branch(question_dict, body.answer, branch_key)
+
+    # ── Route ─────────────────────────────────────────────────────────────────
 
     if routing["kind"] == "phase_2_gate":
         await db.execute(
@@ -421,11 +578,7 @@ async def submit_answer(
                     status = 'phase_2_pending'
                 WHERE id = :id
             """),
-            {
-                "answers": json.dumps(answers),
-                "path": json.dumps(resolution_path),
-                "id": session_id,
-            },
+            {"answers": json.dumps(answers), "path": json.dumps(resolution_path), "id": session_id},
         )
         await db.commit()
         return AnswerResponse(
@@ -448,12 +601,8 @@ async def submit_answer(
                     phase_used = 'p1'
                 WHERE id = :id
             """),
-            {
-                "answers": json.dumps(answers),
-                "path": json.dumps(resolution_path),
-                "card_id": card_id,
-                "id": session_id,
-            },
+            {"answers": json.dumps(answers), "path": json.dumps(resolution_path),
+             "card_id": card_id, "id": session_id},
         )
         await db.commit()
         return AnswerResponse(
@@ -475,18 +624,13 @@ async def submit_answer(
                     current_step_id = :step_id
                 WHERE id = :id
             """),
-            {
-                "answers": json.dumps(answers),
-                "path": json.dumps(resolution_path),
-                "step_id": routing["next_step_id"],
-                "id": session_id,
-            },
+            {"answers": json.dumps(answers), "path": json.dumps(resolution_path),
+             "step_id": routing["next_step_id"], "id": session_id},
         )
         await db.commit()
         return AnswerResponse(resolved=False, next_step=_shape_question(next_q))
 
     if routing["kind"] == "service_step":
-        # Tab S sequential — always continues
         finding = routing.get("finding")
         next_step_id = routing.get("next_step_id")
         next_q = None
@@ -495,7 +639,6 @@ async def submit_answer(
             if next_q_row:
                 next_q = _shape_question(next_q_row)
 
-        # Append finding to service_findings array
         if finding:
             await db.execute(
                 text("""
@@ -506,13 +649,9 @@ async def submit_answer(
                         current_step_id = COALESCE(:next_step, current_step_id)
                     WHERE id = :id
                 """),
-                {
-                    "finding": json.dumps([{**finding, "step_id": q_row.step_id}]),
-                    "answers": json.dumps(answers),
-                    "path": json.dumps(resolution_path),
-                    "next_step": next_step_id,
-                    "id": session_id,
-                },
+                {"finding": json.dumps([{**finding, "step_id": q_row.step_id}]),
+                 "answers": json.dumps(answers), "path": json.dumps(resolution_path),
+                 "next_step": next_step_id, "id": session_id},
             )
         else:
             await db.execute(
@@ -523,16 +662,11 @@ async def submit_answer(
                         current_step_id = COALESCE(:next_step, current_step_id)
                     WHERE id = :id
                 """),
-                {
-                    "answers": json.dumps(answers),
-                    "path": json.dumps(resolution_path),
-                    "next_step": next_step_id,
-                    "id": session_id,
-                },
+                {"answers": json.dumps(answers), "path": json.dumps(resolution_path),
+                 "next_step": next_step_id, "id": session_id},
             )
         await db.commit()
 
-        # If no next_step, service is complete
         if not next_step_id:
             await db.execute(
                 text("UPDATE diagnostic_sessions SET status='resolved' WHERE id=:id"),
@@ -557,11 +691,7 @@ async def submit_answer(
                 phase_used = 'tj'
             WHERE id = :id
         """),
-        {
-            "answers": json.dumps(answers),
-            "path": json.dumps(resolution_path),
-            "id": session_id,
-        },
+        {"answers": json.dumps(answers), "path": json.dumps(resolution_path), "id": session_id},
     )
     await db.commit()
     return AnswerResponse(
@@ -577,7 +707,6 @@ async def list_questions(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_current_user),
 ):
-    """Full ordered question list for a complaint type (debug / training use)."""
     result = await db.execute(
         text("""
             SELECT step_id, step_order, question_text, hint_text, input_type,
@@ -591,13 +720,8 @@ async def list_questions(
     )
     rows = result.fetchall()
     return [
-        {
-            "step_id": r.step_id,
-            "step_order": r.step_order,
-            "question_text": r.question_text,
-            "hint_text": r.hint_text,
-            "input_type": r.input_type,
-        }
+        {"step_id": r.step_id, "step_order": r.step_order, "question_text": r.question_text,
+         "hint_text": r.hint_text, "input_type": r.input_type}
         for r in rows
     ]
 
@@ -609,7 +733,6 @@ async def cancel_session(
     db: AsyncSession = Depends(get_db),
     auth: AuthContext = Depends(get_current_user),
 ):
-    """Cancel / abandon a diagnostic session."""
     row = await db.execute(
         text("SELECT company_id FROM diagnostic_sessions WHERE id = :id"),
         {"id": session_id},
@@ -625,10 +748,7 @@ async def cancel_session(
                 answers_jsonb = answers_jsonb || :note::jsonb
             WHERE id = :id
         """),
-        {
-            "note": json.dumps({"_cancel_reason": body.reason}),
-            "id": session_id,
-        },
+        {"note": json.dumps({"_cancel_reason": body.reason}), "id": session_id},
     )
     await db.commit()
     return {"ok": True}
