@@ -154,6 +154,12 @@ def _compute_branch_key(question_row, answer) -> Optional[str]:
         reading_spec = json.loads(reading_spec) if reading_spec else {}
 
     if input_type == "reading" and isinstance(answer, dict):
+        # Frontend pre-computes branch_key locally (has OCR nameplate from assessment).
+        # Use it directly — same pattern as photo type. Fall back to server-side
+        # evaluation only when nameplate_spec is explicitly provided in the answer.
+        pre_bk = answer.get("branch_key")
+        if pre_bk:
+            return pre_bk
         value = answer.get("value")
         if value is None:
             return None
