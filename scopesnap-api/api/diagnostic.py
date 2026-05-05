@@ -75,7 +75,9 @@ class SessionStartRequest(BaseModel):
 
 class SessionStartResponse(BaseModel):
     session_id: str
-    current_step: QuestionOut
+    current_step: Optional[QuestionOut] = None
+    phase_2_gate: bool = False
+    gate_continuation: Optional[dict] = None
 
 
 class AnswerRequest(BaseModel):
@@ -403,6 +405,82 @@ async def start_session(
     await db.commit()
     session_id = str(ins.fetchone().id)
 
+    # ── Auto-advance: handle input_type='auto' (not_heating q1 reads OCR system_type) ─
+    if first_q.input_type == "auto":
+        ocr = assessment.ocr_nameplate
+        if isinstance(ocr, str):
+            try:
+                import json as _json
+                ocr = _json.loads(ocr)
+            except Exception:
+                ocr = {}
+        auto_value = (ocr or {}).get("system_type", "unknown")
+
+        branch_logic_auto = first_q.branch_logic_jsonb
+        if isinstance(branch_logic_auto, str):
+            branch_logic_auto = json.loads(branch_logic_auto) if branch_logic_auto else {}
+
+        auto_q_dict = {
+            "input_type": "auto",
+            "reading_spec": None,
+            "branch_logic_jsonb": branch_logic_auto,
+        }
+        auto_routing = evaluate_branch(auto_q_dict, auto_value, auto_value)
+
+        # Persist the auto-answered first step
+        await db.execute(
+            text("""
+                UPDATE diagnostic_sessions
+                SET answers_jsonb = jsonb_set(
+                        COALESCE(answers_jsonb, '{}'::jsonb),
+                        :path, :val::jsonb
+                    )
+                WHERE id = :id
+            """),
+            {"path": json.dumps([first_q.step_id]), "val": json.dumps(auto_value), "id": session_id},
+        )
+
+        if auto_routing["kind"] == "next_step":
+            next_q = await _get_question(db, body.complaint_type, auto_routing["next_step_id"])
+            if next_q:
+                await db.execute(
+                    text("UPDATE diagnostic_sessions SET current_step_id = :step_id WHERE id = :id"),
+                    {"step_id": auto_routing["next_step_id"], "id": session_id},
+                )
+                await db.commit()
+                return SessionStartResponse(
+                    session_id=session_id,
+                    current_step=_shape_question(next_q),
+                )
+
+        elif auto_routing["kind"] == "phase_2_gate":
+            await db.execute(
+                text("UPDATE diagnostic_sessions SET status = 'phase_2_pending', current_step_id = NULL WHERE id = :id"),
+                {"id": session_id},
+            )
+            await db.commit()
+            return SessionStartResponse(
+                session_id=session_id,
+                current_step=None,
+                phase_2_gate=True,
+                gate_continuation=auto_routing.get("continuation", {}),
+            )
+
+        elif auto_routing["kind"] == "escalate":
+            await db.execute(
+                text("UPDATE diagnostic_sessions SET status = 'escalated' WHERE id = :id"),
+                {"id": session_id},
+            )
+            await db.commit()
+            return SessionStartResponse(
+                session_id=session_id,
+                current_step=None,
+                gate_continuation={"reason": auto_routing.get("reason", "auto_escalated")},
+            )
+
+        await db.commit()
+        # fallback: show the auto question itself (shouldn't normally reach here)
+
     return SessionStartResponse(
         session_id=session_id,
         current_step=_shape_question(first_q),
@@ -564,6 +642,140 @@ async def submit_answer(
         resolution_path = json.loads(resolution_path)
     if q_row.step_id not in resolution_path:
         resolution_path.append(q_row.step_id)
+
+    # ── extract_then_lookup: error-code AI output → DB lookup → route by fault_category ──
+    if (branch_key is not None
+            and isinstance(branch_logic, dict)
+            and "extract_then_lookup" in branch_logic):
+        etl = branch_logic["extract_then_lookup"]
+        after_map = etl.get("after", {})
+
+        # Fetch brand from assessment OCR nameplate
+        asmt_row = await db.execute(
+            text("SELECT ocr_nameplate FROM assessments WHERE id = :id"),
+            {"id": str(session.assessment_id)},
+        )
+        asmt = asmt_row.fetchone()
+        ocr_np = asmt.ocr_nameplate if asmt else {}
+        if isinstance(ocr_np, str):
+            try:
+                ocr_np = json.loads(ocr_np)
+            except Exception:
+                ocr_np = {}
+        brand = (ocr_np or {}).get("brand", "")
+        code_text = branch_key  # AI grade = extracted code string
+
+        # Annotate answer with extracted data
+        if isinstance(body.answer, dict):
+            body.answer["extracted_code"] = code_text
+
+        # Look up error code in DB
+        ec_row = await db.execute(
+            text("""
+                SELECT fault_category, decision_tree_card
+                FROM error_codes
+                WHERE brand ILIKE :brand AND code ILIKE :code
+                LIMIT 1
+            """),
+            {"brand": brand, "code": code_text},
+        )
+        ec = ec_row.fetchone()
+
+        if ec and isinstance(body.answer, dict):
+            body.answer["fault_category"] = ec.fault_category
+
+        # Persist answers + path now (early returns below won't hit the normal update)
+        _answers_etl = {**answers, q_row.step_id: body.answer}
+        await db.execute(
+            text("""
+                UPDATE diagnostic_sessions
+                SET answers_jsonb = :a::jsonb, resolution_path = :p::jsonb
+                WHERE id = :id
+            """),
+            {"a": json.dumps(_answers_etl), "p": json.dumps(resolution_path), "id": session_id},
+        )
+
+        def _etl_next(rule_dict, step_id_key="next_step_id"):
+            return rule_dict.get(step_id_key)
+
+        if ec:
+            # Direct card resolution via decision_tree_card
+            if ec.decision_tree_card:
+                _card_id = int(ec.decision_tree_card)
+                _card_name = await _get_fault_card_name(db, _card_id)
+                await db.execute(
+                    text("""
+                        UPDATE diagnostic_sessions
+                        SET resolved_card_id = :cid, resolved_at = now(),
+                            status = 'resolved', phase_used = 'p1'
+                        WHERE id = :id
+                    """),
+                    {"cid": _card_id, "id": session_id},
+                )
+                await db.commit()
+                return AnswerResponse(resolved=True, card_id=_card_id, card_name=_card_name)
+
+            # Route by fault_category → after_map
+            fc = ec.fault_category or "nuisance_or_unknown"
+            after_rule = after_map.get(fc) or after_map.get("nuisance_or_unknown", {})
+
+            if after_rule.get("phase_2_gate"):
+                await db.execute(
+                    text("UPDATE diagnostic_sessions SET status = 'phase_2_pending' WHERE id = :id"),
+                    {"id": session_id},
+                )
+                await db.commit()
+                return AnswerResponse(
+                    resolved=False,
+                    phase_2_gate=True,
+                    gate_continuation=after_rule.get("after", {}),
+                )
+
+            if "resolve_card" in after_rule:
+                _card_id = after_rule["resolve_card"]
+                _card_name = await _get_fault_card_name(db, _card_id)
+                await db.execute(
+                    text("""
+                        UPDATE diagnostic_sessions
+                        SET resolved_card_id = :cid, resolved_at = now(),
+                            status = 'resolved', phase_used = 'p1'
+                        WHERE id = :id
+                    """),
+                    {"cid": _card_id, "id": session_id},
+                )
+                await db.commit()
+                return AnswerResponse(
+                    resolved=True, card_id=_card_id, card_name=_card_name,
+                    photo_slots=after_rule.get("photo_slots", []),
+                )
+
+            if "next_step_id" in after_rule:
+                _nxt_id = after_rule["next_step_id"]
+                _nxt_q = await _get_question(db, session.complaint_type, _nxt_id)
+                if _nxt_q:
+                    await db.execute(
+                        text("UPDATE diagnostic_sessions SET current_step_id = :sid WHERE id = :id"),
+                        {"sid": _nxt_id, "id": session_id},
+                    )
+                    await db.commit()
+                    return AnswerResponse(resolved=False, next_step=_shape_question(_nxt_q))
+
+        else:
+            # Code not found in DB → nuisance/unknown fallback
+            fallback = after_map.get("nuisance_or_unknown", {})
+            if "next_step_id" in fallback:
+                _nxt_id = fallback["next_step_id"]
+                _nxt_q = await _get_question(db, session.complaint_type, _nxt_id)
+                if _nxt_q:
+                    await db.execute(
+                        text("UPDATE diagnostic_sessions SET current_step_id = :sid WHERE id = :id"),
+                        {"sid": _nxt_id, "id": session_id},
+                    )
+                    await db.commit()
+                    return AnswerResponse(resolved=False, next_step=_shape_question(_nxt_q))
+
+        # Fall through: let normal routing handle it (branch_key already set)
+        answers = _answers_etl  # use the updated answers dict for the normal path
 
     routing = evaluate_branch(question_dict, body.answer, branch_key)
 

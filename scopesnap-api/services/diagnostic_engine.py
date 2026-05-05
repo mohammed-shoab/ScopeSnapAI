@@ -4,6 +4,9 @@ SnapAI Phase 3 — Diagnostic Branch Evaluator (pure Python, no DB calls)
 Imported by api/diagnostic.py to evaluate reading measurements and
 branch_logic_jsonb rules. All logic mirrors Section 1.3 of
 SnapAI_Phase3_Cowork_Instructions.md (the universal reading comparison rules).
+
+WS-G3/H3/I3/J3/K3 update: added temp_delta reading type for Tab H Path B
+terminal IR thermometer checks.
 """
 
 from typing import Optional
@@ -78,6 +81,12 @@ def evaluate_reading(
                 f"Line voltage {actual_value:.0f}V is {pct_delta:.0f}% from nominal 230V", "phase_loss")
         return _result("OK", True, None, "power_passes_normal")
 
+    # ── Voltage (ignitor) ─────────────────────────────────────────────────────
+    if rt == "voltage" and subtype and "ignitor" in subtype.lower():
+        if actual_value < 50:
+            return _result("CRITICAL", False, f"No voltage at ignitor: {actual_value:.0f}V", "no_voltage")
+        return _result("OK", True, None, "ok")
+
     # ── Voltage drop (across terminal / wire) ─────────────────────────────────
     if rt == "voltage_drop":
         if actual_value < 0.5:
@@ -98,14 +107,27 @@ def evaluate_reading(
         return _result("HIGH", False,
             f"Delta-T {actual_value:.1f}F above 22F — possible over-cooling / low airflow", "delta_t_high")
 
-    # ── Ohms (ignitor) ─────────────────────────────────────────────────────────
-    if rt == "ohms" and subtype in (None, "ignitor"):
+    # ── Temperature delta (terminal vs ambient — Tab H Path B) ───────────────
+    if rt == "temp_delta":
+        # Section 1.3: >10F delta on any terminal = suspect loose connection
+        threshold = 10.0
+        if actual_value > threshold:
+            return _result("HIGH", False,
+                f"Terminal delta {actual_value:.1f}F exceeds {threshold:.0f}F threshold — suspect loose terminal",
+                "max_delta_over_10F")
+        return _result("OK", True, None, "all_within_10F")
+
+    # ── Ohms (ignitor / sensor) ────────────────────────────────────────────────
+    if rt == "ohms":
         if actual_value > 1e6 or actual_value == 0:
-            return _result("CRITICAL", False, "Ignitor reads open — cracked or broken", "open")
-        if 50 <= actual_value <= 80:
-            return _result("OK", True, None, "ok")
-        return _result("HIGH", False,
-            f"Ignitor resistance {actual_value:.0f}ohm outside 50-80ohm healthy range", "out_of_spec")
+            return _result("CRITICAL", False, "Reads open circuit — element cracked or broken", "open")
+        if subtype and "ignitor" in subtype.lower():
+            if 50 <= actual_value <= 80:
+                return _result("OK", True, None, "ok")
+            return _result("HIGH", False,
+                f"Ignitor resistance {actual_value:.0f}ohm outside 50-80ohm healthy range", "out_of_spec")
+        # Generic ohm check — sensor/component
+        return _result("OK", True, None, "ok")
 
     # ── Micro-amps (flame sensor) ─────────────────────────────────────────────
     if rt == "micro_amps":
