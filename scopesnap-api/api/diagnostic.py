@@ -353,7 +353,7 @@ async def _get_first_question(db, complaint_type: str):
 
 async def _get_fault_card_name(db, card_id: int) -> str:
     row = await db.execute(
-        text("SELECT name FROM fault_cards WHERE card_id = :id"),
+        text("SELECT card_name AS name FROM fault_cards WHERE card_id = :id"),
         {"id": card_id},
     )
     r = row.fetchone()
