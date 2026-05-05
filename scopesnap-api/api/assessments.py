@@ -24,7 +24,7 @@ from services.storage import get_storage
 from services.vision import get_vision_service, VisionAnalysisError
 from prompts.equipment_analysis import EQUIPMENT_ANALYSIS_PROMPT
 from config import get_settings
-from rate_limit import limiter
+from main import limiter
 
 settings = get_settings()
 router = APIRouter(prefix="/api/assessments", tags=["assessments"])
@@ -105,7 +105,8 @@ def compress_image(image_bytes: bytes, max_width: int = 1200) -> tuple[bytes, st
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_assessment(
-    photos: List[UploadFile] = File(..., description="1-5 HVAC equipment photos"),
+    photos: Optional[List[UploadFile]] = File(None, description="1-5 HVAC equipment photos (optional — may be skipped for complaint-only assessments)"),
+    complaint_type: Optional[str] = Form(None, description="Complaint type selected by the tech (e.g. 'service', 'not_cooling')"),
     property_id: Optional[str] = Form(None),
     address: Optional[str] = Form(None),
     property_address: Optional[str] = Form(None),  # Alias used by mobile app
@@ -121,24 +122,21 @@ async def create_assessment(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Upload 1-5 equipment photos → create assessment record → return assessment_id.
+    Create an assessment record. Photos are optional — a tech may skip the nameplate
+    scan and go straight to complaint selection, which is a valid workflow.
 
-    - Accepts 1-5 images (JPEG, PNG, HEIC, WEBP)
-    - Compresses to 1200px wide server-side (Pillow)
-    - Saves to LocalStorage (dev) or R2 (prod)
-    - Creates assessment record in DB with status='pending'
-    - Returns assessment_id for subsequent /analyze call
+    - If photos provided: compresses and uploads them, creates assessment with status='pending'
+    - If no photos: creates assessment with status='no_photos' (can still run diagnostic flow)
+    - Returns assessment_id for subsequent /analyze or /diagnostic calls
     """
-    # Validate photo count
-    if not photos:
-        raise HTTPException(status_code=400, detail="At least 1 photo required.")
-    if len(photos) > 10:
+    # Validate photo count only when photos are actually provided
+    if photos and len(photos) > 10:
         raise HTTPException(status_code=400, detail="Maximum 10 photos per assessment.")
 
-    # Validate file types and size (BUG-FIX: enforce MIME + 10MB limit)
+    # Validate file types and size (only when photos provided)
     ALLOWED_MIME = {"image/jpeg", "image/jpg", "image/png", "image/heic", "image/heif", "image/webp"}
     MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
-    for photo in photos:
+    for photo in (photos or []):
         ct = (photo.content_type or "").lower()
         if ct and ct not in ALLOWED_MIME:
             raise HTTPException(
@@ -230,28 +228,29 @@ async def create_assessment(
             db.add(prop)
             await db.flush()
 
-    # ── Upload photos ────────────────────────────────────────────────────────
-    storage = get_storage()
+    # ── Upload photos (only if provided) ────────────────────────────────────
     photo_urls = []
     photo_records = []
     assessment_id = str(uuid.uuid4())
 
-    for i, photo_file in enumerate(photos):
-        raw_bytes = await photo_file.read()
+    if photos:
+        storage = get_storage()
+        for i, photo_file in enumerate(photos):
+            raw_bytes = await photo_file.read()
 
-        # Compress
-        compressed, mime_type = compress_image(raw_bytes)
+            # Compress
+            compressed, mime_type = compress_image(raw_bytes)
 
-        # Build storage path: assessments/{assessment_id}/photo_{i}.jpg
-        storage_path = f"assessments/{assessment_id}/photo_{i}.jpg"
-        url = await storage.upload(compressed, storage_path)
+            # Build storage path: assessments/{assessment_id}/photo_{i}.jpg
+            storage_path = f"assessments/{assessment_id}/photo_{i}.jpg"
+            url = await storage.upload(compressed, storage_path)
 
-        photo_urls.append(url)
-        photo_records.append({
-            "url": url,
-            "sort_order": i,
-            "original_name": photo_file.filename or f"photo_{i}.jpg",
-        })
+            photo_urls.append(url)
+            photo_records.append({
+                "url": url,
+                "sort_order": i,
+                "original_name": photo_file.filename or f"photo_{i}.jpg",
+            })
 
     # ── Parse sensor readings if provided ───────────────────────────────────
     parsed_sensor_readings = None
@@ -262,20 +261,24 @@ async def create_assessment(
             print(f"[Assessments] Could not parse sensor_readings_json: {_se}")
 
     # ── Create assessment record ─────────────────────────────────────────────
+    assessment_status = "pending" if photo_urls else "no_photos"
     assessment = Assessment(
         id=assessment_id,
         company_id=auth.company_id,
         user_id=auth.user_id,
         property_id=prop.id if prop else None,
         photo_urls=photo_urls,
-        status="pending",
+        status=assessment_status,
         tech_overrides={},
     )
-    # Store sensor readings in tech_overrides for use in /analyze
+    # Store complaint_type and sensor readings in tech_overrides
+    overrides: dict = {}
+    if complaint_type:
+        overrides["complaint_type"] = complaint_type
     if parsed_sensor_readings:
-        assessment.tech_overrides = {
-            "_sensor_readings": parsed_sensor_readings.model_dump(exclude_none=True)
-        }
+        overrides["_sensor_readings"] = parsed_sensor_readings.model_dump(exclude_none=True)
+    if overrides:
+        assessment.tech_overrides = overrides
     db.add(assessment)
 
     # Create assessment_photos records
@@ -292,7 +295,7 @@ async def create_assessment(
 
     return {
         "id": assessment_id,
-        "status": "pending",
+        "status": assessment_status,
         "photo_count": len(photo_urls),
         "photo_urls": photo_urls,
         "property_id": prop.id if prop else None,
@@ -839,14 +842,4 @@ async def list_assessments(
                 "status": a.status,
                 "photo_count": len(a.photo_urls) if a.photo_urls else 0,
                 "property_id": a.property_id,
-                "brand": a.ai_equipment_id.get("brand") if a.ai_equipment_id else None,
-                "model": a.ai_equipment_id.get("model") if a.ai_equipment_id else None,
-                "condition": a.ai_condition.get("overall") if a.ai_condition else None,
-                "created_at": a.created_at.isoformat() if a.created_at else None,
-            }
-            for a in assessments
-        ],
-        "total": len(assessments),
-        "limit": limit,
-        "offset": offset,
-    }
+                "brand": a.ai_equip
