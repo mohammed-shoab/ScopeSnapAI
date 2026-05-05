@@ -24,7 +24,7 @@ from services.storage import get_storage
 from services.vision import get_vision_service, VisionAnalysisError
 from prompts.equipment_analysis import EQUIPMENT_ANALYSIS_PROMPT
 from config import get_settings
-from main import limiter
+from rate_limit import limiter
 
 settings = get_settings()
 router = APIRouter(prefix="/api/assessments", tags=["assessments"])
@@ -272,7 +272,7 @@ async def create_assessment(
         tech_overrides={},
     )
     # Store complaint_type and sensor readings in tech_overrides
-    overrides: dict = {}
+    overrides = {}
     if complaint_type:
         overrides["complaint_type"] = complaint_type
     if parsed_sensor_readings:
@@ -842,4 +842,14 @@ async def list_assessments(
                 "status": a.status,
                 "photo_count": len(a.photo_urls) if a.photo_urls else 0,
                 "property_id": a.property_id,
-                "brand": a.ai_equip
+                "brand": a.ai_equipment_id.get("brand") if a.ai_equipment_id else None,
+                "model": a.ai_equipment_id.get("model") if a.ai_equipment_id else None,
+                "condition": a.ai_condition.get("overall") if a.ai_condition else None,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+            }
+            for a in assessments
+        ],
+        "total": len(assessments),
+        "limit": limit,
+        "offset": offset,
+    }
