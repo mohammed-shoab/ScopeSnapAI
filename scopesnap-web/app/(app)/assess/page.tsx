@@ -18,6 +18,7 @@ import StepZeroPanel from "@/components/StepZeroPanel";
 import DiagnosticFlow, { GateContinuation, AnswerRecord } from "@/components/diagnostic/DiagnosticFlow";
 import FaultCardResult from "@/components/diagnostic/FaultCardResult";
 import JobConfirmationCard, { FaultCardOption } from "@/components/diagnostic/JobConfirmationCard";
+import ServiceChecklist, { ServiceEstimateResult } from "@/components/diagnostic/ServiceChecklist";
 import { PhotoSlotSpec, PhotoResult } from "@/components/diagnostic/PhotoSlot";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
@@ -27,6 +28,8 @@ type Phase =
   | "step-zero"
   | "complaint"
   | "diagnostic"
+  | "service-checklist"
+  | "service-complete"
   | "phase2-gate"
   | "evidence"
   | "estimating"
@@ -116,6 +119,7 @@ function AssessPageInner() {
   const [pendingCount, setPendingCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [faultCards, setFaultCards] = useState<FaultCardOption[]>([]);
+  const [serviceResult, setServiceResult] = useState<ServiceEstimateResult | null>(null);
 
   // ── Confirm mode: URL ?confirm=1&assessment_id=X ───────────────────────────
   useEffect(() => {
@@ -208,7 +212,7 @@ function AssessPageInner() {
       const data = await r.json();
       setAssessmentId(data.id);
       try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
-      setPhase("diagnostic");
+      setPhase(complaintId === "service" ? "service-checklist" : "diagnostic");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to start assessment");
     } finally {
@@ -482,6 +486,116 @@ function AssessPageInner() {
             </div>
           )}
         </div>
+      </div>
+    );
+  }
+
+  // ── service-checklist: Tab S regular service flow ────────────────────────────
+  if (phase === "service-checklist" && assessmentId) {
+    return (
+      <div className="max-w-lg mx-auto px-4 pb-6 pt-4" style={{ background: "#0f1117", minHeight: "100vh" }}>
+        <div className="mb-4 flex items-center gap-3">
+          <button
+            onClick={() => setPhase("complaint")}
+            className="text-sm font-medium"
+            style={{ color: "#4a5568" }}
+          >
+            &#x2190; Back
+          </button>
+          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "#7a8299" }}>
+            SERVICE / TUNE-UP
+          </p>
+        </div>
+        <ServiceChecklist
+          assessmentId={assessmentId}
+          authHeaders={resolvedHeaders}
+          ocrNameplate={ocrResult}
+          onComplete={(result, _sid) => {
+            setServiceResult(result);
+            setPhase("service-complete");
+          }}
+          onCancel={() => setPhase("complaint")}
+        />
+      </div>
+    );
+  }
+
+  // ── service-complete: show service estimate summary ────────────────────────
+  if (phase === "service-complete" && serviceResult) {
+    const allItems = [...serviceResult.base_items, ...serviceResult.add_ons];
+    return (
+      <div className="max-w-lg mx-auto px-4 pb-6 pt-4" style={{ background: "#0f1117", minHeight: "100vh" }}>
+        <div className="mb-6 flex items-center justify-between">
+          <button
+            onClick={() => router.push("/assessments")}
+            className="text-sm font-medium"
+            style={{ color: "#4a5568" }}
+          >
+            &#x2190; Dashboard
+          </button>
+          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "#1abc9c" }}>
+            Service Complete
+          </p>
+        </div>
+
+        {/* Totals */}
+        <div className="rounded-2xl p-5 mb-4 flex flex-col gap-1"
+          style={{ background: "#071a14", border: "1px solid #1a3a30" }}>
+          <p className="text-xs font-mono font-bold uppercase tracking-widest mb-2" style={{ color: "#2a6a5a" }}>
+            Service Estimate
+          </p>
+          <div className="flex items-end justify-between">
+            <p className="text-4xl font-extrabold text-white">
+              ${serviceResult.total_typical.toLocaleString()}
+            </p>
+            <p className="text-sm font-semibold pb-1" style={{ color: "#4a8a6a" }}>
+              ${serviceResult.total_min.toLocaleString()}–${serviceResult.total_max.toLocaleString()}
+            </p>
+          </div>
+          <p className="text-xs mt-1" style={{ color: "#4a8a6a" }}>
+            Includes {Math.round(serviceResult.markup_pct)}% markup &bull; {serviceResult.findings_count} item{serviceResult.findings_count !== 1 ? "s" : ""} inspected
+          </p>
+        </div>
+
+        {/* Line items */}
+        <div className="rounded-2xl overflow-hidden mb-4" style={{ background: "#0d1f1a", border: "1px solid #1a3a30" }}>
+          <p className="text-xs font-mono font-bold uppercase tracking-widest px-4 py-3" style={{ color: "#2a6a5a", borderBottom: "1px solid #1a3a30" }}>
+            Services Performed
+          </p>
+          {allItems.map((item, i) => (
+            <div key={i} className="flex items-center justify-between px-4 py-3"
+              style={{ borderBottom: i < allItems.length - 1 ? "1px solid #111e19" : "none" }}>
+              <span className="text-sm text-white flex-1 pr-2">{item.description}</span>
+              <span className="text-sm font-semibold font-mono flex-shrink-0" style={{ color: "#1abc9c" }}>
+                ${item.amount_min}–${item.amount_max}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Flags */}
+        {serviceResult.flags.length > 0 && (
+          <div className="rounded-2xl p-4 mb-4 flex flex-col gap-2"
+            style={{ background: "rgba(230,126,34,0.08)", border: "1px solid rgba(230,126,34,0.3)" }}>
+            <p className="text-xs font-mono font-bold uppercase tracking-widest" style={{ color: "#e67e22" }}>
+              Flags / Follow-Ups
+            </p>
+            {serviceResult.flags.map((f, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="text-sm mt-0.5">&#x26A0;</span>
+                <span className="text-sm" style={{ color: "#e67e22" }}>{f.description}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          onClick={() => router.push("/assessments")}
+          className="w-full py-4 rounded-2xl font-bold text-sm"
+          style={{ background: "#1abc9c", color: "#071a14" }}
+        >
+          Done — Back to Dashboard
+        </button>
       </div>
     );
   }

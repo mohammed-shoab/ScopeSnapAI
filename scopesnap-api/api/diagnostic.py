@@ -380,9 +380,7 @@ async def start_session(
         raise HTTPException(status_code=404, detail="assessment_not_found")
     if str(assessment.company_id) != str(auth.company_id):
         raise HTTPException(status_code=404, detail="assessment_not_found")
-    if not assessment.ocr_nameplate:
-        raise HTTPException(status_code=422, detail="step_zero_required")
-
+    # ocr_nameplate is optional — Step Zero scan can be skipped
     first_q = await _get_first_question(db, body.complaint_type)
     if not first_q:
         raise HTTPException(status_code=422, detail=f"no_questions_for_{body.complaint_type}")
