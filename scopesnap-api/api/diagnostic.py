@@ -431,7 +431,7 @@ async def start_session(
                 UPDATE diagnostic_sessions
                 SET answers_jsonb = jsonb_set(
                         COALESCE(answers_jsonb, '{}'::jsonb),
-                        :path, :val::jsonb
+                        :path, CAST(:val AS jsonb)
                     )
                 WHERE id = :id
             """),
@@ -687,7 +687,7 @@ async def submit_answer(
         await db.execute(
             text("""
                 UPDATE diagnostic_sessions
-                SET answers_jsonb = :a::jsonb, resolution_path = :p::jsonb
+                SET answers_jsonb = CAST(:a AS jsonb), resolution_path = CAST(:p AS jsonb)
                 WHERE id = :id
             """),
             {"a": json.dumps(_answers_etl), "p": json.dumps(resolution_path), "id": session_id},
@@ -783,8 +783,8 @@ async def submit_answer(
         await db.execute(
             text("""
                 UPDATE diagnostic_sessions
-                SET answers_jsonb = :answers::jsonb,
-                    resolution_path = :path::jsonb,
+                SET answers_jsonb = CAST(:answers AS jsonb),
+                    resolution_path = CAST(:path AS jsonb),
                     status = 'phase_2_pending'
                 WHERE id = :id
             """),
@@ -803,8 +803,8 @@ async def submit_answer(
         await db.execute(
             text("""
                 UPDATE diagnostic_sessions
-                SET answers_jsonb = :answers::jsonb,
-                    resolution_path = :path::jsonb,
+                SET answers_jsonb = CAST(:answers AS jsonb),
+                    resolution_path = CAST(:path AS jsonb),
                     resolved_card_id = :card_id,
                     resolved_at = now(),
                     status = 'resolved',
@@ -829,8 +829,8 @@ async def submit_answer(
         await db.execute(
             text("""
                 UPDATE diagnostic_sessions
-                SET answers_jsonb = :answers::jsonb,
-                    resolution_path = :path::jsonb,
+                SET answers_jsonb = CAST(:answers AS jsonb),
+                    resolution_path = CAST(:path AS jsonb),
                     current_step_id = :step_id
                 WHERE id = :id
             """),
@@ -853,9 +853,9 @@ async def submit_answer(
             await db.execute(
                 text("""
                     UPDATE diagnostic_sessions
-                    SET service_findings = service_findings || :finding::jsonb,
-                        answers_jsonb = :answers::jsonb,
-                        resolution_path = :path::jsonb,
+                    SET service_findings = service_findings || CAST(:finding AS jsonb),
+                        answers_jsonb = CAST(:answers AS jsonb),
+                        resolution_path = CAST(:path AS jsonb),
                         current_step_id = COALESCE(:next_step, current_step_id)
                     WHERE id = :id
                 """),
@@ -867,8 +867,8 @@ async def submit_answer(
             await db.execute(
                 text("""
                     UPDATE diagnostic_sessions
-                    SET answers_jsonb = :answers::jsonb,
-                        resolution_path = :path::jsonb,
+                    SET answers_jsonb = CAST(:answers AS jsonb),
+                        resolution_path = CAST(:path AS jsonb),
                         current_step_id = COALESCE(:next_step, current_step_id)
                     WHERE id = :id
                 """),
@@ -895,8 +895,8 @@ async def submit_answer(
     await db.execute(
         text("""
             UPDATE diagnostic_sessions
-            SET answers_jsonb = :answers::jsonb,
-                resolution_path = :path::jsonb,
+            SET answers_jsonb = CAST(:answers AS jsonb),
+                resolution_path = CAST(:path AS jsonb),
                 status = 'escalated',
                 phase_used = 'tj'
             WHERE id = :id
@@ -955,7 +955,7 @@ async def cancel_session(
         text("""
             UPDATE diagnostic_sessions
             SET status = 'cancelled',
-                answers_jsonb = answers_jsonb || :note::jsonb
+                answers_jsonb = answers_jsonb || CAST(:note AS jsonb)
             WHERE id = :id
         """),
         {"note": json.dumps({"_cancel_reason": body.reason}), "id": session_id},
@@ -1010,8 +1010,8 @@ async def undo_last_step(
         text("""
             UPDATE diagnostic_sessions
             SET current_step_id = :step_id,
-                resolution_path = :path::jsonb,
-                answers_jsonb = :answers::jsonb,
+                resolution_path = CAST(:path AS jsonb),
+                answers_jsonb = CAST(:answers AS jsonb),
                 status = 'active'
             WHERE id = :id
         """),
