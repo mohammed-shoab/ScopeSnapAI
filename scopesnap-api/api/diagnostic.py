@@ -964,3 +964,75 @@ async def cancel_session(
     )
     await db.commit()
     return {"ok": True}
+
+
+@router.patch("/session/{session_id}/undo")
+async def undo_last_step(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+    auth: AuthContext = Depends(get_current_user),
+):
+    """
+    WS-N3: Back button support.
+    Pops the last step from resolution_path, restores current_step_id to it,
+    and removes that answer from answers_jsonb.
+    Returns the restored question so the frontend can re-render it.
+    """
+    row = await db.execute(
+        text("""
+            SELECT id, company_id, complaint_type, current_step_id,
+                   resolution_path, answers_jsonb, status
+            FROM diagnostic_sessions WHERE id = :id
+        """),
+        {"id": session_id},
+    )
+    session = row.fetchone()
+    if not session or str(session.company_id) != str(auth.company_id):
+        raise HTTPException(status_code=404, detail="session_not_found")
+
+    resolution_path = session.resolution_path or []
+    if isinstance(resolution_path, str):
+        resolution_path = json.loads(resolution_path)
+
+    if not resolution_path:
+        raise HTTPException(status_code=400, detail="no_history_to_undo")
+
+    # The last entry in resolution_path is the step we just answered.
+    # Pop it to go back to it.
+    prev_step_id = resolution_path[-1]
+    new_path = resolution_path[:-1]
+
+    # Remove the answer for prev_step_id from answers_jsonb
+    answers = session.answers_jsonb or {}
+    if isinstance(answers, str):
+        answers = json.loads(answers)
+    answers.pop(prev_step_id, None)
+
+    await db.execute(
+        text("""
+            UPDATE diagnostic_sessions
+            SET current_step_id = :step_id,
+                resolution_path = :path::jsonb,
+                answers_jsonb = :answers::jsonb,
+                status = 'active'
+            WHERE id = :id
+        """),
+        {
+            "step_id": prev_step_id,
+            "path": json.dumps(new_path),
+            "answers": json.dumps(answers),
+            "id": session_id,
+        },
+    )
+    await db.commit()
+
+    # Return the restored question
+    q_row = await _get_question(db, session.complaint_type, prev_step_id)
+    if not q_row:
+        raise HTTPException(status_code=404, detail="question_not_found")
+
+    return {
+        "restored_step_id": prev_step_id,
+        "question": _shape_question(q_row),
+        "history_depth": len(new_path),
+    }
