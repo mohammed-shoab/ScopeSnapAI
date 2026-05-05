@@ -166,9 +166,15 @@ def _compute_branch_key(question_row, answer) -> Optional[str]:
         return eval_result.get("branch_key")
 
     if input_type == "yesno":
+        # Frontend may send {value: 'yes', branch_key: 'yes'} — extract the string
+        if isinstance(answer, dict):
+            return (answer.get("branch_key") or answer.get("value") or "").lower()
         return str(answer).lower()
 
     if input_type == "visual_select":
+        # Frontend may send {value: 'clicking', branch_key: 'clicking'} — extract the string
+        if isinstance(answer, dict):
+            return answer.get("branch_key") or answer.get("value") or str(answer)
         return str(answer)
 
     # ── multi: extract the first reading's branch_key ─────────────────────────
