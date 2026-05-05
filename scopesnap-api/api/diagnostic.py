@@ -435,7 +435,7 @@ async def start_session(
                     )
                 WHERE id = :id
             """),
-            {"path": json.dumps([first_q.step_id]), "val": json.dumps(auto_value), "id": session_id},
+            {"path": [first_q.step_id], "val": json.dumps(auto_value), "id": session_id},
         )
 
         if auto_routing["kind"] == "next_step":
