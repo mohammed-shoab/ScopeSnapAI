@@ -344,6 +344,18 @@ class Assessment(Base):
     ai_issues: Mapped[Optional[dict]] = mapped_column(SmartJSON, nullable=True)
     # [{"component":"evap_coil","issue":"corrosion","severity":"high","description":"Green oxide..."}]
 
+    # ── Step Zero OCR (Phase 2 WS-B / Phase 3) ───────────────────────────────
+    ocr_nameplate: Mapped[Optional[dict]] = mapped_column(SmartJSON, nullable=True)
+    # Structured nameplate result: {brand, model, serial, tonnage, refrigerant,
+    # cap_uf, RLA, LRA, FLA, MCA, MOCP, voltage, system_type, metering_device, ...}
+    # Saved by PATCH /api/ocr/assessments/{id}/nameplate after tech confirms OCR.
+
+    # ── Complaint type (Phase 2 WS-J / Phase 3) ──────────────────────────────
+    complaint_type: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    # Set when tech picks a complaint chip. Drives the Phase 3 diagnostic tree.
+    # Values: 'not_cooling'|'water_dripping'|'not_turning_on'|'making_noise'|
+    #         'high_electric_bill'|'error_code'|'not_heating'|'intermittent_shutdown'|'service'
+
     tech_overrides: Mapped[dict] = mapped_column(SmartJSON, nullable=False, default=dict)
     # Any fields the tech manually corrected. Used to train better prompts.
     # tech_overrides._issue_change_log = [{field, from, to, tech_id, timestamp}, ...]
@@ -357,25 +369,6 @@ class Assessment(Base):
 
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pending")
     # 'pending' | 'analyzed' | 'estimated' | 'sent' | 'approved' | 'completed'
-
-    complaint_type: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
-    # 'not_cooling'|'not_heating'|'not_running'|'noisy'|'water_leak'|'high_bill'|'intermittent_shutdown'
-    # Set at assessment creation (Tab H / WS-J). Drives Phase 2 gate and WS-C readings requirement.
-
-    # -- WS-C: Phase 2 Readings Gate -----------------------------------------
-    suction_psig: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
-    discharge_psig: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
-    ambient_temp_f: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
-    supply_air_temp_f: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
-    suction_line_temp_f: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
-    liquid_line_temp_f: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
-    refrigerant_type: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
-    metering_device: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
-    superheat_f: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
-    subcooling_f: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
-    delta_t_f: Mapped[Optional[float]] = mapped_column(Numeric, nullable=True)
-    readings_gate_triggered: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    readings_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -689,180 +682,4 @@ class FollowUp(Base):
     cancelled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Cancelled if estimate is approved before follow-up fires
 
-    template: Mapped[str] = mapped_column(String(50), nullable=False)
-    # '24h_reminder' | '48h_reminder' | '7d_last_chance'
-
-    # Relationships
-    estimate: Mapped["Estimate"] = relationship("Estimate", back_populates="follow_ups")
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# All models list — used by Alembic env.py
-# ─────────────────────────────────────────────────────────────────────────────
-__all__ = [
-    "Base",
-    "Company",
-    "User",
-    "Property",
-    "EquipmentModel",
-    "EquipmentInstance",
-    "Assessment",
-    "AssessmentPhoto",
-    "Estimate",
-    "EstimateLineItem",
-    "EstimateDocument",
-    "PricingRule",
-    "FollowUp",
-]
-
-
-# =============================================================================
-# PHASE 3 -- DIAGNOSTIC ENGINE TABLES (Migration 011, 2026-05-03)
-# =============================================================================
-
-# -- Phase 3 Table 1: diagnostic_questions -----------------------------------
-class DiagnosticQuestion(Base):
-    __tablename__ = "diagnostic_questions"
-
-    id: Mapped[str] = mapped_column(SmartUUID, primary_key=True, default=new_uuid)
-    complaint_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    step_id: Mapped[str] = mapped_column(String(40), nullable=False)
-    step_order: Mapped[int] = mapped_column(Integer, nullable=False)
-    question_text: Mapped[str] = mapped_column(Text, nullable=False)
-    hint_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    input_type: Mapped[str] = mapped_column(String(20), nullable=False)
-    options_jsonb: Mapped[Optional[dict]] = mapped_column(SmartJSON, nullable=True)
-    reading_spec: Mapped[Optional[dict]] = mapped_column(SmartJSON, nullable=True)
-    photo_spec: Mapped[Optional[dict]] = mapped_column(SmartJSON, nullable=True)
-    branch_logic_jsonb: Mapped[dict] = mapped_column(SmartJSON, nullable=False)
-    data_collect_jsonb: Mapped[Optional[dict]] = mapped_column(SmartJSON, nullable=True)
-    is_terminal: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-
-    __table_args__ = (
-        UniqueConstraint("complaint_type", "step_id", name="uq_dq_complaint_step"),
-    )
-
-
-# -- Phase 3 Table 2: diagnostic_sessions ------------------------------------
-class DiagnosticSession(Base):
-    __tablename__ = "diagnostic_sessions"
-
-    id: Mapped[str] = mapped_column(SmartUUID, primary_key=True, default=new_uuid)
-    assessment_id: Mapped[str] = mapped_column(
-        SmartUUID, ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False
-    )
-    company_id: Mapped[str] = mapped_column(
-        SmartUUID, ForeignKey("companies.id"), nullable=False
-    )
-    technician_id: Mapped[Optional[str]] = mapped_column(
-        SmartUUID, ForeignKey("users.id"), nullable=True
-    )
-    complaint_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    current_step_id: Mapped[str] = mapped_column(String(40), nullable=False)
-    answers_jsonb: Mapped[dict] = mapped_column(SmartJSON, nullable=False, default=dict)
-    resolved_card_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("fault_cards.card_id"), nullable=True
-    )
-    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    resolution_path: Mapped[dict] = mapped_column(SmartJSON, nullable=False, default=list)
-    service_findings: Mapped[dict] = mapped_column(SmartJSON, nullable=False, default=list)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="active")
-    phase_used: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
-    )
-
-
-# -- Phase 3 Table 3: reading_inputs -----------------------------------------
-class ReadingInput(Base):
-    __tablename__ = "reading_inputs"
-
-    id: Mapped[str] = mapped_column(SmartUUID, primary_key=True, default=new_uuid)
-    session_id: Mapped[str] = mapped_column(
-        SmartUUID, ForeignKey("diagnostic_sessions.id", ondelete="CASCADE"), nullable=False
-    )
-    assessment_id: Mapped[str] = mapped_column(
-        SmartUUID, ForeignKey("assessments.id"), nullable=False
-    )
-    step_id: Mapped[str] = mapped_column(String(40), nullable=False)
-    reading_type: Mapped[str] = mapped_column(String(30), nullable=False)
-    reading_subtype: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
-    actual_value: Mapped[float] = mapped_column(Numeric(10, 3), nullable=False)
-    unit: Mapped[str] = mapped_column(String(10), nullable=False)
-    nameplate_spec: Mapped[Optional[float]] = mapped_column(Numeric(10, 3), nullable=True)
-    spec_source: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    tolerance_pct: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
-    classification: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    passed: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
-    flag_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-
-
-# -- Phase 3 Table 4: photo_labels -------------------------------------------
-class PhotoLabel(Base):
-    __tablename__ = "photo_labels"
-
-    id: Mapped[str] = mapped_column(SmartUUID, primary_key=True, default=new_uuid)
-    assessment_id: Mapped[str] = mapped_column(
-        SmartUUID, ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False
-    )
-    session_id: Mapped[Optional[str]] = mapped_column(
-        SmartUUID, ForeignKey("diagnostic_sessions.id"), nullable=True
-    )
-    step_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
-    photo_url: Mapped[str] = mapped_column(Text, nullable=False)
-    photo_type: Mapped[str] = mapped_column(String(15), nullable=False)
-    slot_name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    card_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("fault_cards.card_id"), nullable=True
-    )
-    ai_prompt_used: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    ai_grade: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    ai_confidence: Mapped[Optional[float]] = mapped_column(Numeric(4, 2), nullable=True)
-    is_for_pdf: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-
-
-# -- Phase 3 Table 5: job_confirmations --------------------------------------
-class JobConfirmation(Base):
-    __tablename__ = "job_confirmations"
-
-    id: Mapped[str] = mapped_column(SmartUUID, primary_key=True, default=new_uuid)
-    assessment_id: Mapped[str] = mapped_column(
-        SmartUUID, ForeignKey("assessments.id", ondelete="CASCADE"),
-        nullable=False, unique=True
-    )
-    session_id: Mapped[Optional[str]] = mapped_column(
-        SmartUUID, ForeignKey("diagnostic_sessions.id"), nullable=True
-    )
-    company_id: Mapped[str] = mapped_column(
-        SmartUUID, ForeignKey("companies.id"), nullable=False
-    )
-    technician_id: Mapped[Optional[str]] = mapped_column(
-        SmartUUID, ForeignKey("users.id"), nullable=True
-    )
-    diagnosed_card_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("fault_cards.card_id"), nullable=True
-    )
-    actual_card_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("fault_cards.card_id"), nullable=True
-    )
-    diagnosis_correct: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
-    complaint_resolved: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    final_invoice_amount: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
-    tech_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    consent_given: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    confirmed_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-
+    template: Mapped[str] = mapped_column(Strin
