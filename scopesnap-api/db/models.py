@@ -344,13 +344,13 @@ class Assessment(Base):
     ai_issues: Mapped[Optional[dict]] = mapped_column(SmartJSON, nullable=True)
     # [{"component":"evap_coil","issue":"corrosion","severity":"high","description":"Green oxide..."}]
 
-    # ── Step Zero OCR (Phase 2 WS-B / Phase 3) ───────────────────────────────
+    # ── Step Zero OCR (Phase 2 WS-B / Phase 3) ─────────────────────────────────────────────
     ocr_nameplate: Mapped[Optional[dict]] = mapped_column(SmartJSON, nullable=True)
     # Structured nameplate result: {brand, model, serial, tonnage, refrigerant,
     # cap_uf, RLA, LRA, FLA, MCA, MOCP, voltage, system_type, metering_device, ...}
     # Saved by PATCH /api/ocr/assessments/{id}/nameplate after tech confirms OCR.
 
-    # ── Complaint type (Phase 2 WS-J / Phase 3) ──────────────────────────────
+    # ── Complaint type (Phase 2 WS-J / Phase 3) ────────────────────────────────────────────
     complaint_type: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
     # Set when tech picks a complaint chip. Drives the Phase 3 diagnostic tree.
     # Values: 'not_cooling'|'water_dripping'|'not_turning_on'|'making_noise'|
@@ -682,4 +682,28 @@ class FollowUp(Base):
     cancelled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Cancelled if estimate is approved before follow-up fires
 
-    template: Mapped[str] = mapped_column(Strin
+    template: Mapped[str] = mapped_column(String(50), nullable=False)
+    # '24h_reminder' | '48h_reminder' | '7d_last_chance'
+
+    # Relationships
+    estimate: Mapped["Estimate"] = relationship("Estimate", back_populates="follow_ups")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# All models list — used by Alembic env.py
+# ─────────────────────────────────────────────────────────────────────────────
+__all__ = [
+    "Base",
+    "Company",
+    "User",
+    "Property",
+    "EquipmentModel",
+    "EquipmentInstance",
+    "Assessment",
+    "AssessmentPhoto",
+    "Estimate",
+    "EstimateLineItem",
+    "EstimateDocument",
+    "PricingRule",
+    "FollowUp",
+]
