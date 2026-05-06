@@ -238,7 +238,7 @@ export default function SidebarNav() {
                     letterSpacing: "0.1em",
                   }}
                 >
-                  BETA
+                  EARLY ACCESS
                 </span>
               </div>
             </Link>
@@ -347,5 +347,3 @@ export default function SidebarNav() {
       {/* In-app feedback modal (BUG-01 fix) */}
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </>
-  );
-}

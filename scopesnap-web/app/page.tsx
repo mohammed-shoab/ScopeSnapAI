@@ -16,13 +16,20 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 import InstallPrompt from "@/components/InstallPrompt";
 
 export default function LandingPage() {
+  const { user, isLoaded, isSignedIn } = useUser();
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // Display name: first name, or email username, or full email
+  const displayName = isSignedIn && user
+    ? (user.firstName || user.primaryEmailAddress?.emailAddress?.split("@")[0] || user.primaryEmailAddress?.emailAddress || "Account")
+    : null;
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -68,21 +75,35 @@ export default function LandingPage() {
             </div>
             <span className="font-bold text-lg tracking-tight">SnapAI</span>
             <span className="text-[10px] font-bold tracking-widest uppercase bg-brand-green/10 text-brand-green border border-brand-green/20 rounded px-1.5 py-0.5 ml-1">
-              BETA
+              EARLY ACCESS
             </span>
           </div>
-          <Link
-            href="/dashboard"
-            className="text-sm font-semibold text-brand-green hover:underline"
-          >
-            Sign In →
-          </Link>
+          {isLoaded && (
+            isSignedIn && displayName ? (
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 text-sm font-semibold text-brand-green hover:underline"
+              >
+                <span className="w-7 h-7 rounded-full bg-brand-green/15 border border-brand-green/30 flex items-center justify-center text-xs font-bold text-brand-green">
+                  {displayName[0].toUpperCase()}
+                </span>
+                {displayName}
+              </Link>
+            ) : (
+              <Link
+                href="/dashboard"
+                className="text-sm font-semibold text-brand-green hover:underline"
+              >
+                Sign In →
+              </Link>
+            )
+          )}
         </nav>
 
         {/* ── Hero ────────────────────────────────────────────────────────── */}
         <section className="max-w-3xl mx-auto px-6 pt-16 pb-20 text-center">
           <div className="inline-block bg-brand-green/10 text-brand-green text-xs font-semibold tracking-wider uppercase rounded-full px-4 py-1.5 mb-6 border border-brand-green/20">
-            Early Access — Limited Beta
+            Early Access
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight mb-5">
             HVAC estimates in{" "}
@@ -151,68 +172,77 @@ export default function LandingPage() {
         <section className="max-w-4xl mx-auto px-6 py-20">
           <h2 className="text-2xl font-bold text-center mb-3">See it in action</h2>
           <p className="text-center text-text-secondary text-sm mb-10">
-            From the driveway to a signed estimate in under 90 seconds.
+            From the driveway to a signed estimate — in under 90 seconds.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               {
                 step: "01",
-                color: "#1a8754", bg: "rgba(26,135,84,.08)",
+                icon: (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                ),
                 title: "Snap the nameplate",
-                desc: "AI reads make, model, serial, and age automatically. No manual entry.",
+                desc: "AI reads make, model, serial, and age automatically — no manual entry.",
+                color: "#1a8754",
+                bg: "rgba(26,135,84,.08)",
               },
               {
                 step: "02",
-                color: "#6a1b9a", bg: "rgba(106,27,154,.08)",
+                icon: (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+                    <path d="M9.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 01-5 0v-15A2.5 2.5 0 019.5 2z"/>
+                    <path d="M14.5 8A2.5 2.5 0 0117 10.5v9a2.5 2.5 0 01-5 0v-9A2.5 2.5 0 0114.5 8z"/>
+                    <path d="M4.5 13A2.5 2.5 0 017 15.5v4a2.5 2.5 0 01-5 0v-4A2.5 2.5 0 014.5 13z"/>
+                  </svg>
+                ),
                 title: "Gemini builds the estimate",
-                desc: "Good / Better / Best pricing with your markup applied. Parts, labor, R-22 surcharges included.",
+                desc: "Good / Better / Best pricing generated with your markup — parts, labor, and R-22 surcharges included.",
+                color: "#6a1b9a",
+                bg: "rgba(106,27,154,.08)",
               },
               {
                 step: "03",
-                color: "#c4600a", bg: "rgba(196,96,10,.08)",
+                icon: (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+                  </svg>
+                ),
                 title: "Homeowner gets the report",
-                desc: "A branded PDF lands in their inbox before you leave the driveway.",
+                desc: "A branded PDF lands in their inbox before you leave the driveway. No login needed on their end.",
+                color: "#c4600a",
+                bg: "rgba(196,96,10,.08)",
               },
-            ].map(({ step, title, desc, color, bg }) => (
+            ].map(({ step, icon, title, desc, color, bg }) => (
               <div key={step} className="bg-surface-card border border-surface-border rounded-2xl p-5">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-mono font-bold"
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                        style={{ background: bg, color }}>
-                    {step}
+                    {icon}
                   </div>
+                  <span className="text-xs font-mono font-bold" style={{ color }}>Step {step}</span>
                 </div>
                 <h3 className="font-bold text-base mb-2 text-text-primary">{title}</h3>
                 <p className="text-text-secondary text-sm leading-relaxed">{desc}</p>
               </div>
             ))}
           </div>
-
-          {/* VIDEO PLACEHOLDER — swap this div for <iframe> when video is ready */}
+          {/* ── YouTube demo video embed ── */}
+          {/* Replace SNAPAI_VIDEO_ID below with your YouTube video ID (e.g. dQw4w9WgXcQ) */}
           <div className="mt-12 relative w-full rounded-2xl overflow-hidden"
-               style={{ paddingBottom: "56.25%", background: "#111210" }}>
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-              <div className="w-20 h-20 rounded-full flex items-center justify-center"
-                style={{
-                  background: "rgba(26,135,84,.15)",
-                  border: "2px solid rgba(26,135,84,.5)",
-                  boxShadow: "0 0 40px rgba(26,135,84,.2)",
-                }}>
-                <svg className="w-8 h-8 ml-1" fill="#1a8754" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-              </div>
-              <div className="text-center">
-                <p className="text-white font-bold text-base">Watch the 90-second demo</p>
-                <p className="text-white/40 text-xs mt-1">Video in production</p>
-              </div>
-              <span className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
-                style={{ background: "rgba(26,135,84,.2)", color: "#1a8754", border: "1px solid rgba(26,135,84,.3)" }}>
-                Coming Soon
-              </span>
-            </div>
+               style={{ paddingBottom: "56.25%" }}>
+            <iframe
+              className="absolute inset-0 w-full h-full"
+              src="https://www.youtube.com/embed/SNAPAI_VIDEO_ID?autoplay=1&mute=1&loop=1&playlist=SNAPAI_VIDEO_ID&rel=0&modestbranding=1&playsinline=1"
+              title="SnapAI — 90-second demo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
           </div>
           <p className="text-center text-xs text-text-secondary mt-4">
-            Can&apos;t wait? <Link href="/dashboard" className="text-brand-green font-semibold hover:underline">Try it live</Link>
+            Can&apos;t wait? <Link href="/dashboard" className="text-brand-green font-semibold hover:underline">Try it live →</Link>
           </p>
         </section>
 
@@ -221,14 +251,14 @@ export default function LandingPage() {
           <div className="max-w-lg mx-auto px-6 text-center">
             <h2 className="text-2xl font-bold mb-3">Get early access</h2>
             <p className="text-text-secondary mb-8 text-sm leading-relaxed">
-              We're onboarding HVAC contractors in small batches.
-              Drop your email and we'll reach out within 48 hours.
+              Limited early access — first 30 assessments free.
+              No credit card required.
             </p>
             {submitted ? (
               <div className="bg-brand-green/10 border border-brand-green/20 rounded-xl p-6">
-                <p className="text-brand-green font-semibold text-lg mb-1">You're on the list!</p>
+                <p className="text-brand-green font-semibold text-lg mb-1">You're in!</p>
                 <p className="text-text-secondary text-sm">
-                  We'll be in touch within 48 hours with your access details.
+                  Check your inbox — we'll send your access details shortly.
                 </p>
               </div>
             ) : (
@@ -246,7 +276,7 @@ export default function LandingPage() {
                   disabled={submitting}
                   className="bg-brand-green text-white font-semibold py-3 px-6 rounded-xl hover:bg-green-700 transition-colors text-sm disabled:opacity-60 whitespace-nowrap"
                 >
-                  {submitting ? "Sending…" : "Request Access"}
+                  {submitting ? "Sending…" : "Start Free →"}
                 </button>
               </form>
             )}
@@ -277,3 +307,4 @@ export default function LandingPage() {
     </>
   );
 }
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             

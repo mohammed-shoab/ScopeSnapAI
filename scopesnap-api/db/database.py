@@ -40,7 +40,10 @@ is_sqlite = "sqlite" in async_url
 # ── Engine ────────────────────────────────────────────────────────────────────
 engine_kwargs = dict(echo=settings.is_development)
 if not is_sqlite:
-    engine_kwargs.update(pool_size=10, max_overflow=20, pool_pre_ping=True)
+    # Supabase free-tier PgBouncer runs in session mode with a 15-connection
+    # cap. Keep pool_size + max_overflow well under that limit to avoid
+    # EMAXCONNSESSION errors when multiple Railway replicas are running.
+    engine_kwargs.update(pool_size=3, max_overflow=7, pool_pre_ping=True)
 
 engine = create_async_engine(async_url, **engine_kwargs)
 
@@ -72,9 +75,4 @@ async def get_db() -> AsyncSession:
 # ── Health Check ──────────────────────────────────────────────────────────────
 async def check_db_connection() -> bool:
     try:
-        async with AsyncSessionLocal() as session:
-            await session.execute(text("SELECT 1"))
-        return True
-    except Exception as e:
-        print(f"[DB] Connection check failed: {e}")
-        return False
+   

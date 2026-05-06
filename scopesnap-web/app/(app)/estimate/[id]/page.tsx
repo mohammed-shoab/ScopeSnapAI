@@ -384,6 +384,7 @@ export default function EstimatePage() {
           setMarkup(data.markup_percent || 35);
           setLoading(false);
           if (data.contractor_pdf_url) setDocsDone(true);
+          ph.estimateGenerated(String(id), data.card_name);
           // Pre-fill send fields from property data returned by estimate endpoint
           const d = data as EstimateData & { customer_email?: string; customer_phone?: string; customer_name?: string };
           if (d.customer_email) setSendEmail(d.customer_email);
@@ -1359,10 +1360,4 @@ export default function EstimatePage() {
               >
                 {sending ? "Sending..." : `Send${homeownerName ? ` to ${homeownerName}` : ""} →`}
               </button>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
+           
