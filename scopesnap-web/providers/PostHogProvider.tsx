@@ -128,4 +128,12 @@ export const ph = {
 
   /** Estimate G/B/B generated (after AI completes and card is resolved) */
   estimateGenerated: (estimateId: string, cardName?: string) =>
-    posthog.capture("estimate_generated", { estimate_id: estimateId, card_name: c
+    posthog.capture("estimate_generated", { estimate_id: estimateId, card_name: cardName }),
+
+  /** Identify contractor for user-level analytics */
+  identify: (userId: string, traits?: Record<string, unknown>) =>
+    posthog.identify(userId, traits),
+
+  /** Reset on sign-out */
+  reset: () => posthog.reset(),
+};
