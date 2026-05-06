@@ -38,6 +38,7 @@ interface AnswerResponse {
 
 export interface GateContinuation {
   session_id: string;
+  card_id: number | null;
   gate_continuation: Record<string, unknown>;
 }
 
@@ -146,7 +147,7 @@ export default function DiagnosticFlow({
 
       if (resp.phase_2_gate && resp.gate_continuation) {
         ph.diagnosticPhase2Gate(sessionId, currentQuestion.step_id);
-        onPhase2Gate({ session_id: sessionId, gate_continuation: resp.gate_continuation });
+        onPhase2Gate({ session_id: sessionId, card_id: resp.card_id ?? null, gate_continuation: resp.gate_continuation });
         return;
       }
 
@@ -303,4 +304,4 @@ export default function DiagnosticFlow({
           <ReadingInput spec={currentQuestion.reading_spec} ocrNameplate={ocrNameplate} onSubmit={handleReading} disabled={submitting} />
         )}
 
-        {currentQuestion.input_type === "photo" && currentQuestion.p
+        {cu
