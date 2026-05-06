@@ -75,4 +75,9 @@ async def get_db() -> AsyncSession:
 # ── Health Check ──────────────────────────────────────────────────────────────
 async def check_db_connection() -> bool:
     try:
-   
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+        return True
+    except Exception as e:
+        print(f"[DB] Connection check failed: {e}")
+        return False
