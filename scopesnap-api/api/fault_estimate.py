@@ -17,21 +17,24 @@ Flow:
 
 Acceptance criteria (WS-G M5):
   3-ton R-410A capacitor failure (card_id=1) with attic_access=True:
-  → A = base_min + attic_premium_min  (e.g. 175 + 25 = 200 → after 35% markup ≈ 270)
-  → Actual amounts depend on the pricing_tiers data loaded in WS-A.
+  -> A = base_min + attic_premium_min  (e.g. 175 + 25 = 200 -> after 35% markup ~270)
+  -> Actual amounts depend on the pricing_tiers data loaded in WS-A.
   The key test is: data-driven (not hardcoded), surcharges applied, markup applied.
 """
 
 import logging
+import secrets
+import string
 from typing import Optional
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
+from sqlalchemy import text, select
 
 from db.database import get_db
+from db.models import Estimate, Assessment
 from api.auth import get_current_user, AuthContext
 
 logger = logging.getLogger(__name__)
@@ -39,14 +42,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/estimates", tags=["estimates"])
 
 
-# ── Request / Response ─────────────────────────────────────────────────────────
+# -- Request / Response -------------------------------------------------------
 
 class FaultCardEstimateRequest(BaseModel):
     card_id: int = Field(..., ge=1, le=19, description="Fault card 1-19 (Decision D-1 numbering)")
     tonnage: Optional[float] = Field(None, ge=0.75, le=6.0, description="Equipment tonnage (0.75-6.0)")
     attic_access: bool = Field(False, description="Job requires attic access (adds premium)")
     after_hours: bool = Field(False, description="After-hours / emergency call (+25-50%)")
-    refrigerant: Optional[str] = Field(None, description="Refrigerant type — R-22 triggers surcharge")
+    refrigerant: Optional[str] = Field(None, description="Refrigerant type -- R-22 triggers surcharge")
     assessment_id: Optional[str] = Field(None, description="Assessment to link estimate to")
 
 
@@ -62,6 +65,7 @@ class EstimateTier(BaseModel):
 
 
 class FaultCardEstimateResponse(BaseModel):
+    id: Optional[str] = None           # Estimate UUID -- set when saved to DB
     card_id: int
     card_name: str
     phase: Optional[str]
@@ -75,7 +79,7 @@ class FaultCardEstimateResponse(BaseModel):
     generated_at: str
 
 
-# ── Helper ─────────────────────────────────────────────────────────────────────
+# -- Helper -------------------------------------------------------------------
 
 def _apply_surcharges(
     base: int,
@@ -107,7 +111,7 @@ def _apply_surcharges(
     return total, breakdown
 
 
-# ── POST /api/estimates/fault-card ────────────────────────────────────────────
+# -- POST /api/estimates/fault-card ------------------------------------------
 
 @router.post("/fault-card", status_code=200, response_model=FaultCardEstimateResponse)
 async def generate_fault_card_estimate(
@@ -121,9 +125,14 @@ async def generate_fault_card_estimate(
     This replaces the old hardcoded A/B/C generation. Prices are data-driven
     from the WS-A tables: pricing_tiers (from price list sheet "13. FAULT CARDS")
     and labor_rates_houston (surcharge rates).
+
+    BUG-011 fix: When assessment_id is provided, saves the estimate to the
+    estimates table and returns its id so the frontend can navigate to
+    /assessment/{id} correctly. Without this fix, the UI navigated to
+    /assessment/undefined, breaking the entire estimate-send flow.
     """
 
-    # ── 1. Load fault card metadata ──────────────────────────────────────────
+    # -- 1. Load fault card metadata -----------------------------------------
     fc_row = await db.execute(
         text("""
             SELECT card_id, card_name, phase, difficulty, tech_notes,
@@ -140,7 +149,7 @@ async def generate_fault_card_estimate(
             detail=f"Fault card {body.card_id} not found. Check migration 007 ran."
         )
 
-    # ── 2. Load pricing tiers A/B/C ──────────────────────────────────────────
+    # -- 2. Load pricing tiers A/B/C -----------------------------------------
     pt_rows = await db.execute(
         text("""
             SELECT tier, estimate_amount
@@ -162,7 +171,7 @@ async def generate_fault_card_estimate(
     base_B = pricing.get("B", fc.price_list_typical or 0)
     base_C = pricing.get("C", fc.price_list_max or 0)
 
-    # ── 3. Load labor rates / surcharge config ───────────────────────────────
+    # -- 3. Load labor rates / surcharge config ------------------------------
     lr_row = await db.execute(
         text("""
             SELECT attic_premium_min, attic_premium_max,
@@ -176,13 +185,13 @@ async def generate_fault_card_estimate(
 
     # Surcharge values (use "typical" = midpoint)
     attic_premium = int((lr.attic_premium_min + lr.attic_premium_max) / 2) if lr else 37
-    # After-hours: parse "25–50% surcharge" → 37.5% midpoint
+    # After-hours: parse "25-50% surcharge" -> 37.5% midpoint
     after_hours_pct = 0.375 if lr else 0.375
     r22_surcharge = int((lr.r22_surcharge_min + lr.r22_surcharge_max) / 2) if lr else 112
 
     is_r22 = (body.refrigerant or "").upper().startswith("R-22")
 
-    # ── 4. Get company markup ────────────────────────────────────────────────
+    # -- 4. Get company markup -----------------------------------------------
     markup_row = await db.execute(
         text("SELECT default_markup_pct FROM companies WHERE id = :cid LIMIT 1"),
         {"cid": auth.company_id},
@@ -191,7 +200,7 @@ async def generate_fault_card_estimate(
     markup_pct = float(markup_result.default_markup_pct) if markup_result else 35.0
     markup_mult = 1 + markup_pct / 100
 
-    # ── 5. Build tiers ───────────────────────────────────────────────────────
+    # -- 5. Build tiers -------------------------------------------------------
     tier_configs = [
         ("A", "Good",   base_A),
         ("B", "Better", base_B),
@@ -224,7 +233,64 @@ async def generate_fault_card_estimate(
             recommended=(tier_key == "B"),  # Default B as recommended; WS-H overrides
         ))
 
+    # -- 6. Persist estimate to DB when assessment_id provided (BUG-011 fix) --
+    estimate_id: Optional[str] = None
+    if body.assessment_id:
+        # Verify assessment belongs to this company
+        asmt_row = await db.execute(
+            select(Assessment).where(
+                Assessment.id == body.assessment_id,
+                Assessment.company_id == auth.company_id,
+            )
+        )
+        asmt = asmt_row.scalar_one_or_none()
+        if asmt:
+            # Check for existing estimate (avoid duplicates)
+            existing = await db.execute(
+                text("SELECT id FROM estimates WHERE assessment_id = :aid LIMIT 1"),
+                {"aid": body.assessment_id},
+            )
+            existing_row = existing.fetchone()
+            if existing_row:
+                estimate_id = str(existing_row.id)
+            else:
+                # Build options payload from tiers
+                options_payload = [
+                    {
+                        "tier": t.tier,
+                        "name": t.label,
+                        "total": float(t.total),
+                        "subtotal": float(t.subtotal),
+                        "markup_percent": float(markup_pct),
+                        "recommended": t.recommended,
+                        "line_items": [
+                            {"description": fc.card_name, "amount": float(t.base_amount), "category": "repair"}
+                        ],
+                    }
+                    for t in tiers
+                ]
+                report_token = secrets.token_urlsafe(32)[:32]
+                digits = "".join(secrets.choice(string.digits) for _ in range(4))
+                report_short_id = f"rpt-{digits}"
+                new_estimate = Estimate(
+                    assessment_id=body.assessment_id,
+                    company_id=auth.company_id,
+                    report_token=report_token,
+                    report_short_id=report_short_id,
+                    options=options_payload,
+                    markup_percent=markup_pct,
+                    status="draft",
+                )
+                db.add(new_estimate)
+                await db.flush()
+                estimate_id = str(new_estimate.id)
+                logger.info(
+                    "[fault_estimate] BUG-011 fix: Saved estimate %s for assessment %s card %d",
+                    estimate_id, body.assessment_id, body.card_id,
+                )
+
     return FaultCardEstimateResponse(
+        id=estimate_id,
         card_id=fc.card_id,
         card_name=fc.card_name,
         phase=fc.phase,
