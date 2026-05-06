@@ -1,7 +1,7 @@
 "use client";
 /**
- * SnapAI — Sidebar Navigation
- * SOW Task 1.6: Simplified for beta — 4 core items + feature-flagged extras.
+ * SnapAI â Sidebar Navigation
+ * SOW Task 1.6: Simplified for beta â 4 core items + feature-flagged extras.
  *
  * Changes from pre-beta version:
  * - Removed all hardcoded numeric badges (47 estimates, $70K, 43 alerts)
@@ -18,7 +18,7 @@ import { usePathname } from "next/navigation";
 import { featureFlags } from "@/lib/featureFlags";
 import FeedbackModal from "@/components/FeedbackModal";
 
-// ── SVG icon definitions (no emojis — clean, professional, accessible) ────────
+// ââ SVG icon definitions (no emojis â clean, professional, accessible) ââââââââ
 const NavIcons: Record<string, React.ReactNode> = {
   dashboard: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
@@ -98,7 +98,7 @@ const NavIcons: Record<string, React.ReactNode> = {
   ),
 };
 
-// ── Nav item type ─────────────────────────────────────────────────────────────
+// ââ Nav item type âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 interface NavItem {
   label: string;
   href: string;
@@ -110,11 +110,11 @@ interface NavSection {
   items: NavItem[];
 }
 
-// ── Build nav sections based on feature flags ─────────────────────────────────
+// ââ Build nav sections based on feature flags âââââââââââââââââââââââââââââââââ
 function buildNavSections(): NavSection[] {
   const sections: NavSection[] = [];
 
-  // ── OVERVIEW (always visible) ─────────────────────────────────────────────
+  // ââ OVERVIEW (always visible) âââââââââââââââââââââââââââââââââââââââââââââ
   const overviewItems: NavItem[] = [
     { label: "Dashboard",    href: "/dashboard",  iconKey: "dashboard" },
     { label: "Assessments",  href: "/assessments",  iconKey: "assessments" },
@@ -124,7 +124,7 @@ function buildNavSections(): NavSection[] {
   }
   sections.push({ section: "OVERVIEW", items: overviewItems });
 
-  // ── INTELLIGENCE (feature-flagged) ────────────────────────────────────────
+  // ââ INTELLIGENCE (feature-flagged) ââââââââââââââââââââââââââââââââââââââââ
   const intelItems: NavItem[] = [];
   if (featureFlags.showProfitLeaks)      intelItems.push({ label: "Profit Leaks",     href: "/intelligence/leaks",     iconKey: "leaks" });
   if (featureFlags.showBenchmark)        intelItems.push({ label: "BenchmarkIQ",      href: "/intelligence/benchmark", iconKey: "benchmark" });
@@ -133,7 +133,7 @@ function buildNavSections(): NavSection[] {
     sections.push({ section: "INTELLIGENCE", items: intelItems });
   }
 
-  // ── EQUIPMENT (feature-flagged) ───────────────────────────────────────────
+  // ââ EQUIPMENT (feature-flagged) âââââââââââââââââââââââââââââââââââââââââââ
   if (featureFlags.showEquipment) {
     sections.push({
       section: "EQUIPMENT",
@@ -144,7 +144,7 @@ function buildNavSections(): NavSection[] {
     });
   }
 
-  // ── TEAM (feature-flagged) ────────────────────────────────────────────────
+  // ââ TEAM (feature-flagged) ââââââââââââââââââââââââââââââââââââââââââââââââ
   if (featureFlags.showTeam) {
     sections.push({
       section: "TEAM",
@@ -155,7 +155,7 @@ function buildNavSections(): NavSection[] {
     });
   }
 
-  // ── SETTINGS (always visible) ─────────────────────────────────────────────
+  // ââ SETTINGS (always visible) âââââââââââââââââââââââââââââââââââââââââââââ
   const settingsItems: NavItem[] = [
     { label: "Pricing Database", href: "/settings/pricing", iconKey: "pricing" },
   ];
@@ -215,7 +215,7 @@ export default function SidebarNav() {
       >
         <div className="flex flex-col h-full">
 
-          {/* ── Logo Area with BETA badge ────────────────────────────────── */}
+          {/* ââ Logo Area with BETA badge ââââââââââââââââââââââââââââââââââ */}
           <div className="px-5 py-5 border-b" style={{ borderColor: "rgba(255,255,255,.08)" }}>
             <Link href="/dashboard" className="flex items-center gap-2.5" onClick={() => setIsMobileOpen(false)}>
               <div
@@ -238,13 +238,13 @@ export default function SidebarNav() {
                     letterSpacing: "0.1em",
                   }}
                 >
-                  EARLY ACCESS
+                  BETA
                 </span>
               </div>
             </Link>
           </div>
 
-          {/* ── New Assessment CTA ───────────────────────────────────────── */}
+          {/* ââ New Assessment CTA âââââââââââââââââââââââââââââââââââââââââ */}
           <div className="px-3 pt-4 pb-2" suppressHydrationWarning>
             <Link
               href="/assess"
@@ -264,7 +264,7 @@ export default function SidebarNav() {
             </Link>
           </div>
 
-          {/* ── Nav Sections ─────────────────────────────────────────────── */}
+          {/* ââ Nav Sections âââââââââââââââââââââââââââââââââââââââââââââââ */}
           <nav className="flex-1 px-2.5 py-3 overflow-y-auto">
             {navSections.map((section) => (
               <div key={section.section}>
@@ -301,7 +301,7 @@ export default function SidebarNav() {
             ))}
           </nav>
 
-          {/* ── Feedback Button ──────────────────────────────────────────── */}
+          {/* ââ Feedback Button ââââââââââââââââââââââââââââââââââââââââââââ */}
           <div className="px-3 pb-2">
             <button
               onClick={() => { setFeedbackOpen(true); setIsMobileOpen(false); }}
@@ -315,7 +315,7 @@ export default function SidebarNav() {
             </button>
           </div>
 
-          {/* ── Footer / User Area ───────────────────────────────────────── */}
+          {/* ââ Footer / User Area âââââââââââââââââââââââââââââââââââââââââ */}
           <div className="px-3.5 py-4 border-t" style={{ borderColor: "rgba(255,255,255,.08)" }}>
             <Link
               href="/settings"
@@ -347,3 +347,5 @@ export default function SidebarNav() {
       {/* In-app feedback modal (BUG-01 fix) */}
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </>
+  );
+}
