@@ -7,9 +7,8 @@ import VisualSelect from "./VisualSelect";
 import PhotoSlot, { PhotoSlotSpec, PhotoResult } from "./PhotoSlot";
 import ReadingInput, { ReadingSpec, ReadingResult } from "./ReadingInput";
 import MultiInput, { MultiInputItem } from "./MultiInput";
-import posthog from 'posthog-js';
 
-// ââ API types ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── API types ──────────────────────────────────────────────────────────────
 
 interface QuestionOut {
   step_id: string;
@@ -49,7 +48,7 @@ export interface AnswerRecord {
   question_obj: QuestionOut;   // stored so back button can restore
 }
 
-// ââ Analytics helper â graceful if PostHog not loaded âââââââââââââââââââââ
+// ── Analytics helper — graceful if PostHog not loaded ─────────────────────
 
 function trackEvent(name: string, props: Record<string, unknown>) {
   try {
@@ -60,12 +59,12 @@ function trackEvent(name: string, props: Record<string, unknown>) {
   } catch { /* never crash on analytics */ }
 }
 
-// ââ Props ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── Props ──────────────────────────────────────────────────────────────────
 
 interface DiagnosticFlowProps {
   assessmentId: string;
   complaintType: string;
-  authHeaders: Record<string, string>;
+  getAuthHeaders: () => Promise<Record<string, string>>;
   ocrNameplate?: Record<string, unknown> | null;
   onResolved: (cardId: number, cardName: string, sessionId: string, photoSlots: PhotoSlotSpec[], history: AnswerRecord[]) => void;
   onPhase2Gate: (continuation: GateContinuation) => void;
@@ -73,12 +72,12 @@ interface DiagnosticFlowProps {
   onCancel: () => void;
 }
 
-// ââ Component ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ── Component ──────────────────────────────────────────────────────────────
 
 export default function DiagnosticFlow({
   assessmentId,
   complaintType,
-  authHeaders,
+  getAuthHeaders,
   ocrNameplate,
   onResolved,
   onPhase2Gate,
@@ -94,17 +93,21 @@ export default function DiagnosticFlow({
   const [submitting, setSubmitting] = useState(false);
   const [undoing, setUndoing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // live headers — refreshed before every API call so tokens never expire
+  const [liveHeaders, setLiveHeaders] = useState<Record<string, string>>({});
 
-  // ââ Start session on mount âââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Start session on mount ─────────────────────────────────────────────
 
   useEffect(() => {
     const start = async () => {
       setLoading(true);
       setError(null);
       try {
+        const h = await getAuthHeaders();
+        setLiveHeaders(h);
         const r = await fetch(`${API_URL}/api/diagnostic/session`, {
           method: "POST",
-          headers: { ...authHeaders, "Content-Type": "application/json" },
+          headers: { ...h, "Content-Type": "application/json" },
           body: JSON.stringify({ assessment_id: assessmentId, complaint_type: complaintType }),
         });
         if (!r.ok) {
@@ -117,7 +120,7 @@ export default function DiagnosticFlow({
 
         // WS-N3: Fetch total step count for progress indicator
         const qr = await fetch(`${API_URL}/api/diagnostic/questions/${complaintType}`, {
-          headers: authHeaders,
+          headers: h,
         }).catch(() => null);
         if (qr && qr.ok) {
           const questions = await qr.json();
@@ -135,7 +138,7 @@ export default function DiagnosticFlow({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId, complaintType]);
 
-  // ââ Submit answer ââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Submit answer ──────────────────────────────────────────────────────
 
   const submitAnswer = useCallback(async (answer: unknown, answerDisplay: string) => {
     if (!sessionId || !currentQuestion) return;
@@ -153,9 +156,11 @@ export default function DiagnosticFlow({
     setHistory(updatedHistory);
 
     try {
+      const h = await getAuthHeaders();
+      setLiveHeaders(h);
       const r = await fetch(`${API_URL}/api/diagnostic/session/${sessionId}/answer`, {
         method: "POST",
-        headers: { ...authHeaders, "Content-Type": "application/json" },
+        headers: { ...h, "Content-Type": "application/json" },
         body: JSON.stringify({ answer }),
       });
       if (!r.ok) {
@@ -169,11 +174,9 @@ export default function DiagnosticFlow({
         step_id: currentQuestion.step_id,
         answer: answerDisplay,
         time_to_answer_ms: Date.now() - answerStartTime,
-      });      posthog.capture('diagnostic_question_answered', { question: currentQuestion?.hint_text ?? '', answer: answerDisplay ?? String(answer), complaint_type: complaintType ?? '' });
-
+      });
 
       if (resp.phase_2_gate && resp.gate_continuation) {
-      posthog.capture('diagnostic_phase2_gate', { complaint_type: complaintType ?? '' });
         trackEvent("diagnostic_session_phase2_gate", {
           complaint_type: complaintType,
           step_id: currentQuestion.step_id,
@@ -213,18 +216,20 @@ export default function DiagnosticFlow({
     } finally {
       setSubmitting(false);
     }
-  }, [sessionId, currentQuestion, history, authHeaders, complaintType, sessionStartTime, onResolved, onPhase2Gate, onEscalated]);
+  }, [sessionId, currentQuestion, history, getAuthHeaders, complaintType, sessionStartTime, onResolved, onPhase2Gate, onEscalated]);
 
-  // ââ WS-N3: Back button (undo last answer) âââââââââââââââââââââââââââââ
+  // ── WS-N3: Back button (undo last answer) ─────────────────────────────
 
   const handleUndo = useCallback(async () => {
     if (!sessionId || history.length === 0 || undoing) return;
     setUndoing(true);
     setError(null);
     try {
+      const h = await getAuthHeaders();
+      setLiveHeaders(h);
       const r = await fetch(`${API_URL}/api/diagnostic/session/${sessionId}/undo`, {
         method: "PATCH",
-        headers: { ...authHeaders, "Content-Type": "application/json" },
+        headers: { ...h, "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
       if (!r.ok) {
@@ -241,9 +246,9 @@ export default function DiagnosticFlow({
     } finally {
       setUndoing(false);
     }
-  }, [sessionId, history, authHeaders, undoing]);
+  }, [sessionId, history, getAuthHeaders, undoing]);
 
-  // ââ Answer handlers ââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Answer handlers ────────────────────────────────────────────────────
 
   const handleYesNo = (value: "yes" | "no") => {
     submitAnswer(value, value.toUpperCase());
@@ -273,7 +278,7 @@ export default function DiagnosticFlow({
     submitAnswer(answer, display);
   };
 
-  // ââ Render âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+  // ── Render ─────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -372,11 +377,11 @@ export default function DiagnosticFlow({
         )}
         {currentQuestion.input_type === "photo" && currentQuestion.photo_spec && (
           <PhotoSlot spec={currentQuestion.photo_spec} assessmentId={assessmentId}
-            authHeaders={authHeaders} onCapture={handlePhoto} disabled={submitting} />
+            authHeaders={liveHeaders} onCapture={handlePhoto} disabled={submitting} />
         )}
         {currentQuestion.input_type === "multi" && multiItems.length > 0 && (
           <MultiInput inputs={multiItems} assessmentId={assessmentId}
-            authHeaders={authHeaders} ocrNameplate={ocrNameplate}
+            authHeaders={liveHeaders} ocrNameplate={ocrNameplate}
             onSubmit={handleMulti} disabled={submitting} />
         )}
       </div>
@@ -415,8 +420,7 @@ export default function DiagnosticFlow({
             step_id: currentQuestion?.step_id ?? "unknown",
             steps_completed: history.length,
           });
-          posthog.capture('diagnostic_cancelled', { complaint_type: complaintType ?? '' });
-    onCancel();
+          onCancel();
         }}
         className="text-xs font-medium text-center py-2 mt-2"
         style={{ color: "#4a5568" }}
