@@ -9,7 +9,7 @@ import ReadingInput, { ReadingSpec, ReadingResult } from "./ReadingInput";
 import MultiInput, { MultiInputItem } from "./MultiInput";
 import posthog from 'posthog-js';
 
-// ── API types ──────────────────────────────────────────────────────────────
+// ââ API types ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 interface QuestionOut {
   step_id: string;
@@ -49,7 +49,7 @@ export interface AnswerRecord {
   question_obj: QuestionOut;   // stored so back button can restore
 }
 
-// ── Analytics helper — graceful if PostHog not loaded ─────────────────────
+// ââ Analytics helper â graceful if PostHog not loaded âââââââââââââââââââââ
 
 function trackEvent(name: string, props: Record<string, unknown>) {
   try {
@@ -60,7 +60,7 @@ function trackEvent(name: string, props: Record<string, unknown>) {
   } catch { /* never crash on analytics */ }
 }
 
-// ── Props ──────────────────────────────────────────────────────────────────
+// ââ Props ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 interface DiagnosticFlowProps {
   assessmentId: string;
@@ -73,7 +73,7 @@ interface DiagnosticFlowProps {
   onCancel: () => void;
 }
 
-// ── Component ──────────────────────────────────────────────────────────────
+// ââ Component ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 export default function DiagnosticFlow({
   assessmentId,
@@ -95,7 +95,7 @@ export default function DiagnosticFlow({
   const [undoing, setUndoing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Start session on mount ─────────────────────────────────────────────
+  // ââ Start session on mount âââââââââââââââââââââââââââââââââââââââââââââ
 
   useEffect(() => {
     const start = async () => {
@@ -135,7 +135,7 @@ export default function DiagnosticFlow({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId, complaintType]);
 
-  // ── Submit answer ──────────────────────────────────────────────────────
+  // ââ Submit answer ââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
   const submitAnswer = useCallback(async (answer: unknown, answerDisplay: string) => {
     if (!sessionId || !currentQuestion) return;
@@ -169,10 +169,11 @@ export default function DiagnosticFlow({
         step_id: currentQuestion.step_id,
         answer: answerDisplay,
         time_to_answer_ms: Date.now() - answerStartTime,
-      });      posthog.capture('diagnostic_step_answered', { question: currentQuestion?.hint_text ?? '', answer: answerDisplay ?? String(answer), complaint_type: complaintType ?? '' });
+      });      posthog.capture('diagnostic_question_answered', { question: currentQuestion?.hint_text ?? '', answer: answerDisplay ?? String(answer), complaint_type: complaintType ?? '' });
 
 
       if (resp.phase_2_gate && resp.gate_continuation) {
+      posthog.capture('diagnostic_phase2_gate', { complaint_type: complaintType ?? '' });
         trackEvent("diagnostic_session_phase2_gate", {
           complaint_type: complaintType,
           step_id: currentQuestion.step_id,
@@ -214,7 +215,7 @@ export default function DiagnosticFlow({
     }
   }, [sessionId, currentQuestion, history, authHeaders, complaintType, sessionStartTime, onResolved, onPhase2Gate, onEscalated]);
 
-  // ── WS-N3: Back button (undo last answer) ─────────────────────────────
+  // ââ WS-N3: Back button (undo last answer) âââââââââââââââââââââââââââââ
 
   const handleUndo = useCallback(async () => {
     if (!sessionId || history.length === 0 || undoing) return;
@@ -242,7 +243,7 @@ export default function DiagnosticFlow({
     }
   }, [sessionId, history, authHeaders, undoing]);
 
-  // ── Answer handlers ────────────────────────────────────────────────────
+  // ââ Answer handlers ââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
   const handleYesNo = (value: "yes" | "no") => {
     submitAnswer(value, value.toUpperCase());
@@ -272,7 +273,7 @@ export default function DiagnosticFlow({
     submitAnswer(answer, display);
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────
+  // ââ Render âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
   if (loading) {
     return (
@@ -414,7 +415,8 @@ export default function DiagnosticFlow({
             step_id: currentQuestion?.step_id ?? "unknown",
             steps_completed: history.length,
           });
-          onCancel();
+          posthog.capture('diagnostic_cancelled', { complaint_type: complaintType ?? '' });
+    onCancel();
         }}
         className="text-xs font-medium text-center py-2 mt-2"
         style={{ color: "#4a5568" }}
