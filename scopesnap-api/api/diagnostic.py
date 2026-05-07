@@ -438,8 +438,16 @@ async def _process_branch(
     # ── phase_2_gate ───────────────────────────────────────────────────────────
     if branch.get("phase_2_gate"):
         continuation = branch.get("after", {})
+        # BUG-020: extract first resolve_card so frontend can call
+        # /estimates/fault-card without card_id=null -> 422
+        primary_card_id = None
+        for val in continuation.values():
+            if isinstance(val, dict) and "resolve_card" in val:
+                primary_card_id = val["resolve_card"]
+                break
         return AnswerResponse(
             phase_2_gate=True,
+            card_id=primary_card_id,
             gate_continuation={"session_id": session_id, **continuation},
         )
 
