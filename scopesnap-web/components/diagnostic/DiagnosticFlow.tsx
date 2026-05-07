@@ -7,6 +7,7 @@ import VisualSelect from "./VisualSelect";
 import PhotoSlot, { PhotoSlotSpec, PhotoResult } from "./PhotoSlot";
 import ReadingInput, { ReadingSpec, ReadingResult } from "./ReadingInput";
 import MultiInput, { MultiInputItem } from "./MultiInput";
+import posthog from 'posthog-js';
 
 // ── API types ──────────────────────────────────────────────────────────────
 
@@ -168,7 +169,8 @@ export default function DiagnosticFlow({
         step_id: currentQuestion.step_id,
         answer: answerDisplay,
         time_to_answer_ms: Date.now() - answerStartTime,
-      });
+      });      posthog.capture('diagnostic_step_answered', { question: currentQuestion?.id ?? '', answer: answerDisplay ?? String(answer), complaint_type: complaintType ?? '' });
+
 
       if (resp.phase_2_gate && resp.gate_continuation) {
         trackEvent("diagnostic_session_phase2_gate", {
