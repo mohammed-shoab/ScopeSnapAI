@@ -20,6 +20,7 @@ import FaultCardResult from "@/components/diagnostic/FaultCardResult";
 import JobConfirmationCard, { FaultCardOption } from "@/components/diagnostic/JobConfirmationCard";
 import ServiceChecklist, { ServiceEstimateResult } from "@/components/diagnostic/ServiceChecklist";
 import { PhotoSlotSpec, PhotoResult } from "@/components/diagnostic/PhotoSlot";
+import posthog from 'posthog-js';
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
@@ -141,6 +142,7 @@ function AssessPageInner() {
   // ââ Draft recovery + offline queue ââââââââââââââââââââââââââââââââââââââââ
   useEffect(() => {
     track.assessmentStarted();
+    posthog.capture('diagnostic_started', { complaint_type: complaintType });
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
@@ -255,6 +257,7 @@ function AssessPageInner() {
       return r.json();
     }).then(est => {
       track.estimateGenerated(est.id, est.total_amount || 0);
+          posthog.capture('estimate_generated', { estimate_id: est.id, amount: est.total_amount || 0 });
       router.push(`/assessment/${est.id}`);
     }).catch(e => {
       setError(e instanceof Error ? e.message : "Error generating estimate");
@@ -283,6 +286,7 @@ function AssessPageInner() {
       if (!r.ok) throw new Error((await r.json()).detail || "Generate failed");
       const est = await r.json();
       track.estimateGenerated(est.id, est.total_amount || 0);
+          posthog.capture('estimate_generated', { estimate_id: est.id, amount: est.total_amount || 0 });
       router.push(`/assessment/${est.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error generating estimate");
