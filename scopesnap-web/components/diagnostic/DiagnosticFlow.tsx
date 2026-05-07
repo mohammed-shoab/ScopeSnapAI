@@ -169,7 +169,7 @@ export default function DiagnosticFlow({
         step_id: currentQuestion.step_id,
         answer: answerDisplay,
         time_to_answer_ms: Date.now() - answerStartTime,
-      });      posthog.capture('diagnostic_step_answered', { question: currentQuestion?.id ?? '', answer: answerDisplay ?? String(answer), complaint_type: complaintType ?? '' });
+      });      posthog.capture('diagnostic_step_answered', { question: currentQuestion?.hint_text ?? '', answer: answerDisplay ?? String(answer), complaint_type: complaintType ?? '' });
 
 
       if (resp.phase_2_gate && resp.gate_continuation) {
