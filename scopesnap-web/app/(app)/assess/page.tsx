@@ -40,7 +40,7 @@ const COMPLAINT_OPTIONS = [
   { id: "service",               icon: "\u{1F527}", label: "Service / Tune-Up",      sub: "Routine maintenance visit" },
   { id: "not_cooling",           icon: "\u{1F975}", label: "Not Cooling",            sub: "Weak or no cooling" },
   { id: "not_heating",           icon: "\u{1F525}", label: "Not Heating",            sub: "No heat / cold air" },
-  { id: "intermittent_shutdown", icon: "â¡",    label: "Intermittent Shutdown",  sub: "Short cycling / random shutoffs" },
+  { id: "intermittent_shutdown", icon: "⚡",    label: "Intermittent Shutdown",  sub: "Short cycling / random shutoffs" },
   { id: "water_dripping",        icon: "\u{1F4A7}", label: "Water Dripping",         sub: "Dripping or pooling" },
   { id: "not_turning_on",        icon: "\u{1F50C}", label: "Not Turning On",         sub: "No response at all" },
   { id: "making_noise",          icon: "\u{1F50A}", label: "Making Noise",           sub: "Banging, squealing, humming" },
