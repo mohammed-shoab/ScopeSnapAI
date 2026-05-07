@@ -366,3 +366,141 @@ Last updated: 2026-03-21
 - /sessions/confident-quirky-allen/mnt/SnapAIAI/scopesnap-api/scripts/seed_equipment_db.py (created)
 - /sessions/confident-quirky-allen/mnt/SnapAIAI/scopesnap-api/main.py (modified - redirect_slashes=False)
 - /tmp/scopesnap_dev.db (SQLite dev database with all tables + test data)
+
+
+---
+
+## Phase 3 — QA, Bug Fixes, and Launch Prep (2026-04 to 2026-05-07)
+
+### Context
+App transitioned from Docker/local dev to full Vercel + Railway production deployment.
+Phase 3 focused on QA of the live production app, resolving all blocking bugs, and
+completing launch-prep UI/tracking work.
+
+---
+
+### AUDIT-001 — Full Phase 3 QA Audit COMPLETE
+
+**Audit scope**: All 9 complaint types, desktop (1920px) and mobile (375px)
+**Result**: 6 blocking bugs found and resolved. 0 blocking bugs remaining.
+
+---
+
+### BUG-004 — not_heating auto Q1 crashes on null OCR data ✅ FIXED
+
+**Symptom**: Selecting "Not Heating" with no nameplate scan crashed immediately on the first auto-question.
+**Root cause**: Branch logic attempted to access OCR brand/model data before null-checking it.
+**Fix**: Added null-safe guards in not_heating branch auto-question logic in scopesnap-api.
+**File**: scopesnap-api (diagnostic branch handler)
+
+---
+
+### BUG-005 — error_code branch crashes on null OCR brand ✅ FIXED
+
+**Symptom**: error_code complaint type crashed when brand was null from OCR.
+**Root cause**: call_error_code_lookup() called with null brand parameter.
+**Fix**: Added null fallback before error_code_lookup invocation.
+**File**: scopesnap-api (error_code branch handler)
+
+---
+
+### BUG-006 — DiagnosticFlow.handleMulti missing visual_select support ✅ FIXED
+
+**Symptom**: Questions with input_type=visual_select (YES/NO big colored buttons) did not render — blank step.
+**Root cause**: handleMulti() in DiagnosticFlow.tsx had no case for visual_select.
+**Fix**: Added visual_select rendering — large green YES / red NO buttons with correct submit behavior.
+**File**: scopesnap-web/components/diagnostic/DiagnosticFlow.tsx
+
+---
+
+### BUG-014 — Intermittent Shutdown card broken emoji ✅ FIXED
+
+**Symptom**: Lightning bolt emoji (U+26A1) rendered as a replacement character on Windows/NTFS.
+**Root cause**: NTFS file copy introduced null-byte padding in assess/page.tsx, corrupting the UTF-8 emoji.
+**Fix**: Stripped null-byte padding via soffice.py script, replaced emoji with clean U+26A1 literal.
+**Commit**: 6fb1298 — fix(BUG-018): strip null-byte padding from app/page.tsx (NTFS cp bug)
+**File**: scopesnap-web/app/(app)/assess/page.tsx
+
+---
+
+### TASK-009 — Landing page copy updated ✅ COMPLETE
+
+- Replaced 48-hour estimate promise with 90-seconds messaging throughout
+- Headline: "HVAC estimates in 90 seconds. No guessing. No spreadsheets."
+- CTA buttons: "Start Your First Assessment" and "See How It Works"
+**File**: scopesnap-web/app/page.tsx
+
+---
+
+### TASK-010 — BETA badge replaced with EARLY ACCESS ✅ COMPLETE
+
+- All "BETA" text replaced with "EARLY ACCESS" across:
+  - app/(app)/layout.tsx (sidebar badge component)
+  - app/page.tsx (landing page header + hero badge)
+  - components/ui/sidebar.tsx (sidebar plan label)
+- NOTE: "Beta Feedback" floating widget (bottom-right) still says "Beta" — low priority cosmetic
+
+---
+
+### TASK-011 — Video embed placeholder added to landing page ✅ COMPLETE
+
+- Added iframe embed slot under "See it in action" section
+- src: https://www.youtube.com/embed/SNAPAI_VIDEO_ID?autoplay=1
+- Structure and layout correct; placeholder ID pending real demo video
+- Action required: Replace SNAPAI_VIDEO_ID with real YouTube ID when demo is recorded
+**File**: scopesnap-web/app/page.tsx
+
+---
+
+### TASK-012 — PostHog diagnostic event tracking ✅ COMPLETE
+
+Added posthog.capture() calls directly in two files (alongside existing lib/tracking.ts internal events):
+
+**assess/page.tsx**:
+- diagnostic_started — fires when assessment begins, props: { complaint_type }
+- estimate_generated — fires when estimate is returned, props: { estimate_id, amount }
+
+**DiagnosticFlow.tsx**:
+- diagnostic_step_answered — fires on each diagnostic step submit, props: { question, answer, complaint_type }
+
+**Implementation**:
+- Import: import posthog from 'posthog-js'
+- PostHog singleton initialized via PostHogProvider (providers/posthog-provider.tsx)
+- Does NOT use window.posthog (snippet-style) — uses posthog-js React singleton
+- NEXT_PUBLIC_POSTHOG_KEY + NEXT_PUBLIC_POSTHOG_HOST set in Vercel environment variables
+
+**Commits**:
+- c8e38fb — feat: add PostHog tracking to assess/page.tsx
+- ddccea7 — FAILED build (TypeScript: Property 'id' does not exist on type 'QuestionOut')
+- 8317f9f — fix(tracking): use hint_text as question identifier (fix for ddccea7 TypeScript error)
+
+**QuestionOut interface note**: Fields are hint_text, options, icon — there is NO id field.
+
+---
+
+### TASK-013 — App Readiness Protocol doc updated ✅ COMPLETE
+
+Phase 3 marked complete in App Readiness Protocol document.
+
+---
+
+### TASK-017 — Full UI walkthrough ✅ COMPLETE (2026-05-07)
+
+All pages and flows verified clean in production:
+
+| Page / Flow | Status | Notes |
+|-------------|--------|-------|
+| Landing page hero | PASS | EARLY ACCESS badge, correct 90s copy |
+| Landing page video section | PASS | iframe present, placeholder ID expected |
+| Dashboard | PASS | EARLY ACCESS sidebar, recent assessments, stats |
+| Assessments list | PASS | Filters, table, all rendering |
+| Settings | PASS | Company profile, billing section |
+| Step Zero (nameplate) | PASS | Photo slots, Skip/Continue buttons |
+| Complaint grid (all 9 cards) | PASS | All icons correct, no broken characters |
+| Intermittent Shutdown emoji | PASS | Yellow lightning bolt clean (BUG-014 fix) |
+| Not Heating diagnostic | PASS | Steps 1+2 load, no crash (BUG-004 fix) |
+| Not Cooling diagnostic | PASS | visual_select YES/NO renders (BUG-006 fix) |
+
+---
+
+## Last updated: 2026-05-07
