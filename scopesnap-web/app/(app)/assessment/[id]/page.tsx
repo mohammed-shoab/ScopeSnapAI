@@ -471,7 +471,7 @@ export default function EstimatePage() {
         throw new Error(body.detail || `Send failed (${r.status})`);
       }
       // SOW Task 1.10 — track successful email send
-      trackEvent("email_sent", { estimate_id: id, homeowner_name: homeownerName });
+      trackEvent("report_sent", { estimate_id: id, homeowner_name: homeownerName });
       setSent(true);
     } catch (e: unknown) {
       trackEvent("email_failed", { estimate_id: id });
