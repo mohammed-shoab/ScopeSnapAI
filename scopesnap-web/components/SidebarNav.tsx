@@ -238,7 +238,7 @@ export default function SidebarNav() {
                     letterSpacing: "0.1em",
                   }}
                 >
-                  BETA
+                  EARLY ACCESS
                 </span>
               </div>
             </Link>
