@@ -219,4 +219,6 @@ async def on_startup():
             await seed_equipment_db()
             print("✅ Equipment models seeded successfully")
         else:
-            print(f"
+            print(f"✅ Equipment models: {model_count} models loaded")
+    except Exception as _equip_err:
+        print(f"⚠️  Equipment models seed failed (non-fatal): {_equip_err}")
