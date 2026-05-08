@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* SnapAI Global Styles — matching prototype design tokens */
+/* SnapAI Global Styles â matching prototype design tokens */
 :root {
   --bg: #f7f7f3;
   --surface: #ffffff;
@@ -158,4 +158,35 @@ input[type="range"]::-moz-range-thumb {
 }
 .animate-dash-rotate {
   animation: dashRotate 3s linear infinite;
+}
+
+/* ── Clerk: self-hosted Google OAuth icon ──────────────────────────────────────
+   Clerk loads the Google logo from img.clerk.com (external CDN).
+   On VPNs, strict privacy browsers, or restricted networks this CDN may be
+   blocked, showing a broken-image icon. We hide the remote <img> and replace it
+   with a self-hosted SVG from /google-logo.svg so it always loads from our domain.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Hide the remote img that Clerk injects */
+.cl-providerIcon__google img,
+.cl-socialButtonsButtonIcon__google img,
+[class*="providerIcon__google"] img,
+[class*="socialButtonsButtonIcon__google"] img {
+  opacity: 0 !important;
+  position: absolute !important;
+  pointer-events: none !important;
+}
+
+/* Replace with self-hosted SVG via background-image */
+.cl-providerIcon__google,
+.cl-socialButtonsButtonIcon__google,
+[class*="providerIcon__google"],
+[class*="socialButtonsButtonIcon__google"] {
+  background-image: url('/google-logo.svg') !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  display: inline-block !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
 }
