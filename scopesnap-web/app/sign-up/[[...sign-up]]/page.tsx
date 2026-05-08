@@ -1,5 +1,5 @@
 /**
- * SnapAI — Embedded Sign-Up Page
+ * SnapAI â Embedded Sign-Up Page
  * Uses Clerk's <SignUp /> component rendered within the SnapAI app.
  *
  * Route: /sign-up (catch-all handles multi-step Clerk sign-up flow)
@@ -78,6 +78,17 @@ export default function SignUpPage() {
               fontWeight: 700,
               borderRadius: 10,
             },
+            // Self-hosted Google icon — replaces Clerk's remote CDN img so the
+            // button renders correctly on VPNs and strict privacy browsers
+            providerIcon__google: {
+              backgroundImage: "url('/google-logo.svg')",
+              backgroundSize: "contain",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center",
+              display: "inline-block",
+              minWidth: 18,
+              minHeight: 18,
+            },
           },
         }}
       />
@@ -91,7 +102,7 @@ export default function SignUpPage() {
           fontFamily: "IBM Plex Mono, monospace",
         }}
       >
-        SnapAI — Professional HVAC assessments for contractors
+        SnapAI â Professional HVAC assessments for contractors
       </p>
     </div>
   );
