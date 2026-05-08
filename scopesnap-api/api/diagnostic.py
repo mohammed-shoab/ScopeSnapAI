@@ -1,18 +1,18 @@
 """
-WS-A3 — Phase 3 Diagnostic Engine
+WS-A3 â Phase 3 Diagnostic Engine
 
-POST /api/diagnostic/session              — start a new session
-GET  /api/diagnostic/session/{session_id} — resume (get current step)
-POST /api/diagnostic/session/{session_id}/answer — submit answer to current step
+POST /api/diagnostic/session              â start a new session
+GET  /api/diagnostic/session/{session_id} â resume (get current step)
+POST /api/diagnostic/session/{session_id}/answer â submit answer to current step
 
 Bug fixes in this implementation
 ---------------------------------
 BUG-003  : _compute_branch_key reads pre-computed branch_key from frontend
            (avoids str(dict) coercion for reading/photo answer dicts)
 BUG-003b : _get_fault_card_name uses  SELECT card_name AS name  so .name works
-BUG-004  : not_heating auto Q1 — null-safe read of ocr_nameplate.system_type;
+BUG-004  : not_heating auto Q1 â null-safe read of ocr_nameplate.system_type;
            defaults to gas_furnace when field is absent
-BUG-005  : error_code call_error_code_lookup — null-safe read of
+BUG-005  : error_code call_error_code_lookup â null-safe read of
            ocr_nameplate.brand; routes to nuisance_or_unknown when absent
 """
 
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/diagnostic", tags=["diagnostic"])
 
-# ── Pydantic schemas ───────────────────────────────────────────────────────────
+# ââ Pydantic schemas âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 
 class StartSessionRequest(BaseModel):
@@ -78,7 +78,7 @@ class AnswerResponse(BaseModel):
     finding: Optional[dict] = None
 
 
-# ── DB helpers ─────────────────────────────────────────────────────────────────
+# ââ DB helpers âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 _QUESTION_COLS = """
     step_id, question_text, hint_text, input_type,
@@ -220,7 +220,7 @@ async def _escalate_session(db: AsyncSession, session_id: str) -> None:
     )
 
 
-# ── Question row → response schema ────────────────────────────────────────────
+# ââ Question row â response schema ââââââââââââââââââââââââââââââââââââââââââââ
 
 
 def _row_to_question_out(row: Any) -> QuestionOut:
@@ -231,8 +231,8 @@ def _row_to_question_out(row: Any) -> QuestionOut:
         hint_text=row.hint_text,
         input_type=row.input_type,
         # options_jsonb serves dual purpose:
-        #   visual_select → [{value, label, icon}]
-        #   multi         → [{kind, spec}]  (frontend casts)
+        #   visual_select â [{value, label, icon}]
+        #   multi         â [{kind, spec}]  (frontend casts)
         options=row.options_jsonb,
         reading_spec=row.reading_spec,
         photo_spec=row.photo_spec,
@@ -240,17 +240,17 @@ def _row_to_question_out(row: Any) -> QuestionOut:
     )
 
 
-# ── Branch-key extraction ──────────────────────────────────────────────────────
+# ââ Branch-key extraction ââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 
 def _compute_branch_key(answer: Any, input_type: str) -> str:
     """
     BUG-003: extract the routing branch_key from the frontend answer.
 
-    - yesno / visual_select  → answer is a plain string
-    - reading / photo / multi → answer is a dict; prefer explicit branch_key field
-    - multi (bundled)        → answer has reading_0, reading_1, etc.; use reading_0.branch_key
-    - fallback               → str(answer)
+    - yesno / visual_select  â answer is a plain string
+    - reading / photo / multi â answer is a dict; prefer explicit branch_key field
+    - multi (bundled)        â answer has reading_0, reading_1, etc.; use reading_0.branch_key
+    - fallback               â str(answer)
     """
     if isinstance(answer, str):
         return answer.strip().lower()
@@ -261,14 +261,14 @@ def _compute_branch_key(answer: Any, input_type: str) -> str:
         if bk:
             return str(bk).strip().lower()
 
-        # BUG-006: Multi-input bundled answer — readings keyed as reading_0, reading_1 …
-        # The first reading’s branch_key is the primary routing key.
+        # BUG-006: Multi-input bundled answer â readings keyed as reading_0, reading_1 â¦
+        # The first readingâs branch_key is the primary routing key.
         r0 = answer.get("reading_0")
         if isinstance(r0, dict):
             bk = r0.get("branch_key")
             if bk:
                 logger.info(
-                    "[diagnostic] branch_key from reading_0: ‘%s’", bk
+                    "[diagnostic] branch_key from reading_0: â%sâ", bk
                 )
                 return str(bk).strip().lower()
 
@@ -281,7 +281,7 @@ def _compute_branch_key(answer: Any, input_type: str) -> str:
     return str(answer).strip().lower()
 
 
-# ── Auto-question resolution — BUG-004 fix ────────────────────────────────────
+# ââ Auto-question resolution â BUG-004 fix ââââââââââââââââââââââââââââââââââââ
 
 
 def _resolve_auto_question(branch_logic: dict, ocr_nameplate: Optional[dict]) -> str:
@@ -295,14 +295,14 @@ def _resolve_auto_question(branch_logic: dict, ocr_nameplate: Optional[dict]) ->
     use_field: str = branch_logic.get("use_field", "")
     ocr = ocr_nameplate or {}
 
-    # branch_logic stores field as "ocr_nameplate.system_type" — strip prefix
+    # branch_logic stores field as "ocr_nameplate.system_type" â strip prefix
     field_name = use_field.split(".", 1)[-1] if "." in use_field else use_field
     value = ocr.get(field_name)
 
     if not value:
-        # BUG-004: null safety — fall back to gas_furnace
+        # BUG-004: null safety â fall back to gas_furnace
         logger.info(
-            "[diagnostic] auto Q: ocr field '%s' is None — defaulting to gas_furnace",
+            "[diagnostic] auto Q: ocr field '%s' is None â defaulting to gas_furnace",
             field_name,
         )
         value = "gas_furnace"
@@ -316,13 +316,13 @@ def _resolve_auto_question(branch_logic: dict, ocr_nameplate: Optional[dict]) ->
         return "any"
 
     logger.warning(
-        "[diagnostic] auto Q: no branch for '%s', no 'any' wildcard — defaulting to gas_furnace",
+        "[diagnostic] auto Q: no branch for '%s', no 'any' wildcard â defaulting to gas_furnace",
         value,
     )
     return "gas_furnace"
 
 
-# ── Error-code lookup — BUG-005 fix ───────────────────────────────────────────
+# ââ Error-code lookup â BUG-005 fix âââââââââââââââââââââââââââââââââââââââââââ
 
 
 async def _call_error_code_lookup(
@@ -336,7 +336,7 @@ async def _call_error_code_lookup(
     return a branch_key from the 'after' map.
 
     BUG-005 fix: when ocr_nameplate.brand is absent, skip the DB lookup and
-    route directly to 'nuisance_or_unknown' (→ q4-reset) instead of crashing.
+    route directly to 'nuisance_or_unknown' (â q4-reset) instead of crashing.
     """
     after_map: dict = action_config.get("after", {})
 
@@ -344,8 +344,8 @@ async def _call_error_code_lookup(
     brand = ocr.get("brand")
 
     if not brand:
-        # BUG-005: no brand data — skip lookup, use generic reset path
-        logger.info("[diagnostic] error_code lookup: no brand in OCR — nuisance_or_unknown")
+        # BUG-005: no brand data â skip lookup, use generic reset path
+        logger.info("[diagnostic] error_code lookup: no brand in OCR â nuisance_or_unknown")
         return "nuisance_or_unknown"
 
     if not photo_ai_output:
@@ -386,7 +386,7 @@ async def _call_error_code_lookup(
     subsystem = (row.subsystem or "").lower()
     meaning = (row.meaning or "").lower()
 
-    # Keyword-based subsystem → branch_key mapping
+    # Keyword-based subsystem â branch_key mapping
     if "pressure" in subsystem or "sensor" in subsystem or "pressure" in meaning:
         bk = "pressure_sensor_fault"
     elif "refrigerant" in subsystem or "refrigerant" in meaning or ("low" in meaning and "suction" in meaning):
@@ -405,7 +405,7 @@ async def _call_error_code_lookup(
     return bk if bk in after_map else "nuisance_or_unknown"
 
 
-# ── Branch following ───────────────────────────────────────────────────────────
+# ââ Branch following âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 
 def _follow_branch(branch_logic: dict, branch_key: str) -> Optional[dict]:
@@ -413,10 +413,10 @@ def _follow_branch(branch_logic: dict, branch_key: str) -> Optional[dict]:
     Look up branch_key in branch_logic.
     Falls back to 'any' wildcard if the exact key is absent.
 
-    BUG-007: Smart "ok" fallback — frontend ReadingInput always emits branchKey "ok"
+    BUG-007: Smart "ok" fallback â frontend ReadingInput always emits branchKey "ok"
     for non-ignitor reading types. When "ok" is not a key in branch_logic we try:
       1. Any key that CONTAINS "ok" (e.g. "elevated_or_ok", "voltage_drop_ok")
-      2. All branches converge to the same next_step_id → pick first key
+      2. All branches converge to the same next_step_id â pick first key
       3. "any" wildcard
     Returns None if nothing matches (caller should escalate).
     """
@@ -430,11 +430,11 @@ def _follow_branch(branch_logic: dict, branch_key: str) -> Optional[dict]:
         ok_key = next((k for k in branch_logic if "ok" in k.lower()), None)
         if ok_key:
             logger.info(
-                "[diagnostic] BUG-007 ok-fallback: mapped 'ok' → '%s'", ok_key
+                "[diagnostic] BUG-007 ok-fallback: mapped 'ok' â '%s'", ok_key
             )
             return branch_logic[ok_key]
 
-        # 2. All branches point to the same next_step_id — safe to pick any
+        # 2. All branches point to the same next_step_id â safe to pick any
         next_steps = {
             v.get("next_step_id")
             for v in branch_logic.values()
@@ -455,7 +455,7 @@ def _follow_branch(branch_logic: dict, branch_key: str) -> Optional[dict]:
     return branch
 
 
-# ── Branch result → AnswerResponse ────────────────────────────────────────────
+# ââ Branch result â AnswerResponse ââââââââââââââââââââââââââââââââââââââââââââ
 
 
 async def _process_branch(
@@ -473,18 +473,18 @@ async def _process_branch(
     """
     finding = branch.get("finding")
 
-    # ── service_complete ───────────────────────────────────────────────────────
+    # ââ service_complete âââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     if branch.get("service_complete"):
         await _escalate_session(db, session_id)  # marks done
         return AnswerResponse(service_step_complete=True, finding=finding)
 
-    # ── escalate ───────────────────────────────────────────────────────────────
+    # ââ escalate âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     if branch.get("escalate"):
         reason = branch.get("reason", "Manual diagnosis required.")
         await _escalate_session(db, session_id)
         return AnswerResponse(escalated=True, escalation_reason=reason, finding=finding)
 
-    # ── phase_2_gate ───────────────────────────────────────────────────────────
+    # ââ phase_2_gate âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     if branch.get("phase_2_gate"):
         continuation = branch.get("after", {})
         # BUG-020: extract first resolve_card so frontend can call
@@ -500,7 +500,7 @@ async def _process_branch(
             gate_continuation={"session_id": session_id, **continuation},
         )
 
-    # ── resolve_card ───────────────────────────────────────────────────────────
+    # ââ resolve_card âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     if "resolve_card" in branch:
         card_id: int = branch["resolve_card"]
         card_name = await _get_fault_card_name(db, card_id)
@@ -514,7 +514,7 @@ async def _process_branch(
             finding=finding,
         )
 
-    # ── next_step_id ───────────────────────────────────────────────────────────
+    # ââ next_step_id âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     if "next_step_id" in branch:
         next_step_id: str = branch["next_step_id"]
         next_row = await _load_question(db, complaint_type, next_step_id)
@@ -527,7 +527,7 @@ async def _process_branch(
         await _set_session_step(db, session_id, next_step_id)
         return AnswerResponse(next_step=_row_to_question_out(next_row), finding=finding)
 
-    # ── jump_to_complaint (error_code q4-reset "no" branch) ───────────────────
+    # ââ jump_to_complaint (error_code q4-reset "no" branch) âââââââââââââââââââ
     if "jump_to_complaint" in branch:
         new_ct: str = branch["jump_to_complaint"]
         first_row = await _load_first_question(db, new_ct)
@@ -552,7 +552,7 @@ async def _process_branch(
         )
         return AnswerResponse(next_step=_row_to_question_out(first_row))
 
-    # ── unrecognised branch structure ──────────────────────────────────────────
+    # ââ unrecognised branch structure ââââââââââââââââââââââââââââââââââââââââââ
     logger.error("[diagnostic] branch has no recognised action key: %s", branch)
     await _escalate_session(db, session_id)
     return AnswerResponse(
@@ -561,7 +561,7 @@ async def _process_branch(
     )
 
 
-# ── Endpoints ──────────────────────────────────────────────────────────────────
+# ââ Endpoints ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
 
 @router.post("/session", response_model=StartSessionResponse)
@@ -591,7 +591,7 @@ async def start_session(
             detail=f"No diagnostic questions found for complaint type '{body.complaint_type}'.",
         )
 
-    # ── 'auto' type Q1 (e.g. not_heating system_type) ────────────────────────
+    # ââ 'auto' type Q1 (e.g. not_heating system_type) ââââââââââââââââââââââââ
     if first_row.input_type == "auto":
         branch_logic = first_row.branch_logic_jsonb or {}
         branch_key = _resolve_auto_question(branch_logic, assessment.ocr_nameplate)
@@ -623,13 +623,13 @@ async def start_session(
                     current_step=_row_to_question_out(next_row),
                 )
 
-        # phase_2_gate / escalate from Q1 auto — rare, surface to caller
+        # phase_2_gate / escalate from Q1 auto â rare, surface to caller
         return StartSessionResponse(
             session_id=session_id,
             current_step=_row_to_question_out(first_row),
         )
 
-    # ── Normal (non-auto) first question ─────────────────────────────────────
+    # ââ Normal (non-auto) first question âââââââââââââââââââââââââââââââââââââ
     session_id = await _create_session(
         db,
         body.assessment_id,
@@ -680,7 +680,7 @@ async def submit_answer(
 
     branch_logic: dict = q_row.branch_logic_jsonb or {}
 
-    # ── Special: error_code photo Q1 with 'extract_then_lookup' action ────────
+    # ââ Special: error_code photo Q1 with 'extract_then_lookup' action ââââââââ
     # The entire branch_logic for this step is wrapped under one key:
     # {"extract_then_lookup": {"action": "call_error_code_lookup", "brand_from": ..., "after": {...}}}
     if "extract_then_lookup" in branch_logic:
@@ -706,10 +706,10 @@ async def submit_answer(
             )
         return await _process_branch(db, session_id, session.complaint_type, branch)
 
-    # ── Compute branch_key (BUG-003 fix) ─────────────────────────────────────
+    # ââ Compute branch_key (BUG-003 fix) âââââââââââââââââââââââââââââââââââââ
     branch_key = _compute_branch_key(body.answer, q_row.input_type)
 
-    # ── Follow branch ─────────────────────────────────────────────────────────
+    # ââ Follow branch âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     branch = _follow_branch(branch_logic, branch_key)
 
     if branch is None:
@@ -728,7 +728,10 @@ async def submit_answer(
             ),
         )
 
-    return await _process_branch(db, session_id, session.complaint_type, branch)
+    return await _process_branch(
+        db, session_id, session.complaint_type, branch,
+        assessment_id=session.assessment_id, company_id=auth.company_id,
+    )
 
 
 @router.get("/session/{session_id}", response_model=StartSessionResponse)
@@ -737,7 +740,7 @@ async def get_session(
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return current session state — used for page-reload resume."""
+    """Return current session state â used for page-reload resume."""
     session = await _load_session(db, session_id, auth.company_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found.")
