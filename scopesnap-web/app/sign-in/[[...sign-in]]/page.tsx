@@ -1,5 +1,5 @@
 /**
- * SnapAI — Embedded Sign-In Page
+ * SnapAI â Embedded Sign-In Page
  * Uses Clerk's <SignIn /> component rendered within the SnapAI app.
  * Replaces the external Clerk hosted page (glowing-cowbird-89.accounts.dev)
  * which had a black screen rendering issue.
@@ -78,6 +78,17 @@ export default function SignInPage() {
               fontWeight: 700,
               borderRadius: 10,
             },
+            // Self-hosted Google icon — replaces Clerk's remote CDN img so the
+            // button renders correctly on VPNs and strict privacy browsers
+            providerIcon__google: {
+              backgroundImage: "url('/google-logo.svg')",
+              backgroundSize: "contain",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center",
+              display: "inline-block",
+              minWidth: 18,
+              minHeight: 18,
+            },
           },
         }}
       />
@@ -91,7 +102,7 @@ export default function SignInPage() {
           fontFamily: "IBM Plex Mono, monospace",
         }}
       >
-        SnapAI — Professional HVAC assessments for contractors
+        SnapAI â Professional HVAC assessments for contractors
       </p>
     </div>
   );
