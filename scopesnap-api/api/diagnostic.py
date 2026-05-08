@@ -249,18 +249,32 @@ def _compute_branch_key(answer: Any, input_type: str) -> str:
 
     - yesno / visual_select  → answer is a plain string
     - reading / photo / multi → answer is a dict; prefer explicit branch_key field
+    - multi (bundled)        → answer has reading_0, reading_1, etc.; use reading_0.branch_key
     - fallback               → str(answer)
     """
     if isinstance(answer, str):
         return answer.strip().lower()
 
     if isinstance(answer, dict):
+        # Top-level branch_key (simple reading / photo answers)
         bk = answer.get("branch_key")
         if bk:
             return str(bk).strip().lower()
-        # Secondary fallback for older clients
+
+        # BUG-006: Multi-input bundled answer — readings keyed as reading_0, reading_1 …
+        # The first reading’s branch_key is the primary routing key.
+        r0 = answer.get("reading_0")
+        if isinstance(r0, dict):
+            bk = r0.get("branch_key")
+            if bk:
+                logger.info(
+                    "[diagnostic] branch_key from reading_0: ‘%s’", bk
+                )
+                return str(bk).strip().lower()
+
+        # Legacy fallback for older clients that sent {value, unit}
         val = answer.get("value")
-        if val:
+        if val is not None:
             return str(val).strip().lower()
 
     logger.warning("[diagnostic] branch_key fallback: answer=%r input_type=%s", answer, input_type)
