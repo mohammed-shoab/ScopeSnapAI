@@ -463,6 +463,8 @@ async def _process_branch(
     session_id: str,
     complaint_type: str,
     branch: dict,
+    assessment_id: str = "",
+    company_id: str = "",
 ) -> AnswerResponse:
     """
     Translate a branch dict into an AnswerResponse.
@@ -475,7 +477,10 @@ async def _process_branch(
 
     # ââ service_complete âââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     if branch.get("service_complete"):
-        await _escalate_session(db, session_id)  # marks done
+        # BUG-009 fix: generate estimate before marking session done
+        if branch.get("generate_estimate") and assessment_id and company_id:
+            await _generate_service_estimate(db, assessment_id, company_id)
+        await _complete_service_session(db, session_id)
         return AnswerResponse(service_step_complete=True, finding=finding)
 
     # ââ escalate âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
