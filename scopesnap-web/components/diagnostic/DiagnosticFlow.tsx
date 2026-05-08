@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import posthog from "posthog-js";
 import { API_URL } from "@/lib/api";
 import YesNoButtons from "./YesNoButtons";
 import VisualSelect from "./VisualSelect";
@@ -48,14 +49,12 @@ export interface AnswerRecord {
   question_obj: QuestionOut;   // stored so back button can restore
 }
 
-// ── Analytics helper — graceful if PostHog not loaded ─────────────────────
+// ── Analytics helper — uses posthog-js module singleton (same instance
+//    initialised by PostHogProvider.tsx). Gracefully no-ops if not ready.  ──
 
 function trackEvent(name: string, props: Record<string, unknown>) {
   try {
-    // PostHog loaded by providers/PostHogProvider.tsx
-    if (typeof window !== "undefined" && (window as unknown as Record<string, unknown>).posthog) {
-      ((window as unknown as Record<string, unknown>).posthog as { capture: (n: string, p: Record<string, unknown>) => void }).capture(name, props);
-    }
+    posthog.capture(name, props);
   } catch { /* never crash on analytics */ }
 }
 
