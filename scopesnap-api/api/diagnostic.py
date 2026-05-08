@@ -412,11 +412,46 @@ def _follow_branch(branch_logic: dict, branch_key: str) -> Optional[dict]:
     """
     Look up branch_key in branch_logic.
     Falls back to 'any' wildcard if the exact key is absent.
-    Returns None if neither key exists (caller should escalate).
+
+    BUG-007: Smart "ok" fallback — frontend ReadingInput always emits branchKey "ok"
+    for non-ignitor reading types. When "ok" is not a key in branch_logic we try:
+      1. Any key that CONTAINS "ok" (e.g. "elevated_or_ok", "voltage_drop_ok")
+      2. All branches converge to the same next_step_id → pick first key
+      3. "any" wildcard
+    Returns None if nothing matches (caller should escalate).
     """
     branch = branch_logic.get(branch_key)
-    if branch is None:
-        branch = branch_logic.get("any")
+    if branch is not None:
+        return branch
+
+    # BUG-007 smart fallback for "ok" from ReadingInput.tsx
+    if branch_key == "ok" and branch_logic:
+        # 1. Key whose name contains "ok"
+        ok_key = next((k for k in branch_logic if "ok" in k.lower()), None)
+        if ok_key:
+            logger.info(
+                "[diagnostic] BUG-007 ok-fallback: mapped 'ok' → '%s'", ok_key
+            )
+            return branch_logic[ok_key]
+
+        # 2. All branches point to the same next_step_id — safe to pick any
+        next_steps = {
+            v.get("next_step_id")
+            for v in branch_logic.values()
+            if isinstance(v, dict)
+        }
+        if len(next_steps) == 1 and None not in next_steps:
+            first_key = next(iter(branch_logic))
+            logger.info(
+                "[diagnostic] BUG-007 ok-fallback: all branches converge to '%s', "
+                "picking first key '%s'",
+                next(iter(next_steps)),
+                first_key,
+            )
+            return branch_logic[first_key]
+
+    # 'any' wildcard
+    branch = branch_logic.get("any")
     return branch
 
 
