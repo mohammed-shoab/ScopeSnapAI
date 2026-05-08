@@ -177,7 +177,7 @@ export default function DiagnosticFlow({
       });
 
       if (resp.phase_2_gate && resp.gate_continuation) {
-        trackEvent("diagnostic_session_phase2_gate", {
+        trackEvent("diagnostic_phase2_gate", {
           complaint_type: complaintType,
           step_id: currentQuestion.step_id,
         });
@@ -187,7 +187,7 @@ export default function DiagnosticFlow({
 
       if (resp.escalated) {
         const reason = resp.escalation_reason ?? "tech_judgment";
-        trackEvent("diagnostic_session_escalated", {
+        trackEvent("diagnostic_escalated", {
           complaint_type: complaintType,
           step_id: currentQuestion.step_id,
           reason,
@@ -197,7 +197,7 @@ export default function DiagnosticFlow({
       }
 
       if (resp.resolved && resp.card_id) {
-        trackEvent("diagnostic_session_resolved", {
+        trackEvent("diagnostic_resolved", {
           complaint_type: complaintType,
           card_id: resp.card_id,
           total_questions: updatedHistory.length,
@@ -415,7 +415,7 @@ export default function DiagnosticFlow({
       {/* Cancel */}
       <button
         onClick={() => {
-          trackEvent("diagnostic_session_cancelled", {
+          trackEvent("diagnostic_cancelled", {
             complaint_type: complaintType,
             step_id: currentQuestion?.step_id ?? "unknown",
             steps_completed: history.length,
@@ -430,3 +430,4 @@ export default function DiagnosticFlow({
     </div>
   );
 }
+                                
