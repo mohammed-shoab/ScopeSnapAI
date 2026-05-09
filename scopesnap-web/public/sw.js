@@ -5,7 +5,7 @@
  * API calls are always network-first (no offline data caching).
  */
 
-const CACHE_NAME = "snapai-shell-v1";
+const CACHE_NAME = "snapai-shell-v2";
 
 // App shell files to cache on install
 const SHELL_FILES = [
@@ -47,6 +47,21 @@ self.addEventListener("fetch", (event) => {
 
   // API calls: always network-first
   if (url.pathname.startsWith("/api/") || url.hostname === "localhost" && url.port === "8001") {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+
+  // Third-party analytics & auth: always passthrough, never cache or intercept.
+  // Without this, cross-origin fetches (e.g. PostHog ingestion) fall into the
+  // navigation catch-all below and may get served cached app HTML instead.
+  if (
+    url.hostname.includes("posthog.com") ||
+    url.hostname.includes("i.posthog") ||
+    url.hostname.includes("clerk.") ||
+    url.hostname.includes("clerk.dev") ||
+    url.hostname.includes("railway.app")
+  ) {
     event.respondWith(fetch(event.request));
     return;
   }
