@@ -34,6 +34,10 @@ if (typeof window !== "undefined" && POSTHOG_KEY) {
     capture_pageleave: true,
     autocapture: false,      // Manual instrumentation only (less noise, more signal)
     persistence: "localStorage+cookie",
+    // Capture events for all users (anonymous + identified).
+    // Without this, PostHog's "identified_only" project default silently drops
+    // anonymous events even though the user is logged in to the app.
+    person_profiles: "always",
     // Don't track in dev unless explicitly opted in
     loaded: (ph) => {
       if (process.env.NEXT_PUBLIC_ENV === "development") {

@@ -9,6 +9,7 @@ import BottomNav from "@/components/BottomNav";
 import OfflineBanner from "@/components/OfflineBanner";
 import FeedbackButton from "@/components/FeedbackButton";
 import InstallPrompt from "@/components/InstallPrompt";
+import PostHogUserSync from "@/components/PostHogUserSync";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development" ||
   process.env.NODE_ENV === "development";
@@ -58,6 +59,8 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen bg-surface-bg" suppressHydrationWarning>
+      {/* Identify logged-in Clerk user in PostHog for event attribution */}
+      <PostHogUserSync />
       <OfflineBanner />
       <SidebarNav />
 
