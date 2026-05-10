@@ -858,3 +858,22 @@ async def submit_answer(
 
 
 @router.get("/session/{session_id}", response_model=StartSessionResponse)
+
+async def get_session(
+    session_id: str,
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return current session state — used for page-reload resume."""
+    session = await _load_session(db, session_id, auth.company_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    q_row = await _load_question(db, session.complaint_type, session.current_step_id)
+    if not q_row:
+        raise HTTPException(status_code=500, detail="Current step not found in DB.")
+
+    return StartSessionResponse(
+        session_id=session_id,
+        current_step=_row_to_question_out(q_row),
+    )
