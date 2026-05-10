@@ -1,13 +1,13 @@
 """
-SnapAI — Events API
-SOW Task 1.10: POST /api/events — record behavioral analytics events.
+SnapAI - Events API
+SOW Task 1.10: POST /api/events - record behavioral analytics events.
 
 Design:
 - Always returns 200 (even on DB error) to ensure tracking never blocks UX
 - Validates event_name whitelist to prevent junk data ingestion
 - Extracts IP from X-Forwarded-For (Railway/Vercel proxy) or Request
 - Truncates long strings to prevent DB overflow
-- No auth required — events come from both authenticated and anonymous users
+- No auth required - events come from both authenticated and anonymous users
   (homeowner report views have no user_id)
 """
 
@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["events"])
 
-# ── In-memory rate limiter (SOW Task 1.10 acceptance criterion) ───────────────
+# In-memory rate limiter (SOW Task 1.10 acceptance criterion)
 # Sliding window: max 100 events per user/IP per 60 seconds.
-# Safe for single-worker async FastAPI (one event loop — no race conditions).
+# Safe for single-worker async FastAPI (one event loop - no race conditions).
 # Will reset on redeploy, which is acceptable for beta.
 _rate_cache: Dict[str, List[float]] = defaultdict(list)
 _RATE_LIMIT = 100   # max events per window
@@ -48,7 +48,7 @@ def _is_rate_limited(identifier: str) -> bool:
     _rate_cache[identifier].append(now)
     return False
 
-# ── Allowed event names (whitelist) ───────────────────────────────────────────
+# Allowed event names (whitelist)
 VALID_EVENTS = {
     # Assessment lifecycle
     "assessment_started",
@@ -56,7 +56,7 @@ VALID_EVENTS = {
     "assessment_submitted",
     "assessment_completed",
     "assessment_queued_offline",
-    # Diagnostic flow (8 spec events — also sent to PostHog directly)
+    # Diagnostic flow (8 spec events - also sent to PostHog directly)
     "diagnostic_session_started",
     "diagnostic_question_answered",
     "diagnostic_resolved",
@@ -80,7 +80,7 @@ VALID_EVENTS = {
 }
 
 
-# ── Request schema ────────────────────────────────────────────────────────────
+# Request schema
 class EventPayload(BaseModel):
     event_name: str
     event_data: Optional[Dict[str, Any]] = {}
@@ -93,7 +93,7 @@ class EventPayload(BaseModel):
     def validate_event_name(cls, v: str) -> str:
         v = v.strip().lower()[:100]
         # Allow known events; silently remap unknown ones to "unknown_event"
-        # (don't raise — we never want tracking to fail a request)
+        # (don't raise - we never want tracking to fail a request)
         return v if v in VALID_EVENTS else "unknown_event"
 
     @field_validator("page_url", "user_agent", "session_id", mode="before")
@@ -104,7 +104,7 @@ class EventPayload(BaseModel):
         return v
 
 
-# ── Helper: extract IP ────────────────────────────────────────────────────────
+# Helper: extract IP
 def get_client_ip(request: Request) -> Optional[str]:
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
@@ -114,20 +114,20 @@ def get_client_ip(request: Request) -> Optional[str]:
     return None
 
 
-# ── POST /api/events ──────────────────────────────────────────────────────────
+# POST /api/events
 @router.post("/events", status_code=200)
 async def record_event(payload: EventPayload, request: Request):
     """
     Record a behavioral event.
-    Always returns 200 — tracking errors must never fail user-facing requests.
+    Always returns 200 - tracking errors must never fail user-facing requests.
     """
     try:
         ip = get_client_ip(request)
 
-        # Extract user_id from Clerk header (optional — homeowner views won't have it)
+        # Extract user_id from Clerk header (optional - homeowner views won't have it)
         user_id = request.headers.get("X-Dev-Clerk-User-Id") or None
 
-        # Rate limiting — silently drop if exceeded (never expose to client)
+        # Rate limiting - silently drop if exceeded (never expose to client)
         identifier = user_id or ip or "anonymous"
         if _is_rate_limited(identifier):
             return {"ok": True}
@@ -153,13 +153,13 @@ async def record_event(payload: EventPayload, request: Request):
             await db.commit()
 
     except Exception as e:
-        # Log but never propagate — tracking must be invisible to the user
+        # Log but never propagate - tracking must be invisible to the user
         logger.warning(f"[events] Failed to record event '{payload.event_name}': {e}")
 
     return {"ok": True}
 
 
-# ── POST /api/waitlist ─────────────────────────────────────────────────────────
+# POST /api/waitlist
 class WaitlistPayload(BaseModel):
     email: str
 
@@ -184,7 +184,7 @@ async def join_waitlist(payload: WaitlistPayload, request: Request):
 
     try:
         async with AsyncSessionLocal() as db:
-            # Upsert — silently ignore duplicate emails
+            # Upsert - silently ignore duplicate emails
             await db.execute(
                 text("""
                 INSERT INTO waitlist_signups (email, source, referrer_url, ip_address)
@@ -203,4 +203,14 @@ async def join_waitlist(payload: WaitlistPayload, request: Request):
         await record_event(
             EventPayload(
                 event_name="waitlist_signup",
-                event_data={"email_domain"
+                event_data={"email_domain": payload.email.split("@")[-1]},
+                page_url=referrer,
+            ),
+            request,
+        )
+
+    except Exception as e:
+        logger.warning(f"[waitlist] Failed to save {payload.email}: {e}")
+        return {"ok": False, "detail": "Could not save email. Please try again."}
+
+    return {"ok": True, "message": "You're on the list! We'll be in touch soon."}
