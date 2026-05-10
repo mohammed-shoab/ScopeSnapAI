@@ -423,4 +423,220 @@ export default function DiagnosticFlow({
             <button
               onClick={handleUndo}
               disabled={undoing || submitting}
-              className="flex items-center gap-1 text-xs font-semibold transition-opa
+              className="flex items-center gap-1 text-xs font-semibold transition-opacity disabled:opacity-40"
+              style={{ color: "#3498db" }}
+            >
+              {undoing
+                ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin inline-block" />
+                : <span>&#x2190;</span>
+              }
+              Undo last answer
+            </button>
+          ) : (
+            <span />
+          )}
+          <span className="text-xs font-semibold" style={{ color: "#7a8299" }}>
+            {approxTotal ? `Step ${stepNum} of ~${approxTotal}` : `Step ${stepNum}`}
+          </span>
+        </div>
+        <div className="flex gap-1">
+          {Array.from({ length: Math.max(approxTotal ?? stepNum, stepNum) }, (_, i) => (
+            <div
+              key={i}
+              className="h-1.5 rounded-full flex-1 transition-all duration-300"
+              style={{ background: i < stepNum ? "#3498db" : "#2a2a4a" }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Question */}
+      <div className="flex flex-col gap-1.5">
+        <h2 className="text-xl font-extrabold text-white leading-snug">{currentQuestion.question_text}</h2>
+        {currentQuestion.hint_text && (
+          <p className="text-sm" style={{ color: "#7a8299" }}>{currentQuestion.hint_text}</p>
+        )}
+      </div>
+
+      {error && (
+        <div className="rounded-xl px-4 py-2.5" style={{ background: "rgba(231,76,60,0.12)" }}>
+          <p className="text-xs font-medium" style={{ color: "#e74c3c" }}>{error}</p>
+        </div>
+      )}
+
+      {/* Input widget */}
+      <div className="flex flex-col gap-4">
+        {currentQuestion.input_type === "yesno" && (
+          <YesNoButtons onAnswer={handleYesNo} disabled={submitting} />
+        )}
+        {currentQuestion.input_type === "visual_select" && currentQuestion.options && (
+          <VisualSelect options={currentQuestion.options} onAnswer={handleVisualSelect} disabled={submitting} />
+        )}
+        {currentQuestion.input_type === "reading" && currentQuestion.reading_spec && (
+          <ReadingInput spec={currentQuestion.reading_spec} ocrNameplate={ocrNameplate}
+            onSubmit={handleReading} disabled={submitting} />
+        )}
+        {currentQuestion.input_type === "photo" && currentQuestion.photo_spec && (
+          <>
+            <PhotoSlot spec={currentQuestion.photo_spec} assessmentId={assessmentId}
+              authHeaders={liveHeaders} onCapture={handlePhoto} disabled={submitting} />
+
+            {/* ── Photo skip UI ── */}
+            {skipConfig && (() => {
+              const spec = currentQuestion.photo_spec!;
+              return (
+                <div className="flex flex-col gap-2">
+                  {/* simple: single link */}
+                  {skipConfig.type === "simple" && (
+                    <button onClick={() => handleSkipSimple(spec.slot_name)} disabled={submitting}
+                      className="text-xs font-medium text-center py-1.5" style={{ color: "#4a5568" }}>
+                      Skip photo and continue →
+                    </button>
+                  )}
+
+                  {/* reroute: single descriptive button */}
+                  {skipConfig.type === "reroute" && (
+                    <button onClick={() => handleSkipReroute(spec.slot_name)} disabled={submitting}
+                      className="text-xs font-medium text-center py-1.5" style={{ color: "#4a5568" }}>
+                      No thermal camera — switch to 4-step manual method →
+                    </button>
+                  )}
+
+                  {/* choice: collapse → expand with buttons */}
+                  {skipConfig.type === "choice" && (
+                    skipExpanded ? (
+                      <div className="rounded-xl p-3 flex flex-col gap-2" style={{ background: "#0d1117", border: "1px solid #2a3050" }}>
+                        <p className="text-xs font-semibold" style={{ color: "#a0a8c0" }}>Select condition (skip photo):</p>
+                        <div className="flex flex-wrap gap-2">
+                          {skipConfig.choices!.map(c => (
+                            <button key={c.branch_key}
+                              onClick={() => handleSkipChoice(spec.slot_name, c.branch_key, c.label)}
+                              disabled={submitting}
+                              className="px-4 py-2 rounded-xl font-semibold text-sm"
+                              style={{ background: "#16213e", color: "#f0f0f0", border: "1.5px solid #2a3a5a" }}>
+                              {c.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => setSkipExpanded(true)} disabled={submitting}
+                        className="text-xs font-medium text-center py-1.5" style={{ color: "#4a5568" }}>
+                        Skip photo — select condition manually →
+                      </button>
+                    )
+                  )}
+
+                  {/* code_input: collapse → text field + proceed */}
+                  {skipConfig.type === "code_input" && (
+                    skipExpanded ? (
+                      <div className="rounded-xl p-3 flex flex-col gap-2" style={{ background: "#0d1117", border: "1px solid #2a3050" }}>
+                        <p className="text-xs font-semibold" style={{ color: "#a0a8c0" }}>Enter error code manually:</p>
+                        <input type="text" value={manualCode}
+                          onChange={e => setManualCode(e.target.value)}
+                          placeholder="e.g. E5, 4-flash, U4, CH05"
+                          className="w-full px-3 py-2 rounded-xl text-sm"
+                          style={{ background: "#16213e", color: "#f0f0f0", border: "1.5px solid #2a3a5a", outline: "none" }} />
+                        <button onClick={() => handleSkipCode(spec.slot_name)}
+                          disabled={submitting || !manualCode.trim()}
+                          className="w-full py-2 rounded-xl font-semibold text-sm"
+                          style={{ background: "#3498db", color: "#fff", opacity: (submitting || !manualCode.trim()) ? 0.5 : 1 }}>
+                          Proceed with this code →
+                        </button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setSkipExpanded(true)} disabled={submitting}
+                        className="text-xs font-medium text-center py-1.5" style={{ color: "#4a5568" }}>
+                        Enter error code manually instead →
+                      </button>
+                    )
+                  )}
+                </div>
+              );
+            })()}
+          </>
+        )}
+
+        {currentQuestion.input_type === "multi" && multiItems.length > 0 && (
+          <>
+            <MultiInput inputs={multiItems} assessmentId={assessmentId}
+              authHeaders={liveHeaders} ocrNameplate={ocrNameplate}
+              onSubmit={handleMulti} disabled={submitting} />
+
+            {/* ── B-Indoor drain pan: photo-only multi → manual water check ── */}
+            {skipConfig?.type === "water_check" && (
+              skipExpanded ? (
+                <div className="rounded-xl p-3 flex flex-col gap-2" style={{ background: "#0d1117", border: "1px solid #2a3050" }}>
+                  <p className="text-xs font-semibold" style={{ color: "#a0a8c0" }}>Tech confirms (skip photos):</p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleWaterCheck("pan_water_present_or_exit_blocked", "Standing water / drain blocked")}
+                      disabled={submitting}
+                      className="flex-1 py-2.5 rounded-xl font-semibold text-sm"
+                      style={{ background: "#e74c3c", color: "#fff" }}>
+                      Standing water visible / drain blocked
+                    </button>
+                    <button
+                      onClick={() => handleWaterCheck("pan_dry_and_exit_flowing", "Pan dry, drain flowing")}
+                      disabled={submitting}
+                      className="flex-1 py-2.5 rounded-xl font-semibold text-sm"
+                      style={{ background: "#2ecc71", color: "#0d1117" }}>
+                      Pan dry, drain flowing
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setSkipExpanded(true)} disabled={submitting}
+                  className="text-xs font-medium text-center py-1.5" style={{ color: "#4a5568" }}>
+                  Can't photograph? Confirm condition manually →
+                </button>
+              )
+            )}
+          </>
+        )}
+      </div>
+
+      {submitting && (
+        <div className="flex items-center justify-center gap-2 py-2">
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm" style={{ color: "#7a8299" }}>Processing...</span>
+        </div>
+      )}
+
+      {/* WS-N3: Diagnosis chain summary (previous answers) */}
+      {history.length > 0 && (
+        <div className="rounded-xl p-3 flex flex-col gap-1"
+          style={{ background: "#0d1117", border: "1px solid #1a2030" }}>
+          <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: "#3a4060" }}>
+            Path so far
+          </p>
+          {history.map((h, i) => (
+            <div key={i} className="flex items-start gap-1.5 text-xs" style={{ color: "#4a5568" }}>
+              <span style={{ color: "#3a4060" }}>{i + 1}.</span>
+              <span className="flex-1 truncate">{h.question_text}</span>
+              <span className="font-semibold flex-shrink-0" style={{ color: "#6a8090" }}>
+                {h.answer_display}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Cancel */}
+      <button
+        onClick={() => {
+          trackEvent("diagnostic_cancelled", {
+            complaint_type: complaintType,
+            step_id: currentQuestion?.step_id ?? "unknown",
+            steps_completed: history.length,
+          });
+          onCancel();
+        }}
+        className="text-xs font-medium text-center py-2 mt-2"
+        style={{ color: "#4a5568" }}
+      >
+        Back to complaint selection
+      </button>
+    </div>
+  );
+}
