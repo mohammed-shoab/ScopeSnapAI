@@ -50,20 +50,33 @@ def _is_rate_limited(identifier: str) -> bool:
 
 # ── Allowed event names (whitelist) ───────────────────────────────────────────
 VALID_EVENTS = {
+    # Assessment lifecycle
     "assessment_started",
     "assessment_photo_added",
     "assessment_submitted",
     "assessment_completed",
     "assessment_queued_offline",
+    # Diagnostic flow (8 spec events — also sent to PostHog directly)
+    "diagnostic_session_started",
+    "diagnostic_question_answered",
+    "diagnostic_resolved",
+    "diagnostic_phase2_gate",
+    "diagnostic_escalated",
+    "diagnostic_cancelled",
+    # Estimate & report
     "estimate_generated",
+    "report_sent",
     "report_viewed",
     "report_approved",
+    # Email
     "email_sent",
     "email_failed",
+    # User & infra
     "user_signed_up",
     "page_view",
     "waitlist_signup",
     "feedback_submitted",
+    "estimate_feedback",
 }
 
 
@@ -190,14 +203,4 @@ async def join_waitlist(payload: WaitlistPayload, request: Request):
         await record_event(
             EventPayload(
                 event_name="waitlist_signup",
-                event_data={"email_domain": payload.email.split("@")[-1]},
-                page_url=referrer,
-            ),
-            request,
-        )
-
-    except Exception as e:
-        logger.warning(f"[waitlist] Failed to save {payload.email}: {e}")
-        return {"ok": False, "detail": "Could not save email. Please try again."}
-
-    return {"ok": True, "message": "You're on the list! We'll be in touch soon."}
+                event_data={"email_domain"

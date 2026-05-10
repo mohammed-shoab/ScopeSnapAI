@@ -3,12 +3,15 @@
 import { useState } from "react";
 
 export interface ReadingSpec {
-  type: string;         // 'uF' | 'amps_compressor' | 'amps_blower' | 'voltage' | 'voltage_drop' | 'temp_F' | 'ohms' | 'microamps' | etc.
-  unit: string;         // display unit string e.g. 'µF', 'A', 'V', '°F', 'Ω', 'µA'
+  type: string;         // 'uF' | 'amps_compressor' | 'amps_blower' | 'voltage' | 'voltage_drop' | 'temp_F' | 'ohms' | 'microamps' | 'psi' | etc.
+  unit: string;         // display unit string e.g. 'µF', 'A', 'V', '°F', 'Ω', 'µA', 'PSI'
   compare_to?: string;  // dotted key into ocrNameplate e.g. 'cap_uf'
   tolerance_pct?: number;
   subtype?: string;     // 'suction' | 'discharge' | 'supply_air' | 'return_air' | etc.
   placeholder?: string;
+  // Threshold-based classification (used for PSI pressure readings)
+  low_threshold?: number;   // values below this → branchKey "low"
+  high_threshold?: number;  // values above this → branchKey "high"
 }
 
 export interface ReadingResult {
@@ -83,6 +86,17 @@ function classifyReading(value: number, spec: ReadingSpec, nameplate: Record<str
     return { value, unit, classification: "suspect", passed: false, branchKey: "cracked_or_open_ohms" };
   }
 
+  // Pressure readings (suction / discharge PSI) — threshold-based classification.
+  // Thresholds come from reading_spec.low_threshold / high_threshold.
+  // Default R-410A suction: low < 60 psi (refrigerant leak), high > 110 psi (dirty condenser/overcharge).
+  if (spec.type === "psi") {
+    const lowT = spec.low_threshold ?? 60;
+    const highT = spec.high_threshold ?? 110;
+    if (value < lowT) return { value, unit, classification: "low", passed: false, branchKey: "low" };
+    if (value > highT) return { value, unit, classification: "high", passed: false, branchKey: "high" };
+    return { value, unit, classification: "ok", passed: true, branchKey: "ok" };
+  }
+
   // Generic fallback — just pass through value, let backend decide
   return { value, unit, classification: "entered", passed: true, branchKey: "ok" };
 }
@@ -135,28 +149,4 @@ export default function ReadingInput({ spec, ocrNameplate, onSubmit, disabled = 
       {nameplateSpec && !isNaN(nameplateSpec) && (
         <div className="flex items-center justify-between text-sm px-1">
           <span className="text-text-secondary">Nameplate spec:</span>
-          <span className="font-mono font-bold text-text-primary">{nameplateSpec} {spec.unit}</span>
-        </div>
-      )}
-
-      {hasValue && preview && (
-        <div
-          className="flex items-center justify-between px-4 py-2 rounded-xl text-sm font-bold"
-          style={{ background: preview.ok ? "rgba(46,204,113,0.12)" : "rgba(231,76,60,0.12)", color: preview.ok ? "#2ecc71" : "#e74c3c" }}
-        >
-          <span>{preview.ok ? "Within spec" : "Out of spec"}</span>
-          <span className="font-mono">{Number(preview.pct) > 0 ? "+" : ""}{preview.pct}%</span>
-        </div>
-      )}
-
-      <button
-        onClick={handleSubmit}
-        disabled={!hasValue || disabled}
-        className="w-full py-4 rounded-2xl text-white font-extrabold text-base transition-all active:scale-95 disabled:opacity-40"
-        style={{ background: hasValue ? "linear-gradient(135deg, #3498db 0%, #2980b9 100%)" : "#2a2a4a" }}
-      >
-        Submit Reading
-      </button>
-    </div>
-  );
-}
+          <span className="font-mono font-bold text-text-primary">{nameplateSpec} {spec.unit}</s

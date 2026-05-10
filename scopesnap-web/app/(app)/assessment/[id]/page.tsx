@@ -384,6 +384,7 @@ export default function EstimatePage() {
           setMarkup(data.markup_percent || 35);
           setLoading(false);
           if (data.contractor_pdf_url) setDocsDone(true);
+          ph.estimateGenerated(String(id), data.card_name);
           // Pre-fill send fields from property data returned by estimate endpoint
           const d = data as EstimateData & { customer_email?: string; customer_phone?: string; customer_name?: string };
           if (d.customer_email) setSendEmail(d.customer_email);
@@ -470,8 +471,9 @@ export default function EstimatePage() {
         const body = await r.json().catch(() => ({}));
         throw new Error(body.detail || `Send failed (${r.status})`);
       }
-      // SOW Task 1.10 — track successful email send
+      // SOW Task 1.10 — track successful email send (backend events table + PostHog)
       trackEvent("report_sent", { estimate_id: id, homeowner_name: homeownerName });
+      ph.reportSent(String(id));
       setSent(true);
     } catch (e: unknown) {
       trackEvent("email_failed", { estimate_id: id });
@@ -1357,12 +1359,4 @@ export default function EstimatePage() {
                 disabled={sending || (!sendEmail && !sendPhone)}
                 className="w-full bg-brand-green text-white font-bold py-4 rounded-xl text-base shadow-lg shadow-green-200 hover:shadow-xl disabled:opacity-40 transition-shadow"
               >
-                {sending ? "Sending..." : `Send${homeownerName ? ` to ${homeownerName}` : ""} →`}
-              </button>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
+                {sending ? "Sending..." : `Send${homeownerName ? ` to
