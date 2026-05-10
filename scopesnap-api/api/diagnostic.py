@@ -1,18 +1,18 @@
 """
-WS-A3 â Phase 3 Diagnostic Engine
+WS-A3 — Phase 3 Diagnostic Engine
 
-POST /api/diagnostic/session              â start a new session
-GET  /api/diagnostic/session/{session_id} â resume (get current step)
-POST /api/diagnostic/session/{session_id}/answer â submit answer to current step
+POST /api/diagnostic/session              — start a new session
+GET  /api/diagnostic/session/{session_id} — resume (get current step)
+POST /api/diagnostic/session/{session_id}/answer — submit answer to current step
 
 Bug fixes in this implementation
 ---------------------------------
 BUG-003  : _compute_branch_key reads pre-computed branch_key from frontend
            (avoids str(dict) coercion for reading/photo answer dicts)
 BUG-003b : _get_fault_card_name uses  SELECT card_name AS name  so .name works
-BUG-004  : not_heating auto Q1 â null-safe read of ocr_nameplate.system_type;
+BUG-004  : not_heating auto Q1 — null-safe read of ocr_nameplate.system_type;
            defaults to gas_furnace when field is absent
-BUG-005  : error_code call_error_code_lookup â null-safe read of
+BUG-005  : error_code call_error_code_lookup — null-safe read of
            ocr_nameplate.brand; routes to nuisance_or_unknown when absent
 """
 
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/diagnostic", tags=["diagnostic"])
 
-# ââ Pydantic schemas âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# ── Pydantic schemas ───────────────────────────────────────────────────────────
 
 
 class StartSessionRequest(BaseModel):
@@ -78,7 +78,7 @@ class AnswerResponse(BaseModel):
     finding: Optional[dict] = None
 
 
-# ââ DB helpers âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# ── DB helpers ─────────────────────────────────────────────────────────────────
 
 _QUESTION_COLS = """
     step_id, question_text, hint_text, input_type,
@@ -220,7 +220,152 @@ async def _escalate_session(db: AsyncSession, session_id: str) -> None:
     )
 
 
-# ââ Question row â response schema ââââââââââââââââââââââââââââââââââââââââââââ
+async def _complete_service_session(db: AsyncSession, session_id: str) -> None:
+    """Mark a service/tune-up session as complete (distinct from 'escalated')."""
+    await db.execute(
+        text(
+            "UPDATE diagnostic_sessions"
+            " SET status = 'service_complete', updated_at = :now WHERE id = :sid"
+        ),
+        {"now": datetime.now(timezone.utc), "sid": session_id},
+    )
+
+
+async def _build_service_estimate_options(markup_percent: float) -> list:
+    """
+    BUG-009: Build standard Good/Better/Best tiers for a service/tune-up job.
+
+    Tiers are fixed for all service calls:
+      Good   — base inspection only
+      Better — inspection + drain flush treatment  (recommended)
+      Best   — inspection + drain flush + filter replacement
+    """
+    BASE   = 110.0   # Service / Tune-Up Inspection
+    DRAIN  =  20.0   # Drain Flush Treatment (tablet)
+    FILTER =  40.0   # Filter Replacement (1-inch standard)
+
+    def tier(name, t, items, recommended=False):
+        subtotal = sum(i["amount"] for i in items)
+        total    = round(subtotal * (1 + markup_percent / 100), 2)
+        return {
+            "name": name, "tier": t,
+            "total": total, "subtotal": subtotal,
+            "line_items": items,
+            "recommended": recommended,
+            "markup_percent": markup_percent,
+        }
+
+    return [
+        tier("Good", "A", [
+            {"amount": BASE,  "category": "service", "description": "Service / Tune-Up Inspection"},
+        ]),
+        tier("Better", "B", [
+            {"amount": BASE,  "category": "service", "description": "Service / Tune-Up Inspection"},
+            {"amount": DRAIN, "category": "service", "description": "Drain Flush Treatment (tablet)"},
+        ], recommended=True),
+        tier("Best", "C", [
+            {"amount": BASE,   "category": "service", "description": "Service / Tune-Up Inspection"},
+            {"amount": DRAIN,  "category": "service", "description": "Drain Flush Treatment (tablet)"},
+            {"amount": FILTER, "category": "parts",   "description": "Filter Replacement (1-inch standard)"},
+        ]),
+    ]
+
+
+async def _generate_service_estimate(
+    db: AsyncSession,
+    assessment_id: str,
+    company_id: str,
+) -> None:
+    """
+    BUG-009 fix: create a service/tune-up estimate in the DB so the frontend's
+    GET /api/estimates/{assessment_uuid} lookup succeeds.
+
+    CRITICAL: estimate.id is set to assessment_id so that the frontend URL
+    pattern /assessment/{uuid} → GET /api/estimates/{uuid} resolves correctly.
+    This matches the convention used throughout the estimates API.
+    """
+    import json as _json
+    import secrets
+    import string as _string
+
+    # Idempotent: do nothing if estimate already exists for this assessment
+    existing = await db.execute(
+        text("SELECT id FROM estimates WHERE id = :aid LIMIT 1"),
+        {"aid": assessment_id},
+    )
+    if existing.fetchone():
+        logger.info("[diagnostic] service estimate already exists for %s", assessment_id)
+        return
+
+    # Fetch company markup (falls back to 35 %)
+    markup_percent = 35.0
+    try:
+        comp_row = await db.execute(
+            text("SELECT default_markup_pct FROM companies WHERE id = :cid LIMIT 1"),
+            {"cid": company_id},
+        )
+        row = comp_row.fetchone()
+        if row and row.default_markup_pct is not None:
+            markup_percent = float(row.default_markup_pct)
+    except Exception as exc:
+        logger.warning("[diagnostic] could not load company markup: %s", exc)
+
+    options = await _build_service_estimate_options(markup_percent)
+
+    # Unique report short ID (retry on collision)
+    short_id = None
+    for _ in range(10):
+        candidate = "rpt-" + "".join(secrets.choice(_string.digits) for _ in range(4))
+        clash = await db.execute(
+            text("SELECT id FROM estimates WHERE report_short_id = :sid LIMIT 1"),
+            {"sid": candidate},
+        )
+        if not clash.fetchone():
+            short_id = candidate
+            break
+    if not short_id:
+        short_id = f"rpt-{uuid.uuid4().hex[:4]}"
+
+    report_token = secrets.token_urlsafe(32)[:32]
+    now = datetime.now(timezone.utc)
+
+    await db.execute(
+        text(
+            "INSERT INTO estimates"
+            "  (id, assessment_id, company_id, report_token, report_short_id,"
+            "   options, markup_percent, status, created_at, updated_at)"
+            " VALUES"
+            "  (:id, :aid, :cid, :token, :short_id,"
+            "   :options::jsonb, :markup, 'draft', :now, :now)"
+        ),
+        {
+            "id":       assessment_id,   # id == assessment_id → frontend URL routing
+            "aid":      assessment_id,
+            "cid":      company_id,
+            "token":    report_token,
+            "short_id": short_id,
+            "options":  _json.dumps(options),
+            "markup":   markup_percent,
+            "now":      now,
+        },
+    )
+
+    # Mark assessment as having an estimate (non-critical; ignore errors)
+    try:
+        await db.execute(
+            text("UPDATE assessments SET est_status = 'estimated', updated_at = :now WHERE id = :aid"),
+            {"now": now, "aid": assessment_id},
+        )
+    except Exception as exc:
+        logger.warning("[diagnostic] could not update assessment est_status: %s", exc)
+
+    logger.info(
+        "[diagnostic] service estimate created: assessment=%s short_id=%s markup=%.0f%%",
+        assessment_id, short_id, markup_percent,
+    )
+
+
+# ── Question row → response schema ────────────────────────────────────────────
 
 
 def _row_to_question_out(row: Any) -> QuestionOut:
@@ -231,8 +376,8 @@ def _row_to_question_out(row: Any) -> QuestionOut:
         hint_text=row.hint_text,
         input_type=row.input_type,
         # options_jsonb serves dual purpose:
-        #   visual_select â [{value, label, icon}]
-        #   multi         â [{kind, spec}]  (frontend casts)
+        #   visual_select → [{value, label, icon}]
+        #   multi         → [{kind, spec}]  (frontend casts)
         options=row.options_jsonb,
         reading_spec=row.reading_spec,
         photo_spec=row.photo_spec,
@@ -240,17 +385,17 @@ def _row_to_question_out(row: Any) -> QuestionOut:
     )
 
 
-# ââ Branch-key extraction ââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# ── Branch-key extraction ──────────────────────────────────────────────────────
 
 
 def _compute_branch_key(answer: Any, input_type: str) -> str:
     """
     BUG-003: extract the routing branch_key from the frontend answer.
 
-    - yesno / visual_select  â answer is a plain string
-    - reading / photo / multi â answer is a dict; prefer explicit branch_key field
-    - multi (bundled)        â answer has reading_0, reading_1, etc.; use reading_0.branch_key
-    - fallback               â str(answer)
+    - yesno / visual_select  → answer is a plain string
+    - reading / photo / multi → answer is a dict; prefer explicit branch_key field
+    - multi (bundled)        → answer has reading_0, reading_1, etc.; use reading_0.branch_key
+    - fallback               → str(answer)
     """
     if isinstance(answer, str):
         return answer.strip().lower()
@@ -261,14 +406,14 @@ def _compute_branch_key(answer: Any, input_type: str) -> str:
         if bk:
             return str(bk).strip().lower()
 
-        # BUG-006: Multi-input bundled answer â readings keyed as reading_0, reading_1 â¦
-        # The first readingâs branch_key is the primary routing key.
+        # BUG-005: Multi-input bundled answer — readings keyed as reading_0, reading_1 …
+        # The first reading's branch_key is the primary routing key.
         r0 = answer.get("reading_0")
         if isinstance(r0, dict):
             bk = r0.get("branch_key")
             if bk:
                 logger.info(
-                    "[diagnostic] branch_key from reading_0: â%sâ", bk
+                    "[diagnostic] branch_key from reading_0: '%s'", bk
                 )
                 return str(bk).strip().lower()
 
@@ -281,7 +426,7 @@ def _compute_branch_key(answer: Any, input_type: str) -> str:
     return str(answer).strip().lower()
 
 
-# ââ Auto-question resolution â BUG-004 fix ââââââââââââââââââââââââââââââââââââ
+# ── Auto-question resolution — BUG-004 fix ────────────────────────────────────
 
 
 def _resolve_auto_question(branch_logic: dict, ocr_nameplate: Optional[dict]) -> str:
@@ -295,14 +440,14 @@ def _resolve_auto_question(branch_logic: dict, ocr_nameplate: Optional[dict]) ->
     use_field: str = branch_logic.get("use_field", "")
     ocr = ocr_nameplate or {}
 
-    # branch_logic stores field as "ocr_nameplate.system_type" â strip prefix
+    # branch_logic stores field as "ocr_nameplate.system_type" — strip prefix
     field_name = use_field.split(".", 1)[-1] if "." in use_field else use_field
     value = ocr.get(field_name)
 
     if not value:
-        # BUG-004: null safety â fall back to gas_furnace
+        # BUG-004: null safety — fall back to gas_furnace
         logger.info(
-            "[diagnostic] auto Q: ocr field '%s' is None â defaulting to gas_furnace",
+            "[diagnostic] auto Q: ocr field '%s' is None — defaulting to gas_furnace",
             field_name,
         )
         value = "gas_furnace"
@@ -316,13 +461,13 @@ def _resolve_auto_question(branch_logic: dict, ocr_nameplate: Optional[dict]) ->
         return "any"
 
     logger.warning(
-        "[diagnostic] auto Q: no branch for '%s', no 'any' wildcard â defaulting to gas_furnace",
+        "[diagnostic] auto Q: no branch for '%s', no 'any' wildcard — defaulting to gas_furnace",
         value,
     )
     return "gas_furnace"
 
 
-# ââ Error-code lookup â BUG-005 fix âââââââââââââââââââââââââââââââââââââââââââ
+# ── Error-code lookup — BUG-005 fix ───────────────────────────────────────────
 
 
 async def _call_error_code_lookup(
@@ -336,7 +481,7 @@ async def _call_error_code_lookup(
     return a branch_key from the 'after' map.
 
     BUG-005 fix: when ocr_nameplate.brand is absent, skip the DB lookup and
-    route directly to 'nuisance_or_unknown' (â q4-reset) instead of crashing.
+    route directly to 'nuisance_or_unknown' (→ q4-reset) instead of crashing.
     """
     after_map: dict = action_config.get("after", {})
 
@@ -344,8 +489,8 @@ async def _call_error_code_lookup(
     brand = ocr.get("brand")
 
     if not brand:
-        # BUG-005: no brand data â skip lookup, use generic reset path
-        logger.info("[diagnostic] error_code lookup: no brand in OCR â nuisance_or_unknown")
+        # BUG-005: no brand data — skip lookup, use generic reset path
+        logger.info("[diagnostic] error_code lookup: no brand in OCR — nuisance_or_unknown")
         return "nuisance_or_unknown"
 
     if not photo_ai_output:
@@ -386,7 +531,7 @@ async def _call_error_code_lookup(
     subsystem = (row.subsystem or "").lower()
     meaning = (row.meaning or "").lower()
 
-    # Keyword-based subsystem â branch_key mapping
+    # Keyword-based subsystem → branch_key mapping
     if "pressure" in subsystem or "sensor" in subsystem or "pressure" in meaning:
         bk = "pressure_sensor_fault"
     elif "refrigerant" in subsystem or "refrigerant" in meaning or ("low" in meaning and "suction" in meaning):
@@ -405,57 +550,22 @@ async def _call_error_code_lookup(
     return bk if bk in after_map else "nuisance_or_unknown"
 
 
-# ââ Branch following âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# ── Branch following ───────────────────────────────────────────────────────────
 
 
 def _follow_branch(branch_logic: dict, branch_key: str) -> Optional[dict]:
     """
     Look up branch_key in branch_logic.
     Falls back to 'any' wildcard if the exact key is absent.
-
-    BUG-007: Smart "ok" fallback â frontend ReadingInput always emits branchKey "ok"
-    for non-ignitor reading types. When "ok" is not a key in branch_logic we try:
-      1. Any key that CONTAINS "ok" (e.g. "elevated_or_ok", "voltage_drop_ok")
-      2. All branches converge to the same next_step_id â pick first key
-      3. "any" wildcard
-    Returns None if nothing matches (caller should escalate).
+    Returns None if neither key exists (caller should escalate).
     """
     branch = branch_logic.get(branch_key)
-    if branch is not None:
-        return branch
-
-    # BUG-007 smart fallback for "ok" from ReadingInput.tsx
-    if branch_key == "ok" and branch_logic:
-        # 1. Key whose name contains "ok"
-        ok_key = next((k for k in branch_logic if "ok" in k.lower()), None)
-        if ok_key:
-            logger.info(
-                "[diagnostic] BUG-007 ok-fallback: mapped 'ok' â '%s'", ok_key
-            )
-            return branch_logic[ok_key]
-
-        # 2. All branches point to the same next_step_id â safe to pick any
-        next_steps = {
-            v.get("next_step_id")
-            for v in branch_logic.values()
-            if isinstance(v, dict)
-        }
-        if len(next_steps) == 1 and None not in next_steps:
-            first_key = next(iter(branch_logic))
-            logger.info(
-                "[diagnostic] BUG-007 ok-fallback: all branches converge to '%s', "
-                "picking first key '%s'",
-                next(iter(next_steps)),
-                first_key,
-            )
-            return branch_logic[first_key]
-
-    # 'any' wildcard
-    branch = branch_logic.get("any")
+    if branch is None:
+        branch = branch_logic.get("any")
     return branch
 
 
-# ââ Branch result â AnswerResponse ââââââââââââââââââââââââââââââââââââââââââââ
+# ── Branch result → AnswerResponse ────────────────────────────────────────────
 
 
 async def _process_branch(
@@ -472,10 +582,12 @@ async def _process_branch(
     Handles all branch action types:
       service_complete, escalate, phase_2_gate, resolve_card, next_step_id,
       jump_to_complaint
+
+    assessment_id / company_id are required for service_complete+generate_estimate.
     """
     finding = branch.get("finding")
 
-    # ââ service_complete âââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+    # ── service_complete ───────────────────────────────────────────────────────
     if branch.get("service_complete"):
         # BUG-009 fix: generate estimate before marking session done
         if branch.get("generate_estimate") and assessment_id and company_id:
@@ -483,29 +595,21 @@ async def _process_branch(
         await _complete_service_session(db, session_id)
         return AnswerResponse(service_step_complete=True, finding=finding)
 
-    # ââ escalate âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+    # ── escalate ───────────────────────────────────────────────────────────────
     if branch.get("escalate"):
         reason = branch.get("reason", "Manual diagnosis required.")
         await _escalate_session(db, session_id)
         return AnswerResponse(escalated=True, escalation_reason=reason, finding=finding)
 
-    # ââ phase_2_gate âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+    # ── phase_2_gate ───────────────────────────────────────────────────────────
     if branch.get("phase_2_gate"):
         continuation = branch.get("after", {})
-        # BUG-020: extract first resolve_card so frontend can call
-        # /estimates/fault-card without card_id=null -> 422
-        primary_card_id = None
-        for val in continuation.values():
-            if isinstance(val, dict) and "resolve_card" in val:
-                primary_card_id = val["resolve_card"]
-                break
         return AnswerResponse(
             phase_2_gate=True,
-            card_id=primary_card_id,
             gate_continuation={"session_id": session_id, **continuation},
         )
 
-    # ââ resolve_card âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+    # ── resolve_card ───────────────────────────────────────────────────────────
     if "resolve_card" in branch:
         card_id: int = branch["resolve_card"]
         card_name = await _get_fault_card_name(db, card_id)
@@ -519,7 +623,7 @@ async def _process_branch(
             finding=finding,
         )
 
-    # ââ next_step_id âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+    # ── next_step_id ───────────────────────────────────────────────────────────
     if "next_step_id" in branch:
         next_step_id: str = branch["next_step_id"]
         next_row = await _load_question(db, complaint_type, next_step_id)
@@ -532,7 +636,7 @@ async def _process_branch(
         await _set_session_step(db, session_id, next_step_id)
         return AnswerResponse(next_step=_row_to_question_out(next_row), finding=finding)
 
-    # ââ jump_to_complaint (error_code q4-reset "no" branch) âââââââââââââââââââ
+    # ── jump_to_complaint (error_code q4-reset "no" branch) ───────────────────
     if "jump_to_complaint" in branch:
         new_ct: str = branch["jump_to_complaint"]
         first_row = await _load_first_question(db, new_ct)
@@ -557,7 +661,7 @@ async def _process_branch(
         )
         return AnswerResponse(next_step=_row_to_question_out(first_row))
 
-    # ââ unrecognised branch structure ââââââââââââââââââââââââââââââââââââââââââ
+    # ── unrecognised branch structure ──────────────────────────────────────────
     logger.error("[diagnostic] branch has no recognised action key: %s", branch)
     await _escalate_session(db, session_id)
     return AnswerResponse(
@@ -566,7 +670,7 @@ async def _process_branch(
     )
 
 
-# ââ Endpoints ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# ── Endpoints ──────────────────────────────────────────────────────────────────
 
 
 @router.post("/session", response_model=StartSessionResponse)
@@ -596,7 +700,7 @@ async def start_session(
             detail=f"No diagnostic questions found for complaint type '{body.complaint_type}'.",
         )
 
-    # ââ 'auto' type Q1 (e.g. not_heating system_type) ââââââââââââââââââââââââ
+    # ── 'auto' type Q1 (e.g. not_heating system_type) ────────────────────────
     if first_row.input_type == "auto":
         branch_logic = first_row.branch_logic_jsonb or {}
         branch_key = _resolve_auto_question(branch_logic, assessment.ocr_nameplate)
@@ -628,13 +732,13 @@ async def start_session(
                     current_step=_row_to_question_out(next_row),
                 )
 
-        # phase_2_gate / escalate from Q1 auto â rare, surface to caller
+        # phase_2_gate / escalate from Q1 auto — rare, surface to caller
         return StartSessionResponse(
             session_id=session_id,
             current_step=_row_to_question_out(first_row),
         )
 
-    # ââ Normal (non-auto) first question âââââââââââââââââââââââââââââââââââââ
+    # ── Normal (non-auto) first question ─────────────────────────────────────
     session_id = await _create_session(
         db,
         body.assessment_id,
@@ -685,13 +789,24 @@ async def submit_answer(
 
     branch_logic: dict = q_row.branch_logic_jsonb or {}
 
-    # ââ Special: error_code photo Q1 with 'extract_then_lookup' action ââââââââ
+    # ── Special: error_code photo Q1 with 'extract_then_lookup' action ────────
     # The entire branch_logic for this step is wrapped under one key:
     # {"extract_then_lookup": {"action": "call_error_code_lookup", "brand_from": ..., "after": {...}}}
     if "extract_then_lookup" in branch_logic:
         action_config = branch_logic["extract_then_lookup"]
         assessment = await _load_assessment(db, session.assessment_id, auth.company_id)
         ocr = assessment.ocr_nameplate if assessment else None
+
+        # WS-A4: tech used the code_input photo-skip — honour the "skipped" branch
+        # directly instead of running OCR lookup (no photo was taken).
+        if isinstance(body.answer, dict) and body.answer.get("branch_key") == "skipped":
+            skip_branch = branch_logic.get("skipped") or branch_logic.get("any")
+            if skip_branch:
+                logger.info("[diagnostic] error_code q1: skipped photo — routing via 'skipped' branch")
+                return await _process_branch(
+                    db, session_id, session.complaint_type, skip_branch,
+                    assessment_id=session.assessment_id, company_id=auth.company_id,
+                )
 
         # Extract AI-read code from answer (may be None when branch_key injection is used)
         photo_ai_output: Optional[str] = None
@@ -709,12 +824,15 @@ async def submit_answer(
                 escalated=True,
                 escalation_reason="Error code lookup produced no matching branch.",
             )
-        return await _process_branch(db, session_id, session.complaint_type, branch)
+        return await _process_branch(
+            db, session_id, session.complaint_type, branch,
+            assessment_id=session.assessment_id, company_id=auth.company_id,
+        )
 
-    # ââ Compute branch_key (BUG-003 fix) âââââââââââââââââââââââââââââââââââââ
+    # ── Compute branch_key (BUG-003 fix) ─────────────────────────────────────
     branch_key = _compute_branch_key(body.answer, q_row.input_type)
 
-    # ââ Follow branch âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+    # ── Follow branch ─────────────────────────────────────────────────────────
     branch = _follow_branch(branch_logic, branch_key)
 
     if branch is None:
@@ -740,21 +858,3 @@ async def submit_answer(
 
 
 @router.get("/session/{session_id}", response_model=StartSessionResponse)
-async def get_session(
-    session_id: str,
-    auth: AuthContext = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Return current session state â used for page-reload resume."""
-    session = await _load_session(db, session_id, auth.company_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found.")
-
-    q_row = await _load_question(db, session.complaint_type, session.current_step_id)
-    if not q_row:
-        raise HTTPException(status_code=500, detail="Current step not found in DB.")
-
-    return StartSessionResponse(
-        session_id=session_id,
-        current_step=_row_to_question_out(q_row),
-    )
