@@ -1361,4 +1361,10 @@ export default function EstimatePage() {
               >
                 {sending ? "Sending..." : `Send${homeownerName ? ` to ${homeownerName}` : ""} →`}
               </button>
-     
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
