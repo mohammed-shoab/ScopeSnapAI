@@ -252,7 +252,7 @@ export default function EstimatesPage() {
                   {/* Delete button */}
                   <button
                     onClick={(e) => hideAssessment(est.id, e)}
-                    className="w-8 flex items-center justify-center text-text-secondary hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                    className="w-8 flex items-center justify-center text-text-secondary hover:text-red-500 active:text-red-500 transition-colors"
                     title="Remove from list"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
