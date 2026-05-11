@@ -19,6 +19,7 @@ import DiagnosticFlow, { GateContinuation, AnswerRecord } from "@/components/dia
 import FaultCardResult from "@/components/diagnostic/FaultCardResult";
 import JobConfirmationCard, { FaultCardOption } from "@/components/diagnostic/JobConfirmationCard";
 import { PhotoSlotSpec, PhotoResult } from "@/components/diagnostic/PhotoSlot";
+import ServiceChecklist, { ServiceEstimateResult } from "@/components/diagnostic/ServiceChecklist";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
@@ -95,6 +96,7 @@ function AssessPageInner() {
   const [resolvedPhotoSlots, setResolvedPhotoSlots] = useState<PhotoSlotSpec[]>([]);
   const [resolvedHistory, setResolvedHistory] = useState<AnswerRecord[]>([]);
   const [diagnosedSessionId, setDiagnosedSessionId] = useState<string | null>(null);
+  const [serviceEstimate, setServiceEstimate] = useState<ServiceEstimateResult | null>(null);
 
   // ── Job info ───────────────────────────────────────────────────────────────
   const [address, setAddress] = useState("");
@@ -256,6 +258,13 @@ function AssessPageInner() {
       setError(e instanceof Error ? e.message : "Error generating estimate");
       setPhase("complaint");
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assessmentId, router]);
+
+  // ── Service checklist complete ────────────────────────────────────────────
+  const handleServiceComplete = useCallback((_result: ServiceEstimateResult, _sessionId: string) => {
+    setServiceEstimate(_result);
+    router.push(`/assessment/${assessmentId}`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId, router]);
 
@@ -487,6 +496,21 @@ function AssessPageInner() {
     );
   }
 
+  // ── diagnostic: service checklist (Tab S) ────────────────────────────────
+  if (phase === "diagnostic" && assessmentId && complaintType === "service") {
+    return (
+      <div className="max-w-lg mx-auto px-4 pb-6 pt-4" style={{ background: "#0f1117", minHeight: "100vh" }}>
+        <ServiceChecklist
+          assessmentId={assessmentId}
+          authHeaders={resolvedHeaders}
+          ocrNameplate={ocrResult}
+          onComplete={handleServiceComplete}
+          onCancel={() => setPhase("complaint")}
+        />
+      </div>
+    );
+  }
+
   // ── diagnostic: question-tree flow ────────────────────────────────────────
   if (phase === "diagnostic" && assessmentId && complaintType) {
     return (
@@ -511,7 +535,7 @@ function AssessPageInner() {
           onResolved={handleDiagnosticResolved}
           onPhase2Gate={handlePhase2Gate}
           onEscalated={() => {
-            setError("Diagnostic escalated — please inspect manually.");
+            setError("Diagnostic escalated -- please inspect manually.");
             setPhase("complaint");
           }}
           onCancel={() => setPhase("complaint")}
