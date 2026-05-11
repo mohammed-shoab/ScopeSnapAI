@@ -5,7 +5,7 @@
  */
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type MouseEvent } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
@@ -71,16 +71,16 @@ export default function EstimatesPage() {
     try {
       const stored = localStorage.getItem("snapai_hidden_assessments");
       return stored ? new Set(JSON.parse(stored)) : new Set();
-    } catch { return new Set(); }
+    } catch (_err) { return new Set(); }
   });
 
-  const hideAssessment = (id: string, e: React.MouseEvent) => {
+  const hideAssessment = (id: string, e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setHiddenIds((prev) => {
       const next = new Set(prev);
       next.add(id);
-      try { localStorage.setItem("snapai_hidden_assessments", JSON.stringify([...next])); } catch {}
+      try { localStorage.setItem("snapai_hidden_assessments", JSON.stringify([...next])); } catch (_e) {}
       return next;
     });
   };
