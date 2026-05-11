@@ -5,7 +5,7 @@
  */
 "use client";
 
-import { useState, useEffect, useCallback, type MouseEvent } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
@@ -66,21 +66,22 @@ export default function EstimatesPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
-    if (typeof window === "undefined") return new Set();
+  const [hiddenIds, setHiddenIds] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
     try {
       const stored = localStorage.getItem("snapai_hidden_assessments");
-      return stored ? new Set(JSON.parse(stored)) : new Set();
-    } catch (_err) { return new Set(); }
+      if (!stored) return {};
+      const ids: string[] = JSON.parse(stored);
+      return ids.reduce<Record<string, boolean>>((acc, id) => { acc[id] = true; return acc; }, {});
+    } catch (_err) { return {}; }
   });
 
-  const hideAssessment = (id: string, e: MouseEvent) => {
+  const hideAssessment = (id: string, e: { preventDefault: () => void; stopPropagation: () => void }) => {
     e.preventDefault();
     e.stopPropagation();
     setHiddenIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      try { localStorage.setItem("snapai_hidden_assessments", JSON.stringify([...next])); } catch (_e) {}
+      const next = { ...prev, [id]: true };
+      try { localStorage.setItem("snapai_hidden_assessments", JSON.stringify(Object.keys(next))); } catch (_e) {}
       return next;
     });
   };
@@ -107,7 +108,7 @@ export default function EstimatesPage() {
   }, [getAuthHeaders]);
 
   const filtered = assessments.filter((e) => {
-    if (hiddenIds.has(e.id)) return false;
+    if (hiddenIds[e.id]) return false;
     const matchesFilter = filter === "all" || e.status === filter;
     const q = search.toLowerCase();
     const matchesSearch =
