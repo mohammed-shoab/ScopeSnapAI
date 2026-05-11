@@ -62,7 +62,7 @@ export default function SignInPage() {
 
       {/* Clerk Sign-In Component */}
       <SignIn
-        afterSignInUrl="/dashboard"
+        forceRedirectUrl="/dashboard"
         afterSignUpUrl="/dashboard"
         appearance={{
           elements: {
@@ -80,16 +80,13 @@ export default function SignInPage() {
               fontWeight: 700,
               borderRadius: 10,
             },
-            // Self-hosted Google icon — replaces Clerk's remote CDN img so the
-            // button renders correctly on VPNs and strict privacy browsers
+            // Self-hosted Google icon — use CSS content: url() which properly
+            // replaces <img> src in Chrome/Safari; avoids CSP-blocked CDN image
             providerIcon__google: {
-              backgroundImage: "url('/google-logo.svg')",
-              backgroundSize: "contain",
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "center",
+              content: "url('/google-logo.svg')",
+              width: 18,
+              height: 18,
               display: "inline-block",
-              minWidth: 18,
-              minHeight: 18,
             },
           },
         }}
