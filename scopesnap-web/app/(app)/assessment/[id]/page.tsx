@@ -77,6 +77,7 @@ interface EstimateData {
   created_at?: string;
   viewed_at?: string;
   view_count?: number;
+  card_name?: string;
 }
 
 function fmt(n?: number) {
