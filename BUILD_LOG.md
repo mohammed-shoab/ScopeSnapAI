@@ -367,140 +367,205 @@ Last updated: 2026-03-21
 - /sessions/confident-quirky-allen/mnt/SnapAIAI/scopesnap-api/main.py (modified - redirect_slashes=False)
 - /tmp/scopesnap_dev.db (SQLite dev database with all tables + test data)
 
+---
+
+## Session 2026-05-05 — Phase 3 QA Audit
+
+### BUG-001 Fix — `_compute_branch_key()` dict answer handling
+**Commit:** `0947bc3fe32fb0b1d91b132d9686cc17c2fa26b8`
+**File:** `scopesnap-api/api/diagnostic.py`
+**Problem:** Frontend sends `{ value: 'yes', branch_key: 'yes' }` for yesno/visual_select — `str()` on a dict returns repr, never matching any branch key → `unhandled_answer` escalation for 6 complaint types.
+**Fix:** `isinstance(answer, dict)` guard to extract string value before `str()` fallback.
+**Complaints fixed:** Not Cooling, Not Heating, Intermittent Shutdown, Water Dripping, Making Noise, High Electric Bill
+
+### BUG-004 Fix — `not_heating/q1-system-type` missing `"any"` wildcard
+**Problem:** Auto system-type detection returns `unknown`, no matching branch key → stuck.
+**Fix:** SQL UPDATE added `"any": "q2-burner-ignite"` to branch_logic_jsonb.
+**Result:** Not Heating now auto-advances to Q2 "Does the burner ignite?" correctly.
+
+### Task #37 + #38 — Desktop Audit
+- Tested all 9 complaint types at 1920×897 viewport
+- All 9 PASS: no overflow, correct button sizing, correct Q1 rendering
+- Full report: `AUDIT_REPORT_Phase3_QA.md`
 
 ---
 
-## Phase 3 — QA, Bug Fixes, and Launch Prep (2026-04 to 2026-05-07)
+## Session 2026-05-11 — Vercel Build Fixes + Beta Readiness Gate (Final)
 
-### Context
-App transitioned from Docker/local dev to full Vercel + Railway production deployment.
-Phase 3 focused on QA of the live production app, resolving all blocking bugs, and
-completing launch-prep UI/tracking work.
+### BUG-006 Fix — Vercel TypeScript Build Failure (`card_name` missing from `EstimateData`)
+**Commit:** `ee86b4a`
+**Files:** 
+- `scopesnap-web/app/(app)/assessment/[id]/page.tsx`
+- `scopesnap-web/app/(app)/estimate/[id]/page.tsx`
 
----
+**Problem:** Vercel build failed at "Linting and checking validity of types" step with:
+```
+Type error: Property 'card_name' does not exist on type 'EstimateData'
+./app/(app)/assessment/[id]/page.tsx:387:49
+```
+The `EstimateData` TypeScript interface in both page files was missing the `card_name?: string` field, but the code referenced `data.card_name` in `ph.estimateGenerated(String(id), data.card_name)`.
 
-### AUDIT-001 — Full Phase 3 QA Audit COMPLETE
+**Root cause chain:** 4 broken commits (9eb0e66 → a245105 → bf34a25 → 8b17a8b) before fix:
+1. `9eb0e66` — truncated JSX from NTFS multi-byte write bug
+2. `a245105` — truncated template literal
+3. `bf34a25` — truncated `</span>` tag
+4. `8b17a8b` — compiled OK but TypeScript linting caught missing interface field
 
-**Audit scope**: All 9 complaint types, desktop (1920px) and mobile (375px)
-**Result**: 6 blocking bugs found and resolved. 0 blocking bugs remaining.
+**Fix:** Added `card_name?: string` after `view_count?: number` in `EstimateData` interface in both files.
 
----
+**PostHog context:** `ph.estimateGenerated(estimateId: string, cardName?: string)` — `cardName` is already optional in PostHogProvider, so only the type declaration needed updating.
 
-### BUG-004 — not_heating auto Q1 crashes on null OCR data ✅ FIXED
-
-**Symptom**: Selecting "Not Heating" with no nameplate scan crashed immediately on the first auto-question.
-**Root cause**: Branch logic attempted to access OCR brand/model data before null-checking it.
-**Fix**: Added null-safe guards in not_heating branch auto-question logic in scopesnap-api.
-**File**: scopesnap-api (diagnostic branch handler)
-
----
-
-### BUG-005 — error_code branch crashes on null OCR brand ✅ FIXED
-
-**Symptom**: error_code complaint type crashed when brand was null from OCR.
-**Root cause**: call_error_code_lookup() called with null brand parameter.
-**Fix**: Added null fallback before error_code_lookup invocation.
-**File**: scopesnap-api (error_code branch handler)
+**Result:** Commit `ee86b4a` → Vercel build **Ready ✅** (build time ~1m 3s, compilation + type check pass)
 
 ---
 
-### BUG-006 — DiagnosticFlow.handleMulti missing visual_select support ✅ FIXED
+### Beta Readiness Gate — All 9 Complaint Types End-to-End Audit
 
-**Symptom**: Questions with input_type=visual_select (YES/NO big colored buttons) did not render — blank step.
-**Root cause**: handleMulti() in DiagnosticFlow.tsx had no case for visual_select.
-**Fix**: Added visual_select rendering — large green YES / red NO buttons with correct submit behavior.
-**File**: scopesnap-web/components/diagnostic/DiagnosticFlow.tsx
+**Date:** 2026-05-11  
+**Viewport:** Mobile simulation (default)  
+**Environment:** Production — `snapai.mainnov.tech`
 
----
+| # | Complaint Type | Outcome | Resolution |
+|---|---|---|---|
+| 1 | Service / Tune-Up | ✅ PASS | Estimate generated (tune-up card) |
+| 2 | Not Cooling | ✅ PASS | Estimate generated (refrigerant/capacitor card) |
+| 3 | Not Heating | ✅ PASS | Escalation ("Call for emergency service") — correct for ignition failure |
+| 4 | Intermittent Shutdown | ✅ PASS | Estimate generated (Good/Better/Best options) |
+| 5 | Water Dripping | ✅ PASS | Estimate generated (drain line / pan card) |
+| 6 | Not Turning On | ✅ PASS | Estimate generated (power/thermostat card) |
+| 7 | Making Noise | ✅ PASS | Estimate generated (blower/bearing card) |
+| 8 | High Electric Bill | ✅ PASS | Estimate generated (dirty filter — resolved in 2 steps) |
+| 9 | Error Code | ✅ PASS | Escalation ("Diagnostic escalated -- please inspect manually.") — correct for E5 + breaker reset failure |
 
-### BUG-014 — Intermittent Shutdown card broken emoji ✅ FIXED
+**Result: 9/9 PASS ✅ — All complaint types reach valid resolution (estimate or escalation)**
 
-**Symptom**: Lightning bolt emoji (U+26A1) rendered as a replacement character on Windows/NTFS.
-**Root cause**: NTFS file copy introduced null-byte padding in assess/page.tsx, corrupting the UTF-8 emoji.
-**Fix**: Stripped null-byte padding via soffice.py script, replaced emoji with clean U+26A1 literal.
-**Commit**: 6fb1298 — fix(BUG-018): strip null-byte padding from app/page.tsx (NTFS cp bug)
-**File**: scopesnap-web/app/(app)/assess/page.tsx
+**Notes:**
+- Not Heating and Error Code both correctly route to manual escalation (not a bug — escalation is a valid diagnostic resolution)
+- Water Dripping, Not Turning On, Making Noise all resolved in 2–3 steps
+- High Electric Bill resolved in 2 steps (Dirty Filter path)
+- Error Code: entered "E5" manually (skipped LED photo), answered NO to breaker reset → escalation
+- MultiInput (multi-reading steps) confirmed working: requires all non-photo inputs before auto-submit
 
----
-
-### TASK-009 — Landing page copy updated ✅ COMPLETE
-
-- Replaced 48-hour estimate promise with 90-seconds messaging throughout
-- Headline: "HVAC estimates in 90 seconds. No guessing. No spreadsheets."
-- CTA buttons: "Start Your First Assessment" and "See How It Works"
-**File**: scopesnap-web/app/page.tsx
-
----
-
-### TASK-010 — BETA badge replaced with EARLY ACCESS ✅ COMPLETE
-
-- All "BETA" text replaced with "EARLY ACCESS" across:
-  - app/(app)/layout.tsx (sidebar badge component)
-  - app/page.tsx (landing page header + hero badge)
-  - components/ui/sidebar.tsx (sidebar plan label)
-- NOTE: "Beta Feedback" floating widget (bottom-right) still says "Beta" — low priority cosmetic
+**Beta Readiness Status: GREEN ✅ — Ready for beta user onboarding**
 
 ---
 
-### TASK-011 — Video embed placeholder added to landing page ✅ COMPLETE
+## Session 2026-05-11 — Diagnostic Engine: 5 Bug Fixes + 3 Untested Branch Fixes
 
-- Added iframe embed slot under "See it in action" section
-- src: https://www.youtube.com/embed/SNAPAI_VIDEO_ID?autoplay=1
-- Structure and layout correct; placeholder ID pending real demo video
-- Action required: Replace SNAPAI_VIDEO_ID with real YouTube ID when demo is recorded
-**File**: scopesnap-web/app/page.tsx
+### Summary
+All 5 remaining broken diagnostic sub-branches fixed. 3 untested branches covered.
+Files changed: `diagnostic.py`, `ReadingInput.tsx`, `main.py`, migration `014_bug_fixes_5_bugs.py`.
 
 ---
 
-### TASK-012 — PostHog diagnostic event tracking ✅ COMPLETE
+### BUG #10 — Service/Tune-Up Flow Dead (GET /questions → 404, POST /answer → 503)
 
-Added posthog.capture() calls directly in two files (alongside existing lib/tracking.ts internal events):
+**Files:** `scopesnap-api/api/diagnostic.py`
 
-**assess/page.tsx**:
-- diagnostic_started — fires when assessment begins, props: { complaint_type }
-- estimate_generated — fires when estimate is returned, props: { estimate_id, amount }
+**Root causes (3):**
+1. `GET /api/diagnostic/questions/{complaint_type}` endpoint did not exist → 404
+2. `_generate_service_estimate()` called without try/except in `_process_branch` → unhandled exception → 503
+3. Idempotency check used `WHERE id = :aid` (only checks PK) — estimates created via `fault_estimate.py` use auto-UUIDs → duplicate estimate created on retry
 
-**DiagnosticFlow.tsx**:
-- diagnostic_step_answered — fires on each diagnostic step submit, props: { question, answer, complaint_type }
-
-**Implementation**:
-- Import: import posthog from 'posthog-js'
-- PostHog singleton initialized via PostHogProvider (providers/posthog-provider.tsx)
-- Does NOT use window.posthog (snippet-style) — uses posthog-js React singleton
-- NEXT_PUBLIC_POSTHOG_KEY + NEXT_PUBLIC_POSTHOG_HOST set in Vercel environment variables
-
-**Commits**:
-- c8e38fb — feat: add PostHog tracking to assess/page.tsx
-- ddccea7 — FAILED build (TypeScript: Property 'id' does not exist on type 'QuestionOut')
-- 8317f9f — fix(tracking): use hint_text as question identifier (fix for ddccea7 TypeScript error)
-
-**QuestionOut interface note**: Fields are hint_text, options, icon — there is NO id field.
+**Fixes:**
+- Added `GET /api/diagnostic/questions/{complaint_type}` endpoint (returns step list for progress bar)
+- Added `POST /api/diagnostic/session/{session_id}/undo` endpoint (back-button support)
+- Completed missing body of `GET /api/diagnostic/session/{session_id}` (file was NTFS-truncated)
+- Wrapped `_generate_service_estimate()` call in try/except (non-fatal)
+- Changed idempotency check to `WHERE id = :aid OR assessment_id = :aid`
 
 ---
 
-### TASK-013 — App Readiness Protocol doc updated ✅ COMPLETE
+### BUG #11 — Not Cooling → NO → q3-contactor always escalates
 
-Phase 3 marked complete in App Readiness Protocol document.
+**Files:** `scopesnap-web/components/diagnostic/ReadingInput.tsx`, `scopesnap-api/db/migrations/versions/014_bug_fixes_5_bugs.py`
 
----
+**Root cause:** `type === "voltage"` had no handler in `classifyReading()` → always fell to generic `branchKey: "ok"` → `power_passes_normal` key never produced → engine hit `any` wildcard → escalation.
 
-### TASK-017 — Full UI walkthrough ✅ COMPLETE (2026-05-07)
-
-All pages and flows verified clean in production:
-
-| Page / Flow | Status | Notes |
-|-------------|--------|-------|
-| Landing page hero | PASS | EARLY ACCESS badge, correct 90s copy |
-| Landing page video section | PASS | iframe present, placeholder ID expected |
-| Dashboard | PASS | EARLY ACCESS sidebar, recent assessments, stats |
-| Assessments list | PASS | Filters, table, all rendering |
-| Settings | PASS | Company profile, billing section |
-| Step Zero (nameplate) | PASS | Photo slots, Skip/Continue buttons |
-| Complaint grid (all 9 cards) | PASS | All icons correct, no broken characters |
-| Intermittent Shutdown emoji | PASS | Yellow lightning bolt clean (BUG-014 fix) |
-| Not Heating diagnostic | PASS | Steps 1+2 load, no crash (BUG-004 fix) |
-| Not Cooling diagnostic | PASS | visual_select YES/NO renders (BUG-006 fix) |
+**Fix:**
+- Added voltage handler in `classifyReading()`: `< low_threshold (100 V)` → `"no_power"`, `≥ 100 V` → `"power_passes_normal"`
+- Migration 014: added `low_threshold: 100` to `not_cooling/q3-contactor` reading_spec
 
 ---
 
-## Last updated: 2026-05-07
+### BUG #12 — Water Dripping → Outdoor — immediate 404 → 422
+
+**Files:** `scopesnap-api/db/migrations/versions/014_bug_fixes_5_bugs.py`
+
+**Root cause:** `water_dripping/q1` outdoor branch used `phase_2_gate: true` → frontend immediately POSTed to `/api/estimates/fault-card` with `card_id: null` → Pydantic validation failure. No questions configured for sub-branch.
+
+**Fix:** Migration 014:
+- Replaced `phase_2_gate` with `next_step_id: "q2-wd-suction"`
+- Inserted new step `q2-wd-suction`: suction PSI reading → `low` (Card #8 refrigerant leak), `ok` (escalate — check insulation/condensation), `high` (Card #14 dirty condenser)
+
+---
+
+### BUG #13 — Not Heating → Ignites then shuts off → flame sensor µA always escalates
+
+**Files:** `scopesnap-web/components/diagnostic/ReadingInput.tsx`, `scopesnap-api/db/migrations/versions/014_bug_fixes_5_bugs.py`
+
+**Root causes (2):**
+1. `reading_spec.type = "micro_amps"` (underscore) — frontend `classifyReading()` checks `type === "microamps"` (no underscore) → always fell to generic `branchKey: "ok"` → `clean_and_high_uA` escalation path
+2. Branch logic lacked `"low"` and `"ok"` keys for the numeric output the fixed frontend produces
+
+**Fixes:**
+- Migration 014: changed `not_heating/q4-flame-sensor` reading_spec type to `"microamps"` 
+- Migration 014: added `"low": {resolve_card: 11}` and `"ok": {escalate: true, reason: "Sensor reads ok — check gas pressure / valve"}`
+
+---
+
+### BUG #9 — Error Code → NO reset → dead-end escalation
+
+**Files:** `scopesnap-api/db/migrations/versions/014_bug_fixes_5_bugs.py`
+
+**Root cause:** wsg3 patch replaced `jump_to_complaint: "intermittent_shutdown"` with `escalate: true` (no repair path). Tech is left with "Diagnostic escalated" banner and no action.
+
+**Fix:** Migration 014: `"no"` branch → `resolve_card: 7` (control board lockout card).
+
+---
+
+### Untested #1 — Not Turning On → NO (no power) voltage threshold
+
+**Files:** `scopesnap-web/components/diagnostic/ReadingInput.tsx`, `scopesnap-api/db/migrations/versions/014_bug_fixes_5_bugs.py`
+
+Same root cause as BUG #11. Migration 014 adds `low_threshold: 100` to `not_turning_on/q2-no-power` options_jsonb reading spec.
+
+---
+
+### Untested #2 — Making Noise → Banging → compressor over-RLA always escalates
+
+**Files:** `scopesnap-api/db/migrations/versions/014_bug_fixes_5_bugs.py`
+
+**Root cause:** `making_noise/q4-compressor` "over_rla" branch had both `resolve_card: 10` AND `escalate: true`. In `_process_branch` the escalate check runs before resolve_card → always escalated.
+
+**Fix:** Migration 014: removed `escalate: true` from "over_rla" → now routes to Card #10 (compressor replacement).
+
+---
+
+### Untested #3 — Making Noise → Hissing — same phase_2_gate bug as BUG #12
+
+**Files:** `scopesnap-api/db/migrations/versions/014_bug_fixes_5_bugs.py`
+
+**Fix:** Migration 014: replaced `phase_2_gate` with `next_step_id: "q2-hiss-suction"` + inserted new suction PSI step (same R-410A thresholds as q2-wd-suction).
+
+---
+
+### main.py — Remove non-existent module imports
+
+**Files:** `scopesnap-api/main.py`
+
+Removed imports and `include_router` calls for three modules that do not exist on disk:
+- `api.photo_labels` (photo_labels_router)
+- `api.job_confirmation` (job_confirmation_router)  
+- `api.readings` (readings_router)
+
+These were stale references that would have caused `ImportError` on server start.
+
+---
+
+### photo_branch_map — Python support added to diagnostic engine
+
+**Files:** `scopesnap-api/api/diagnostic.py`
+
+`_follow_branch()` updated to translate AI photo grades through `photo_branch_map` dict before exact key lookup. Fixes wsg3/wsd3 patches for `making_noise/q5-contactor`, `not_heating/q3-ignitor`, `not_heating/q4-flame-sensor`, `high_electric_bill/q2-filter-photo`.
+

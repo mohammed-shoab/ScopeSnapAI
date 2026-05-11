@@ -31,15 +31,11 @@ from api.repo import router as repo_router  # WS-A: GET /api/repo/version
 from api.ocr import router as ocr_router   # WS-B: POST /api/ocr/nameplate
 from api.fault_estimate import router as fault_estimate_router
 from api.diagnostic import router as diagnostic_router         # WS-A3: Phase 3 diagnostic flow
-from api.photo_labels import router as photo_labels_router     # WS-A3: Phase 3 photo labeling
-from api.job_confirmation import router as job_confirmation_router  # WS-A3: Phase 3 training loop
-  # WS-G
 from api.error_code import router as error_code_router         # WS-D
 from api.thermal import router as thermal_router               # WS-E
 from api.card_feedback import router as feedback_router        # WS-F
 from api.recommend import router as recommend_router           # WS-H
 from api.followup import router as followup_router             # WS-I
-from api.readings import router as readings_router  # WS-C: Phase 2 Readings Gate
 from api.uploads import router as uploads_router   # Diagnostic photo upload
 
 
@@ -124,14 +120,10 @@ app.include_router(repo_router)             # GET /api/repo/version (WS-A data f
 app.include_router(ocr_router)              # POST /api/ocr/nameplate (WS-B Step Zero OCR)
 app.include_router(fault_estimate_router)
 app.include_router(diagnostic_router)          # GET+POST /api/diagnostic/* (WS-A3)
-app.include_router(photo_labels_router)        # POST /api/photo-labels/ (WS-A3)
-app.include_router(job_confirmation_router)    # POST /api/job-confirmation (WS-A3)
-   # WS-G estimate engine
 app.include_router(error_code_router)       # WS-D brand DB lookup
 app.include_router(thermal_router)          # WS-E thermal camera
 app.include_router(feedback_router)         # WS-F training feedback
 app.include_router(followup_router)         # WS-I follow-up emails
-app.include_router(readings_router)          # WS-C: Phase 2 Readings Gate (/api/readings)
 app.include_router(uploads_router)           # POST /api/uploads (diagnostic photo upload)
 
 

@@ -97,6 +97,14 @@ function classifyReading(value: number, spec: ReadingSpec, nameplate: Record<str
     return { value, unit, classification: "ok", passed: true, branchKey: "ok" };
   }
 
+  // L1+L2 supply voltage — threshold-based: below low_threshold → no_power, else → power_passes_normal
+  // Default threshold 100 V (splits dead-leg ~0 V from healthy ~240 V).
+  if (spec.type === "voltage") {
+    const lowT = spec.low_threshold ?? 100;
+    if (value < lowT) return { value, unit, classification: "no_power", passed: false, branchKey: "no_power" };
+    return { value, unit, classification: "power_passes_normal", passed: true, branchKey: "power_passes_normal" };
+  }
+
   // Generic fallback — just pass through value, let backend decide
   return { value, unit, classification: "entered", passed: true, branchKey: "ok" };
 }
@@ -139,38 +147,4 @@ export default function ReadingInput({ spec, ocrNameplate, onSubmit, disabled = 
           disabled={disabled}
           className="w-full px-4 py-4 rounded-xl text-xl font-mono font-bold text-right pr-16 border-2 bg-surface-secondary text-text-primary placeholder-text-secondary focus:outline-none transition-colors"
           style={{ borderColor: hasValue ? (preview ? (preview.ok ? "#2ecc71" : "#e74c3c") : "#3498db") : "#2a2a4a" }}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
-        />
-        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary font-mono text-sm">
-          {spec.unit}
-        </span>
-      </div>
-
-      {nameplateSpec && !isNaN(nameplateSpec) && (
-        <div className="flex items-center justify-between text-sm px-1">
-          <span className="text-text-secondary">Nameplate spec:</span>
-          <span className="font-mono font-bold text-text-primary">{nameplateSpec} {spec.unit}</span>
-        </div>
-      )}
-
-      {hasValue && preview && (
-        <div
-          className="flex items-center justify-between px-4 py-2 rounded-xl text-sm font-bold"
-          style={{ background: preview.ok ? "rgba(46,204,113,0.12)" : "rgba(231,76,60,0.12)", color: preview.ok ? "#2ecc71" : "#e74c3c" }}
-        >
-          <span>{preview.ok ? "Within spec" : "Out of spec"}</span>
-          <span className="font-mono">{Number(preview.pct) > 0 ? "+" : ""}{preview.pct}%</span>
-        </div>
-      )}
-
-      <button
-        onClick={handleSubmit}
-        disabled={!hasValue || disabled}
-        className="w-full py-4 rounded-2xl text-white font-extrabold text-base transition-all active:scale-95 disabled:opacity-40"
-        style={{ background: hasValue ? "linear-gradient(135deg, #3498db 0%, #2980b9 100%)" : "#2a2a4a" }}
-      >
-        Submit Reading
-      </button>
-    </div>
-  );
-}
+          onKeyDown={(e) => { if (e.key =

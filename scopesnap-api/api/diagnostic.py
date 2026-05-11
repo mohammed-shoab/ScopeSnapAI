@@ -289,8 +289,10 @@ async def _generate_service_estimate(
     import string as _string
 
     # Idempotent: do nothing if estimate already exists for this assessment
+    # BUG-010-fix: check both id=assessment_id AND assessment_id column to
+    # avoid duplicate-key failure when a fault estimate was created earlier.
     existing = await db.execute(
-        text("SELECT id FROM estimates WHERE id = :aid LIMIT 1"),
+        text("SELECT id FROM estimates WHERE id = :aid OR assessment_id = :aid LIMIT 1"),
         {"aid": assessment_id},
     )
     if existing.fetchone():
@@ -556,12 +558,31 @@ async def _call_error_code_lookup(
 def _follow_branch(branch_logic: dict, branch_key: str) -> Optional[dict]:
     """
     Look up branch_key in branch_logic.
-    Falls back to 'any' wildcard if the exact key is absent.
-    Returns None if neither key exists (caller should escalate).
+
+    Resolution order:
+      1. Exact key match
+      2. photo_branch_map translation (AI photo grades → compound keys)
+      3. 'any' wildcard fallback
+    Returns None if no match found (caller should escalate).
     """
     branch = branch_logic.get(branch_key)
+
+    if branch is None:
+        # BUG-011-fix: translate AI photo grade via photo_branch_map
+        # e.g. {"photo_branch_map": {"pitted": "pitted_or_arced", "_default": "clean"}, ...}
+        pmap = branch_logic.get("photo_branch_map")
+        if isinstance(pmap, dict):
+            mapped_key = pmap.get(branch_key) or pmap.get("_default")
+            if mapped_key:
+                branch = branch_logic.get(mapped_key)
+                if branch:
+                    logger.info(
+                        "[diagnostic] photo_branch_map: '%s' → '%s'", branch_key, mapped_key
+                    )
+
     if branch is None:
         branch = branch_logic.get("any")
+
     return branch
 
 
@@ -590,8 +611,14 @@ async def _process_branch(
     # ── service_complete ───────────────────────────────────────────────────────
     if branch.get("service_complete"):
         # BUG-009 fix: generate estimate before marking session done
+        # BUG-010 fix: wrap in try/except so step-8 photo never 503s
         if branch.get("generate_estimate") and assessment_id and company_id:
-            await _generate_service_estimate(db, assessment_id, company_id)
+            try:
+                await _generate_service_estimate(db, assessment_id, company_id)
+            except Exception as exc:
+                logger.error(
+                    "[diagnostic] service estimate creation failed (non-fatal): %s", exc
+                )
         await _complete_service_session(db, session_id)
         return AnswerResponse(service_step_complete=True, finding=finding)
 
@@ -829,7 +856,7 @@ async def submit_answer(
             assessment_id=session.assessment_id, company_id=auth.company_id,
         )
 
-    # ── Compute branch_key (BUG-003 fix) ─────────────────────────────────────
+    # ── Compute branch_key (BUG-003 fix) ─────────────────────────────────
     branch_key = _compute_branch_key(body.answer, q_row.input_type)
 
     # ── Follow branch ─────────────────────────────────────────────────────────
@@ -857,21 +884,99 @@ async def submit_answer(
     )
 
 
-@router.get("/session/{session_id}", response_model=StartSessionResponse)
-
-async def get_session(
-    session_id: str,
+@router.get("/questions/{complaint_type}")
+async def list_questions(
+    complaint_type: str,
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return current session state — used for page-reload resume."""
+    """
+    WS-N3: Return ordered question list for a complaint type.
+    Used by the frontend to set the progress-bar total step count.
+    GET /api/diagnostic/questions/{complaint_type}
+    """
+    result = await db.execute(
+        text(
+            "SELECT step_id, step_order, question_text, input_type"
+            " FROM diagnostic_questions"
+            " WHERE complaint_type = :ct"
+            " ORDER BY step_order ASC"
+        ),
+        {"ct": complaint_type},
+    )
+    rows = result.fetchall()
+    return [
+        {
+            "step_id": r.step_id,
+            "step_order": r.step_order,
+            "question_text": r.question_text,
+            "input_type": r.input_type,
+        }
+        for r in rows
+    ]
+
+
+@router.post("/session/{session_id}/undo", response_model=StartSessionResponse)
+async def undo_step(
+    session_id: str = Path(...),
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    WS-N3: Step back to the previous question in the current complaint_type tree.
+    """
     session = await _load_session(db, session_id, auth.company_id)
     if not session:
-        raise HTTPException(status_code=404, detail="Session not found.")
+        raise HTTPException(status_code=404, detail="Diagnostic session not found.")
+    if session.status != "active":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot undo — session is already '{session.status}'.",
+        )
+
+    current_row = await _load_question(db, session.complaint_type, session.current_step_id)
+    if not current_row:
+        raise HTTPException(status_code=500, detail="Current step not found.")
+
+    prev_result = await db.execute(
+        text(
+            f"SELECT {_QUESTION_COLS} FROM diagnostic_questions"
+            " WHERE complaint_type = :ct AND step_order < :order"
+            " ORDER BY step_order DESC LIMIT 1"
+        ),
+        {"ct": session.complaint_type, "order": current_row.step_order},
+    )
+    prev_row = prev_result.fetchone()
+    if not prev_row:
+        raise HTTPException(status_code=400, detail="Already at the first step.")
+
+    await _set_session_step(db, session_id, prev_row.step_id)
+    return StartSessionResponse(
+        session_id=session_id,
+        current_step=_row_to_question_out(prev_row),
+    )
+
+
+@router.get("/session/{session_id}", response_model=StartSessionResponse)
+async def resume_session(
+    session_id: str = Path(...),
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Resume a diagnostic session — return session_id + current question.
+    Used when the tech navigates back to an in-progress assessment.
+    """
+    session = await _load_session(db, session_id, auth.company_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Diagnostic session not found.")
 
     q_row = await _load_question(db, session.complaint_type, session.current_step_id)
     if not q_row:
-        raise HTTPException(status_code=500, detail="Current step not found in DB.")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Current step '{session.current_step_id}' not found.",
+        )
 
     return StartSessionResponse(
         session_id=session_id,
