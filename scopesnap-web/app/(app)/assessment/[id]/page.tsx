@@ -1359,4 +1359,12 @@ export default function EstimatePage() {
                 disabled={sending || (!sendEmail && !sendPhone)}
                 className="w-full bg-brand-green text-white font-bold py-4 rounded-xl text-base shadow-lg shadow-green-200 hover:shadow-xl disabled:opacity-40 transition-shadow"
               >
-                {sending ? "Sending..." : `Send${homeownerName ? ` to
+                {sending ? "Sending..." : `Send${homeownerName ? ` to ${homeownerName}` : ""} →`}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
