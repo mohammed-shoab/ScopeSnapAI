@@ -66,6 +66,24 @@ export default function EstimatesPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = localStorage.getItem("snapai_hidden_assessments");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const hideAssessment = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      try { localStorage.setItem("snapai_hidden_assessments", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  };
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (IS_DEV) return DEV_HEADER;
@@ -89,6 +107,7 @@ export default function EstimatesPage() {
   }, [getAuthHeaders]);
 
   const filtered = assessments.filter((e) => {
+    if (hiddenIds.has(e.id)) return false;
     const matchesFilter = filter === "all" || e.status === filter;
     const q = search.toLowerCase();
     const matchesSearch =
@@ -170,12 +189,13 @@ export default function EstimatesPage() {
       ) : (
         <div className="bg-white rounded-xl border border-surface-border overflow-hidden shadow-sm">
           {/* Table Header — 3 cols mobile, 5 cols desktop */}
-          <div className="grid grid-cols-[1fr_auto_auto] md:grid-cols-[1fr_auto_auto_auto_auto] gap-2 md:gap-4 px-4 py-2.5 bg-surface-bg border-b border-surface-border text-xs font-bold uppercase tracking-widest font-mono text-text-secondary">
+          <div className="grid grid-cols-[1fr_auto_auto_auto] md:grid-cols-[1fr_auto_auto_auto_auto_auto] gap-2 md:gap-4 px-4 py-2.5 bg-surface-bg border-b border-surface-border text-xs font-bold uppercase tracking-widest font-mono text-text-secondary">
             <span>Report / Address</span>
             <span className="hidden md:block text-center w-24">Equipment</span>
             <span className="text-right w-16 md:w-24">Amount</span>
             <span className="text-center w-16 md:w-20">Status</span>
             <span className="hidden md:block text-right w-20">Date</span>
+            <span className="w-8"></span>
           </div>
 
           {/* Rows */}
@@ -183,11 +203,11 @@ export default function EstimatesPage() {
             {filtered.map((est) => {
               const statusStyle = STATUS_STYLES[est.status] || STATUS_STYLES.draft;
               return (
-                <Link
+                <div
                   key={est.id}
-                  href={`/assessment/${est.id}`}
-                  className="grid grid-cols-[1fr_auto_auto] md:grid-cols-[1fr_auto_auto_auto_auto] gap-2 md:gap-4 px-4 py-3.5 items-center hover:bg-surface-bg transition-colors group"
+                  className="grid grid-cols-[1fr_auto_auto_auto] md:grid-cols-[1fr_auto_auto_auto_auto_auto] gap-2 md:gap-4 px-4 py-3.5 items-center hover:bg-surface-bg transition-colors group relative"
                 >
+                  <Link href={`/assessment/${est.id}`} className="contents">
                   {/* Report ID + Address */}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -227,7 +247,17 @@ export default function EstimatesPage() {
                   <div className="hidden md:block w-20 text-right text-xs text-text-secondary">
                     {timeAgo(est.created_at)}
                   </div>
-                </Link>
+                  </Link>
+                  {/* Delete button */}
+                  <button
+                    onClick={(e) => hideAssessment(est.id, e)}
+                    className="w-8 flex items-center justify-center text-text-secondary hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                    title="Remove from list"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                    </svg>
+                  </button>
               );
             })}
           </div>
