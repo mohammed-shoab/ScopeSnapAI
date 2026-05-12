@@ -225,4 +225,9 @@ export function setupAutoSync(
   // Sync immediately if already online and there are pending items
   if (navigator.onLine) {
     getOfflineQueueCount().then(count => {
-      if (count > 0) handler()
+      if (count > 0) handler();
+    });
+  }
+
+  return () => window.removeEventListener("online", handler);
+}
