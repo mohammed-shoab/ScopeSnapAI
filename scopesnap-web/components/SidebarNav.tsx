@@ -326,7 +326,7 @@ export default function SidebarNav() {
 
           {/* ââ Footer / User Area âââââââââââââââââââââââââââââââââââââââââ */}
           {/* ── Footer / User Area ───────────────────────────────────────────────────────────────────────────────── */}
-          <div className="px-3 py-3 border-t flex-shrink-0" style={{ borderColor: "rgba(255,255,255,.08)" }}>
+          <div className="px-3 pt-3 border-t flex-shrink-0" style={{ borderColor: "rgba(255,255,255,.08)", paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))" }}>
             <div className="flex items-center gap-2">
               {/* Avatar + name/email — links to settings */}
               <Link
