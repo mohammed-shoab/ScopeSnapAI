@@ -88,6 +88,7 @@ export async function saveToOfflineQueue(
   });
 
   db.close();
+  _notifyQueueListeners();
   return id;
 }
 
@@ -116,6 +117,7 @@ export async function removeFromOfflineQueue(id: string): Promise<void> {
     req.onerror   = () => reject(req.error);
   });
   db.close();
+  _notifyQueueListeners();
 }
 
 // ── Count queued items ────────────────────────────────────────────────────────
@@ -133,6 +135,39 @@ export async function getOfflineQueueCount(): Promise<number> {
     return count;
   } catch {
     return 0;
+  }
+}
+
+// ── Process queue (upload all pending items) ──────────────────────────────────
+export async function processOfflineQueue(
+  apiUrl: string,
+  headers: Record<string, string>,
+): Promise<void> {
+  const items = await getOfflineQueue();
+  for (const item of items) {
+    try {
+      const formData = new FormData();
+      formData.append("address", item.address);
+      formData.append("customer_name", item.customerName);
+      formData.append("customer_phone", item.customerPhone);
+
+      for (const p of item.photosData) {
+        const blob = new Blob([p.data], { type: p.type });
+        formData.append("photos", blob, p.name);
+      }
+
+      const res = await fetch(`${apiUrl}/api/assessments`, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+
+      if (res.ok) {
+        await removeFromOfflineQueue(item.id);
+      }
+    } catch {
+      // Leave in queue — will retry on next sync
+    }
   }
 }
 
@@ -192,10 +227,4 @@ export function setupAutoSync(
   }
 
   return () => window.removeEventListener("online", handler);
-}
-
-/** True when the device has no network */
-export function isOffline(): boolean {
-  if (typeof window === "undefined") return false;
-  return !navigator.onLine;
 }
