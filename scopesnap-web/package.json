@@ -36,4 +36,7 @@
   "overrides": {
     "caniuse-lite": "1.0.30001669"
   },
-  "engi
+  "engines": {
+    "node": "22"
+  }
+}
