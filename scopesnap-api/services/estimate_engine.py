@@ -36,83 +36,91 @@ EIA_COOLING_COST_BY_STATE = {
 # ââ Condition â Job Type Mapping (the "intelligence" layer) âââââââââââââââââââ
 # Maps AI condition findings to recommended job options.
 # Each entry: (condition_trigger, job_type_good, job_type_better, job_type_best)
+# CRITICAL: job_type strings must exactly match keys in pricing_seed.py PricingRule rows.
+# Seed keys: evap_coil_replacement, full_system_replace, maintenance_tune_up,
+#            compressor_replacement, refrigerant_recharge, capacitor_replacement,
+#            contactor_replacement, coil_cleaning, diagnostic_repair
 CONDITION_TO_OPTIONS = {
     # Coil issues
     ("evaporator_coil", "minor_issue"): {
         "good": "coil_cleaning",
         "better": "coil_cleaning",
-        "best": "coil_replacement",
+        "best": "evap_coil_replacement",
     },
     ("evaporator_coil", "moderate_issue"): {
         "good": "coil_cleaning",
-        "better": "coil_replacement",
-        "best": "full_system",
+        "better": "evap_coil_replacement",
+        "best": "full_system_replace",
     },
     ("evaporator_coil", "severe_issue"): {
-        "good": "coil_replacement",
-        "better": "full_system",
-        "best": "full_system_premium",
+        "good": "evap_coil_replacement",
+        "better": "full_system_replace",
+        "best": "full_system_replace",
     },
     # Compressor
     ("compressor", "moderate_issue"): {
-        "good": "repair",
+        "good": "diagnostic_repair",
         "better": "compressor_replacement",
-        "best": "full_system",
+        "best": "full_system_replace",
     },
     ("compressor", "severe_issue"): {
         "good": "compressor_replacement",
-        "better": "full_system",
-        "best": "full_system_premium",
+        "better": "full_system_replace",
+        "best": "full_system_replace",
     },
     # Refrigerant
     ("refrigerant_lines", "minor_issue"): {
         "good": "refrigerant_recharge",
         "better": "refrigerant_recharge",
-        "best": "repair",
+        "best": "diagnostic_repair",
     },
     ("refrigerant_lines", "moderate_issue"): {
         "good": "refrigerant_recharge",
-        "better": "repair",
-        "best": "coil_replacement",
+        "better": "diagnostic_repair",
+        "best": "evap_coil_replacement",
     },
     # General / maintenance
     ("overall", "excellent"): {
-        "good": "maintenance",
-        "better": "maintenance",
-        "best": "maintenance",
+        "good": "maintenance_tune_up",
+        "better": "maintenance_tune_up",
+        "best": "maintenance_tune_up",
     },
     ("overall", "good"): {
-        "good": "maintenance",
-        "better": "maintenance",
-        "best": "repair",
+        "good": "maintenance_tune_up",
+        "better": "maintenance_tune_up",
+        "best": "diagnostic_repair",
     },
     ("overall", "fair"): {
-        "good": "maintenance",
-        "better": "repair",
-        "best": "coil_replacement",
+        "good": "maintenance_tune_up",
+        "better": "diagnostic_repair",
+        "best": "evap_coil_replacement",
     },
     ("overall", "poor"): {
-        "good": "repair",
-        "better": "full_system",
-        "best": "full_system_premium",
+        "good": "diagnostic_repair",
+        "better": "full_system_replace",
+        "best": "full_system_replace",
     },
     ("overall", "critical"): {
-        "good": "full_system",
-        "better": "full_system",
-        "best": "full_system_premium",
+        "good": "full_system_replace",
+        "better": "full_system_replace",
+        "best": "full_system_replace",
     },
 }
 
-# Display names for job types
+# Display names for job types — keys must match pricing_seed job_type values
 JOB_TYPE_NAMES = {
-    "coil_cleaning": "Clean & Treat Coil",
-    "coil_replacement": "Replace Evaporator Coil",
-    "full_system": "New System Installation",
-    "full_system_premium": "Premium High-Efficiency System",
+    "coil_cleaning":          "Clean & Treat Coil",
+    "evap_coil_replacement":  "Replace Evaporator Coil",
+    "full_system_replace":    "New System Installation",
     "compressor_replacement": "Compressor Replacement",
-    "refrigerant_recharge": "Refrigerant Recharge",
-    "maintenance": "Preventive Maintenance",
-    "repair": "Diagnostic & Repair",
+    "refrigerant_recharge":   "Refrigerant Recharge",
+    "maintenance_tune_up":    "Preventive Maintenance",
+    "diagnostic_repair":      "Diagnostic & Repair",
+    "capacitor_replacement":  "Capacitor Replacement",
+    "contactor_replacement":  "Contactor Replacement",
+    "condenser_fan_motor":    "Condenser Fan Motor Replacement",
+    "blower_motor_replacement": "Blower Motor Replacement",
+    "thermostat_upgrade":     "Thermostat Upgrade",
 }
 
 TIER_DESCRIPTIONS = {
@@ -487,17 +495,18 @@ async def generate_estimate(
             except Exception:
                 pass
 
-        if "full_system" in job_type and current_seer:
-            new_seer = 18.0 if "premium" in job_type else 16.0
+        if job_type == "full_system_replace" and current_seer:
+            # Best tier gets a higher-SEER premium unit; good/better get standard
+            new_seer = 18.0 if tier == "best" else 16.0
             energy_savings = calculate_energy_savings(
                 current_seer=current_seer,
                 new_seer=new_seer,
                 state=company_state,
             )
 
-        # Step 7: Rebate check (simplified â check for high SEER)
+        # Step 7: Rebate check — IRA/ENERGYSTAR rebate for full system replacement (best tier)
         rebate_available = 0
-        if "premium" in job_type or job_type == "full_system_premium":
+        if job_type == "full_system_replace" and tier == "best":
             rebate_available = 500  # Simplified IRA/ENERGYSTAR rebate estimate
 
         # Build option
@@ -543,24 +552,25 @@ async def generate_estimate(
             seen_jobs.add(key)
             unique_options.append(opt)
         else:
-            # If duplicate, adjust the total slightly to differentiate
+            # If duplicate, adjust the total slightly to differentiate tiers visually
             opt["total"] = float(Decimal(str(opt["total"])) * Decimal("1.15"))
             opt["five_year_total"] = calculate_five_year_cost(
-                opt["total"], post_install_annual, overall_condition, estimated_age
+                upfront=opt["total"],
+                annual_energy_cost=EIA_COOLING_COST_BY_STATE.get(company_state or "DEFAULT", 380),
+                condition=overall_condition,
+                equipment_age=estimated_age,
             )
             unique_options.append(opt)
 
-    # ââ P1-B fix: Stamp "Recommended" badge based on AI condition ââââââââââââ
-    # Do this AFTER dedup so badge assignment reflects the final options set.
+    # Determine recommended tier based on condition
     recommended_tier = CONDITION_TO_RECOMMENDED_TIER.get(overall_condition, "better")
     for opt in unique_options:
-        if opt["tier"] == recommended_tier:
-            opt["badge"] = "Recommended"
-        # All other tiers keep their TIER_DESCRIPTIONS defaults (Budget / Better Value / Premium)
+        opt["recommended"] = (opt["tier"] == recommended_tier)
 
     return {
         "options": unique_options,
-        "equipment_type": equipment_type,
         "overall_condition": overall_condition,
-        "estimated_age_years": estimated_age,
+        "equipment_type": equipment_type,
+        "estimated_age": estimated_age,
+        "recommended_tier": recommended_tier,
     }

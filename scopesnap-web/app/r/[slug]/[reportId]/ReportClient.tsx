@@ -509,7 +509,8 @@ export default function ReportClient({ report }: { report: Report }) {
           )}
         </div>
 
-        {/* Health Overview Section */}
+        {/* Health Overview Section — Section 5E: only shown when nameplate data exists */}
+        {(equipment?.brand || equipment?.model_number || equipment?.install_year || (condition !== "unknown")) && (
         <div
           style={{
             background: "white",
@@ -595,6 +596,7 @@ export default function ReportClient({ report }: { report: Report }) {
             )}
           </div>
         </div>
+        )}
 
         {/* What We Found Section */}
         <div

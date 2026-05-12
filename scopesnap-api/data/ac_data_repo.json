@@ -3,9 +3,9 @@
     "version": "2.0",
     "created": "2026-04-27",
     "market": "Houston, TX (and US national)",
-    "refrigerant_note": "R-410A is the dominant refrigerant 2010\u20132025. R-22 found on pre-2010 units. R-32/R-454B appearing on 2025+ units.",
-    "pricing_note": "Houston retail pricing (customer-facing, parts + labor). Wholesale parts cost is 40\u201360% of retail part price shown.",
-    "pressure_note": "Pressures given for 208/230V single-phase residential split systems. Houston summer peak: 95\u2013100\u00b0F OAT typical.",
+    "refrigerant_note": "R-410A is the dominant refrigerant 2010–2025. R-22 found on pre-2010 units. R-32/R-454B appearing on 2025+ units.",
+    "pricing_note": "Houston retail pricing (customer-facing, parts + labor). Wholesale parts cost is 40–60% of retail part price shown.",
+    "pressure_note": "Pressures given for 208/230V single-phase residential split systems. Houston summer peak: 95–100°F OAT typical.",
     "sources": [
       "homeguide.com",
       "angi.com",
@@ -30,7 +30,7 @@
     "last_updated": "2026-04-28",
     "gaps_resolved": [
       "GAP-01: R-410A heat pump heating mode pressure tables added",
-      "GAP-02: R-32 full pressure table (75-105\u00b0F) added",
+      "GAP-02: R-32 full pressure table (75-105°F) added",
       "GAP-03: R-454B complete section added (pressures, superheat, subcooling, systems)",
       "GAP-04: Variable speed inverter amp specs by tonnage added",
       "GAP-05: Piston bore reference table (R-410A and R-22) added",
@@ -40,7 +40,7 @@
       "GAP-09: Dual fuel capability flags added to brand series + detection logic",
       "GAP-10: LG, Samsung, Gree, Pioneer, MrCool, Bosch added to error_code_db",
       "GAP-11: Condenser fan motor FLA added to all tonnage specs",
-      "GAP-12: Fixed orifice superheat lower bound corrected to 8\u00b0F + CTOA chart added",
+      "GAP-12: Fixed orifice superheat lower bound corrected to 8°F + CTOA chart added",
       "GAP-13: Pre-2010 legacy model prefixes added for all major brands",
       "GAP-14: Refrigerant per foot corrected by liquid line pipe size per tonnage",
       "GAP-15: Heat pump defrost cycle data added",
@@ -67,7 +67,7 @@
           "id": "carrier_comfort",
           "name": "Comfort",
           "tier": "entry",
-          "seer2_range": "13.8\u201314.5",
+          "seer2_range": "13.8–14.5",
           "refrigerant": "R-410A",
           "metering_device": "piston",
           "compressor_type": "single_stage",
@@ -76,7 +76,7 @@
             "24ABB",
             "CA14"
           ],
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "superheat",
           "typical_tonnages": [
             1.5,
@@ -92,7 +92,7 @@
           "id": "carrier_performance",
           "name": "Performance",
           "tier": "mid",
-          "seer2_range": "15\u201317",
+          "seer2_range": "15–17",
           "refrigerant": "R-410A",
           "metering_device": "TXV",
           "compressor_type": "two_stage",
@@ -101,7 +101,7 @@
             "24APB",
             "24ACC636"
           ],
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -118,7 +118,7 @@
           "id": "carrier_infinity",
           "name": "Infinity",
           "tier": "premium",
-          "seer2_range": "17\u201324",
+          "seer2_range": "17–24",
           "refrigerant": "R-410A",
           "metering_device": "EEV",
           "compressor_type": "variable_speed",
@@ -127,7 +127,7 @@
             "24XNA",
             "24ACC824"
           ],
-          "years": "2012\u2013present",
+          "years": "2012–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -170,7 +170,7 @@
           "id": "trane_xr",
           "name": "XR",
           "tier": "entry",
-          "seer2_range": "14.8\u201315",
+          "seer2_range": "14.8–15",
           "refrigerant": "R-410A",
           "metering_device": "piston",
           "compressor_type": "single_stage",
@@ -180,7 +180,7 @@
             "XR14",
             "XR15"
           ],
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "superheat",
           "typical_tonnages": [
             1.5,
@@ -198,7 +198,7 @@
           "id": "trane_xl",
           "name": "XL",
           "tier": "mid",
-          "seer2_range": "16\u201318",
+          "seer2_range": "16–18",
           "refrigerant": "R-410A",
           "metering_device": "TXV",
           "compressor_type": "two_stage",
@@ -208,7 +208,7 @@
             "XL16",
             "XL18"
           ],
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -223,7 +223,7 @@
           "id": "trane_xv",
           "name": "XV",
           "tier": "premium",
-          "seer2_range": "20\u201322",
+          "seer2_range": "20–22",
           "refrigerant": "R-410A",
           "metering_device": "EEV",
           "compressor_type": "variable_speed",
@@ -233,7 +233,7 @@
             "XV20",
             "XV18"
           ],
-          "years": "2014\u2013present",
+          "years": "2014–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -279,7 +279,7 @@
           "id": "lennox_merit",
           "name": "Merit",
           "tier": "entry",
-          "seer2_range": "14.3\u201315",
+          "seer2_range": "14.3–15",
           "refrigerant": "R-410A",
           "metering_device": "piston",
           "compressor_type": "single_stage",
@@ -288,7 +288,7 @@
             "14ACX",
             "ML14"
           ],
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "superheat",
           "typical_tonnages": [
             1.5,
@@ -304,7 +304,7 @@
           "id": "lennox_elite",
           "name": "Elite",
           "tier": "mid",
-          "seer2_range": "16\u201318",
+          "seer2_range": "16–18",
           "refrigerant": "R-410A",
           "metering_device": "TXV",
           "compressor_type": "two_stage",
@@ -313,7 +313,7 @@
             "18ACX",
             "EL16"
           ],
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -328,7 +328,7 @@
           "id": "lennox_signature",
           "name": "Signature / XC",
           "tier": "premium",
-          "seer2_range": "20\u201328",
+          "seer2_range": "20–28",
           "refrigerant": "R-410A",
           "metering_device": "EEV",
           "compressor_type": "variable_speed",
@@ -338,7 +338,7 @@
             "SL28XCV",
             "SLV"
           ],
-          "years": "2013\u2013present",
+          "years": "2013–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -384,7 +384,7 @@
           "id": "goodman_gsx",
           "name": "GSX / GSXN",
           "tier": "entry",
-          "seer2_range": "14\u201315",
+          "seer2_range": "14–15",
           "refrigerant": "R-410A",
           "metering_device": "piston",
           "compressor_type": "single_stage",
@@ -394,7 +394,7 @@
             "GSXN",
             "GLXS"
           ],
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "superheat",
           "typical_tonnages": [
             1.5,
@@ -410,7 +410,7 @@
           "id": "goodman_gsxc",
           "name": "GSXC",
           "tier": "mid",
-          "seer2_range": "16\u201318",
+          "seer2_range": "16–18",
           "refrigerant": "R-410A",
           "metering_device": "TXV",
           "compressor_type": "two_stage",
@@ -418,7 +418,7 @@
             "GSXC16",
             "GSXC18"
           ],
-          "years": "2016\u2013present",
+          "years": "2016–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -433,7 +433,7 @@
           "id": "goodman_gsxv",
           "name": "GSXV",
           "tier": "premium",
-          "seer2_range": "18\u201322.5",
+          "seer2_range": "18–22.5",
           "refrigerant": "R-410A",
           "metering_device": "EEV",
           "compressor_type": "variable_speed",
@@ -441,7 +441,7 @@
             "GSXV9",
             "GSXV91"
           ],
-          "years": "2019\u2013present",
+          "years": "2019–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -486,7 +486,7 @@
           "id": "rheem_select",
           "name": "Select",
           "tier": "entry",
-          "seer2_range": "14\u201315",
+          "seer2_range": "14–15",
           "refrigerant": "R-410A",
           "metering_device": "piston",
           "compressor_type": "single_stage",
@@ -495,7 +495,7 @@
             "RA16",
             "RP14"
           ],
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "superheat",
           "typical_tonnages": [
             1.5,
@@ -511,7 +511,7 @@
           "id": "rheem_achiever",
           "name": "Achiever Plus",
           "tier": "mid",
-          "seer2_range": "16\u201318",
+          "seer2_range": "16–18",
           "refrigerant": "R-410A",
           "metering_device": "TXV",
           "compressor_type": "two_stage",
@@ -520,7 +520,7 @@
             "RA18",
             "RP17"
           ],
-          "years": "2016\u2013present",
+          "years": "2016–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -535,7 +535,7 @@
           "id": "rheem_prestige",
           "name": "Prestige",
           "tier": "premium",
-          "seer2_range": "20\u201322.5",
+          "seer2_range": "20–22.5",
           "refrigerant": "R-410A",
           "metering_device": "EEV",
           "compressor_type": "variable_speed",
@@ -543,7 +543,7 @@
             "RA20",
             "RP20"
           ],
-          "years": "2018\u2013present",
+          "years": "2018–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -590,7 +590,7 @@
           "id": "york_lx",
           "name": "LX",
           "tier": "entry",
-          "seer2_range": "14\u201315",
+          "seer2_range": "14–15",
           "refrigerant": "R-410A",
           "metering_device": "piston",
           "compressor_type": "single_stage",
@@ -599,7 +599,7 @@
             "YCC",
             "LX14"
           ],
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "superheat",
           "typical_tonnages": [
             1.5,
@@ -615,7 +615,7 @@
           "id": "york_affinity",
           "name": "Affinity",
           "tier": "mid",
-          "seer2_range": "16\u201319",
+          "seer2_range": "16–19",
           "refrigerant": "R-410A",
           "metering_device": "TXV",
           "compressor_type": "two_stage",
@@ -624,7 +624,7 @@
             "YFF",
             "AFFINITY"
           ],
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -639,7 +639,7 @@
           "id": "york_yxv",
           "name": "YXV",
           "tier": "premium",
-          "seer2_range": "20\u201321",
+          "seer2_range": "20–21",
           "refrigerant": "R-410A",
           "metering_device": "EEV",
           "compressor_type": "variable_speed",
@@ -647,7 +647,7 @@
             "YXV20",
             "YXV"
           ],
-          "years": "2016\u2013present",
+          "years": "2016–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -684,14 +684,14 @@
         "amana"
       ],
       "houston_prevalence": "medium_high",
-      "houston_notes": "World's largest HVAC manufacturer. Daikin Texas Technology Park in Waller, TX \u2014 largest HVAC factory in North America. Growing residential market share rapidly.",
+      "houston_notes": "World's largest HVAC manufacturer. Daikin Texas Technology Park in Waller, TX — largest HVAC factory in North America. Growing residential market share rapidly.",
       "manufactured_in_tx": true,
       "series": [
         {
           "id": "daikin_dn",
           "name": "DN Series",
           "tier": "entry",
-          "seer2_range": "14\u201316",
+          "seer2_range": "14–16",
           "refrigerant": "R-410A",
           "metering_device": "piston",
           "compressor_type": "single_stage",
@@ -700,7 +700,7 @@
             "DN16",
             "DX14"
           ],
-          "years": "2016\u2013present",
+          "years": "2016–present",
           "charging_method": "superheat",
           "typical_tonnages": [
             1.5,
@@ -716,7 +716,7 @@
           "id": "daikin_dx",
           "name": "DX Series",
           "tier": "mid",
-          "seer2_range": "17\u201320",
+          "seer2_range": "17–20",
           "refrigerant": "R-410A",
           "metering_device": "TXV",
           "compressor_type": "two_stage",
@@ -725,7 +725,7 @@
             "DX20",
             "DX20VC"
           ],
-          "years": "2017\u2013present",
+          "years": "2017–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -740,7 +740,7 @@
           "id": "daikin_fit",
           "name": "Daikin Fit",
           "tier": "premium",
-          "seer2_range": "17\u201324.5",
+          "seer2_range": "17–24.5",
           "refrigerant": "R-410A",
           "metering_device": "EEV",
           "compressor_type": "variable_speed_inverter",
@@ -749,7 +749,7 @@
             "FT",
             "SkyAir"
           ],
-          "years": "2019\u2013present",
+          "years": "2019–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -779,7 +779,7 @@
           "id": "bryant_legacy",
           "name": "Legacy",
           "tier": "entry",
-          "seer2_range": "14\u201314.5",
+          "seer2_range": "14–14.5",
           "refrigerant": "R-410A",
           "metering_device": "piston",
           "compressor_type": "single_stage",
@@ -789,7 +789,7 @@
             "913S"
           ],
           "equivalent_to": "carrier_comfort",
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "superheat",
           "typical_tonnages": [
             1.5,
@@ -805,7 +805,7 @@
           "id": "bryant_preferred",
           "name": "Preferred",
           "tier": "mid",
-          "seer2_range": "15\u201317",
+          "seer2_range": "15–17",
           "refrigerant": "R-410A",
           "metering_device": "TXV",
           "compressor_type": "two_stage",
@@ -815,7 +815,7 @@
             "226B"
           ],
           "equivalent_to": "carrier_performance",
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -830,7 +830,7 @@
           "id": "bryant_evolution",
           "name": "Evolution",
           "tier": "premium",
-          "seer2_range": "17\u201324",
+          "seer2_range": "17–24",
           "refrigerant": "R-410A",
           "metering_device": "EEV",
           "compressor_type": "variable_speed",
@@ -840,7 +840,7 @@
             "189B"
           ],
           "equivalent_to": "carrier_infinity",
-          "years": "2014\u2013present",
+          "years": "2014–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -880,7 +880,7 @@
           "id": "amst_gold",
           "name": "Gold",
           "tier": "entry",
-          "seer2_range": "14.3\u201315",
+          "seer2_range": "14.3–15",
           "refrigerant": "R-410A",
           "metering_device": "piston",
           "compressor_type": "single_stage",
@@ -890,7 +890,7 @@
             "GOLD14"
           ],
           "equivalent_to": "trane_xr",
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "superheat",
           "typical_tonnages": [
             1.5,
@@ -906,7 +906,7 @@
           "id": "amst_silver",
           "name": "Silver",
           "tier": "mid",
-          "seer2_range": "16\u201318",
+          "seer2_range": "16–18",
           "refrigerant": "R-410A",
           "metering_device": "TXV",
           "compressor_type": "two_stage",
@@ -915,7 +915,7 @@
             "4A6B"
           ],
           "equivalent_to": "trane_xl",
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -930,7 +930,7 @@
           "id": "amst_platinum",
           "name": "Platinum",
           "tier": "premium",
-          "seer2_range": "20\u201322",
+          "seer2_range": "20–22",
           "refrigerant": "R-410A",
           "metering_device": "EEV",
           "compressor_type": "variable_speed",
@@ -939,7 +939,7 @@
             "4A6V"
           ],
           "equivalent_to": "trane_xv",
-          "years": "2014\u2013present",
+          "years": "2014–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -968,7 +968,7 @@
           "id": "amana_asx",
           "name": "ASX",
           "tier": "entry",
-          "seer2_range": "14\u201315",
+          "seer2_range": "14–15",
           "refrigerant": "R-410A",
           "metering_device": "piston",
           "compressor_type": "single_stage",
@@ -978,7 +978,7 @@
             "ASXN"
           ],
           "equivalent_to": "goodman_gsx",
-          "years": "2015\u2013present",
+          "years": "2015–present",
           "charging_method": "superheat",
           "typical_tonnages": [
             1.5,
@@ -994,7 +994,7 @@
           "id": "amana_asxc",
           "name": "ASXC",
           "tier": "mid",
-          "seer2_range": "16\u201318",
+          "seer2_range": "16–18",
           "refrigerant": "R-410A",
           "metering_device": "TXV",
           "compressor_type": "two_stage",
@@ -1003,7 +1003,7 @@
             "ASXC18"
           ],
           "equivalent_to": "goodman_gsxc",
-          "years": "2016\u2013present",
+          "years": "2016–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -1018,7 +1018,7 @@
           "id": "amana_asxv",
           "name": "ASXV",
           "tier": "premium",
-          "seer2_range": "18\u201322.5",
+          "seer2_range": "18–22.5",
           "refrigerant": "R-410A",
           "metering_device": "EEV",
           "compressor_type": "variable_speed",
@@ -1026,7 +1026,7 @@
             "ASXV9"
           ],
           "equivalent_to": "goodman_gsxv",
-          "years": "2019\u2013present",
+          "years": "2019–present",
           "charging_method": "subcooling",
           "typical_tonnages": [
             2,
@@ -1327,7 +1327,7 @@
           "id": "mitsub_standard",
           "name": "M-Series / MSZ",
           "tier": "standard",
-          "seer2_range": "15\u201320",
+          "seer2_range": "15–20",
           "refrigerant": "R-410A",
           "metering_device": "EEV",
           "compressor_type": "variable_speed_inverter",
@@ -1352,7 +1352,7 @@
           "id": "mitsub_hyperheat",
           "name": "Hyper-Heat / H2i",
           "tier": "premium",
-          "seer2_range": "18\u201326",
+          "seer2_range": "18–26",
           "refrigerant": "R-410A",
           "metering_device": "EEV",
           "compressor_type": "variable_speed_inverter",
@@ -1398,14 +1398,14 @@
           "unit": "amps"
         },
         "capacitor_compressor_mfd": {
-          "typical": "20\u201325",
+          "typical": "20–25",
           "common_values": [
             20,
             25
           ]
         },
         "capacitor_fan_mfd": {
-          "typical": "3\u20135",
+          "typical": "3–5",
           "common_values": [
             3,
             4,
@@ -1431,10 +1431,10 @@
           "typical_hp": "1/6",
           "rpm": "825-1100",
           "overamp_rule": "If condenser fan motor draws >1.5A = over-amping (bearing drag, capacitor weak, or winding fault)",
-          "fault_card": "condenser_fan_motor_failure (see diagnostic path \u2014 NOT Card #4 which is indoor blower)"
+          "fault_card": "condenser_fan_motor_failure (see diagnostic path — NOT Card #4 which is indoor blower)"
         },
         "liquid_line_size": "3/8\"",
-        "lineset_note": "Liquid line 3/8\" \u2192 0.5 oz/ft charge add per foot beyond factory-standard 15ft lineset. Previous value of 0.6 oz/ft was wrong for 1.5T and 4-5T systems."
+        "lineset_note": "Liquid line 3/8\" → 0.5 oz/ft charge add per foot beyond factory-standard 15ft lineset. Previous value of 0.6 oz/ft was wrong for 1.5T and 4-5T systems."
       },
       {
         "tonnage": 2.0,
@@ -1455,7 +1455,7 @@
           "unit": "amps"
         },
         "capacitor_compressor_mfd": {
-          "typical": "25\u201335",
+          "typical": "25–35",
           "common_values": [
             25,
             30,
@@ -1463,7 +1463,7 @@
           ]
         },
         "capacitor_fan_mfd": {
-          "typical": "5\u20137.5",
+          "typical": "5–7.5",
           "common_values": [
             5,
             6,
@@ -1489,10 +1489,10 @@
           "typical_hp": "1/6 to 1/5",
           "rpm": "825-1100",
           "overamp_rule": "If condenser fan motor draws >1.7A = over-amping (bearing drag, capacitor weak, or winding fault)",
-          "fault_card": "condenser_fan_motor_failure (see diagnostic path \u2014 NOT Card #4 which is indoor blower)"
+          "fault_card": "condenser_fan_motor_failure (see diagnostic path — NOT Card #4 which is indoor blower)"
         },
         "liquid_line_size": "3/8\" or 1/2\"",
-        "lineset_note": "Liquid line 3/8\" or 1/2\" \u2192 0.55 oz/ft charge add per foot beyond factory-standard 15ft lineset. Previous value of 0.6 oz/ft was wrong for 1.5T and 4-5T systems."
+        "lineset_note": "Liquid line 3/8\" or 1/2\" → 0.55 oz/ft charge add per foot beyond factory-standard 15ft lineset. Previous value of 0.6 oz/ft was wrong for 1.5T and 4-5T systems."
       },
       {
         "tonnage": 2.5,
@@ -1513,7 +1513,7 @@
           "unit": "amps"
         },
         "capacitor_compressor_mfd": {
-          "typical": "30\u201340",
+          "typical": "30–40",
           "common_values": [
             30,
             35,
@@ -1521,7 +1521,7 @@
           ]
         },
         "capacitor_fan_mfd": {
-          "typical": "5\u20137.5",
+          "typical": "5–7.5",
           "common_values": [
             5,
             7.5
@@ -1546,10 +1546,10 @@
           "typical_hp": "1/5",
           "rpm": "825-1100",
           "overamp_rule": "If condenser fan motor draws >1.8A = over-amping (bearing drag, capacitor weak, or winding fault)",
-          "fault_card": "condenser_fan_motor_failure (see diagnostic path \u2014 NOT Card #4 which is indoor blower)"
+          "fault_card": "condenser_fan_motor_failure (see diagnostic path — NOT Card #4 which is indoor blower)"
         },
         "liquid_line_size": "1/2\"",
-        "lineset_note": "Liquid line 1/2\" \u2192 0.6 oz/ft charge add per foot beyond factory-standard 15ft lineset. Previous value of 0.6 oz/ft was wrong for 1.5T and 4-5T systems."
+        "lineset_note": "Liquid line 1/2\" → 0.6 oz/ft charge add per foot beyond factory-standard 15ft lineset. Previous value of 0.6 oz/ft was wrong for 1.5T and 4-5T systems."
       },
       {
         "tonnage": 3.0,
@@ -1570,7 +1570,7 @@
           "unit": "amps"
         },
         "capacitor_compressor_mfd": {
-          "typical": "35\u201345",
+          "typical": "35–45",
           "common_values": [
             35,
             40,
@@ -1578,7 +1578,7 @@
           ]
         },
         "capacitor_fan_mfd": {
-          "typical": "5\u20137.5",
+          "typical": "5–7.5",
           "common_values": [
             5,
             7.5
@@ -1603,10 +1603,10 @@
           "typical_hp": "1/5 to 1/4",
           "rpm": "825-1100",
           "overamp_rule": "If condenser fan motor draws >2.0A = over-amping (bearing drag, capacitor weak, or winding fault)",
-          "fault_card": "condenser_fan_motor_failure (see diagnostic path \u2014 NOT Card #4 which is indoor blower)"
+          "fault_card": "condenser_fan_motor_failure (see diagnostic path — NOT Card #4 which is indoor blower)"
         },
         "liquid_line_size": "1/2\"",
-        "lineset_note": "Liquid line 1/2\" \u2192 0.6 oz/ft charge add per foot beyond factory-standard 15ft lineset. Previous value of 0.6 oz/ft was wrong for 1.5T and 4-5T systems."
+        "lineset_note": "Liquid line 1/2\" → 0.6 oz/ft charge add per foot beyond factory-standard 15ft lineset. Previous value of 0.6 oz/ft was wrong for 1.5T and 4-5T systems."
       },
       {
         "tonnage": 3.5,
@@ -1627,7 +1627,7 @@
           "unit": "amps"
         },
         "capacitor_compressor_mfd": {
-          "typical": "40\u201350",
+          "typical": "40–50",
           "common_values": [
             40,
             45,
@@ -1635,7 +1635,7 @@
           ]
         },
         "capacitor_fan_mfd": {
-          "typical": "5\u20137.5",
+          "typical": "5–7.5",
           "common_values": [
             5,
             7.5
@@ -1660,10 +1660,10 @@
           "typical_hp": "1/4",
           "rpm": "825-1100",
           "overamp_rule": "If condenser fan motor draws >2.2A = over-amping (bearing drag, capacitor weak, or winding fault)",
-          "fault_card": "condenser_fan_motor_failure (see diagnostic path \u2014 NOT Card #4 which is indoor blower)"
+          "fault_card": "condenser_fan_motor_failure (see diagnostic path — NOT Card #4 which is indoor blower)"
         },
         "liquid_line_size": "1/2\"",
-        "lineset_note": "Liquid line 1/2\" \u2192 0.6 oz/ft charge add per foot beyond factory-standard 15ft lineset. Previous value of 0.6 oz/ft was wrong for 1.5T and 4-5T systems."
+        "lineset_note": "Liquid line 1/2\" → 0.6 oz/ft charge add per foot beyond factory-standard 15ft lineset. Previous value of 0.6 oz/ft was wrong for 1.5T and 4-5T systems."
       },
       {
         "tonnage": 4.0,
@@ -1684,7 +1684,7 @@
           "unit": "amps"
         },
         "capacitor_compressor_mfd": {
-          "typical": "45\u201355",
+          "typical": "45–55",
           "common_values": [
             45,
             50,
@@ -1692,7 +1692,7 @@
           ]
         },
         "capacitor_fan_mfd": {
-          "typical": "5\u20137.5",
+          "typical": "5–7.5",
           "common_values": [
             5,
             7.5
@@ -1717,10 +1717,10 @@
           "typical_hp": "1/4 to 1/3",
           "rpm": "825-1100",
           "overamp_rule": "If condenser fan motor draws >2.4A = over-amping (bearing drag, capacitor weak, or winding fault)",
-          "fault_card": "condenser_fan_motor_failure (see diagnostic path \u2014 NOT Card #4 which is indoor blower)"
+          "fault_card": "condenser_fan_motor_failure (see diagnostic path — NOT Card #4 which is indoor blower)"
         },
         "liquid_line_size": "5/8\"",
-        "lineset_note": "Liquid line 5/8\" \u2192 0.8 oz/ft charge add per foot beyond factory-standard 15ft lineset. Previous value of 0.6 oz/ft was wrong for 1.5T and 4-5T systems."
+        "lineset_note": "Liquid line 5/8\" → 0.8 oz/ft charge add per foot beyond factory-standard 15ft lineset. Previous value of 0.6 oz/ft was wrong for 1.5T and 4-5T systems."
       },
       {
         "tonnage": 5.0,
@@ -1741,7 +1741,7 @@
           "unit": "amps"
         },
         "capacitor_compressor_mfd": {
-          "typical": "55\u201370",
+          "typical": "55–70",
           "common_values": [
             55,
             60,
@@ -1750,7 +1750,7 @@
           ]
         },
         "capacitor_fan_mfd": {
-          "typical": "5\u20137.5",
+          "typical": "5–7.5",
           "common_values": [
             5,
             7.5
@@ -1775,10 +1775,10 @@
           "typical_hp": "1/3",
           "rpm": "825-1100",
           "overamp_rule": "If condenser fan motor draws >2.9A = over-amping (bearing drag, capacitor weak, or winding fault)",
-          "fault_card": "condenser_fan_motor_failure (see diagnostic path \u2014 NOT Card #4 which is indoor blower)"
+          "fault_card": "condenser_fan_motor_failure (see diagnostic path — NOT Card #4 which is indoor blower)"
         },
         "liquid_line_size": "5/8\"",
-        "lineset_note": "Liquid line 5/8\" \u2192 0.8 oz/ft charge add per foot beyond factory-standard 15ft lineset. Previous value of 0.6 oz/ft was wrong for 1.5T and 4-5T systems."
+        "lineset_note": "Liquid line 5/8\" → 0.8 oz/ft charge add per foot beyond factory-standard 15ft lineset. Previous value of 0.6 oz/ft was wrong for 1.5T and 4-5T systems."
       }
     ],
     "variable_speed_inverter_specs": {
@@ -1860,16 +1860,16 @@
         }
       ],
       "overamp_rule": "INVERTER RULE: Measure VFD input amps (at disconnect or load side). If >10% above NAMEPLATE VFD amps at full demand = investigate. If at partial load and reading nameplate or above = compressor struggling.",
-      "lra_note": "Inverter compressors have near-zero LRA (locked rotor amps) \u2014 the VFD ramps up current gradually. A standard hard-start kit is NOT needed and NOT compatible."
+      "lra_note": "Inverter compressors have near-zero LRA (locked rotor amps) — the VFD ramps up current gradually. A standard hard-start kit is NOT needed and NOT compatible."
     }
   },
   "operating_targets": {
     "houston_climate_context": {
-      "peak_summer_oat": "95\u2013100\u00b0F",
-      "avg_summer_rh": "70\u201380%",
-      "typical_return_air_db": "75\u201378\u00b0F",
-      "typical_return_air_wb": "63\u201367\u00b0F",
-      "delta_t_note": "Houston high humidity reduces sensible delta-T. 16\u201318\u00b0F is normal on a properly charged system. Values below 14\u00b0F or above 22\u00b0F warrant investigation."
+      "peak_summer_oat": "95–100°F",
+      "avg_summer_rh": "70–80%",
+      "typical_return_air_db": "75–78°F",
+      "typical_return_air_wb": "63–67°F",
+      "delta_t_note": "Houston high humidity reduces sensible delta-T. 16–18°F is normal on a properly charged system. Values below 14°F or above 22°F warrant investigation."
     },
     "r410a": {
       "pressure_by_outdoor_ambient": [
@@ -2015,7 +2015,7 @@
           "max": 14,
           "ideal": 10,
           "danger_below": 8,
-          "note": "CORRECTED: Houston minimum is 8\u00b0F, not 5\u00b0F. At 95\u00b0F OAT / 78\u00b0F WBT (typical Houston peak), target is 10-14\u00b0F. Below 8\u00b0F risks liquid refrigerant reaching compressor on a hot humid day.",
+          "note": "CORRECTED: Houston minimum is 8°F, not 5°F. At 95°F OAT / 78°F WBT (typical Houston peak), target is 10-14°F. Below 8°F risks liquid refrigerant reaching compressor on a hot humid day.",
           "ctoa_guidance": {
             "description": "For precision charging, use CTOA method: target superheat varies with OAT and indoor wet bulb temperature.",
             "houston_summer_targets": [
@@ -2050,23 +2050,23 @@
                 "target_sh_f": 15
               }
             ],
-            "field_formula": "Approximate: target_SH = 0.5 \u00d7 OAT - (indoor_WBT \u00d7 1.1) + 26"
+            "field_formula": "Approximate: target_SH = 0.5 × OAT - (indoor_WBT × 1.1) + 26"
           }
         },
         "txv_at_indoor_coil": {
           "min": 8,
           "max": 14,
           "ideal": 10,
-          "note": "TXV maintains its own superheat. 8\u201314\u00b0F normal. Use subcooling method at condenser for TXV charging, not superheat."
+          "note": "TXV maintains its own superheat. 8–14°F normal. Use subcooling method at condenser for TXV charging, not superheat."
         },
-        "heat_pump_heating_mode_note": "WARNING: 5-12\u00b0F superheat targets above are for COOLING MODE ONLY. In heating mode, suction superheat target is 15-25\u00b0F. Applying cooling targets to a heat pump in heat mode will cause dangerous overcharge."
+        "heat_pump_heating_mode_note": "WARNING: 5-12°F superheat targets above are for COOLING MODE ONLY. In heating mode, suction superheat target is 15-25°F. Applying cooling targets to a heat pump in heat mode will cause dangerous overcharge."
       },
       "subcooling_targets": {
         "txv_systems": {
           "min": 8,
           "max": 15,
           "ideal": 12,
-          "note": "Measure at liquid line near condenser outlet. 10\u201315\u00b0F is the charging target for TXV systems. High subcooling = overcharge."
+          "note": "Measure at liquid line near condenser outlet. 10–15°F is the charging target for TXV systems. High subcooling = overcharge."
         },
         "fixed_orifice_systems": {
           "note": "Do NOT use subcooling for piston/fixed orifice systems. Use superheat method."
@@ -2075,43 +2075,43 @@
           "min": 6,
           "max": 14,
           "ideal": 10,
-          "note": "EEV modulates superheat internally. Use manufacturer spec. Subcooling 8\u201312\u00b0F typical."
+          "note": "EEV modulates superheat internally. Use manufacturer spec. Subcooling 8–12°F typical."
         }
       },
       "delta_t_targets": {
         "houston_normal": {
           "min": 16,
           "max": 22,
-          "unit": "\u00b0F"
+          "unit": "°F"
         },
         "houston_concern_low": {
           "threshold": 14,
-          "note": "Below 14\u00b0F: possible dirty filter, low charge, frozen coil, or high humidity (latent overload)"
+          "note": "Below 14°F: possible dirty filter, low charge, frozen coil, or high humidity (latent overload)"
         },
         "houston_concern_high": {
           "threshold": 23,
-          "note": "Above 22\u00b0F: possible restricted airflow or very dry indoor conditions (rare in Houston)"
+          "note": "Above 22°F: possible restricted airflow or very dry indoor conditions (rare in Houston)"
         }
       },
       "fault_pressure_signatures": {
         "refrigerant_low_charge": {
           "suction": "LOW (>15 psig below target)",
           "discharge": "LOW",
-          "superheat": "HIGH (>15\u00b0F fixed orifice)",
-          "subcooling": "LOW (<5\u00b0F TXV)"
+          "superheat": "HIGH (>15°F fixed orifice)",
+          "subcooling": "LOW (<5°F TXV)"
         },
         "refrigerant_overcharge": {
           "suction": "SLIGHTLY HIGH",
           "discharge": "HIGH (>30 psig above target)",
           "superheat": "LOW",
-          "subcooling": "HIGH (>18\u00b0F)"
+          "subcooling": "HIGH (>18°F)"
         },
         "dirty_condenser_coil": {
           "suction": "SLIGHTLY HIGH",
           "discharge": "HIGH (>30 psig above target)",
           "superheat": "SLIGHTLY HIGH",
           "subcooling": "HIGH",
-          "note": "Similar to overcharge \u2014 use coil photo to differentiate"
+          "note": "Similar to overcharge — use coil photo to differentiate"
         },
         "dirty_evaporator_coil_or_filter": {
           "suction": "LOW",
@@ -2122,7 +2122,7 @@
         "txv_stuck_closed": {
           "suction": "VERY LOW",
           "discharge": "LOW",
-          "superheat": "VERY HIGH (>20\u00b0F)"
+          "superheat": "VERY HIGH (>20°F)"
         },
         "fixed_orifice_undersized": {
           "suction": "LOW to NORMAL",
@@ -2131,28 +2131,28 @@
           "note": "Common in heat-mode low suction for heat pumps"
         },
         "txv_hunting": {
-          "suction": "OSCILLATING \u2014 swings \u00b15-10 psig over 30-60 second cycles",
-          "discharge": "OSCILLATING \u2014 minor swings \u00b110-15 psig in sync with suction",
-          "superheat": "OSCILLATING \u2014 swings \u00b15-10\u00b0F; average may be normal (8-14\u00b0F)",
-          "subcooling": "OSCILLATING \u2014 minor swings",
+          "suction": "OSCILLATING — swings ±5-10 psig over 30-60 second cycles",
+          "discharge": "OSCILLATING — minor swings ±10-15 psig in sync with suction",
+          "superheat": "OSCILLATING — swings ±5-10°F; average may be normal (8-14°F)",
+          "subcooling": "OSCILLATING — minor swings",
           "how_to_distinguish_from_charge_problem": "Watch suction pressure for 2-3 minutes. Charge problem = steady readings, low suction. TXV hunting = oscillating readings, average suction normal.",
           "common_causes": [
             "TXV bulb loose or not making contact with suction line",
-            "Overcharge \u2014 too much liquid flooding back to TXV",
+            "Overcharge — too much liquid flooding back to TXV",
             "TXV superheat setpoint too low (rare, factory-set)",
             "Houston high-humidity causes rapid wet-bulb swings that destabilize TXV control"
           ],
           "resolution": "Check TXV bulb clamp, insulation, and orientation. Verify charge via subcooling. If charge is correct and bulb is secure, TXV may need replacement.",
-          "houston_note": "TXV hunting is significantly more common in Houston due to extreme humidity (dew points 70\u00b0F+ in summer). Do NOT re-charge a system that is hunting \u2014 it will not fix the problem."
+          "houston_note": "TXV hunting is significantly more common in Houston due to extreme humidity (dew points 70°F+ in summer). Do NOT re-charge a system that is hunting — it will not fix the problem."
         }
       },
       "heat_pump_heating_mode": {
         "mode_note": "In heating mode, outdoor coil = evaporator, indoor coil = condenser. Suction and discharge roles are REVERSED vs cooling. Never apply cooling mode pressure targets to a heat pump in heating mode.",
-        "charging_method": "subcooling at liquid line (indoor coil outlet). Target 10-18\u00b0F subcooling in heating mode.",
+        "charging_method": "subcooling at liquid line (indoor coil outlet). Target 10-18°F subcooling in heating mode.",
         "suction_superheat_heating": {
           "min": 15,
           "max": 25,
-          "note": "Target 15-25\u00b0F suction superheat in heating mode (outdoor coil evaporating). Higher than cooling mode. Below 12\u00b0F = possible overcharge in heat mode."
+          "note": "Target 15-25°F suction superheat in heating mode (outdoor coil evaporating). Higher than cooling mode. Below 12°F = possible overcharge in heat mode."
         },
         "subcooling_heating": {
           "min": 10,
@@ -2275,16 +2275,16 @@
           }
         ],
         "diagnostic_flags": {
-          "suction_too_low": "Suction >15 psig below table min \u2192 undercharge OR restriction on suction line OR outdoor coil iced over",
-          "suction_too_high": "Suction >10 psig above table max \u2192 overcharge OR reversing valve not fully shifted to heating position",
-          "discharge_too_low": "Discharge <200 psig at any heating OAT \u2192 undercharge OR compressor weak",
-          "discharge_too_high": "Discharge >50 psig above table max \u2192 indoor coil dirty/restricted OR TXV/EEV stuck closed",
-          "reversing_valve_check": "If suction and discharge both in cooling-mode range while thermostat calls for heat \u2192 reversing valve stuck or solenoid failed"
+          "suction_too_low": "Suction >15 psig below table min → undercharge OR restriction on suction line OR outdoor coil iced over",
+          "suction_too_high": "Suction >10 psig above table max → overcharge OR reversing valve not fully shifted to heating position",
+          "discharge_too_low": "Discharge <200 psig at any heating OAT → undercharge OR compressor weak",
+          "discharge_too_high": "Discharge >50 psig above table max → indoor coil dirty/restricted OR TXV/EEV stuck closed",
+          "reversing_valve_check": "If suction and discharge both in cooling-mode range while thermostat calls for heat → reversing valve stuck or solenoid failed"
         }
       }
     },
     "r22": {
-      "notes": "R-22 (Freon/HCFC-22). Found in pre-2010 units. Production banned in US since 2020. Reclaimed only. Very expensive \u2014 $250\u2013400/lb retail installed.",
+      "notes": "R-22 (Freon/HCFC-22). Found in pre-2010 units. Production banned in US since 2020. Reclaimed only. Very expensive — $250–400/lb retail installed.",
       "pressure_by_outdoor_ambient": [
         {
           "outdoor_temp_f": 80,
@@ -2381,7 +2381,7 @@
     },
     "r32": {
       "notes": "R-32 appearing in 2025+ units (Lennox Signature, Daikin, some Carrier). Higher operating pressures than R-410A. Mildly flammable (A2L class). Requires certified technician.",
-      "pressure_note": "R-32 operates at approximately 15\u201320% higher pressures than R-410A at same temperatures.",
+      "pressure_note": "R-32 operates at approximately 15–20% higher pressures than R-410A at same temperatures.",
       "pressure_by_outdoor_ambient": [
         {
           "outdoor_temp_f": 75,
@@ -2438,7 +2438,7 @@
             "min": 468,
             "max": 538
           },
-          "houston_note": "Typical Houston summer peak. R-32 high-side pressure is significantly higher than R-410A \u2014 do not confuse with overcharge."
+          "houston_note": "Typical Houston summer peak. R-32 high-side pressure is significantly higher than R-410A — do not confuse with overcharge."
         },
         {
           "outdoor_temp_f": 100,
@@ -2461,7 +2461,7 @@
             "min": 520,
             "max": 598
           },
-          "note": "Extreme heat day. R-32 discharge can exceed 600 psig on a restricted system \u2014 high-pressure cutout risk."
+          "note": "Extreme heat day. R-32 discharge can exceed 600 psig on a restricted system — high-pressure cutout risk."
         }
       ],
       "superheat_targets": {
@@ -2478,7 +2478,7 @@
           "fixed_orifice": {
             "min": 8,
             "max": 14,
-            "note": "R-32 units rarely ship with piston metering \u2014 if encountered, use same CTOA method as R-410A."
+            "note": "R-32 units rarely ship with piston metering — if encountered, use same CTOA method as R-410A."
           }
         }
       },
@@ -2492,7 +2492,7 @@
     },
     "r454b": {
       "notes": "R-454B (Opteon XL41 / Puron Advance / Solstice 454B). Blend of 68.9% R-32 + 31.1% R-1234yf. EPA AIM Act mandated for new residential HVAC from Jan 1 2025. Mildly flammable (A2L). 5-12% more efficient than R-410A. GWP 466 (vs R-410A 2088).",
-      "safety_note": "A2L refrigerant \u2014 certified technician required. Use A2L-rated recovery equipment. No open flames near equipment.",
+      "safety_note": "A2L refrigerant — certified technician required. Use A2L-rated recovery equipment. No open flames near equipment.",
       "glide_note": "R-454B is zeotropic (has temperature glide). Use DEW point pressure for suction-side diagnosis; BUBBLE point for liquid-line measurements.",
       "pressure_by_outdoor_ambient": [
         {
@@ -2542,7 +2542,7 @@
           "bubble_dew_split": {
             "bubble_psig": 348,
             "dew_psig": 337,
-            "note": "At 90\u00b0F condensing temp \u2014 use for high-side diagnosis"
+            "note": "At 90°F condensing temp — use for high-side diagnosis"
           }
         },
         {
@@ -2559,7 +2559,7 @@
             "bubble_psig": 370,
             "dew_psig": 358
           },
-          "houston_note": "Typical Houston summer peak. R-454B runs slightly lower discharge than R-410A \u2014 do not interpret as low charge."
+          "houston_note": "Typical Houston summer peak. R-454B runs slightly lower discharge than R-410A — do not interpret as low charge."
         },
         {
           "outdoor_temp_f": 100,
@@ -2593,7 +2593,7 @@
           "min": 7,
           "max": 12,
           "ideal": 9,
-          "note": "Similar to R-410A. Most 2025+ units use EEV \u2014 superheat is controlled by the unit, not set by tech."
+          "note": "Similar to R-410A. Most 2025+ units use EEV — superheat is controlled by the unit, not set by tech."
         },
         "fixed_orifice_cooling": {
           "min": 8,
@@ -2610,7 +2610,7 @@
         }
       },
       "heat_pump_heating_mode": {
-        "note": "Same heating mode logic as R-410A. Suction saturation 20-25\u00b0F below OAT. Target subcooling 10-18\u00b0F. Do NOT use cooling mode targets.",
+        "note": "Same heating mode logic as R-410A. Suction saturation 20-25°F below OAT. Target subcooling 10-18°F. Do NOT use cooling mode targets.",
         "suction_superheat_heating": {
           "min": 15,
           "max": 25
@@ -2630,25 +2630,25 @@
         "outdoor_temp_threshold_f": 42,
         "coil_temp_threshold_f": 28,
         "method": "demand_defrost",
-        "demand_defrost_logic": "Board compares outdoor ambient temp to outdoor coil temp. When differential exceeds 15-20\u00b0F AND coil temp drops below 28\u00b0F, defrost initiates. Typical interval: every 30-90 minutes in sustained cold.",
+        "demand_defrost_logic": "Board compares outdoor ambient temp to outdoor coil temp. When differential exceeds 15-20°F AND coil temp drops below 28°F, defrost initiates. Typical interval: every 30-90 minutes in sustained cold.",
         "timed_defrost_legacy": "Older systems: fixed 30, 60, or 90 minute timer. Newer systems use demand logic."
       },
       "defrost_operation": {
         "reversing_valve": "Shifts to cooling mode (outdoor coil = condenser, indoor coil = evaporator)",
-        "outdoor_fan": "STOPS during defrost \u2014 this is normal",
+        "outdoor_fan": "STOPS during defrost — this is normal",
         "indoor_fan": "May run or stop depending on manufacturer; some run auxiliary heat simultaneously",
         "duration_normal_minutes": {
           "min": 3,
           "max": 10
         },
         "duration_fault_threshold_minutes": 15,
-        "pressures_during_defrost": "Momentarily match cooling mode since system reversed \u2014 do NOT diagnose charge during active defrost"
+        "pressures_during_defrost": "Momentarily match cooling mode since system reversed — do NOT diagnose charge during active defrost"
       },
       "defrost_termination": {
         "coil_temp_termination_f": {
           "min": 57,
           "max": 70,
-          "note": "When outdoor coil sensor reads 57-70\u00b0F, frost is cleared, defrost terminates"
+          "note": "When outdoor coil sensor reads 57-70°F, frost is cleared, defrost terminates"
         },
         "time_limit_minutes": 15,
         "after_defrost_delay_minutes": {
@@ -2659,12 +2659,12 @@
       },
       "fault_vs_normal": {
         "normal": "Defrost every 30-90 min, lasts 3-10 min, outdoor fan stops, steam/water visible from outdoor unit",
-        "fault_stuck_in_defrost": "System stays in defrost >15 min \u2014 check defrost board, defrost sensor/thermostat, reversing valve",
-        "fault_never_defrosts": "Outdoor coil fully iced over but no defrost \u2014 defrost board failed, sensor failed, or outdoor fan motor failed",
-        "fault_defrosts_too_often": "Every 10-15 min \u2014 low charge, outdoor fan fault, or dirty outdoor coil"
+        "fault_stuck_in_defrost": "System stays in defrost >15 min — check defrost board, defrost sensor/thermostat, reversing valve",
+        "fault_never_defrosts": "Outdoor coil fully iced over but no defrost — defrost board failed, sensor failed, or outdoor fan motor failed",
+        "fault_defrosts_too_often": "Every 10-15 min — low charge, outdoor fan fault, or dirty outdoor coil"
       },
-      "houston_context": "Houston rarely reaches defrost temperatures (<42\u00b0F OAT). Expect 0-5 defrost calls per winter season. When encountered, check if unit has been running in heating mode during a cold snap \u2014 not a common scenario.",
-      "national_context": "Critical diagnostic in any climate where OAT regularly drops below 42\u00b0F (Northeast, Midwest, Pacific Northwest, mountains)."
+      "houston_context": "Houston rarely reaches defrost temperatures (<42°F OAT). Expect 0-5 defrost calls per winter season. When encountered, check if unit has been running in heating mode during a cold snap — not a common scenario.",
+      "national_context": "Critical diagnostic in any climate where OAT regularly drops below 42°F (Northeast, Midwest, Pacific Northwest, mountains)."
     },
     "piston_bore_reference": {
       "description": "Fixed orifice / piston bore sizes by tonnage. Used for Card #15 (piston mismatch diagnosis). Tech measures actual bore and compares to this table.",
@@ -2674,13 +2674,13 @@
           "tonnage": 1.5,
           "bore_inches": 0.049,
           "bore_label": "49",
-          "note": "1.5T R-410A \u2014 same bore as some 2T units"
+          "note": "1.5T R-410A — same bore as some 2T units"
         },
         {
           "tonnage": 2.0,
           "bore_inches": 0.053,
           "bore_label": "53",
-          "note": "2T R-410A. Some systems use 0.049 \u2014 verify against unit data plate."
+          "note": "2T R-410A. Some systems use 0.049 — verify against unit data plate."
         },
         {
           "tonnage": 2.5,
@@ -2749,7 +2749,7 @@
       "mismatch_symptoms": "Too large = high suction, low superheat, flooding. Too small = low suction, high superheat, starved coil."
     },
     "gas_furnace": {
-      "description": "Operating specifications for residential gas furnaces. Used in Tab G (Not Heating \u2192 Gas Furnace path).",
+      "description": "Operating specifications for residential gas furnaces. Used in Tab G (Not Heating → Gas Furnace path).",
       "manifold_gas_pressure": {
         "natural_gas": {
           "target_inches_wc": 3.5,
@@ -2757,7 +2757,7 @@
             "min": 3.3,
             "max": 3.8
           },
-          "note": "Standard natural gas manifold pressure. Check with manometer at manifold test port with burners firing. Always verify against unit data plate \u2014 some manufacturers specify 3.8-4.0\"."
+          "note": "Standard natural gas manifold pressure. Check with manometer at manifold test port with burners firing. Always verify against unit data plate — some manufacturers specify 3.8-4.0\"."
         },
         "propane_lp": {
           "target_inches_wc": 11.0,
@@ -2765,7 +2765,7 @@
             "min": 10.0,
             "max": 11.5
           },
-          "note": "Propane requires higher pressure due to higher energy density. Propane manifold pressure MUST be set by qualified tech \u2014 incorrect pressure causes incomplete combustion or flame rollout."
+          "note": "Propane requires higher pressure due to higher energy density. Propane manifold pressure MUST be set by qualified tech — incorrect pressure causes incomplete combustion or flame rollout."
         },
         "incoming_supply_pressure": {
           "natural_gas_min_inches_wc": 5.0,
@@ -2779,7 +2779,7 @@
           "max": 70
         },
         "measurement": "Delta T between return air temp and supply air temp at plenum, measured after 5+ minutes of steady operation",
-        "how_to_read_nameplate": "Check furnace data plate for rated temperature rise range \u2014 typically shown as '40-70\u00b0F' or '35-65\u00b0F'. Always use nameplate range, not generic target.",
+        "how_to_read_nameplate": "Check furnace data plate for rated temperature rise range — typically shown as '40-70°F' or '35-65°F'. Always use nameplate range, not generic target.",
         "too_low_below_40f": "Low airflow or oversized furnace. Check blower speed, filter, coil restriction.",
         "too_high_above_70f": "High-limit switch risk. Check blower, filter, restricted ductwork. Cracked heat exchanger possible if persistent."
       },
@@ -2800,7 +2800,7 @@
           "min": 1.0,
           "max": 2.0
         },
-        "note": "Measure with multimeter on microamp (\u00b5A) scale at flame sensor lead. Below 1\u00b5A = sensor dirty or failed. Clean with fine steel wool or light abrasive. If still below 1\u00b5A after cleaning, replace sensor.",
+        "note": "Measure with multimeter on microamp (µA) scale at flame sensor lead. Below 1µA = sensor dirty or failed. Clean with fine steel wool or light abrasive. If still below 1µA after cleaning, replace sensor.",
         "symptom_of_failure": "Furnace lights, runs 5-10 seconds, then shuts off and retries (lockout after 3 attempts)"
       },
       "high_limit_switch": {
@@ -2809,8 +2809,8 @@
           "max": 200
         },
         "auto_reset": true,
-        "manual_reset_models": "Some high-efficiency furnaces have manual reset limits \u2014 check for reset button on limit",
-        "note": "If high limit is tripping repeatedly, find root cause (airflow restriction, dirty filter, failed blower) before resetting. Repeated tripping with no cause found \u2192 heat exchanger crack investigation"
+        "manual_reset_models": "Some high-efficiency furnaces have manual reset limits — check for reset button on limit",
+        "note": "If high limit is tripping repeatedly, find root cause (airflow restriction, dirty filter, failed blower) before resetting. Repeated tripping with no cause found → heat exchanger crack investigation"
       },
       "flue_gas_co": {
         "normal_ppm_air_free": {
@@ -2821,10 +2821,10 @@
         "note": "Measure CO in flue gas at heat exchanger outlet. Above 100 ppm air-free = inspect heat exchanger for cracks. Above 200 ppm = shut down furnace immediately."
       },
       "common_fault_tree": {
-        "no_heat_no_ignition": "Check: thermostat call \u2192 control board LED code \u2192 gas valve \u2192 ignitor (HSI or spark) \u2192 flame sensor \u2192 pressure switch (induced draft) \u2192 limit switch",
-        "no_heat_ignites_then_shuts_off": "Most likely: dirty flame sensor (<1\u00b5A). Secondary: flame sensor wiring, cracked heat exchanger, flue restriction",
-        "no_heat_blower_runs_no_heat": "Gas valve not opening \u2192 check 24V to gas valve, gas supply pressure, pressure switch",
-        "heat_but_insufficient": "Check temperature rise (target 40-70\u00b0F), filter, blower speed, duct restrictions"
+        "no_heat_no_ignition": "Check: thermostat call → control board LED code → gas valve → ignitor (HSI or spark) → flame sensor → pressure switch (induced draft) → limit switch",
+        "no_heat_ignites_then_shuts_off": "Most likely: dirty flame sensor (<1µA). Secondary: flame sensor wiring, cracked heat exchanger, flue restriction",
+        "no_heat_blower_runs_no_heat": "Gas valve not opening → check 24V to gas valve, gas supply pressure, pressure switch",
+        "heat_but_insufficient": "Check temperature rise (target 40-70°F), filter, blower speed, duct restrictions"
       }
     },
     "ecm_blower_speed_tap_guide": {
@@ -2871,33 +2871,33 @@
       "tap_settings": {
         "note": "ECM motors have 5 speed taps (1=lowest, 5=highest). Taps are energized via 24V signal from air handler control board. Factory default is usually Tap 3 or 4 for cooling.",
         "tap_selection_method": "Check the air handler installation manual for the CFM table. Find the row matching your TESP (total external static pressure) and select the tap that delivers the target CFM.",
-        "typical_tap_to_cfm_map": "Varies by motor manufacturer (Genteq/Regal Rexnord most common). Tap 1 \u2248 60-70% of max CFM. Tap 3 \u2248 80-85%. Tap 5 = 100%. Always verify against manufacturer data.",
+        "typical_tap_to_cfm_map": "Varies by motor manufacturer (Genteq/Regal Rexnord most common). Tap 1 ≈ 60-70% of max CFM. Tap 3 ≈ 80-85%. Tap 5 = 100%. Always verify against manufacturer data.",
         "wrong_tap_symptoms": {
           "too_low": "Low delta-T, high humidity complaints, suction pressure drops (restricted airflow), coil icing",
           "too_high": "High static noise, high delta-T, low humidity control, shortened equipment life"
         },
-        "constant_torque_vs_constant_cfm": "Constant-torque ECM (older): tap = torque setpoint, CFM varies with static pressure. Constant-CFM/variable-speed ECM (newer): communicates with control board, auto-adjusts to maintain target CFM \u2014 tap selection handled by board programming."
+        "constant_torque_vs_constant_cfm": "Constant-torque ECM (older): tap = torque setpoint, CFM varies with static pressure. Constant-CFM/variable-speed ECM (newer): communicates with control board, auto-adjusts to maintain target CFM — tap selection handled by board programming."
       },
-      "heating_tap": "For gas furnace or heat strip heating, a separate tap or higher speed is typically used. Check installation manual \u2014 heating CFM target is often 10-15% lower than cooling."
+      "heating_tap": "For gas furnace or heat strip heating, a separate tap or higher speed is typically used. Check installation manual — heating CFM target is often 10-15% lower than cooling."
     },
     "dual_fuel_detection": {
       "description": "Dual fuel = heat pump outdoor unit paired with gas furnace air handler. System uses heat pump for efficiency above a switchover temp; gas furnace below that temp.",
       "how_to_identify_in_field": [
         "Outdoor unit is a heat pump (has reversing valve, 4-way valve solenoid wire)",
-        "Indoor unit is a gas furnace (not air handler \u2014 has burner, heat exchanger, flue pipe)",
+        "Indoor unit is a gas furnace (not air handler — has burner, heat exchanger, flue pipe)",
         "Thermostat is a dual-fuel capable model (Honeywell Prestige IAQ, Ecobee Premium, Carrier Cor, Lennox iComfort S30)",
         "Look for 'Hybrid Heat' or 'Dual Fuel' label on outdoor unit nameplate or marketing badge"
       ],
       "switchover_temp_typical_f": {
         "min": 35,
         "max": 45,
-        "houston_note": "In Houston, dual-fuel switchover is rarely triggered \u2014 heat pump handles nearly all heating days. Switchover <40\u00b0F is typical but may never activate in a mild winter."
+        "houston_note": "In Houston, dual-fuel switchover is rarely triggered — heat pump handles nearly all heating days. Switchover <40°F is typical but may never activate in a mild winter."
       },
       "diagnostic_note": "If a dual fuel system is 'not heating' in cold weather, first determine which system is active. Below switchover temp = gas furnace diagnostic. Above switchover temp = heat pump heating diagnostic.",
-      "common_fault_dual_fuel_specific": "Thermostat not switching between modes \u2014 check switchover setpoint, verify both systems power up correctly, check O/B reversing valve wire."
+      "common_fault_dual_fuel_specific": "Thermostat not switching between modes — check switchover setpoint, verify both systems power up correctly, check O/B reversing valve wire."
     },
     "condenser_fan_motor_diagnostic": {
-      "description": "Condenser fan motor failure diagnostic \u2014 separate from Card #4 (indoor blower). Condenser fan motor is one of the most common Houston repairs due to extreme heat.",
+      "description": "Condenser fan motor failure diagnostic — separate from Card #4 (indoor blower). Condenser fan motor is one of the most common Houston repairs due to extreme heat.",
       "fault_card_note": "Condenser fan motor failure routes to its OWN diagnostic path, NOT Card #4 (which is indoor blower/air handler). These are completely separate components.",
       "symptoms": [
         "Outdoor unit running but outdoor fan NOT spinning",
@@ -2907,18 +2907,18 @@
       ],
       "diagnostic_steps": [
         "1. Confirm outdoor fan is not spinning (visual or listen for blade noise)",
-        "2. Check dual run capacitor fan side \u2014 weak cap is #1 cause of fan motor failure in Houston heat",
+        "2. Check dual run capacitor fan side — weak cap is #1 cause of fan motor failure in Houston heat",
         "3. Measure fan motor amps (see condenser_fan_motor_fla in electrical_specs)",
-        "4. Check for 24V to contactor and contactor closed \u2014 if closed and compressor runs but fan doesn't, motor or cap",
-        "5. Spin fan blade manually with power OFF \u2014 if stiff/doesn't spin freely = bearing failure, replace motor"
+        "4. Check for 24V to contactor and contactor closed — if closed and compressor runs but fan doesn't, motor or cap",
+        "5. Spin fan blade manually with power OFF — if stiff/doesn't spin freely = bearing failure, replace motor"
       ],
-      "houston_context": "Houston's 100\u00b0F+ summers run outdoor fan motors at maximum duty cycle 8+ months/year. Fan motor MTBF in Houston is 7-10 years vs 12-15 years in moderate climates. Capacitor is usually first to fail (replace both cap and motor together when found)."
+      "houston_context": "Houston's 100°F+ summers run outdoor fan motors at maximum duty cycle 8+ months/year. Fan motor MTBF in Houston is 7-10 years vs 12-15 years in moderate climates. Capacitor is usually first to fail (replace both cap and motor together when found)."
     }
   },
   "parts_catalog": [
     {
       "id": "cap_run_single",
-      "name": "Run Capacitor (Single) \u2014 Compressor or Fan",
+      "name": "Run Capacitor (Single) — Compressor or Fan",
       "category": "electrical",
       "fault_cards": [
         1,
@@ -2990,7 +2990,7 @@
     },
     {
       "id": "contactor",
-      "name": "Contactor (2-pole 30\u201340A)",
+      "name": "Contactor (2-pole 30–40A)",
       "category": "electrical",
       "fault_cards": [
         3
@@ -3047,7 +3047,7 @@
         "min": 0.5,
         "max": 0.75
       },
-      "note": "Do not substitute 2-pole for 3-pole application \u2014 leaves one leg uncontrolled. Rare in residential; common in light commercial and some 5T residential units."
+      "note": "Do not substitute 2-pole for 3-pole application — leaves one leg uncontrolled. Rare in residential; common in light commercial and some 5T residential units."
     },
     {
       "id": "contactor_cap_combo",
@@ -3057,7 +3057,7 @@
         1,
         3
       ],
-      "description": "Most common combination job \u2014 tech often replaces both at same visit.",
+      "description": "Most common combination job — tech often replaces both at same visit.",
       "total_installed_houston": {
         "min": 275,
         "max": 450,
@@ -3077,7 +3077,7 @@
         4
       ],
       "description": "OEM or aftermarket condenser fan motor. Typical specs: 1/4 HP, 825 RPM, 208/230V single-phase.",
-      "common_specs": "1/5 to 1/3 HP, 825\u20131050 RPM, 208/230V, CW or CCW rotation",
+      "common_specs": "1/5 to 1/3 HP, 825–1050 RPM, 208/230V, CW or CCW rotation",
       "part_cost_wholesale": {
         "min": 45,
         "max": 120,
@@ -3101,7 +3101,7 @@
     },
     {
       "id": "blower_motor_psc",
-      "name": "Blower Motor \u2014 PSC (Permanent Split Capacitor)",
+      "name": "Blower Motor — PSC (Permanent Split Capacitor)",
       "category": "motors",
       "fault_cards": [
         4
@@ -3131,7 +3131,7 @@
     },
     {
       "id": "blower_motor_ecm",
-      "name": "Blower Motor \u2014 ECM (Electronically Commutated Motor)",
+      "name": "Blower Motor — ECM (Electronically Commutated Motor)",
       "category": "motors",
       "fault_cards": [
         4
@@ -3233,7 +3233,7 @@
     },
     {
       "id": "filter_standard_1in",
-      "name": "Air Filter \u2014 1-inch Standard (MERV 8)",
+      "name": "Air Filter — 1-inch Standard (MERV 8)",
       "category": "maintenance",
       "fault_cards": [
         2,
@@ -3265,13 +3265,13 @@
     },
     {
       "id": "filter_media_4in",
-      "name": "Air Filter \u2014 4-5-inch Media (MERV 11\u201313)",
+      "name": "Air Filter — 4-5-inch Media (MERV 11–13)",
       "category": "maintenance",
       "fault_cards": [
         2,
         9
       ],
-      "description": "High-capacity media filter. Lasts 6\u201312 months. Requires special media cabinet.",
+      "description": "High-capacity media filter. Lasts 6–12 months. Requires special media cabinet.",
       "part_cost_retail": {
         "min": 28,
         "max": 80,
@@ -3411,7 +3411,7 @@
       "fault_cards": [
         8
       ],
-      "description": "Electronic leak detector + UV dye injection to find leak source. Labor only \u2014 refrigerant billed separately.",
+      "description": "Electronic leak detector + UV dye injection to find leak source. Labor only — refrigerant billed separately.",
       "total_installed_houston": {
         "min": 150,
         "max": 325,
@@ -3514,7 +3514,7 @@
       "fault_cards": [
         12
       ],
-      "description": "4-way reversing valve \u2014 heat pump only. Controls heat/cool mode switch. Requires full refrigerant handling.",
+      "description": "4-way reversing valve — heat pump only. Controls heat/cool mode switch. Requires full refrigerant handling.",
       "part_cost_wholesale": {
         "min": 75,
         "max": 220,
@@ -3543,7 +3543,7 @@
       "fault_cards": [
         7
       ],
-      "description": "Main control/defrost board. Brand-specific \u2014 must match model series. Outdoor or indoor board billed separately.",
+      "description": "Main control/defrost board. Brand-specific — must match model series. Outdoor or indoor board billed separately.",
       "part_cost_wholesale": {
         "min": 60,
         "max": 250,
@@ -3572,7 +3572,7 @@
       "fault_cards": [
         7
       ],
-      "description": "Replacement thermostat. Basic programmable ($50\u2013100) to smart WiFi ($150\u2013350).",
+      "description": "Replacement thermostat. Basic programmable ($50–100) to smart WiFi ($150–350).",
       "part_cost_retail": {
         "min": 50,
         "max": 350,
@@ -3596,7 +3596,7 @@
       "fault_cards": [
         11
       ],
-      "description": "Silicon carbide or silicon nitride ignitor. Specific to furnace model. Very fragile \u2014 handle with care.",
+      "description": "Silicon carbide or silicon nitride ignitor. Specific to furnace model. Very fragile — handle with care.",
       "part_cost_wholesale": {
         "min": 12,
         "max": 45,
@@ -3649,7 +3649,7 @@
     },
     {
       "id": "evaporator_coil_2_3t",
-      "name": "Evaporator Coil (2\u20133 Ton)",
+      "name": "Evaporator Coil (2–3 Ton)",
       "category": "coils",
       "fault_cards": [
         19,
@@ -3679,7 +3679,7 @@
     },
     {
       "id": "evaporator_coil_4_5t",
-      "name": "Evaporator Coil (4\u20135 Ton)",
+      "name": "Evaporator Coil (4–5 Ton)",
       "category": "coils",
       "fault_cards": [
         19,
@@ -3739,7 +3739,7 @@
     },
     {
       "id": "compressor_1t5",
-      "name": "Compressor Replacement \u2014 1.5 Ton",
+      "name": "Compressor Replacement — 1.5 Ton",
       "category": "compressor",
       "fault_cards": [
         10
@@ -3768,7 +3768,7 @@
     },
     {
       "id": "compressor_2t",
-      "name": "Compressor Replacement \u2014 2 Ton",
+      "name": "Compressor Replacement — 2 Ton",
       "category": "compressor",
       "fault_cards": [
         10
@@ -3793,11 +3793,11 @@
         "min": 3.5,
         "max": 5.5
       },
-      "note": "If under warranty, labor only: $450\u2013700. If R-22 system, add $300\u2013500 for refrigerant."
+      "note": "If under warranty, labor only: $450–700. If R-22 system, add $300–500 for refrigerant."
     },
     {
       "id": "compressor_3t",
-      "name": "Compressor Replacement \u2014 3 Ton",
+      "name": "Compressor Replacement — 3 Ton",
       "category": "compressor",
       "fault_cards": [
         10
@@ -3825,7 +3825,7 @@
     },
     {
       "id": "compressor_4t",
-      "name": "Compressor Replacement \u2014 4 Ton",
+      "name": "Compressor Replacement — 4 Ton",
       "category": "compressor",
       "fault_cards": [
         10
@@ -3853,7 +3853,7 @@
     },
     {
       "id": "compressor_5t",
-      "name": "Compressor Replacement \u2014 5 Ton",
+      "name": "Compressor Replacement — 5 Ton",
       "category": "compressor",
       "fault_cards": [
         10
@@ -4001,12 +4001,12 @@
       "unit": "USD/hr"
     },
     "flat_rate_note": "Most Houston companies use flat-rate pricing. Hourly rates apply mainly for custom or unusual jobs.",
-    "after_hours_premium": "25\u201350% surcharge",
-    "emergency_weekend_premium": "50\u2013100% surcharge",
+    "after_hours_premium": "25–50% surcharge",
+    "emergency_weekend_premium": "50–100% surcharge",
     "attic_work_premium": {
       "min": 25,
       "max": 50,
-      "note": "Houston attic temps reach 140\u2013160\u00b0F in summer. Attic labor gets premium pricing."
+      "note": "Houston attic temps reach 140–160°F in summer. Attic labor gets premium pricing."
     },
     "r22_handling_surcharge": {
       "min": 75,
@@ -4064,7 +4064,7 @@
       },
       "phase": "Phase 1",
       "difficulty": "trivial",
-      "tech_notes": "Fastest possible resolution. Photo confirms diagnosis instantly. Always add drain flush tablet if system has been running with a clogged filter \u2014 condensate backup likely."
+      "tech_notes": "Fastest possible resolution. Photo confirms diagnosis instantly. Always add drain flush tablet if system has been running with a clogged filter — condensate backup likely."
     },
     {
       "card_id": 3,
@@ -4113,7 +4113,7 @@
       },
       "phase": "Phase 1",
       "difficulty": "moderate",
-      "tech_notes": "ECM motors require exact replacement \u2014 cannot substitute generic. PSC motors more flexible. Check blower wheel for debris while motor is out."
+      "tech_notes": "ECM motors require exact replacement — cannot substitute generic. PSC motors more flexible. Check blower wheel for debris while motor is out."
     },
     {
       "card_id": 5,
@@ -4216,7 +4216,7 @@
       },
       "phase": "Phase 2",
       "difficulty": "complex",
-      "tech_notes": "XGBoost on pressure pattern confirms leak. UV dye photo is the homeowner PDF evidence. Always find leak source \u2014 do not just recharge and leave."
+      "tech_notes": "XGBoost on pressure pattern confirms leak. UV dye photo is the homeowner PDF evidence. Always find leak source — do not just recharge and leave."
     },
     {
       "card_id": 9,
@@ -4241,7 +4241,7 @@
       },
       "phase": "Phase 1",
       "difficulty": "moderate",
-      "tech_notes": "Let coil thaw first (1\u20133 hrs). Root cause is almost always dirty filter or low charge. Fix root cause, not just symptom."
+      "tech_notes": "Let coil thaw first (1–3 hrs). Root cause is almost always dirty filter or low charge. Fix root cause, not just symptom."
     },
     {
       "card_id": 10,
@@ -4335,7 +4335,7 @@
       },
       "phase": "Tech Judgment",
       "difficulty": "moderate",
-      "tech_notes": "Houston attic work is extreme in summer. Scope attic early morning only. Bill attic premium. Mastic + foil tape is correct fix \u2014 duct tape is NOT an approved sealant."
+      "tech_notes": "Houston attic work is extreme in summer. Scope attic early morning only. Bill attic premium. Mastic + foil tape is correct fix — duct tape is NOT an approved sealant."
     },
     {
       "card_id": 14,
@@ -4357,7 +4357,7 @@
       },
       "phase": "Phase 2",
       "difficulty": "easy_moderate",
-      "tech_notes": "YOLO strongest use case \u2014 dirty coil is visible from outside unit. XGBoost on high discharge pressure confirms. Good upsell on service calls."
+      "tech_notes": "YOLO strongest use case — dirty coil is visible from outside unit. XGBoost on high discharge pressure confirms. Good upsell on service calls."
     },
     {
       "card_id": 15,
@@ -4407,7 +4407,7 @@
       },
       "phase": "Phase 2",
       "difficulty": "easy_moderate",
-      "tech_notes": "Voltage drop >3V confirms. Thermal camera fastest. Point thermometer + voltage drop = 85\u201390% catch rate without camera. Clean + retorque \u2014 no part usually needed."
+      "tech_notes": "Voltage drop >3V confirms. Thermal camera fastest. Point thermometer + voltage drop = 85–90% catch rate without camera. Clean + retorque — no part usually needed."
     },
     {
       "card_id": 17,
@@ -4443,7 +4443,7 @@
       "total_estimate_houston": {
         "min": 0,
         "max": 0,
-        "note": "No repair estimate \u2014 this leads to system replacement recommendation"
+        "note": "No repair estimate — this leads to system replacement recommendation"
       },
       "phase": "Tech Judgment",
       "difficulty": "complex",
@@ -4481,11 +4481,11 @@
       "avg_annual_rh_pct": 74,
       "avg_cooling_days_per_year": 140,
       "avg_heating_days_per_year": 28,
-      "hurricane_season_note": "June\u2013November. Power surges after storms spike capacitor and contactor failures dramatically."
+      "hurricane_season_note": "June–November. Power surges after storms spike capacitor and contactor failures dramatically."
     },
     "top_seasonal_fault_patterns": [
       {
-        "season": "Summer (June\u2013Sept)",
+        "season": "Summer (June–Sept)",
         "top_faults": [
           "Capacitor (#1)",
           "Drain clog (#5)",
@@ -4495,7 +4495,7 @@
         "notes": "Peak demand. High heat = capacitor stress. High humidity = drain clogs weekly."
       },
       {
-        "season": "Spring (Mar\u2013May)",
+        "season": "Spring (Mar–May)",
         "top_faults": [
           "Dirty coil (#14)",
           "First-run capacitor (#1)",
@@ -4504,7 +4504,7 @@
         "notes": "Pre-season tune-ups spike. First hot day of year reveals failures that sat over winter."
       },
       {
-        "season": "Fall/Winter (Oct\u2013Feb)",
+        "season": "Fall/Winter (Oct–Feb)",
         "top_faults": [
           "Ignitor (#11)",
           "Flame sensor (#11)",
@@ -4547,8 +4547,8 @@
           "codes": [
             {
               "code": "steady_on",
-              "meaning": "Normal standby \u2014 24V power present, no call for heat/cool",
-              "action": "Normal \u2014 monitor",
+              "meaning": "Normal standby — 24V power present, no call for heat/cool",
+              "action": "Normal — monitor",
               "decision_tree_card": null
             },
             {
@@ -4565,7 +4565,7 @@
             },
             {
               "code": "1_flash",
-              "meaning": "System lockout \u2014 failed to ignite after 3 attempts (auto-resets in ~1 hr)",
+              "meaning": "System lockout — failed to ignite after 3 attempts (auto-resets in ~1 hr)",
               "action": "Check gas valve, ignitor, flame sensor",
               "decision_tree_card": 7
             },
@@ -4583,13 +4583,13 @@
             },
             {
               "code": "4_flash",
-              "meaning": "Open high limit switch \u2014 overheating",
+              "meaning": "Open high limit switch — overheating",
               "action": "Check filter, airflow, blower motor; reset after cooling",
               "decision_tree_card": 2
             },
             {
               "code": "5_flash",
-              "meaning": "Flame sensed without call for heat \u2014 gas valve leaking by",
+              "meaning": "Flame sensed without call for heat — gas valve leaking by",
               "action": "Replace gas valve",
               "decision_tree_card": 7
             },
@@ -4601,14 +4601,14 @@
             },
             {
               "code": "7_flash",
-              "meaning": "Low flame signal \u2014 dirty or cracked flame sensor",
+              "meaning": "Low flame signal — dirty or cracked flame sensor",
               "action": "Clean flame sensor with fine steel wool",
               "decision_tree_card": 7
             },
             {
               "code": "8_flash",
-              "meaning": "Ignitor fault \u2014 open element or no 120V to ignitor circuit",
-              "action": "Measure ignitor resistance (40\u201390 \u03a9 hot surface); replace if open",
+              "meaning": "Ignitor fault — open element or no 120V to ignitor circuit",
+              "action": "Measure ignitor resistance (40–90 Ω hot surface); replace if open",
               "decision_tree_card": 7
             },
             {
@@ -4624,19 +4624,19 @@
           "codes": [
             {
               "code": "173",
-              "meaning": "Low pressure switch open \u2014 low refrigerant or low load",
+              "meaning": "Low pressure switch open — low refrigerant or low load",
               "action": "Check refrigerant charge; check metering device",
               "decision_tree_card": 8
             },
             {
               "code": "176",
-              "meaning": "High pressure switch open \u2014 blocked condenser, overcharge, fan failure",
+              "meaning": "High pressure switch open — blocked condenser, overcharge, fan failure",
               "action": "Check condenser coil, fan motor, charge",
               "decision_tree_card": 8
             },
             {
               "code": "178",
-              "meaning": "Loss of charge protection \u2014 system pressure too low",
+              "meaning": "Loss of charge protection — system pressure too low",
               "action": "Leak check; evacuate and recharge",
               "decision_tree_card": 8
             },
@@ -4654,13 +4654,13 @@
             },
             {
               "code": "181",
-              "meaning": "High ambient temp safety \u2014 OAT too high for operation",
+              "meaning": "High ambient temp safety — OAT too high for operation",
               "action": "Check condenser fan; verify not recirculating hot air",
               "decision_tree_card": 8
             },
             {
               "code": "183",
-              "meaning": "Compressor current fault \u2014 high amperage draw",
+              "meaning": "Compressor current fault — high amperage draw",
               "action": "Check capacitor, check compressor windings, check suction pressure",
               "decision_tree_card": 1
             },
@@ -4695,7 +4695,7 @@
           "codes": [
             {
               "code": "2_flash",
-              "meaning": "System lockout \u2014 failed heat/cool sequence",
+              "meaning": "System lockout — failed heat/cool sequence",
               "action": "Power cycle; check refrigerant, gas supply, ignitor",
               "decision_tree_card": 7
             },
@@ -4707,7 +4707,7 @@
             },
             {
               "code": "4_flash",
-              "meaning": "Open high limit switch \u2014 overheating",
+              "meaning": "Open high limit switch — overheating",
               "action": "Check filter, blower motor, supply/return airflow",
               "decision_tree_card": 2
             },
@@ -4725,20 +4725,20 @@
             },
             {
               "code": "7_flash",
-              "meaning": "Gas valve circuit open \u2014 no 24V signal reaching valve",
+              "meaning": "Gas valve circuit open — no 24V signal reaching valve",
               "action": "Check gas valve wiring, check board output on W terminal",
               "decision_tree_card": 7
             },
             {
               "code": "8_flash",
-              "meaning": "Low flame sense signal \u2014 dirty flame sensor",
-              "action": "Clean flame sensor rod; check microamp draw (should be 1.5+ \u00b5A)",
+              "meaning": "Low flame sense signal — dirty flame sensor",
+              "action": "Clean flame sensor rod; check microamp draw (should be 1.5+ µA)",
               "decision_tree_card": 7
             },
             {
               "code": "9_flash",
-              "meaning": "Ignitor circuit fault \u2014 open hot surface ignitor",
-              "action": "Measure ignitor resistance; replace if >120 \u03a9 or open",
+              "meaning": "Ignitor circuit fault — open hot surface ignitor",
+              "action": "Measure ignitor resistance; replace if >120 Ω or open",
               "decision_tree_card": 7
             }
           ]
@@ -4760,7 +4760,7 @@
             },
             {
               "code": "103",
-              "meaning": "Loss of charge \u2014 pressure critically low",
+              "meaning": "Loss of charge — pressure critically low",
               "action": "Leak check entire system; evacuate and recharge",
               "decision_tree_card": 8
             },
@@ -4772,13 +4772,13 @@
             },
             {
               "code": "108",
-              "meaning": "Compressor monitor trip \u2014 current or winding protection",
+              "meaning": "Compressor monitor trip — current or winding protection",
               "action": "Check capacitor first; check compressor amp draw vs RLA",
               "decision_tree_card": 1
             },
             {
               "code": "122",
-              "meaning": "Indoor coil temperature sensor fault \u2014 open or shorted",
+              "meaning": "Indoor coil temperature sensor fault — open or shorted",
               "action": "Replace thermistor sensor on indoor coil",
               "decision_tree_card": 7
             },
@@ -4790,13 +4790,13 @@
             },
             {
               "code": "176",
-              "meaning": "High pressure alert \u2014 nearing trip point",
+              "meaning": "High pressure alert — nearing trip point",
               "action": "Check condenser coil, head pressure rising",
               "decision_tree_card": 8
             },
             {
               "code": "184",
-              "meaning": "Compressor lockout \u2014 repeat high amps or trip events",
+              "meaning": "Compressor lockout — repeat high amps or trip events",
               "action": "Compressor likely failing; hard start kit or replacement",
               "decision_tree_card": 13
             },
@@ -4820,14 +4820,14 @@
           "codes": [
             {
               "code": "steady_on",
-              "meaning": "Normal standby \u2014 24V power present, no call",
+              "meaning": "Normal standby — 24V power present, no call",
               "action": "Normal",
               "decision_tree_card": null
             },
             {
               "code": "rapid_2_per_sec",
-              "meaning": "Normal operation \u2014 furnace actively heating",
-              "action": "Normal \u2014 not an error code",
+              "meaning": "Normal operation — furnace actively heating",
+              "action": "Normal — not an error code",
               "decision_tree_card": null
             },
             {
@@ -4838,7 +4838,7 @@
             },
             {
               "code": "1_flash",
-              "meaning": "Furnace lockout \u2014 3 failed ignition attempts. Auto-resets after ~1 hour.",
+              "meaning": "Furnace lockout — 3 failed ignition attempts. Auto-resets after ~1 hour.",
               "action": "Check gas supply, ignitor, flame sensor, gas valve",
               "decision_tree_card": 7
             },
@@ -4856,13 +4856,13 @@
             },
             {
               "code": "4_flash",
-              "meaning": "Open limit circuit \u2014 overheating protection tripped",
+              "meaning": "Open limit circuit — overheating protection tripped",
               "action": "Replace filter, check airflow, check blower motor capacitor",
               "decision_tree_card": 2
             },
             {
               "code": "5_flash",
-              "meaning": "Flame sensed without heat call \u2014 gas valve passing when off",
+              "meaning": "Flame sensed without heat call — gas valve passing when off",
               "action": "Replace gas valve; do not operate unit",
               "decision_tree_card": 7
             },
@@ -4874,8 +4874,8 @@
             },
             {
               "code": "7_flash",
-              "meaning": "Low flame sense signal \u2014 flame sensor dirty or cracked",
-              "action": "Clean flame sensor with fine steel wool; check \u00b5A reading",
+              "meaning": "Low flame sense signal — flame sensor dirty or cracked",
+              "action": "Clean flame sensor with fine steel wool; check µA reading",
               "decision_tree_card": 7
             },
             {
@@ -4897,7 +4897,7 @@
           "codes": [
             {
               "code": "E1",
-              "meaning": "Indoor unit communication failure \u2014 no signal from air handler",
+              "meaning": "Indoor unit communication failure — no signal from air handler",
               "action": "Check communication wiring; check air handler board",
               "decision_tree_card": 7
             },
@@ -4915,25 +4915,25 @@
             },
             {
               "code": "E4",
-              "meaning": "High pressure lockout \u2014 outdoor high pressure switch tripped",
+              "meaning": "High pressure lockout — outdoor high pressure switch tripped",
               "action": "Check condenser coil, condenser fan motor, refrigerant charge",
               "decision_tree_card": 8
             },
             {
               "code": "E5",
-              "meaning": "Low pressure lockout \u2014 outdoor low pressure switch tripped",
+              "meaning": "Low pressure lockout — outdoor low pressure switch tripped",
               "action": "Check charge; check for low load condition or TXV restriction",
               "decision_tree_card": 8
             },
             {
               "code": "E6",
-              "meaning": "High discharge temperature \u2014 compressor discharge too hot",
+              "meaning": "High discharge temperature — compressor discharge too hot",
               "action": "Check refrigerant charge, head pressure, condenser airflow",
               "decision_tree_card": 8
             },
             {
               "code": "E8",
-              "meaning": "Loss of charge protection \u2014 critically low suction pressure",
+              "meaning": "Loss of charge protection — critically low suction pressure",
               "action": "Leak check; do not operate; evacuate and recharge",
               "decision_tree_card": 8
             },
@@ -4956,37 +4956,37 @@
           "codes": [
             {
               "code": "1_flash",
-              "meaning": "Equipment lockout \u2014 multiple faults triggered safety shutdown",
+              "meaning": "Equipment lockout — multiple faults triggered safety shutdown",
               "action": "Power cycle; investigate underlying fault code history",
               "decision_tree_card": 7
             },
             {
               "code": "2_flash",
-              "meaning": "Low pressure switch open \u2014 low refrigerant or low load",
+              "meaning": "Low pressure switch open — low refrigerant or low load",
               "action": "Check charge; check TXV/piston; check outdoor ambient temp",
               "decision_tree_card": 8
             },
             {
               "code": "3_flash",
-              "meaning": "High pressure switch open \u2014 blocked coil, overcharge, fan failure",
+              "meaning": "High pressure switch open — blocked coil, overcharge, fan failure",
               "action": "Check condenser coil, condenser fan motor, refrigerant level",
               "decision_tree_card": 8
             },
             {
               "code": "4_flash",
-              "meaning": "Condensate drain pan full \u2014 float switch tripped",
+              "meaning": "Condensate drain pan full — float switch tripped",
               "action": "Clear drain; flush with nitrogen; replace float switch if faulty",
               "decision_tree_card": 5
             },
             {
               "code": "5_flash",
-              "meaning": "High supply air temperature \u2014 overheating in supply plenum",
+              "meaning": "High supply air temperature — overheating in supply plenum",
               "action": "Check filter, duct restrictions, blower operation",
               "decision_tree_card": 2
             },
             {
               "code": "6_flash",
-              "meaning": "Low supply air temperature \u2014 coil icing",
+              "meaning": "Low supply air temperature — coil icing",
               "action": "Check refrigerant charge, airflow, filter; look for ice on coil",
               "decision_tree_card": 8
             },
@@ -4998,7 +4998,7 @@
             },
             {
               "code": "8_flash",
-              "meaning": "Ignitor fault \u2014 failed ignition sequence",
+              "meaning": "Ignitor fault — failed ignition sequence",
               "action": "Measure ignitor resistance; check 120V supply to ignitor",
               "decision_tree_card": 7
             },
@@ -5021,25 +5021,25 @@
             },
             {
               "code": "C",
-              "meaning": "Cooling mode active \u2014 no fault",
+              "meaning": "Cooling mode active — no fault",
               "action": "Normal",
               "decision_tree_card": null
             },
             {
               "code": "24",
-              "meaning": "High line voltage fault \u2014 line voltage over 253V",
+              "meaning": "High line voltage fault — line voltage over 253V",
               "action": "Check utility voltage at disconnect; contact utility if persistent",
               "decision_tree_card": 7
             },
             {
               "code": "28",
-              "meaning": "Low line voltage fault \u2014 power brown-out condition",
+              "meaning": "Low line voltage fault — power brown-out condition",
               "action": "Check voltage at disconnect; check wire gauge from panel",
               "decision_tree_card": 7
             },
             {
               "code": "30",
-              "meaning": "On-board fuse open \u2014 low voltage wiring fault",
+              "meaning": "On-board fuse open — low voltage wiring fault",
               "action": "Check for shorted low voltage wiring at R and C terminals",
               "decision_tree_card": 7
             },
@@ -5051,49 +5051,49 @@
             },
             {
               "code": "35",
-              "meaning": "Thermostat communication failure \u2014 no signal from EcoNet control",
+              "meaning": "Thermostat communication failure — no signal from EcoNet control",
               "action": "Check EcoNet thermostat wiring and programming",
               "decision_tree_card": 7
             },
             {
               "code": "40",
-              "meaning": "High pressure switch fault \u2014 outdoor high pressure tripped",
+              "meaning": "High pressure switch fault — outdoor high pressure tripped",
               "action": "Check condenser coil, fan motor, ambient temp, refrigerant charge",
               "decision_tree_card": 8
             },
             {
               "code": "41",
-              "meaning": "Low pressure switch fault \u2014 outdoor low pressure tripped",
+              "meaning": "Low pressure switch fault — outdoor low pressure tripped",
               "action": "Check refrigerant charge; check metering device",
               "decision_tree_card": 8
             },
             {
               "code": "42",
-              "meaning": "High discharge temperature \u2014 compressor head too hot",
+              "meaning": "High discharge temperature — compressor head too hot",
               "action": "Check refrigerant charge, condenser airflow, valve efficiency",
               "decision_tree_card": 8
             },
             {
               "code": "44",
-              "meaning": "Loss of charge \u2014 pressure critically low; system locked out",
+              "meaning": "Loss of charge — pressure critically low; system locked out",
               "action": "Leak check entire system; evacuate and recharge",
               "decision_tree_card": 8
             },
             {
               "code": "45",
-              "meaning": "Compressor lockout \u2014 repeat high pressure or current events",
+              "meaning": "Compressor lockout — repeat high pressure or current events",
               "action": "Evaluate compressor for replacement; hard start kit interim",
               "decision_tree_card": 13
             },
             {
               "code": "46",
-              "meaning": "Compressor overcurrent \u2014 amp draw above protection limit",
+              "meaning": "Compressor overcurrent — amp draw above protection limit",
               "action": "Check capacitor; measure compressor amps vs RLA nameplate",
               "decision_tree_card": 1
             },
             {
               "code": "80",
-              "meaning": "Minimum airflow not met \u2014 static pressure too high",
+              "meaning": "Minimum airflow not met — static pressure too high",
               "action": "Check filter, duct sizing, blower speed setting, coil cleanliness",
               "decision_tree_card": 2
             }
@@ -5111,25 +5111,25 @@
           "codes": [
             {
               "code": "E0",
-              "meaning": "Indoor control board EEPROM error \u2014 memory fault",
+              "meaning": "Indoor control board EEPROM error — memory fault",
               "action": "Replace indoor control board",
               "decision_tree_card": 7
             },
             {
               "code": "E1",
-              "meaning": "Indoor/outdoor communication malfunction \u2014 wiring or board failure",
+              "meaning": "Indoor/outdoor communication malfunction — wiring or board failure",
               "action": "Check communication wiring; check both boards",
               "decision_tree_card": 7
             },
             {
               "code": "E3",
-              "meaning": "Indoor fan speed malfunction \u2014 ECM motor or control",
+              "meaning": "Indoor fan speed malfunction — ECM motor or control",
               "action": "Check ECM motor wiring; replace ECM module or motor",
               "decision_tree_card": 7
             },
             {
               "code": "E4",
-              "meaning": "Indoor room temperature sensor error \u2014 open or shorted",
+              "meaning": "Indoor room temperature sensor error — open or shorted",
               "action": "Replace room temperature thermistor",
               "decision_tree_card": 7
             },
@@ -5147,13 +5147,13 @@
             },
             {
               "code": "EE",
-              "meaning": "Water level alarm malfunction \u2014 condensate overflow or sensor fault",
+              "meaning": "Water level alarm malfunction — condensate overflow or sensor fault",
               "action": "Clear drain line; check float switch; replace if faulty",
               "decision_tree_card": 5
             },
             {
               "code": "F0",
-              "meaning": "Overload protection activation \u2014 compressor or motor overload",
+              "meaning": "Overload protection activation — compressor or motor overload",
               "action": "Check amp draws; allow cool-down; check capacitor",
               "decision_tree_card": 1
             },
@@ -5177,7 +5177,7 @@
             },
             {
               "code": "F8",
-              "meaning": "Outdoor DC fan motor fault \u2014 inverter-driven fan failure",
+              "meaning": "Outdoor DC fan motor fault — inverter-driven fan failure",
               "action": "Check fan motor winding resistance; replace outdoor fan motor",
               "decision_tree_card": 7
             },
@@ -5189,7 +5189,7 @@
             },
             {
               "code": "F21",
-              "meaning": "Defrost temperature sensor failure \u2014 heat pump models",
+              "meaning": "Defrost temperature sensor failure — heat pump models",
               "action": "Replace defrost thermistor on outdoor coil",
               "decision_tree_card": 15
             },
@@ -5211,31 +5211,31 @@
           "codes": [
             {
               "code": "steady_on",
-              "meaning": "Normal standby \u2014 24V powered, waiting for call",
+              "meaning": "Normal standby — 24V powered, waiting for call",
               "action": "Normal",
               "decision_tree_card": null
             },
             {
               "code": "1_flash",
-              "meaning": "Ignition lockout \u2014 3 failed attempts, system locked out",
+              "meaning": "Ignition lockout — 3 failed attempts, system locked out",
               "action": "Check gas supply, ignitor, flame sensor, gas valve",
               "decision_tree_card": 7
             },
             {
               "code": "2_flash",
-              "meaning": "Pressure switch fault \u2014 stuck open or closed at wrong time",
+              "meaning": "Pressure switch fault — stuck open or closed at wrong time",
               "action": "Check vent, inducer motor, condensate, pressure switch tubing",
               "decision_tree_card": 7
             },
             {
               "code": "3_flash",
-              "meaning": "High limit switch tripped \u2014 overheating",
+              "meaning": "High limit switch tripped — overheating",
               "action": "Check filter, airflow, blower motor capacitor, supply plenum",
               "decision_tree_card": 2
             },
             {
               "code": "4_flash",
-              "meaning": "Open rollout switch \u2014 flame rollout detected",
+              "meaning": "Open rollout switch — flame rollout detected",
               "action": "STOP: Do not reset without inspecting heat exchanger for cracks",
               "decision_tree_card": 7
             },
@@ -5247,7 +5247,7 @@
             },
             {
               "code": "6_flash",
-              "meaning": "Flame sensed without call for heat \u2014 gas valve leaking",
+              "meaning": "Flame sensed without call for heat — gas valve leaking",
               "action": "Replace gas valve immediately",
               "decision_tree_card": 7
             },
@@ -5259,8 +5259,8 @@
             },
             {
               "code": "8_flash",
-              "meaning": "Low flame sense signal \u2014 dirty or failed flame sensor",
-              "action": "Clean flame sensor; measure \u00b5A (should be >1.5 \u00b5A)",
+              "meaning": "Low flame sense signal — dirty or failed flame sensor",
+              "action": "Clean flame sensor; measure µA (should be >1.5 µA)",
               "decision_tree_card": 7
             }
           ]
@@ -5270,31 +5270,31 @@
           "codes": [
             {
               "code": "125",
-              "meaning": "Control hardware error \u2014 outdoor unit board fault",
+              "meaning": "Control hardware error — outdoor unit board fault",
               "action": "Reset system; replace outdoor control board if recurs",
               "decision_tree_card": 7
             },
             {
               "code": "201",
-              "meaning": "Blower module communication failure \u2014 ECM blower not responding",
+              "meaning": "Blower module communication failure — ECM blower not responding",
               "action": "Check blower module wiring; replace ECM module or motor",
               "decision_tree_card": 7
             },
             {
               "code": "312",
-              "meaning": "Reduced airflow alert \u2014 filter dirty or airflow restriction",
+              "meaning": "Reduced airflow alert — filter dirty or airflow restriction",
               "action": "Replace filter; check coil cleanliness; check duct static pressure",
               "decision_tree_card": 2
             },
             {
               "code": "A1025",
-              "meaning": "Compressor start failure \u2014 cannot reach target RPM (variable-speed)",
+              "meaning": "Compressor start failure — cannot reach target RPM (variable-speed)",
               "action": "Check capacitor (if applicable), check compressor windings, check voltage",
               "decision_tree_card": 1
             },
             {
               "code": "C2",
-              "meaning": "Communication fault \u2014 loss of signal between thermostat and system",
+              "meaning": "Communication fault — loss of signal between thermostat and system",
               "action": "Check 4-wire communication cable; check terminal connections",
               "decision_tree_card": 7
             },
@@ -5324,7 +5324,7 @@
             },
             {
               "code": "E8",
-              "meaning": "High discharge temperature \u2014 discharge line too hot",
+              "meaning": "High discharge temperature — discharge line too hot",
               "action": "Check charge, condenser airflow, compressor valve efficiency",
               "decision_tree_card": 8
             }
@@ -5337,17 +5337,17 @@
         ],
         "mini_split_display": {
           "description": "Mitsubishi ductless mini-split indoor unit display codes. Shown on indoor unit LED or remote controller. Most common codes for residential P, MSZ, MXZ series.",
-          "notes": "U4 (communication fault) is the #1 most common code seen in the field \u2014 accounts for ~40% of all Mitsubishi service calls.",
+          "notes": "U4 (communication fault) is the #1 most common code seen in the field — accounts for ~40% of all Mitsubishi service calls.",
           "codes": [
             {
               "code": "E0",
-              "meaning": "Power supply problem \u2014 voltage issue at outdoor unit",
+              "meaning": "Power supply problem — voltage issue at outdoor unit",
               "action": "Check line voltage at outdoor disconnect; check wire size",
               "decision_tree_card": 7
             },
             {
               "code": "E1",
-              "meaning": "Indoor/outdoor communication error \u2014 serial signal loss",
+              "meaning": "Indoor/outdoor communication error — serial signal loss",
               "action": "Check 2-wire communication cable between indoor and outdoor units",
               "decision_tree_card": 7
             },
@@ -5359,7 +5359,7 @@
             },
             {
               "code": "E4",
-              "meaning": "Indoor air temperature sensor fault \u2014 open or short",
+              "meaning": "Indoor air temperature sensor fault — open or short",
               "action": "Replace indoor air thermistor (usually behind front panel)",
               "decision_tree_card": 7
             },
@@ -5371,25 +5371,25 @@
             },
             {
               "code": "E6",
-              "meaning": "Communication error between indoor PCB and display \u2014 most common board fault",
+              "meaning": "Communication error between indoor PCB and display — most common board fault",
               "action": "Check wiring between indoor PCB and display; replace PCB if needed",
               "decision_tree_card": 7
             },
             {
               "code": "E7",
-              "meaning": "Outdoor unit fan motor fault \u2014 DC fan failure",
+              "meaning": "Outdoor unit fan motor fault — DC fan failure",
               "action": "Check outdoor fan motor resistance; check inverter board output",
               "decision_tree_card": 7
             },
             {
               "code": "E8",
-              "meaning": "AC current protection activation \u2014 high current draw at startup",
+              "meaning": "AC current protection activation — high current draw at startup",
               "action": "Check refrigerant charge; check compressor windings",
               "decision_tree_card": 1
             },
             {
               "code": "E9",
-              "meaning": "Drain pump fault \u2014 condensate drain not pumping",
+              "meaning": "Drain pump fault — condensate drain not pumping",
               "action": "Check drain pump; clear drain line obstruction; replace pump if failed",
               "decision_tree_card": 5
             },
@@ -5401,7 +5401,7 @@
             },
             {
               "code": "P2",
-              "meaning": "Overcurrent protection \u2014 compressor drawing too many amps",
+              "meaning": "Overcurrent protection — compressor drawing too many amps",
               "action": "Check refrigerant charge; check compressor amp draw vs nameplate",
               "decision_tree_card": 1
             },
@@ -5413,19 +5413,19 @@
             },
             {
               "code": "P5",
-              "meaning": "Drain level sensor fault \u2014 float switch triggered",
+              "meaning": "Drain level sensor fault — float switch triggered",
               "action": "Clear drain line; check float switch; confirm drain pump works",
               "decision_tree_card": 5
             },
             {
               "code": "P6",
-              "meaning": "Compressor lockout \u2014 consecutive protection trips",
+              "meaning": "Compressor lockout — consecutive protection trips",
               "action": "Check charge, voltage, compressor efficiency; hard start kit or replacement",
               "decision_tree_card": 13
             },
             {
               "code": "P8",
-              "meaning": "Indoor heat exchanger temperature fault \u2014 coil too hot or too cold",
+              "meaning": "Indoor heat exchanger temperature fault — coil too hot or too cold",
               "action": "Check refrigerant charge; check indoor coil for ice or dirt",
               "decision_tree_card": 8
             },
@@ -5443,19 +5443,19 @@
             },
             {
               "code": "U2",
-              "meaning": "Power supply abnormality \u2014 voltage drop or spike at outdoor PCB",
+              "meaning": "Power supply abnormality — voltage drop or spike at outdoor PCB",
               "action": "Check line voltage quality; check capacitors on outdoor PCB",
               "decision_tree_card": 7
             },
             {
               "code": "U3",
-              "meaning": "Communication failure \u2014 outdoor unit to indoor unit",
+              "meaning": "Communication failure — outdoor unit to indoor unit",
               "action": "Check 2-wire comm cable; check both PCBs for damage",
               "decision_tree_card": 7
             },
             {
               "code": "U4",
-              "meaning": "Communication failure \u2014 indoor unit to outdoor unit (MOST COMMON). Usually caused by wiring issue or power loss to outdoor unit.",
+              "meaning": "Communication failure — indoor unit to outdoor unit (MOST COMMON). Usually caused by wiring issue or power loss to outdoor unit.",
               "action": "1) Check outdoor disconnect on. 2) Check comm wire connections. 3) Verify 208/230V at outdoor unit. 4) Replace outdoor PCB if all OK.",
               "decision_tree_card": 7
             },
@@ -5467,7 +5467,7 @@
             },
             {
               "code": "U6",
-              "meaning": "Outdoor unit fan motor fault \u2014 DC inverter fan not running",
+              "meaning": "Outdoor unit fan motor fault — DC inverter fan not running",
               "action": "Check outdoor fan motor; check inverter module output for fan circuit",
               "decision_tree_card": 7
             }
@@ -5489,13 +5489,13 @@
             },
             {
               "code": "A3",
-              "meaning": "Drain system fault \u2014 condensate not draining",
+              "meaning": "Drain system fault — condensate not draining",
               "action": "Clear drain; check float switch; check drain pump",
               "decision_tree_card": 5
             },
             {
               "code": "A5",
-              "meaning": "Freeze protection / high heat protection \u2014 coil temp extreme",
+              "meaning": "Freeze protection / high heat protection — coil temp extreme",
               "action": "Check refrigerant charge; check airflow; check filters",
               "decision_tree_card": 8
             },
@@ -5525,25 +5525,25 @@
             },
             {
               "code": "E3",
-              "meaning": "High pressure switch protection \u2014 head pressure too high",
+              "meaning": "High pressure switch protection — head pressure too high",
               "action": "Check condenser coil, fan motor, refrigerant charge",
               "decision_tree_card": 8
             },
             {
               "code": "E4",
-              "meaning": "Low pressure switch protection \u2014 suction pressure too low",
+              "meaning": "Low pressure switch protection — suction pressure too low",
               "action": "Check refrigerant charge; check metering device",
               "decision_tree_card": 8
             },
             {
               "code": "E5",
-              "meaning": "Inverter overcurrent protection \u2014 compressor drawing high current",
+              "meaning": "Inverter overcurrent protection — compressor drawing high current",
               "action": "Check charge; check compressor windings; check inverter board",
               "decision_tree_card": 1
             },
             {
               "code": "E6",
-              "meaning": "Compressor motor fault \u2014 locked or open winding",
+              "meaning": "Compressor motor fault — locked or open winding",
               "action": "Check compressor windings and megohm resistance; replace compressor",
               "decision_tree_card": 13
             },
@@ -5561,13 +5561,13 @@
             },
             {
               "code": "F3",
-              "meaning": "Discharge pipe temperature too high \u2014 compressor protection",
+              "meaning": "Discharge pipe temperature too high — compressor protection",
               "action": "Check refrigerant charge; check condenser airflow",
               "decision_tree_card": 8
             },
             {
               "code": "H6",
-              "meaning": "Position sensor fault \u2014 DC compressor startup issue",
+              "meaning": "Position sensor fault — DC compressor startup issue",
               "action": "Check compressor wiring; replace outdoor PCB/inverter",
               "decision_tree_card": 7
             },
@@ -5591,7 +5591,7 @@
             },
             {
               "code": "U2",
-              "meaning": "Low voltage protection \u2014 supply voltage drop",
+              "meaning": "Low voltage protection — supply voltage drop",
               "action": "Check line voltage; check wire gauge",
               "decision_tree_card": 7
             },
@@ -5676,11 +5676,11 @@
       "display_type": "Alphanumeric indoor display (CH prefix)",
       "refrigerant": "R-410A (older), R-32 (2022+ models)",
       "routing_guide": {
-        "communication_fault": "CH05 \u2192 Card #11 or communication wiring check",
-        "high_pressure": "CH21 \u2192 Card #5 (high pressure)",
-        "low_pressure_charge": "CH38 + low pressures \u2192 Card #8",
-        "compressor_overload": "CH23 \u2192 Card #10",
-        "fan_fault": "CH10, CH67 \u2192 condenser or blower fan diagnostic"
+        "communication_fault": "CH05 → Card #11 or communication wiring check",
+        "high_pressure": "CH21 → Card #5 (high pressure)",
+        "low_pressure_charge": "CH38 + low pressures → Card #8",
+        "compressor_overload": "CH23 → Card #10",
+        "fan_fault": "CH10, CH67 → condenser or blower fan diagnostic"
       },
       "codes": [
         {
@@ -5751,12 +5751,12 @@
       "refrigerant": "R-410A (most), R-32 (Wind-Free series 2022+)",
       "code_structure": "E1xx = Indoor, E2xx = Outdoor, E3xx = Compressor, E4xx = Fan, E5xx = Protection, E6xx = Valve",
       "routing_guide": {
-        "sensor_fault": "E1, E3 \u2192 sensor replacement",
-        "communication": "E6 \u2192 comm wiring, PCB check",
-        "high_pressure": "E101 \u2192 Card #5",
-        "low_pressure": "E107 \u2192 Card #8 (check charge)",
-        "compressor": "E116 \u2192 Card #10",
-        "fan_fault": "E4 \u2192 indoor fan motor check"
+        "sensor_fault": "E1, E3 → sensor replacement",
+        "communication": "E6 → comm wiring, PCB check",
+        "high_pressure": "E101 → Card #5",
+        "low_pressure": "E107 → Card #8 (check charge)",
+        "compressor": "E116 → Card #10",
+        "fan_fault": "E4 → indoor fan motor check"
       },
       "codes": [
         {
@@ -5819,12 +5819,12 @@
       "display_type": "E/H/F prefix codes on indoor display",
       "refrigerant": "R-410A (most residential), R-32 (Vireo+ and 2024+ models)",
       "routing_guide": {
-        "high_pressure": "E1 \u2192 Card #5",
-        "low_pressure_charge": "E2, F0 \u2192 Card #8",
-        "high_discharge_temp": "E3 \u2192 check charge and airflow",
-        "communication": "E6 \u2192 comm wiring check",
-        "compressor_overload": "H3 \u2192 Card #10",
-        "ipm_module": "H5 \u2192 outdoor PCB replacement"
+        "high_pressure": "E1 → Card #5",
+        "low_pressure_charge": "E2, F0 → Card #8",
+        "high_discharge_temp": "E3 → check charge and airflow",
+        "communication": "E6 → comm wiring check",
+        "compressor_overload": "H3 → Card #10",
+        "ipm_module": "H5 → outdoor PCB replacement"
       },
       "codes": [
         {
@@ -5843,7 +5843,7 @@
           "code": "E3",
           "description": "High discharge temperature protection",
           "likely_cause": "Low charge, dirty coils, high ambient, restricted airflow",
-          "action": "Check discharge temp (<185\u00b0F normal), check pressures and coils"
+          "action": "Check discharge temp (<185°F normal), check pressures and coils"
         },
         {
           "code": "E4",
@@ -5883,7 +5883,7 @@
         },
         {
           "code": "H5",
-          "description": "IPM (Intelligent Power Module) protection \u2014 outdoor inverter board",
+          "description": "IPM (Intelligent Power Module) protection — outdoor inverter board",
           "likely_cause": "Inverter module overheating, compressor short, DC bus fault",
           "action": "Check outdoor PCB, compressor winding resistance, verify proper airflow to control box"
         }
@@ -5894,10 +5894,10 @@
       "display_type": "E/P/F prefix numeric codes on indoor display",
       "refrigerant": "R-410A",
       "routing_guide": {
-        "high_pressure_compressor": "E1, P4 \u2192 Card #5 or Card #10",
-        "anti_freeze_low_charge": "E2, P6 \u2192 Card #8",
-        "communication": "E6 \u2192 comm wiring",
-        "fan": "E0 or P4 \u2192 fan motor diagnostic"
+        "high_pressure_compressor": "E1, P4 → Card #5 or Card #10",
+        "anti_freeze_low_charge": "E2, P6 → Card #8",
+        "communication": "E6 → comm wiring",
+        "fan": "E0 or P4 → fan motor diagnostic"
       },
       "codes": [
         {
@@ -5984,13 +5984,13 @@
       "brand_family": "MRCOOL LLC",
       "display_type": "P/E prefix codes on indoor display or remote",
       "refrigerant": "R-410A (most DIY and Pro series)",
-      "note": "MrCool DIY series are popular in Houston for add-on rooms and garages. Designed for homeowner installation \u2014 tech may encounter non-standard lineset work.",
+      "note": "MrCool DIY series are popular in Houston for add-on rooms and garages. Designed for homeowner installation — tech may encounter non-standard lineset work.",
       "routing_guide": {
-        "high_voltage": "P1 \u2192 check incoming voltage",
-        "compressor_inverter": "P4 \u2192 Card #10 or outdoor PCB",
-        "high_discharge": "P5 \u2192 check charge and coils",
-        "low_refrigerant": "P6 \u2192 Card #8",
-        "communication": "P7 \u2192 comm wiring"
+        "high_voltage": "P1 → check incoming voltage",
+        "compressor_inverter": "P4 → Card #10 or outdoor PCB",
+        "high_discharge": "P5 → check charge and coils",
+        "low_refrigerant": "P6 → Card #8",
+        "communication": "P7 → comm wiring"
       },
       "codes": [
         {
@@ -6053,10 +6053,10 @@
       "display_type": "E-prefix numeric codes on indoor display",
       "refrigerant": "R-32 (Climate 5000/8000 series), R-410A (older IDS)",
       "routing_guide": {
-        "sensor_faults": "E1-E5 \u2192 respective sensor replacement",
-        "communication": "E6 \u2192 comm wiring",
-        "low_pressure_charge": "E8 \u2192 Card #8",
-        "high_pressure": "EA \u2192 Card #5"
+        "sensor_faults": "E1-E5 → respective sensor replacement",
+        "communication": "E6 → comm wiring",
+        "low_pressure_charge": "E8 → Card #8",
+        "high_pressure": "EA → Card #5"
       },
       "codes": [
         {
@@ -6099,7 +6099,7 @@
           "code": "E8",
           "description": "Low pressure / refrigerant protection",
           "likely_cause": "Low charge, refrigerant leak",
-          "action": "Check suction pressure; Bosch Climate uses R-32 \u2014 use R-32 PT chart"
+          "action": "Check suction pressure; Bosch Climate uses R-32 — use R-32 PT chart"
         },
         {
           "code": "EA",
@@ -6257,5 +6257,108 @@
       "604E": "bryant"
     },
     "fallback_guidance": "If model prefix matches a legacy prefix, route to the parent brand's diagnostic tree. Assume R-22 refrigerant unless nameplate shows otherwise. Alert tech: 'This appears to be a pre-2010 unit. Confirm refrigerant type before connecting gauges.'"
+  },
+  "lifecycle_rules": {
+    "_comment": "Board Session 8 §5 — age-based label switching and lifespan data. avg_lifespan_years drives remainingLife calc; label_sets drive Good/Better/Best tier copy.",
+    "avg_lifespan_years_by_brand": {
+      "carrier": 18,
+      "trane": 18,
+      "lennox": 18,
+      "goodman": 14,
+      "rheem": 17,
+      "ruud": 17,
+      "york": 15,
+      "daikin": 18,
+      "bryant": 17,
+      "american_standard": 18,
+      "amana": 14,
+      "heil": 15,
+      "coleman": 15,
+      "payne": 16,
+      "mitsubishi_electric": 20,
+      "_default": 16
+    },
+    "replacement_trigger_age_years": 15,
+    "age_buckets": [
+      {
+        "id": "young",
+        "label": "Young System",
+        "min_age": 0,
+        "max_age": 7,
+        "description": "System is within early life — repairs are cost-effective and extend system life."
+      },
+      {
+        "id": "mid_life",
+        "label": "Mid-Life System",
+        "min_age": 8,
+        "max_age": 14,
+        "description": "System approaching mid-life — weigh repair cost vs. remaining useful life."
+      },
+      {
+        "id": "end_of_life",
+        "label": "End-of-Life System",
+        "min_age": 15,
+        "max_age": 999,
+        "description": "System near or past expected lifespan — replacement is the most economical long-term choice."
+      }
+    ],
+    "label_sets": {
+      "young": {
+        "good": {
+          "tier_label": "Repair",
+          "sub_label": "Fix the issue",
+          "urgency": "normal"
+        },
+        "better": {
+          "tier_label": "Enhanced Repair",
+          "sub_label": "Fix + prevent next failure",
+          "urgency": "normal"
+        },
+        "best": {
+          "tier_label": "System Upgrade",
+          "sub_label": "New system while it's a good time",
+          "urgency": "optional"
+        }
+      },
+      "mid_life": {
+        "good": {
+          "tier_label": "Quick Fix",
+          "sub_label": "Short-term patch",
+          "urgency": "caution"
+        },
+        "better": {
+          "tier_label": "Smart Repair",
+          "sub_label": "Best value for remaining life",
+          "urgency": "normal"
+        },
+        "best": {
+          "tier_label": "Replace System",
+          "sub_label": "Long-term reliability",
+          "urgency": "recommended"
+        }
+      },
+      "end_of_life": {
+        "good": {
+          "tier_label": "Temporary Fix",
+          "sub_label": "Buys time only",
+          "urgency": "high"
+        },
+        "better": {
+          "tier_label": "Replace Soon",
+          "sub_label": "Plan for replacement",
+          "urgency": "high"
+        },
+        "best": {
+          "tier_label": "Replace Now",
+          "sub_label": "Best long-term investment",
+          "urgency": "critical"
+        }
+      }
+    },
+    "remaining_life_calc": {
+      "method": "linear",
+      "formula": "avg_lifespan_years - unit_age_years",
+      "note": "Clamp to 0 if result is negative. unit_age_years = current_year - install_year."
+    }
   }
 }

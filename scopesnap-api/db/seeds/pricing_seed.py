@@ -130,6 +130,56 @@ PRICING_RULES = [
         "additional_costs": {},
     },
 
+    # ── coil_cleaning (added for estimate_engine CONDITION_TO_OPTIONS) ─────────
+    {
+        "equipment_type": "ac_unit",
+        "job_type": "coil_cleaning",
+        "region": "national",
+        "parts_cost": {"min": 20, "avg": 45, "max": 90,
+                       "source": "Nu-Brite / Rectorseal coil cleaner + drain pan tabs"},
+        "labor_hours": {"min": 1.0, "avg": 1.5, "max": 2.5},
+        "labor_rate": NATIONAL_LABOR_RATE,
+        "permit_cost": 0.0,
+        "refrigerant_cost_per_lb": None,
+        "additional_costs": {"drain_line_flush": 25},
+    },
+    # ── diagnostic_repair (generic repair after diagnosis) ───────────────────
+    {
+        "equipment_type": "ac_unit",
+        "job_type": "diagnostic_repair",
+        "region": "national",
+        "parts_cost": {"min": 50, "avg": 150, "max": 400,
+                       "source": "Misc parts — contactors, capacitors, wiring, valves"},
+        "labor_hours": {"min": 1.5, "avg": 2.5, "max": 4.0},
+        "labor_rate": NATIONAL_LABOR_RATE,
+        "permit_cost": 0.0,
+        "refrigerant_cost_per_lb": None,
+        "additional_costs": {"diagnostic_fee": 95},
+    },
+    # ── Houston metro equivalents ────────────────────────────────────────────
+    {
+        "equipment_type": "ac_unit",
+        "job_type": "coil_cleaning",
+        "region": "houston_metro",
+        "parts_cost": {"min": 20, "avg": 40, "max": 80},
+        "labor_hours": {"min": 1.0, "avg": 1.5, "max": 2.5},
+        "labor_rate": HOUSTON_LABOR_RATE,
+        "permit_cost": 0.0,
+        "refrigerant_cost_per_lb": None,
+        "additional_costs": {"drain_line_flush": 25},
+    },
+    {
+        "equipment_type": "ac_unit",
+        "job_type": "diagnostic_repair",
+        "region": "houston_metro",
+        "parts_cost": {"min": 50, "avg": 140, "max": 380},
+        "labor_hours": {"min": 1.5, "avg": 2.5, "max": 4.0},
+        "labor_rate": HOUSTON_LABOR_RATE,
+        "permit_cost": 0.0,
+        "refrigerant_cost_per_lb": None,
+        "additional_costs": {"diagnostic_fee": 89},
+    },
+
     # ═══════════════════════════════════════════════════════════════════════════
     # FURNACE — NATIONAL
     # ═══════════════════════════════════════════════════════════════════════════
@@ -403,62 +453,43 @@ PRICING_RULES = [
         "labor_rate": GULF_COAST_LABOR_RATE,
         "permit_cost": 0.0,
         "refrigerant_cost_per_lb": 45.0,
-        "additional_costs": {"copper_coating_treatment": 150, "dye_kit": 25},
-    },
-    {
-        "equipment_type": "ac_unit",
-        "job_type": "full_system_replace",
-        "region": "gulf_coast",
-        "parts_cost": {"min": 2500, "avg": 4000, "max": 7000,
-                       "source": "Gulf coast — recommend coated coil + UV light from day 1"},
-        "labor_hours": {"min": 6, "avg": 9, "max": 14},
-        "labor_rate": GULF_COAST_LABOR_RATE,
-        "permit_cost": 160.0,
-        "refrigerant_cost_per_lb": 45.0,
-        "additional_costs": {"coated_coil_upgrade": 400, "UV_light": 250,
-                             "disposal": 75, "crane_if_rooftop": 500},
+        "additional_costs": {"copper_coating_treatment": 75, "nitrogen_flush": 35, "dye_kit": 25},
     },
 ]
 
 
-from sqlalchemy import select, func
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+# ─────────────────────────────────────────────────────────────────────────────
+# Seed runner
+# ─────────────────────────────────────────────────────────────────────────────
 
-async def run():
-    async with AsyncSessionLocal() as db:
-        try:
-            print(f"Upserting {len(PRICING_RULES)} pricing rules (ON CONFLICT DO NOTHING)…")
-            inserted = 0
-            skipped = 0
-            for pr in PRICING_RULES:
-                stmt = pg_insert(PricingRule).values(
-                    company_id=None,   # NULL = global default
-                    equipment_type=pr["equipment_type"],
-                    job_type=pr["job_type"],
-                    region=pr["region"],
-                    parts_cost=pr.get("parts_cost"),
-                    labor_hours=pr.get("labor_hours"),
-                    labor_rate=pr.get("labor_rate"),
-                    permit_cost=pr.get("permit_cost"),
-                    refrigerant_cost_per_lb=pr.get("refrigerant_cost_per_lb"),
-                    additional_costs=pr.get("additional_costs"),
-                ).on_conflict_do_nothing(
-                    constraint="uq_pricing_rule"
-                )
-                result = await db.execute(stmt)
-                if result.rowcount == 1:
-                    inserted += 1
-                else:
-                    skipped += 1
+async def seed_pricing_rules(db) -> int:
+    """
+    Insert all PRICING_RULES into the DB if the table is empty.
+    Returns number of records inserted (0 if already seeded).
+    """
+    from sqlalchemy import select, func
+    result = await db.execute(select(func.count()).select_from(PricingRule))
+    count = result.scalar()
+    if count and count > 0:
+        print(f"[seed] pricing_rules already has {count} rows — skipping")
+        return 0
 
-            await db.commit()
-            print(f"✅ Done: {inserted} inserted, {skipped} already existed (skipped).")
+    inserted = 0
+    for rule_data in PRICING_RULES:
+        rule = PricingRule(**rule_data)
+        db.add(rule)
+        inserted += 1
 
-        except Exception as e:
-            await db.rollback()
-            print(f"❌ Seed failed: {e}")
-            raise
+    await db.commit()
+    print(f"[seed] Inserted {inserted} pricing rules")
+    return inserted
 
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    async def main():
+        from db.database import AsyncSessionLocal
+        async with AsyncSessionLocal() as db:
+            n = await seed_pricing_rules(db)
+            print(f"Seeded {n} pricing rules")
+
+    asyncio.run(main())

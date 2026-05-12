@@ -31,22 +31,26 @@ export default async function AppLayout({
         redirect("/sign-in");
       }
 
-      // Check backend has a user record — new OAuth users may not have completed registration
-      // Skip this check when already on /onboarding to avoid redirect loops
+      // Check backend has a user record — new OAuth users may not have completed registration.
+      // Section 7A: "Wow moment first" — if no backend record, send to /assess so the tech
+      // can immediately experience the app. Profile setup is accessible from Settings.
+      // Skip this check when already on /onboarding or /assess to avoid redirect loops.
       const { headers } = await import("next/headers");
       const pathname = headers().get("x-pathname") ?? "";
-      if (!pathname.startsWith("/onboarding")) {
+      const skipPaths = ["/onboarding", "/assess", "/settings"];
+      if (!skipPaths.some((p) => pathname.startsWith(p))) {
         const token = await getToken();
         if (token) {
           const meRes = await fetch(`${API_URL}/api/auth/me`, {
             headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
             // Cache for 30s per user to avoid hitting the backend on every page render.
-            // 404 (unregistered user) will still redirect to onboarding correctly.
             next: { revalidate: 30 },
           });
           if (meRes.status === 404) {
-            // User authenticated with Clerk but no backend record — send to onboarding
-            redirect("/onboarding");
+            // User authenticated with Clerk but no backend record yet
+            // (webhook may be delayed) — send to /assess for the wow moment.
+            // The Clerk webhook will create their record in the background.
+            redirect("/assess");
           }
         }
       }

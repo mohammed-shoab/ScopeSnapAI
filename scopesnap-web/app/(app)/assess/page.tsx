@@ -20,6 +20,7 @@ import FaultCardResult from "@/components/diagnostic/FaultCardResult";
 import JobConfirmationCard, { FaultCardOption } from "@/components/diagnostic/JobConfirmationCard";
 import { PhotoSlotSpec, PhotoResult } from "@/components/diagnostic/PhotoSlot";
 import ServiceChecklist, { ServiceEstimateResult } from "@/components/diagnostic/ServiceChecklist";
+import SendMomentModal, { needsSendMoment, markSendMomentDone } from "@/components/SendMomentModal";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
@@ -77,8 +78,40 @@ function AssessPageInner() {
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (IS_DEV) return DEV_HEADER;
     const token = await getToken();
+    if (token) setClerkToken(token);
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, [getToken]);
+
+  /**
+   * Gate helper — checks if SendMomentModal is needed before running an action.
+   * Fetches /api/auth/me once to get phone, then either shows modal or runs directly.
+   */
+  const withSendMomentCheck = useCallback(async (action: () => void) => {
+    // Fast path: already seen this session
+    if (!needsSendMoment(companyPhone)) {
+      action();
+      return;
+    }
+    // Fetch company info if we don't have it yet
+    try {
+      const headers = await getAuthHeaders();
+      const r = await fetch(`${API_URL}/api/auth/me`, { headers });
+      if (r.ok) {
+        const data = await r.json();
+        const phone: string | null = data.company?.phone || null;
+        const name: string = data.company?.name || "";
+        setCompanyPhone(phone);
+        setCompanyName(name);
+        if (!needsSendMoment(phone)) {
+          action();
+          return;
+        }
+      }
+    } catch { /* network error — proceed anyway */ }
+    // Show modal, store action to run after completion
+    setPendingEstimateAction(() => action);
+    setShowSendMoment(true);
+  }, [companyPhone, getAuthHeaders]);
 
   // ── Core state ─────────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("step-zero");
@@ -118,6 +151,15 @@ function AssessPageInner() {
   const [pendingCount, setPendingCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [faultCards, setFaultCards] = useState<FaultCardOption[]>([]);
+
+  // ── Send Moment Modal (Section 7B) ─────────────────────────────────────────
+  // Shows before first estimate generation if company phone is not set.
+  const [showSendMoment, setShowSendMoment]     = useState(false);
+  const [companyPhone, setCompanyPhone]         = useState<string | null>(null);
+  const [companyName, setCompanyName]           = useState<string>("");
+  const [clerkToken, setClerkToken]             = useState<string | null>(null);
+  // Pending action to run after modal completes
+  const [pendingEstimateAction, setPendingEstimateAction] = useState<(() => void) | null>(null);
 
   // ── Confirm mode: URL ?confirm=1&assessment_id=X ───────────────────────────
   useEffect(() => {
@@ -234,7 +276,8 @@ function AssessPageInner() {
     setPhase("evidence");
   };
 
-  const handlePhase2Gate = useCallback((continuation: GateContinuation) => {
+  /** Inner: actually fires the phase2-gate estimate (called after modal check) */
+  const _doPhase2Gate = useCallback((continuation: GateContinuation) => {
     setPhase("phase2-gate");
     setError(null);
     getAuthHeaders().then(headers => {
@@ -261,6 +304,12 @@ function AssessPageInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId, router]);
 
+  /** Public handler — checks SendMomentModal before firing */
+  const handlePhase2Gate = useCallback((continuation: GateContinuation) => {
+    withSendMomentCheck(() => _doPhase2Gate(continuation));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [withSendMomentCheck, _doPhase2Gate]);
+
   // ── Service checklist complete ────────────────────────────────────────────
   const handleServiceComplete = useCallback((_result: ServiceEstimateResult, _sessionId: string) => {
     setServiceEstimate(_result);
@@ -268,8 +317,8 @@ function AssessPageInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId, router]);
 
-  // ── Generate estimate from evidence ───────────────────────────────────────
-  const handleGenerateEstimate = useCallback(async (photos: PhotoResult[]) => {
+  /** Inner: actually fires the evidence-based estimate */
+  const _doGenerateEstimate = useCallback(async (photos: PhotoResult[]) => {
     setPhase("estimating");
     setError(null);
     try {
@@ -296,7 +345,40 @@ function AssessPageInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId, resolvedCardId, diagnosedSessionId, router]);
 
+  /** Public handler — checks SendMomentModal before firing */
+  const handleGenerateEstimate = useCallback(async (photos: PhotoResult[]) => {
+    withSendMomentCheck(() => _doGenerateEstimate(photos));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [withSendMomentCheck, _doGenerateEstimate]);
+
   // ─────────────────────────────────────────────────────────────────────────
+  // ── Send Moment Modal overlay (Section 7B) ────────────────────────────────
+  // Rendered on top of whatever phase is active; intercepts before estimate gen.
+  if (showSendMoment) {
+    return (
+      <>
+        {/* Dim the current phase behind the modal */}
+        <div style={{ opacity: 0.3, pointerEvents: "none" }}>
+          {/* placeholder — modal covers the screen */}
+        </div>
+        <SendMomentModal
+          clerkToken={clerkToken}
+          existingName={companyName}
+          existingPhone={companyPhone || ""}
+          onComplete={() => {
+            setShowSendMoment(false);
+            markSendMomentDone();
+            if (pendingEstimateAction) {
+              const action = pendingEstimateAction;
+              setPendingEstimateAction(null);
+              action();
+            }
+          }}
+        />
+      </>
+    );
+  }
+
   // PHASE RENDERS
   // ─────────────────────────────────────────────────────────────────────────
 
