@@ -75,6 +75,15 @@ function AssessPageInner() {
   const searchParams = useSearchParams();
   const { getToken } = useAuth();
 
+  // ── Send Moment Modal (Section 7B) ─────────────────────────────────────────
+  // Shows before first estimate generation if company phone is not set.
+  const [showSendMoment, setShowSendMoment]     = useState(false);
+  const [companyPhone, setCompanyPhone]         = useState<string | null>(null);
+  const [companyName, setCompanyName]           = useState<string>("");
+  const [clerkToken, setClerkToken]             = useState<string | null>(null);
+  // Pending action to run after modal completes
+  const [pendingEstimateAction, setPendingEstimateAction] = useState<(() => void) | null>(null);
+
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (IS_DEV) return DEV_HEADER;
     const token = await getToken();
@@ -152,14 +161,6 @@ function AssessPageInner() {
   const [error, setError] = useState<string | null>(null);
   const [faultCards, setFaultCards] = useState<FaultCardOption[]>([]);
 
-  // ── Send Moment Modal (Section 7B) ─────────────────────────────────────────
-  // Shows before first estimate generation if company phone is not set.
-  const [showSendMoment, setShowSendMoment]     = useState(false);
-  const [companyPhone, setCompanyPhone]         = useState<string | null>(null);
-  const [companyName, setCompanyName]           = useState<string>("");
-  const [clerkToken, setClerkToken]             = useState<string | null>(null);
-  // Pending action to run after modal completes
-  const [pendingEstimateAction, setPendingEstimateAction] = useState<(() => void) | null>(null);
 
   // ── Confirm mode: URL ?confirm=1&assessment_id=X ───────────────────────────
   useEffect(() => {
