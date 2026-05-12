@@ -217,7 +217,7 @@ export default function SidebarNav() {
       {/* Sidebar */}
       <aside
         suppressHydrationWarning
-        className={`fixed top-0 left-0 h-screen w-60 overflow-y-auto transition-transform duration-300 ease-in-out z-30 md:z-10 ${
+        className={`fixed top-0 left-0 h-[100dvh] w-60 overflow-hidden transition-transform duration-300 ease-in-out z-30 md:z-10 ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
         style={{ background: "#1a1a18" }}
@@ -332,7 +332,7 @@ export default function SidebarNav() {
               <Link
                 href="/settings"
                 onClick={() => setIsMobileOpen(false)}
-                className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity"
+                className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity"hh
               >
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
