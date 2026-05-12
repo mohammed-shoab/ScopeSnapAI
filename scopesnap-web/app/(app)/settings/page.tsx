@@ -153,6 +153,39 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* ── Profile Completion Banner ─────────────────────────────────────── */}
+      {!loading && company && isOwner && (!form.phone.trim() || !form.email.trim()) && (
+        <div className="bg-amber-50 border border-amber-300 rounded-ss p-4 flex items-start gap-3">
+          <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+            <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-amber-800">Your company profile is incomplete</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              {[
+                !form.phone.trim() && "phone number",
+                !form.email.trim() && "business email",
+              ]
+                .filter(Boolean)
+                .join(" and ")}{" "}
+              {(!form.phone.trim() && !form.email.trim()) ? "are" : "is"} missing — needed to send estimates to customers.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              const el = document.getElementById(!form.phone.trim() ? "company-phone-field" : "company-email-field");
+              el?.scrollIntoView({ behavior: "smooth", block: "center" });
+              setTimeout(() => el?.focus(), 300);
+            }}
+            className="text-xs font-bold text-amber-700 border border-amber-300 bg-white px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors flex-shrink-0 whitespace-nowrap"
+          >
+            Complete →
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="space-y-3">
           <div className="bg-white border border-surface-border rounded-ss shadow-ss h-24 animate-pulse" />
@@ -220,6 +253,7 @@ export default function SettingsPage() {
                     Phone
                   </label>
                   <input
+                    id="company-phone-field"
                     type="tel"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -248,6 +282,7 @@ export default function SettingsPage() {
                   Business Email
                 </label>
                 <input
+                  id="company-email-field"
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
