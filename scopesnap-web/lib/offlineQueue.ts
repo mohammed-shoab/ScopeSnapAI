@@ -136,52 +136,66 @@ export async function getOfflineQueueCount(): Promise<number> {
   }
 }
 
-// ── Process queue: upload all pending assessments ─────────────────────────────
-export async function processOfflineQueue(
+// ── Section 6C additions ──────────────────────────────────────────────────────
+
+/** Returns true when the device has no network */
+export function isOffline(): boolean {
+  if (typeof window === "undefined") return false;
+  return !navigator.onLine;
+}
+
+/** Queue-count change listeners — notified after every add/remove */
+type QueueCountListener = (count: number) => void;
+const _queueListeners: Set<QueueCountListener> = new Set();
+
+function _notifyQueueListeners(): void {
+  getOfflineQueueCount()
+    .then(count => _queueListeners.forEach(fn => fn(count)))
+    .catch(() => {});
+}
+
+/**
+ * Subscribe to offline queue count changes.
+ * Fires immediately with the current count, then on every change.
+ * Returns an unsubscribe function.
+ */
+export function subscribeToQueueCount(fn: QueueCountListener): () => void {
+  _queueListeners.add(fn);
+  getOfflineQueueCount().then(fn).catch(() => fn(0));
+  return () => _queueListeners.delete(fn);
+}
+
+/**
+ * Wire up automatic sync when the device comes back online.
+ * Call once on app init. Returns cleanup function.
+ *
+ * @param apiUrl     - Backend API base URL
+ * @param getHeaders - Function returning auth headers for the current session
+ */
+export function setupAutoSync(
   apiUrl: string,
-  devHeader: Record<string, string>,
-  onProgress?: (id: string, done: boolean) => void
-): Promise<{ uploaded: number; failed: number }> {
-  let uploaded = 0;
-  let failed   = 0;
+  getHeaders: () => Record<string, string>,
+): () => void {
+  if (typeof window === "undefined") return () => { return; };
 
-  let items: PendingAssessment[] = [];
-  try {
-    items = await getOfflineQueue();
-  } catch {
-    return { uploaded, failed };
+  const handler = () => {
+    processOfflineQueue(apiUrl, getHeaders()).catch(() => { return; });
+  };
+
+  window.addEventListener("online", handler);
+
+  // Sync immediately if already online and there are pending items
+  if (navigator.onLine) {
+    getOfflineQueueCount().then(count => {
+      if (count > 0) handler();
+    });
   }
 
-  for (const item of items) {
-    try {
-      const fd = new FormData();
-      for (const photoData of item.photosData) {
-        const blob = new Blob([photoData.data], { type: photoData.type });
-        fd.append("photos", blob, photoData.name);
-      }
-      if (item.address)      fd.append("property_address", item.address);
-      if (item.customerName) fd.append("homeowner_name",   item.customerName);
-      if (item.customerPhone) fd.append("homeowner_phone", item.customerPhone);
+  return () => window.removeEventListener("online", handler);
+}
 
-      const res = await fetch(`${apiUrl}/api/assessments/`, {
-        method: "POST",
-        headers: devHeader,
-        body: fd,
-      });
-
-      if (res.ok) {
-        await removeFromOfflineQueue(item.id);
-        uploaded++;
-        onProgress?.(item.id, true);
-      } else {
-        failed++;
-        onProgress?.(item.id, false);
-      }
-    } catch {
-      failed++;
-      onProgress?.(item.id, false);
-    }
-  }
-
-  return { uploaded, failed };
+/** True when the device has no network */
+export function isOffline(): boolean {
+  if (typeof window === "undefined") return false;
+  return !navigator.onLine;
 }

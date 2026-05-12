@@ -14,6 +14,8 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { API_URL } from "@/lib/api";
 import { checkImageQuality, type ImageQualityResult } from "@/lib/imageQuality";
 import { getBrands, searchModels, type EquipmentModelRecord } from "@/lib/modelCache";
+import { isOffline, subscribeToQueueCount, saveToOfflineQueue } from "@/lib/offlineQueue";
+import { runTesseractOcr, terminateTesseractWorker } from "@/lib/tesseractOcr";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -45,6 +47,8 @@ interface OcrResult {
   indoor:             NameplateUnit | null;
   captured_at:        string;
   capture_method:     string;
+  /** Section 6B: which engine produced this result */
+  source?:            "gemini" | "tesseract" | "manual";
   d7_brand_detected:  boolean;
   d7_brand_name:      string | null;
 }
@@ -90,6 +94,24 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   // ── Blur / quality warnings (Section 5B) ──────────────────────────────
   const [outdoorQuality, setOutdoorQuality] = useState<ImageQualityResult | null>(null);
   const [indoorQuality,  setIndoorQuality]  = useState<ImageQualityResult | null>(null);
+
+  // ── Section 6B/6C: Offline + Tesseract state ───────────────────────────
+  const [ocrSource,       setOcrSource]      = useState<"gemini" | "tesseract" | null>(null);
+  const [tesseractPct,    setTesseractPct]   = useState<number>(0);
+  const [tesseractStatus, setTesseractStatus] = useState<string>("");
+  const [offlineCount,    setOfflineCount]   = useState<number>(0);
+  const [savedOffline,    setSavedOffline]   = useState(false);
+
+  // Subscribe to offline queue count
+  useEffect(() => {
+    const unsub = subscribeToQueueCount(setOfflineCount);
+    return unsub;
+  }, []);
+
+  // Terminate Tesseract worker when component unmounts
+  useEffect(() => {
+    return () => { terminateTesseractWorker().catch(() => {}); };
+  }, []);
 
   // ── Section 5C: Manual entry tab ───────────────────────────────────────
   const [activeTab, setActiveTab] = useState<"photo" | "manual">("photo");
@@ -228,6 +250,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
 
   // ── Run OCR ─────────────────────────────────────────────────────────────
 
+  // ── Section 6B: Hybrid OCR pipeline — Gemini first, Tesseract fallback ──
   const runOCR = useCallback(async () => {
     if (!outdoorFile) {
       setError("Please capture the outdoor unit nameplate first.");
@@ -237,18 +260,40 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
     setLoading(true);
     setError(null);
     setOcrResult(null);
+    setOcrSource(null);
+    setSavedOffline(false);
+
+    // ── Branch A: Device is fully offline → queue for later ────────────────
+    if (isOffline()) {
+      try {
+        await saveToOfflineQueue(
+          [outdoorFile, ...(indoorFile ? [indoorFile] : [])],
+          { address: "", customerName: "", customerPhone: "" }
+        );
+        setSavedOffline(true);
+      } catch {
+        setError("Offline and could not save to queue. Please retry when connected.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // ── Branch B: Try Gemini AI first ──────────────────────────────────────
+    const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
+    const headers: Record<string, string> = {};
+    if (clerkToken) {
+      headers["Authorization"] = `Bearer ${clerkToken}`;
+    } else if (IS_DEV) {
+      headers["X-Dev-Clerk-User-Id"] = "test_user_mike";
+    }
+
+    let geminiSucceeded = false;
 
     try {
       const fd = new FormData();
       fd.append("outdoor_photo", outdoorFile);
       if (indoorFile) fd.append("indoor_photo", indoorFile);
-
-      const headers: Record<string, string> = {};
-      if (clerkToken) {
-        headers["Authorization"] = `Bearer ${clerkToken}`;
-      } else if (process.env.NEXT_PUBLIC_ENV === "development") {
-        headers["X-Dev-Clerk-User-Id"] = "test_user_mike";
-      }
 
       const res = await fetch(`${API_URL}/api/ocr/nameplate`, {
         method: "POST",
@@ -262,13 +307,55 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       }
 
       const result: OcrResult = await res.json();
-      setOcrResult(result);
+      const withSource: OcrResult = { ...result, source: "gemini" };
+      setOcrResult(withSource);
       setEditedUnit({ ...result.outdoor });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "OCR failed. Try again.");
-    } finally {
-      setLoading(false);
+      setOcrSource("gemini");
+      geminiSucceeded = true;
+    } catch (geminiErr) {
+      // Gemini failed — fall through to Tesseract
+      console.warn("[OCR] Gemini failed, trying local Tesseract:", geminiErr);
     }
+
+    // ── Branch C: Tesseract local fallback ─────────────────────────────────
+    if (!geminiSucceeded) {
+      try {
+        setTesseractPct(0);
+        setTesseractStatus("Starting local OCR…");
+
+        const tessResult = await runTesseractOcr(
+          outdoorFile,
+          indoorFile ?? undefined,
+          (pct, status) => {
+            setTesseractPct(pct);
+            setTesseractStatus(status);
+          }
+        );
+
+        const asOcrResult: OcrResult = {
+          outdoor:           tessResult.outdoor,
+          indoor:            tessResult.indoor,
+          captured_at:       tessResult.captured_at,
+          capture_method:    "tesseract",
+          source:            "tesseract",
+          d7_brand_detected: tessResult.d7_brand_detected,
+          d7_brand_name:     tessResult.d7_brand_name,
+        };
+
+        setOcrResult(asOcrResult);
+        setEditedUnit({ ...tessResult.outdoor });
+        setOcrSource("tesseract");
+      } catch (tessErr) {
+        setError(
+          "Both AI and local OCR failed. Check your connection and try again, or use Manual Entry."
+        );
+        console.error("[OCR] Tesseract also failed:", tessErr);
+      }
+    }
+
+    setLoading(false);
+    setTesseractPct(0);
+    setTesseractStatus("");
   }, [outdoorFile, indoorFile, clerkToken]);
 
   // ── Confirm / persist ───────────────────────────────────────────────────
@@ -317,6 +404,30 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
 
   return (
     <div className="max-w-md mx-auto px-4 pb-8 pt-4 space-y-5">
+
+      {/* Section 6C: Offline saved banner */}
+      {savedOffline && (
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-3">
+          <span className="text-amber-500 text-xl flex-shrink-0">📶</span>
+          <div>
+            <p className="text-sm font-black text-amber-800">Saved for when you're back online</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              This assessment will upload automatically once your connection is restored.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Section 6C: Offline queue badge — shown when items are waiting to sync */}
+      {offlineCount > 0 && !savedOffline && (
+        <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+          <span className="text-orange-500 text-sm">⏳</span>
+          <p className="text-xs font-bold text-orange-800 flex-1">
+            {offlineCount} assessment{offlineCount > 1 ? "s" : ""} waiting to sync
+          </p>
+          <span className="text-[10px] text-orange-400">Auto-syncs on reconnect</span>
+        </div>
+      )}
 
       {/* Header */}
       <div className="bg-white border-2 rounded-2xl overflow-hidden"
@@ -752,14 +863,32 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
         </div>
       )}
 
-      {/* Loading indicator */}
+      {/* Section 6B: Loading indicator — Gemini or Tesseract progress */}
       {loading && (
-        <div className="flex items-center justify-center gap-3 py-2">
-          {[0,1,2].map(i => (
-            <div key={i} className="w-2.5 h-2.5 rounded-full animate-bounce"
-                 style={{ background: "#f39c12", animationDelay: `${i * 0.15}s` }} />
-          ))}
-          <span className="text-sm text-gray-500 font-medium">Gemini reading nameplate...</span>
+        <div className="space-y-2">
+          <div className="flex items-center justify-center gap-3 py-2">
+            {[0,1,2].map(i => (
+              <div key={i} className="w-2.5 h-2.5 rounded-full animate-bounce"
+                   style={{ background: "#f39c12", animationDelay: `${i * 0.15}s` }} />
+            ))}
+            <span className="text-sm text-gray-500 font-medium">
+              {tesseractPct > 0 ? tesseractStatus : "Gemini reading nameplate…"}
+            </span>
+          </div>
+          {/* Tesseract progress bar */}
+          {tesseractPct > 0 && (
+            <div className="mx-2">
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{ width: `${tesseractPct}%`, background: "#f39c12" }}
+                />
+              </div>
+              <p className="text-[10px] text-center text-amber-600 mt-1 font-semibold">
+                Local OCR fallback — AI not reachable
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -774,9 +903,23 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       {editedUnit && (
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
           <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
-            <span className="text-xs font-black uppercase tracking-wider text-green-600">
-              AI Extracted — verify &amp; edit
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-green-600">
+                {ocrSource === "tesseract" ? "Local OCR" : "AI Extracted"} — verify &amp; edit
+              </span>
+              {/* Section 6B: source badge */}
+              {ocrSource && (
+                <span
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{
+                    background: ocrSource === "gemini" ? "#e8f5ee" : "#fff3e0",
+                    color:      ocrSource === "gemini" ? "#1a8754" : "#c4600a",
+                  }}
+                >
+                  {ocrSource === "gemini" ? "✶ Gemini AI" : "📱 Local OCR"}
+                </span>
+              )}
+            </div>
             <span className="text-xs font-mono text-gray-400">{editedUnit.confidence}% confidence</span>
           </div>
 
