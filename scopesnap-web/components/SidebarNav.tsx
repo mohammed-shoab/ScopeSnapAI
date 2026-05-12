@@ -14,7 +14,8 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useClerk, useUser } from "@clerk/nextjs";
 import { featureFlags } from "@/lib/featureFlags";
 import FeedbackModal from "@/components/FeedbackModal";
 
@@ -173,6 +174,14 @@ export default function SidebarNav() {
   const [isMobileOpen, setIsMobileOpen]   = useState(false);
   const [mounted, setMounted]             = useState(false);
   const [feedbackOpen, setFeedbackOpen]   = useState(false);
+  const { signOut } = useClerk();
+  const { user } = useUser();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push("/");
+  };
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -208,7 +217,7 @@ export default function SidebarNav() {
       {/* Sidebar */}
       <aside
         suppressHydrationWarning
-        className={`fixed top-0 left-0 h-screen w-60 overflow-y-auto transition-transform duration-300 ease-in-out z-30 md:z-10 ${
+        className={`fixed top-0 left-0 h-[100dvh] w-60 overflow-hidden transition-transform duration-300 ease-in-out z-30 md:z-10 ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
         style={{ background: "#1a1a18" }}
@@ -265,7 +274,7 @@ export default function SidebarNav() {
           </div>
 
           {/* ââ Nav Sections âââââââââââââââââââââââââââââââââââââââââââââââ */}
-          <nav className="flex-1 px-2.5 py-3 overflow-y-auto">
+          <nav className="flex-1 min-h-0 px-2.5 py-3 overflow-y-auto">
             {navSections.map((section) => (
               <div key={section.section}>
                 <div
@@ -316,29 +325,49 @@ export default function SidebarNav() {
           </div>
 
           {/* ââ Footer / User Area âââââââââââââââââââââââââââââââââââââââââ */}
-          <div className="px-3.5 py-4 border-t" style={{ borderColor: "rgba(255,255,255,.08)" }}>
-            <Link
-              href="/settings"
-              onClick={() => setIsMobileOpen(false)}
-              className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
-            >
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                style={{ background: "#1a8754" }}
+          {/* ── Footer / User Area ───────────────────────────────────────────────────────────────────────────────── */}
+          <div className="px-3 pt-3 pb-20 md:pb-3 border-t flex-shrink-0" style={{ borderColor: "rgba(255,255,255,.08)" }}>
+            <div className="flex items-center gap-2">
+              {/* Avatar + name/email — links to settings */}
+              <Link
+                href="/settings"
+                onClick={() => setIsMobileOpen(false)}
+                className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
+                  style={{ background: "#1a8754" }}
+                >
+                  {user?.firstName
+                    ? user.firstName[0].toUpperCase()
+                    : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  }
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-semibold truncate" style={{ color: "rgba(255,255,255,.85)" }}>
+                    {user?.firstName
+                      ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}`
+                      : user?.emailAddresses?.[0]?.emailAddress ?? "Account"}
+                  </div>
+                  <div className="text-[10px] truncate" style={{ color: "rgba(255,255,255,.4)" }}>
+                    {user?.firstName && user?.emailAddresses?.[0]?.emailAddress
+                      ? user.emailAddresses[0].emailAddress
+                      : "Free Trial"}
+                  </div>
+                </div>
+              </Link>
+              {/* Log Out — always-visible icon, never cut off */}
+              <button
+                onClick={handleSignOut}
+                title="Log Out"
+                className="flex-shrink-0 p-2 rounded-lg transition-all hover:bg-white/10 active:bg-white/20"
+                style={{ color: "rgba(255,255,255,.5)" }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
                 </svg>
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-semibold truncate" style={{ color: "rgba(255,255,255,.85)" }}>
-                  Account &amp; Settings
-                </div>
-                <div className="text-[10px] truncate" style={{ color: "rgba(255,255,255,.4)" }}>
-                  Free Trial
-                </div>
-              </div>
-            </Link>
+              </button>
+            </div>
           </div>
 
         </div>

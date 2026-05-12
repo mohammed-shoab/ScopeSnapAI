@@ -149,9 +149,7 @@ export default function BottomNav() {
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-end justify-around"
       style={{
-        background: "rgba(255,255,255,0.96)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
+        background: "rgba(255,255,255,1)",
         borderTop: "1px solid #e2dfd7",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
         height: "calc(64px + env(safe-area-inset-bottom, 0px))",

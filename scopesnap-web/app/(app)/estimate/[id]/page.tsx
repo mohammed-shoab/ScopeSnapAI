@@ -476,6 +476,8 @@ export default function EstimatePage() {
       trackEvent("report_sent", { estimate_id: id, homeowner_name: homeownerName });
       ph.reportSent(String(id));
       setSent(true);
+      // Auto-save to history on successful send
+      void saveToHistory();
     } catch (e: unknown) {
       trackEvent("email_failed", { estimate_id: id });
       setError(e instanceof Error ? e.message : "Send failed. Check connection and try again.");
@@ -1276,12 +1278,7 @@ export default function EstimatePage() {
                   </button>
                 </>
               )}
-              <button
-                onClick={saveToHistory}
-                className="w-full bg-brand-green text-white font-bold py-3 rounded-xl hover:shadow-lg transition-shadow"
-              >
-                Save to History →
-              </button>
+
             </div>
           ) : (
             /* ── Send Form ── */
