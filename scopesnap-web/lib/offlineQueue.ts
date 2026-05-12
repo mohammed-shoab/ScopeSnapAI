@@ -142,8 +142,9 @@ export async function getOfflineQueueCount(): Promise<number> {
 export async function processOfflineQueue(
   apiUrl: string,
   headers: Record<string, string>,
-): Promise<void> {
+): Promise<{ uploaded: number }> {
   const items = await getOfflineQueue();
+  let uploaded = 0;
   for (const item of items) {
     try {
       const formData = new FormData();
@@ -164,11 +165,13 @@ export async function processOfflineQueue(
 
       if (res.ok) {
         await removeFromOfflineQueue(item.id);
+        uploaded++;
       }
     } catch {
       // Leave in queue — will retry on next sync
     }
   }
+  return { uploaded };
 }
 
 // ── Section 6C additions ──────────────────────────────────────────────────────
@@ -222,9 +225,4 @@ export function setupAutoSync(
   // Sync immediately if already online and there are pending items
   if (navigator.onLine) {
     getOfflineQueueCount().then(count => {
-      if (count > 0) handler();
-    });
-  }
-
-  return () => window.removeEventListener("online", handler);
-}
+      if (count > 0) handler()
