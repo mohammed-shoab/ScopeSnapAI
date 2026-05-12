@@ -274,7 +274,7 @@ export default function SidebarNav() {
           </div>
 
           {/* ââ Nav Sections âââââââââââââââââââââââââââââââââââââââââââââââ */}
-          <nav className="flex-1 px-2.5 py-3 overflow-y-auto">
+          <nav className="flex-1 min-h-0 px-2.5 py-3 overflow-y-auto">
             {navSections.map((section) => (
               <div key={section.section}>
                 <div
