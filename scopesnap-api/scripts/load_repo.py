@@ -69,10 +69,13 @@ PERSONAL_CLAUDE = REPO_DIR.parent / "Personal Claude"
 
 # Try multiple candidate paths for the data files
 _REPO_JSON_CANDIDATES = [
-    Path("/app/data/ac_data_repo.json"),                          # Railway container
+    Path("/app/data/ac_data_repo_houston_v3_merged.json"),          # Railway container (v3 merged)
+    Path("/app/data/ac_data_repo.json"),                            # Railway container (fallback)
+    PERSONAL_CLAUDE / "marketing" / "ac_data_repo_houston_v3_merged.json",  # Local v3 merged
     PERSONAL_CLAUDE / "ScopeSnapAI" / "ac_data_repo.json",
     Path(__file__).parent.parent.parent / "ac_data_repo.json",
     Path("/sessions/pensive-vigilant-cray/mnt/Personal Claude/ScopeSnapAI/ac_data_repo.json"),
+    Path("/sessions/bold-adoring-volta/mnt/Personal Claude/marketing/ac_data_repo_houston_v3_merged.json"),
 ]
 _PRICE_LIST_CANDIDATES = [
     Path("/app/data/SnapAI_HVAC_Master_Price_List_2026.xlsx"),     # Railway container
@@ -207,7 +210,8 @@ async def load_fault_cards(db, data: dict, price_rows: list) -> int:
                      price_list_min, price_list_typical, price_list_max,
                      price_list_primary_parts, price_list_optional_parts,
                      price_list_labor_hours, marks_field_notes,
-                     phase, difficulty, tech_notes)
+                     phase, difficulty, tech_notes,
+                     better_option_estimate)
                 VALUES
                     (:card_id, :card_name, :houston_freq,
                      CAST(:primary_parts AS text[]), CAST(:optional_parts AS text[]),
@@ -215,7 +219,8 @@ async def load_fault_cards(db, data: dict, price_rows: list) -> int:
                      :est_min, :est_typical, :est_max,
                      :pl_min, :pl_typical, :pl_max,
                      :pl_primary, :pl_optional, :pl_labor, :marks_notes,
-                     :phase, :difficulty, :tech_notes)
+                     :phase, :difficulty, :tech_notes,
+                     CAST(:better_option AS jsonb))
             """),
             {
                 "card_id": c["card_id"],
@@ -239,6 +244,7 @@ async def load_fault_cards(db, data: dict, price_rows: list) -> int:
                 "phase": c.get("phase"),
                 "difficulty": c.get("difficulty"),
                 "tech_notes": c.get("tech_notes"),
+                "better_option": json.dumps(c.get("better_option_estimate") or {}),
             },
         )
     print(f"  ✓ fault_cards: {len(cards)} rows")
@@ -515,6 +521,104 @@ async def load_lifecycle_rules(db) -> int:
     return len(rules)
 
 
+# ── Defaults loader ───────────────────────────────────────────────────────────
+async def load_defaults(db, data: dict) -> int:
+    """Load defaults section into data_defaults table."""
+    defaults = data.get("defaults")
+    if not defaults:
+        print("  ⚠ defaults: not found in JSON — skipping")
+        return 0
+    await db.execute(text("""
+        CREATE TABLE IF NOT EXISTS data_defaults (
+            id                    SERIAL PRIMARY KEY,
+            market                TEXT,
+            refrigerant_by_year   JSONB,
+            cap_uf_by_tonnage      JSONB,
+            electrical_by_tonnage  JSONB,
+            tech_warning          TEXT,
+            inverter_note         TEXT,
+            created_at            TIMESTAMPTZ DEFAULT NOW()
+        )
+    """))
+    await db.execute(text("TRUNCATE data_defaults"))
+    await db.execute(
+        text("""
+            INSERT INTO data_defaults
+                (market, refrigerant_by_year, cap_uf_by_tonnage,
+                 electrical_by_tonnage, tech_warning, inverter_note)
+            VALUES
+                (:market, CAST(:ref_by_year AS jsonb), CAST(:cap_uf AS jsonb),
+                 CAST(:electrical AS jsonb), :warning, :inverter_note)
+        """),
+        {
+            "market": data.get("metadata", {}).get("market", "Houston TX"),
+            "ref_by_year": json.dumps(defaults.get("refrigerant_by_install_year", {})),
+            "cap_uf": json.dumps(defaults.get("cap_uf_by_tonnage", {})),
+            "electrical": json.dumps(defaults.get("electrical_by_tonnage", {})),
+            "warning": defaults.get("tech_warning"),
+            "inverter_note": defaults.get("inverter_note"),
+        }
+    )
+    print("  ✓ data_defaults: 1 row")
+    return 1
+
+
+# ── Replacement costs loader ───────────────────────────────────────────────────
+async def load_replacement_costs(db, data: dict) -> int:
+    """Load replacement_cost_estimates into its own table."""
+    rce = data.get("replacement_cost_estimates")
+    if not rce:
+        print("  ⚠ replacement_cost_estimates: not found — skipping")
+        return 0
+    await db.execute(text("""
+        CREATE TABLE IF NOT EXISTS replacement_cost_estimates (
+            id            SERIAL PRIMARY KEY,
+            tonnage       NUMERIC,
+            price_min     INTEGER,
+            price_max     INTEGER,
+            price_typical INTEGER,
+            notes         TEXT,
+            created_at    TIMESTAMPTZ DEFAULT NOW()
+        )
+    """))
+    await db.execute(text("TRUNCATE replacement_cost_estimates"))
+    count = 0
+    by_tonnage = rce.get("by_tonnage", {})
+    for tonnage_key, costs in by_tonnage.items():
+        await db.execute(
+            text("""
+                INSERT INTO replacement_cost_estimates
+                    (tonnage, price_min, price_max, price_typical, notes)
+                VALUES (:tonnage, :pmin, :pmax, :ptypical, :notes)
+            """),
+            {
+                "tonnage": float(tonnage_key),
+                "pmin": costs.get("min"),
+                "pmax": costs.get("max"),
+                "ptypical": costs.get("typical"),
+                "notes": rce.get("notes"),
+            },
+        )
+        count += 1
+    default = rce.get("default_if_tonnage_unknown", {})
+    if default:
+        await db.execute(
+            text("""
+                INSERT INTO replacement_cost_estimates
+                    (tonnage, price_min, price_max, price_typical, notes)
+                VALUES (0, :pmin, :pmax, :ptypical, 'default when tonnage unknown')
+            """),
+            {
+                "pmin": default.get("min"),
+                "pmax": default.get("max"),
+                "ptypical": default.get("typical"),
+            },
+        )
+        count += 1
+    print(f"  ✓ replacement_cost_estimates: {count} rows")
+    return count
+
+
 # ── data_repo_versions record ──────────────────────────────────────────────────
 async def record_version(db, data: dict, counts: dict) -> None:
     version = data["metadata"]["version"]
@@ -582,7 +686,9 @@ async def main(dry_run: bool = False) -> None:
             counts["error_codes"]   = await load_error_codes(db, data)
             counts["labor_rates"]   = await load_labor_rates(db, data)
             counts["legacy_prefixes"] = await load_legacy_prefixes(db, data)
-            counts["lifecycle_rules"] = await load_lifecycle_rules(db)
+            counts["lifecycle_rules"]    = await load_lifecycle_rules(db)
+            counts["defaults"]           = await load_defaults(db, data)
+            counts["replacement_costs"]  = await load_replacement_costs(db, data)
 
             await record_version(db, data, counts)
             await db.commit()
