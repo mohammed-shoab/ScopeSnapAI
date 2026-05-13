@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { formatCurrency } from "@/lib/market";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -58,7 +59,7 @@ interface PresentModeProps {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 function fmt(n?: number) {
-  return n != null ? "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "—";
+  return formatCurrency(n);
 }
 
 function getAnnualSavings(opt: Option): number {

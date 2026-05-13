@@ -49,6 +49,11 @@ export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
 
+  // Inject x-market based on hostname so server components know which market is active.
+  const hostname = request.headers.get("host") || "";
+  const market = hostname.startsWith("pk.") ? "PK" : "US";
+  requestHeaders.set("x-market", market);
+
   // Always allow public paths
   if (isPublicPath(pathname)) {
     return NextResponse.next({ request: { headers: requestHeaders } });
@@ -100,11 +105,4 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except static files:
-     * /_next/static, /_next/image, .ico, .png, .jpg, etc.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
-  ],
-};
+  mat

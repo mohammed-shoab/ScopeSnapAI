@@ -17,6 +17,7 @@ import { API_URL } from "@/lib/api";
 import { trackEvent } from "@/lib/tracking";
 import { ph } from "@/providers/PostHogProvider";
 import PresentMode from "@/components/PresentMode";
+import { formatCurrency } from "@/lib/market";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
@@ -81,7 +82,7 @@ interface EstimateData {
 }
 
 function fmt(n?: number) {
-  return n != null ? "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "—";
+  return formatCurrency(n);
 }
 
 function fmtHr(n?: number) {

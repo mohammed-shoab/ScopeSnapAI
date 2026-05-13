@@ -8,6 +8,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { API_URL } from "@/lib/api";
+import { formatCurrency } from "@/lib/market";
 
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
 
@@ -54,7 +55,7 @@ interface AnalyticsData {
 
 function fmt(n?: number | null) {
   if (n === null || n === undefined) return "—";
-  return "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  return formatCurrency(n);
 }
 
 function pct(n?: number | null) {

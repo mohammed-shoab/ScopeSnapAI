@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
+import { formatCurrency } from "@/lib/market";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
@@ -64,7 +65,7 @@ function labelify(s: string) {
 
 function fmt(n?: number | null) {
   if (n == null) return "—";
-  return "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  return formatCurrency(n);
 }
 
 const DEFAULT_NEW: Omit<PricingRule, "id" | "company_id"> = {

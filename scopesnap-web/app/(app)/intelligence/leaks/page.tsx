@@ -12,6 +12,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { API_URL } from "@/lib/api";
+import { formatCurrency } from "@/lib/market";
 
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
 
@@ -56,7 +57,7 @@ interface LeakItem {
 }
 
 function fmt(n: number) {
-  return "$" + Math.round(n).toLocaleString("en-US");
+  return formatCurrency(n);
 }
 
 function daysSince(dateStr: string | null): number {

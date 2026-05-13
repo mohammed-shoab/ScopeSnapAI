@@ -17,6 +17,7 @@ import { API_URL } from "@/lib/api";
 import { trackEvent } from "@/lib/tracking";
 import { ph } from "@/providers/PostHogProvider";
 import PresentMode from "@/components/PresentMode";
+import { formatCurrency } from "@/lib/market";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
@@ -81,7 +82,7 @@ interface EstimateData {
 }
 
 function fmt(n?: number) {
-  return n != null ? "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "—";
+  return formatCurrency(n);
 }
 
 function fmtHr(n?: number) {
@@ -476,8 +477,6 @@ export default function EstimatePage() {
       trackEvent("report_sent", { estimate_id: id, homeowner_name: homeownerName });
       ph.reportSent(String(id));
       setSent(true);
-      // Auto-save to history on successful send
-      void saveToHistory();
     } catch (e: unknown) {
       trackEvent("email_failed", { estimate_id: id });
       setError(e instanceof Error ? e.message : "Send failed. Check connection and try again.");
@@ -1278,7 +1277,12 @@ export default function EstimatePage() {
                   </button>
                 </>
               )}
-
+              <button
+                onClick={saveToHistory}
+                className="w-full bg-brand-green text-white font-bold py-3 rounded-xl hover:shadow-lg transition-shadow"
+              >
+                Save to History →
+              </button>
             </div>
           ) : (
             /* ── Send Form ── */

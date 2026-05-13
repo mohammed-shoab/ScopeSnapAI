@@ -4,6 +4,8 @@
  * Handles auth headers, error parsing, and dev mode shortcuts.
  */
 
+import { detectMarket } from "./market";
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // Dev mode: bypass Clerk auth with test user
@@ -128,6 +130,7 @@ async function apiFetch<T>(
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "X-Market": detectMarket(),
     ...(fetchOptions.headers as Record<string, string>),
   };
 
@@ -192,9 +195,12 @@ export async function uploadAssessment(
   photos.forEach((photo) => formData.append("photos", photo));
   if (propertyId) formData.append("property_id", propertyId);
 
-  const authHeaders: Record<string, string> = IS_DEV
-    ? { "X-Dev-Clerk-User-Id": DEV_USER_ID }
-    : { Authorization: `Bearer ${token}` };
+  const authHeaders: Record<string, string> = {
+    "X-Market": detectMarket(),
+    ...(IS_DEV
+      ? { "X-Dev-Clerk-User-Id": DEV_USER_ID }
+      : { Authorization: `Bearer ${token}` }),
+  };
 
   const response = await fetch(`${API_URL}/api/assessments/`, {
     method: "POST",
@@ -317,8 +323,4 @@ export async function listEstimates(token: string, limit = 20): Promise<{ items:
 
 // ── Public Report (no auth) ───────────────────────────────────────────────────
 
-export async function getPublicReport(
-  reportToken: string
-): Promise<Record<string, unknown>> {
-  return apiFetch(`/api/reports/${reportToken}`);
-}
+export async function get

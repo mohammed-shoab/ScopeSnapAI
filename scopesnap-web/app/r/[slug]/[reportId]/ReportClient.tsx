@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import DataConfidenceLabel from "@/components/DataConfidenceLabel";
 import { track } from "@/lib/tracking";
+import { formatCurrency } from "@/lib/market";
 
 /**
  * ReportQRCode — SOW Task 1.9 (Zuckerberg requirement)
@@ -149,8 +150,7 @@ const CONDITION_BG: Record<string, string> = {
 };
 
 function fmt(n: number | undefined | null): string {
-  if (n == null || isNaN(n as number)) return "$0";
-  return (n as number).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  return formatCurrency(n as number);
 }
 
 /** Convert snake_case slugs to Title Case for display ("evaporator_coil" → "Evaporator Coil") */

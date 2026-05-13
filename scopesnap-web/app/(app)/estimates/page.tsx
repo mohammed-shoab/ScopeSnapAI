@@ -9,6 +9,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
+import { formatCurrency } from "@/lib/market";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 
@@ -39,7 +40,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }>
 };
 
 function fmt(n?: number) {
-  return n != null ? "$" + n.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "—";
+  return formatCurrency(n);
 }
 
 function timeAgo(dateStr?: string) {
