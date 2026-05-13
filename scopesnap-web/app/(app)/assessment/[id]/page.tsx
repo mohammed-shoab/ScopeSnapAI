@@ -381,6 +381,15 @@ export default function EstimatePage() {
       fetch(`${API_URL}/api/estimates/${id}`, { headers })
         .then((r) => r.json())
         .then((data: EstimateData) => {
+          // Normalize tier names: fault_estimate.py writes "A"/"B"/"C",
+          // estimate_engine.py writes "good"/"better"/"best". Unify to the latter.
+          const tierMap: Record<string, string> = { A: "good", B: "better", C: "best" };
+          if (data.options) {
+            data.options = data.options.map((opt) => ({
+              ...opt,
+              tier: tierMap[opt.tier] ?? opt.tier,
+            }));
+          }
           setEstimate(data);
           setMarkup(data.markup_percent || 35);
           setLoading(false);
@@ -1357,15 +1366,4 @@ export default function EstimatePage() {
 
               <button
                 onClick={sendEstimate}
-                disabled={sending || (!sendEmail && !sendPhone)}
-                className="w-full bg-brand-green text-white font-bold py-4 rounded-xl text-base shadow-lg shadow-green-200 hover:shadow-xl disabled:opacity-40 transition-shadow"
-              >
-                {sending ? "Sending..." : `Send${homeownerName ? ` to ${homeownerName}` : ""} →`}
-              </button>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
+                disable
