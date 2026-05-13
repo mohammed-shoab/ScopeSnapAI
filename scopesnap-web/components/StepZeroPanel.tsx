@@ -153,7 +153,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
     const t = setTimeout(async () => {
       setModelSearching(true);
       try {
-        const results = await searchModels(selectedBrand, modelQuery, undefined, 12);
+        const results = await searchModels(selectedBrand, modelQuery, undefined, 50);
         setModelResults(results);
         setShowModelDropdown(results.length > 0);
       } catch {
@@ -177,6 +177,24 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
         const parts = model.tonnage_range.split("-").map(Number).filter(n => !isNaN(n));
         if (parts.length === 2) next.tonnage = Math.round((parts[0] + parts[1]) / 2 * 2) / 2;
         else if (parts.length === 1) next.tonnage = parts[0];
+      }
+      // Refrigerant: derive from manufacture_years (e.g. "2011-2023" → start year)
+      if (model.manufacture_years) {
+        const yearStr = model.manufacture_years.split("-")[0].trim();
+        const yr = parseInt(yearStr, 10);
+        if (!isNaN(yr)) {
+          if (yr < 2010) {
+            next.refrigerant = "R-22";
+            next.r22_alert   = true;
+            next.is_legacy   = true;
+          } else if (yr >= 2023) {
+            next.refrigerant = "R-454B";
+            next.r22_alert   = false;
+          } else {
+            next.refrigerant = "R-410A";
+            next.r22_alert   = false;
+          }
+        }
       }
       return next;
     });
@@ -532,7 +550,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                       setModelQuery(e.target.value);
                       setShowModelDropdown(true);
                     }}
-                    onFocus={() => modelResults.length > 0 && setShowModelDropdown(true)}
+                    onFocus={() => setShowModelDropdown(true)}
                     placeholder={`Search ${selectedBrand} models…`}
                     className="w-full text-sm font-mono font-semibold rounded-lg border px-3 py-2 focus:outline-none transition-colors"
                     style={{
@@ -594,7 +612,13 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                       {manualUnit.brand_id} — {manualUnit.series_id}
                     </span>
                     {manualUnit.tonnage && (
-                      <span className="text-xs text-green-600 ml-2">({manualUnit.tonnage}t auto-filled)</span>
+                      <span className="text-xs text-green-600 ml-2">({manualUnit.tonnage}t</span>
+                    )}
+                    {manualUnit.refrigerant && (
+                      <span className="text-xs text-green-600">, {manualUnit.refrigerant} auto-filled)</span>
+                    )}
+                    {manualUnit.tonnage && !manualUnit.refrigerant && (
+                      <span className="text-xs text-green-600"> auto-filled)</span>
                     )}
                   </div>
                   <button
