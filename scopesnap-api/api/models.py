@@ -10,6 +10,8 @@ No auth required — this is reference data, not tenant data.
 Rate-limited to 60 req/min per IP.
 """
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
@@ -172,5 +174,5 @@ async def all_models(
     return {
         "models": [_model_row(m) for m in models],
         "count": len(models),
-        "cached_at": func.now(),  # client uses response timestamp for TTL
+        "cached_at": datetime.now(timezone.utc).isoformat(),  # client uses this for 24hr TTL
     }
