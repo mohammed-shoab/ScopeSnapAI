@@ -80,14 +80,12 @@ function AssessPageInner() {
   const [showSendMoment, setShowSendMoment]     = useState(false);
   const [companyPhone, setCompanyPhone]         = useState<string | null>(null);
   const [companyName, setCompanyName]           = useState<string>("");
-  const [clerkToken, setClerkToken]             = useState<string | null>(null);
   // Pending action to run after modal completes
   const [pendingEstimateAction, setPendingEstimateAction] = useState<(() => void) | null>(null);
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (IS_DEV) return DEV_HEADER;
     const token = await getToken();
-    if (token) setClerkToken(token);
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, [getToken]);
 
@@ -363,7 +361,7 @@ function AssessPageInner() {
           {/* placeholder — modal covers the screen */}
         </div>
         <SendMomentModal
-          clerkToken={clerkToken}
+          getToken={IS_DEV ? null : getToken}
           existingName={companyName}
           existingPhone={companyPhone || ""}
           onComplete={() => {

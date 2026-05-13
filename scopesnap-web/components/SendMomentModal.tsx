@@ -21,8 +21,12 @@ const SESSION_KEY = "snapai_send_moment_done";
 interface Props {
   /** Called after the user submits (or if the modal is not needed) */
   onComplete: () => void;
-  /** JWT token for API auth */
-  clerkToken: string | null;
+  /**
+   * Async getter that returns a fresh JWT for API auth.
+   * Calling it on every submit avoids "expired session token" errors
+   * when the Clerk JWT has lapsed since the page was loaded.
+   */
+  getToken: (() => Promise<string | null>) | null;
   /** Pre-fill from existing company record */
   existingName?: string;
   existingPhone?: string;
@@ -43,7 +47,7 @@ export function markSendMomentDone() {
 
 export default function SendMomentModal({
   onComplete,
-  clerkToken,
+  getToken,
   existingName = "",
   existingPhone = "",
 }: Props) {
@@ -66,10 +70,12 @@ export default function SendMomentModal({
     setError(null);
 
     try {
+      // Fetch a fresh token every submit so an expired session never blocks saving.
       const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (!IS_DEV && clerkToken) {
-        headers.Authorization = `Bearer ${clerkToken}`;
-      } else if (IS_DEV) {
+      if (!IS_DEV) {
+        const freshToken = getToken ? await getToken() : null;
+        if (freshToken) headers.Authorization = `Bearer ${freshToken}`;
+      } else {
         headers["X-Dev-Clerk-User-Id"] = "test_user_mike";
       }
 
@@ -91,7 +97,7 @@ export default function SendMomentModal({
     } finally {
       setSaving(false);
     }
-  }, [name, phone, clerkToken, onComplete]);
+  }, [name, phone, getToken, onComplete]);
 
   return (
     /* Backdrop */

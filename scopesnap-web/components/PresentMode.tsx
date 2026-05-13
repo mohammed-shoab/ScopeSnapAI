@@ -448,7 +448,7 @@ export default function PresentMode({ estimate, selectedTier, onClose, onSelectT
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col"
+      className="fixed inset-0 z-[200] flex flex-col"
       style={{ background: "#0a0a08" }}
       onTouchStart={(e) => setTouchStart(e.touches[0].clientX)}
       onTouchEnd={(e) => {
