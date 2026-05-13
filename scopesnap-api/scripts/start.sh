@@ -28,6 +28,12 @@ PYTHONUNBUFFERED=1 python -u /app/scripts/load_repo.py || echo "Data repo load s
 echo "Data repo step complete"
 
 echo ""
+echo "Seeding equipment models (all 15 brands — skips existing rows)..."
+PYTHONUNBUFFERED=1 python -u /app/scripts/seed_equipment_db.py || echo "Equipment seed skipped (non-fatal)"
+PYTHONUNBUFFERED=1 python -u /app/scripts/seed_missing_brands.py || echo "Missing-brand seed skipped (non-fatal)"
+echo "Equipment model seed complete"
+
+echo ""
 echo "Starting uvicorn..."
 
 # Calculate workers: 2 x CPU cores + 1 (standard formula for async workers)
@@ -37,17 +43,4 @@ PORT=${PORT:-8000}
 
 if [ "${ENVIRONMENT}" = "production" ]; then
     echo "  Mode: PRODUCTION (${WORKERS} workers, no reload)"
-    exec uvicorn main:app \
-        --host 0.0.0.0 \
-        --port "${PORT}" \
-        --workers "${WORKERS}" \
-        --log-level info \
-        --access-log
-else
-    echo "  Mode: DEVELOPMENT (1 worker, --reload)"
-    exec uvicorn main:app \
-        --host 0.0.0.0 \
-        --port "${PORT}" \
-        --reload \
-        --log-level debug
-fi
+    exec uv
