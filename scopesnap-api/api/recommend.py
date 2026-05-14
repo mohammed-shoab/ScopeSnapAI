@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from db.database import get_db
 from api.auth import get_current_user, AuthContext
+from api.dependencies import get_tables, MarketTables
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/estimates", tags=["estimates"])
@@ -27,6 +28,7 @@ async def get_recommended_tier(
     age_years: Optional[float] = Query(None, description="Unit age in years (from Step Zero OCR)"),
     condition_signal: Optional[str] = Query(None, description="Condition signal (e.g. photo_confirmed_pitting, under_warranty)"),
     auth: AuthContext = Depends(get_current_user),
+    tables: MarketTables = Depends(get_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -41,9 +43,9 @@ async def get_recommended_tier(
     # Try condition + age match first
     if condition_signal and age_years is not None:
         row = await db.execute(
-            text("""
+            text(f"""
                 SELECT recommended_tier, note
-                FROM lifecycle_rules
+                FROM {tables.lifecycle_rules}
                 WHERE card_id = :card_id
                   AND condition_signal = :condition
                   AND (age_threshold_years IS NULL OR :age >= age_threshold_years)
@@ -62,8 +64,8 @@ async def get_recommended_tier(
     # Try condition match without age
     if condition_signal:
         row = await db.execute(
-            text("""
-                SELECT recommended_tier, note FROM lifecycle_rules
+            text(f"""
+                SELECT recommended_tier, note FROM {tables.lifecycle_rules}
                 WHERE card_id = :card_id AND condition_signal = :condition
                 ORDER BY age_threshold_years DESC NULLS LAST LIMIT 1
             """),
@@ -76,8 +78,8 @@ async def get_recommended_tier(
 
     # Try default for this card
     row = await db.execute(
-        text("""
-            SELECT recommended_tier, note FROM lifecycle_rules
+        text(f"""
+            SELECT recommended_tier, note FROM {tables.lifecycle_rules}
             WHERE card_id = :card_id AND condition_signal = 'default'
             LIMIT 1
         """),

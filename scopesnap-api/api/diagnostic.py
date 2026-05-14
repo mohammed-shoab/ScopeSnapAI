@@ -28,6 +28,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import AuthContext, get_current_user
+from api.dependencies import get_tables, MarketTables
 from db.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -124,10 +125,11 @@ async def _load_assessment(
     return result.fetchone()
 
 
-async def _get_fault_card_name(db: AsyncSession, card_id: int) -> Optional[str]:
+async def _get_fault_card_name(db: AsyncSession, card_id: int, tables: MarketTables = None) -> Optional[str]:
     """BUG-003b: alias column so .name resolves correctly."""
+    fc_table = tables.fault_cards if tables else "fault_cards"
     result = await db.execute(
-        text("SELECT card_name AS name FROM fault_cards WHERE card_id = :cid LIMIT 1"),
+        text(f"SELECT card_name AS name FROM {fc_table} WHERE card_id = :cid LIMIT 1"),
         {"cid": card_id},
     )
     row = result.fetchone()
@@ -477,6 +479,7 @@ async def _call_error_code_lookup(
     action_config: dict,
     ocr_nameplate: Optional[dict],
     photo_ai_output: Optional[str],
+    tables: MarketTables = None,
 ) -> str:
     """
     Resolve the error_code Q1 action: lookup brand+code in error_codes table,
@@ -502,10 +505,11 @@ async def _call_error_code_lookup(
     code_clean = str(photo_ai_output).strip()
 
     try:
+        ec_table = tables.error_codes if tables else "error_codes"
         result = await db.execute(
-            text("""
+            text(f"""
                 SELECT ec.subsystem, ec.meaning, ec.severity
-                FROM error_codes ec
+                FROM {ec_table} ec
                 WHERE (
                         LOWER(ec.brand_family) = :brand
                     OR  :brand = ANY(ec.brand_family_members::text[])
@@ -596,6 +600,7 @@ async def _process_branch(
     branch: dict,
     assessment_id: str = "",
     company_id: str = "",
+    tables: MarketTables = None,
 ) -> AnswerResponse:
     """
     Translate a branch dict into an AnswerResponse.
@@ -639,7 +644,7 @@ async def _process_branch(
     # ── resolve_card ───────────────────────────────────────────────────────────
     if "resolve_card" in branch:
         card_id: int = branch["resolve_card"]
-        card_name = await _get_fault_card_name(db, card_id)
+        card_name = await _get_fault_card_name(db, card_id, tables)
         photo_slots: List[dict] = branch.get("photo_slots") or []
         await _resolve_session(db, session_id, card_id)
         return AnswerResponse(
@@ -704,6 +709,7 @@ async def _process_branch(
 async def start_session(
     body: StartSessionRequest,
     auth: AuthContext = Depends(get_current_user),
+    tables: MarketTables = Depends(get_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -785,6 +791,7 @@ async def submit_answer(
     session_id: str,
     body: AnswerRequest,
     auth: AuthContext = Depends(get_current_user),
+    tables: MarketTables = Depends(get_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -833,6 +840,7 @@ async def submit_answer(
                 return await _process_branch(
                     db, session_id, session.complaint_type, skip_branch,
                     assessment_id=session.assessment_id, company_id=auth.company_id,
+                    tables=tables,
                 )
 
         # Extract AI-read code from answer (may be None when branch_key injection is used)
@@ -841,7 +849,7 @@ async def submit_answer(
             photo_ai_output = body.answer.get("ai_output") or body.answer.get("code")
 
         # BUG-005 fix embedded in _call_error_code_lookup
-        resolved_bk = await _call_error_code_lookup(db, action_config, ocr, photo_ai_output)
+        resolved_bk = await _call_error_code_lookup(db, action_config, ocr, photo_ai_output, tables=tables)
         after_map: dict = action_config.get("after", {})
         branch = after_map.get(resolved_bk) or after_map.get("nuisance_or_unknown")
 
@@ -854,6 +862,7 @@ async def submit_answer(
         return await _process_branch(
             db, session_id, session.complaint_type, branch,
             assessment_id=session.assessment_id, company_id=auth.company_id,
+            tables=tables,
         )
 
     # ── Compute branch_key (BUG-003 fix) ─────────────────────────────────
@@ -881,6 +890,7 @@ async def submit_answer(
     return await _process_branch(
         db, session_id, session.complaint_type, branch,
         assessment_id=session.assessment_id, company_id=auth.company_id,
+        tables=tables,
     )
 
 

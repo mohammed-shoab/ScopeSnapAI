@@ -21,6 +21,7 @@ from sqlalchemy import text
 
 from db.database import get_db
 from api.auth import get_current_user, AuthContext
+from api.dependencies import get_tables, MarketTables
 from api.events import record_event, EventPayload
 
 logger = logging.getLogger(__name__)
@@ -73,6 +74,7 @@ async def lookup_error_code(
     brand: str = Query(..., description="Brand name or family (e.g. 'carrier', 'mitsubishi', 'goodman')"),
     code: str = Query(..., description="Error code (e.g. 'U4', '4_flash', 'E9')"),
     auth: AuthContext = Depends(get_current_user),
+    tables: MarketTables = Depends(get_tables),
     db: AsyncSession = Depends(get_db),
     request=None,
 ):
@@ -91,7 +93,7 @@ async def lookup_error_code(
     # ── Query error_codes table ────────────────────────────────────────────────
     # Try exact brand_family match first, then member array match, then partial
     row = await db.execute(
-        text("""
+        text(f"""
             SELECT
                 ec.brand_family,
                 ec.brand_family_members,
@@ -103,8 +105,8 @@ async def lookup_error_code(
                 ec.decision_tree_card,
                 fc.card_name,
                 fc.houston_frequency_pct
-            FROM error_codes ec
-            LEFT JOIN fault_cards fc ON fc.card_id = ec.decision_tree_card
+            FROM {tables.error_codes} ec
+            LEFT JOIN {tables.fault_cards} fc ON fc.card_id = ec.decision_tree_card
             WHERE (
                     LOWER(ec.brand_family) = :brand
                 OR  :brand = ANY(ec.brand_family_members::text[])
@@ -173,6 +175,7 @@ async def lookup_error_code(
 @router.get("/brands", response_model=list[BrandFamily])
 async def list_error_code_brands(
     auth: AuthContext = Depends(get_current_user),
+    tables: MarketTables = Depends(get_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -180,12 +183,12 @@ async def list_error_code_brands(
     Used to populate the brand dropdown on Tab F.
     """
     rows = await db.execute(
-        text("""
+        text(f"""
             SELECT
                 brand_family,
                 brand_family_members,
                 COUNT(*) as code_count
-            FROM error_codes
+            FROM {tables.error_codes}
             GROUP BY brand_family, brand_family_members
             ORDER BY code_count DESC
         """),

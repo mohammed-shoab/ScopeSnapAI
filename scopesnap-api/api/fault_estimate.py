@@ -34,6 +34,7 @@ from sqlalchemy import text, select
 from db.database import get_db
 from db.models import Estimate, Assessment
 from api.auth import get_current_user, AuthContext
+from api.dependencies import get_tables, MarketTables
 
 logger = logging.getLogger(__name__)
 
@@ -176,6 +177,7 @@ class FaultCardEstimateResponse(BaseModel):
 async def generate_fault_card_estimate(
     body: FaultCardEstimateRequest,
     auth: AuthContext = Depends(get_current_user),
+    tables: MarketTables = Depends(get_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -192,11 +194,11 @@ async def generate_fault_card_estimate(
 
     # 1. Load fault card (includes better_option_estimate)
     fc_row = await db.execute(
-        text("""
+        text(f"""
             SELECT card_id, card_name, phase, difficulty, tech_notes,
                    price_list_min, price_list_typical, price_list_max,
                    better_option_estimate
-            FROM fault_cards
+            FROM {tables.fault_cards}
             WHERE card_id = :card_id
         """),
         {"card_id": body.card_id},
@@ -220,10 +222,10 @@ async def generate_fault_card_estimate(
 
     # 3. Load surcharge config
     lr_row = await db.execute(
-        text("""
+        text(f"""
             SELECT attic_premium_min, attic_premium_max,
                    r22_surcharge_min, r22_surcharge_max
-            FROM labor_rates_houston LIMIT 1
+            FROM {tables.labor_rates} LIMIT 1
         """),
     )
     lr = lr_row.fetchone()
@@ -245,7 +247,7 @@ async def generate_fault_card_estimate(
     repl_row = await db.execute(
         text("""
             SELECT price_min, price_max, price_typical
-            FROM replacement_cost_estimates
+            FROM {tables.replacement_costs}
             WHERE tonnage = :t ORDER BY id LIMIT 1
         """),
         {"t": body.tonnage or 0},
@@ -253,7 +255,7 @@ async def generate_fault_card_estimate(
     repl = repl_row.fetchone()
     if not repl:
         repl_row2 = await db.execute(
-            text("SELECT price_min, price_max, price_typical FROM replacement_cost_estimates WHERE tonnage = 0 LIMIT 1"),
+            text(f"SELECT price_min, price_max, price_typical FROM {tables.replacement_costs} WHERE tonnage = 0 LIMIT 1"),
         )
         repl = repl_row2.fetchone()
     repl_typical = repl.price_typical if repl else 5500
@@ -262,7 +264,7 @@ async def generate_fault_card_estimate(
     using_defaults = False
     defaults_warning = None
     if not body.tonnage:
-        drow = await db.execute(text("SELECT tech_warning FROM data_defaults LIMIT 1"))
+        drow = await db.execute(text(f"SELECT tech_warning FROM {tables.data_defaults} LIMIT 1"))
         defs = drow.fetchone()
         if defs and defs.tech_warning:
             using_defaults = True
