@@ -323,4 +323,8 @@ export async function listEstimates(token: string, limit = 20): Promise<{ items:
 
 // ── Public Report (no auth) ───────────────────────────────────────────────────
 
-export async function get
+export async function getPublicReport(
+  reportToken: string
+): Promise<Record<string, unknown>> {
+  return apiFetch(`/api/reports/${reportToken}`);
+}
