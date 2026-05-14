@@ -50,13 +50,13 @@ _US_TABLES = MarketTables(
 
 _PK_TABLES = MarketTables(
     market="PK",
-    fault_cards="pak_fault_cards",
-    error_codes="pak_error_codes",
-    labor_rates="pak_labor_rates",
-    data_defaults="pak_data_defaults",
-    replacement_costs="pak_replacement_costs",
-    lifecycle_rules="pak_lifecycle_rules",
-    brands="pak_brands",
+    fault_cards="pak_fault_cards_v",       # view: maps pkr_est_* → price_list_*, adds NULL phase/difficulty
+    error_codes="pak_error_codes_v",       # view: maps brand_id→brand_family, code→error_code, description→meaning
+    labor_rates="pak_labor_rates_v",       # view: maps PKR labor cols → Houston col names (attic/r22)
+    data_defaults="pak_data_defaults",     # direct: has tech_warning column ✓
+    replacement_costs="pak_replacement_costs_v",  # view: maps pkr_min/max/typical → price_min/max/typical
+    lifecycle_rules="pak_lifecycle_rules_v",      # view: US-compatible schema, 0 rows → falls to default
+    brands="pak_brands",                   # direct: not queried by API endpoints (yet)
 )
 
 
