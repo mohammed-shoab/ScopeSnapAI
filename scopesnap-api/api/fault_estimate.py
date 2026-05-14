@@ -245,7 +245,7 @@ async def generate_fault_card_estimate(
 
     # 5. Load replacement cost
     repl_row = await db.execute(
-        text("""
+        text(f"""
             SELECT price_min, price_max, price_typical
             FROM {tables.replacement_costs}
             WHERE tonnage = :t ORDER BY id LIMIT 1
