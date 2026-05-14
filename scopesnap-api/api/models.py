@@ -175,29 +175,48 @@ async def all_models(
             text("SELECT name, series FROM pak_brands ORDER BY pakistan_prevalence DESC NULLS LAST, name ASC")
         )
         rows = result.fetchall()
-        def _series_str(series_val: object, brand_name: str) -> str:
-            """series column is JSONB — extract .name string or fall back to brand."""
-            if series_val is None:
-                return brand_name
-            if isinstance(series_val, dict):
-                return str(series_val.get("name", brand_name))
-            return str(series_val)
-
-        models = [
-            {
-                "id": f"pk-{r.name.lower().replace(' ', '-')}",
-                "brand": r.name,
-                "model_series": _series_str(r.series, r.name),
-                "equipment_type": "split_ac",
-                "seer_rating": None,
-                "tonnage_range": None,
-                "manufacture_years": None,
-                "avg_lifespan_years": None,
-                "known_issues": [],
-                "replacement_models": [],
-            }
-            for r in rows
-        ]
+        models = []
+        for r in rows:
+            # series is JSONB — either None, a list of series objects, or a single dict
+            series_list = r.series if isinstance(r.series, list) else (
+                [r.series] if isinstance(r.series, dict) else []
+            )
+            if not series_list:
+                models.append({
+                    "id": f"pk-{r.name.lower().replace(' ', '-')}",
+                    "brand": r.name,
+                    "model_series": r.name,
+                    "equipment_type": "split_ac",
+                    "seer_rating": None,
+                    "tonnage_range": None,
+                    "manufacture_years": None,
+                    "avg_lifespan_years": None,
+                    "known_issues": [],
+                    "replacement_models": [],
+                })
+            else:
+                for s in series_list:
+                    if not isinstance(s, dict):
+                        continue
+                    sname = str(s.get("name", r.name))
+                    tonnage_data = s.get("tonnage_data") or {}
+                    tonnages = sorted(tonnage_data.keys()) if tonnage_data else []
+                    tonnage_range = (
+                        f"{tonnages[0]}-{tonnages[-1]}" if len(tonnages) >= 2
+                        else (tonnages[0] if tonnages else None)
+                    )
+                    models.append({
+                        "id": f"pk-{r.name.lower().replace(' ', '-')}-{sname.lower().replace(' ', '-')}",
+                        "brand": r.name,
+                        "model_series": sname,
+                        "equipment_type": "split_ac",
+                        "seer_rating": None,
+                        "tonnage_range": tonnage_range,
+                        "manufacture_years": None,
+                        "avg_lifespan_years": None,
+                        "known_issues": [],
+                        "replacement_models": [],
+                    })
         return {
             "models": models,
             "count": len(models),
