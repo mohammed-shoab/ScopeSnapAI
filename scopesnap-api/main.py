@@ -84,6 +84,7 @@ app.add_middleware(
     allow_origins=[
         settings.frontend_url,
         "https://snapai.mainnov.tech",
+        "https://pk.snapai.mainnov.tech",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
