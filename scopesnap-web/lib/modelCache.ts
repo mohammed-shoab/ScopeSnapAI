@@ -11,8 +11,11 @@
  */
 
 import { API_URL } from "@/lib/api";
+import { detectMarket } from "@/lib/market";
 
-const DB_NAME    = "snapai_models";
+// Use separate IndexedDB databases per market so US and PK caches don't collide.
+const _market    = typeof window !== "undefined" ? detectMarket() : "US";
+const DB_NAME    = _market === "PK" ? "snapai_models_pk" : "snapai_models";
 const DB_VERSION = 1;
 const STORE_META = "meta";
 const STORE_MODELS = "models";
@@ -127,8 +130,11 @@ function idbClear(db: IDBDatabase, store: string): Promise<void> {
 
 async function fetchAndCache(): Promise<EquipmentModelRecord[]> {
   const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
+  const market = detectMarket();
 
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    "X-Market": market,  // tell the API which market we're in
+  };
   if (IS_DEV) headers["X-Dev-Clerk-User-Id"] = "test_user_mike";
 
   let models: EquipmentModelRecord[] = [];

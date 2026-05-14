@@ -160,14 +160,42 @@ async def lookup_models(
 @limiter.limit("10/minute")
 async def all_models(
     request: Request,
+    market: str = Depends(get_market),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Returns ALL equipment models for local IndexedDB caching.
     Clients should call this once and cache with 24-hour TTL.
 
-    Returns up to 500 models (current DB has 50).
+    For PK market: returns Pakistan brands as synthetic model records.
+    For US market: returns up to 500 US equipment models.
     """
+    if market == "PK":
+        result = await db.execute(
+            text("SELECT name, series FROM pak_brands ORDER BY pakistan_prevalence DESC NULLS LAST, name ASC")
+        )
+        rows = result.fetchall()
+        models = [
+            {
+                "id": f"pk-{r.name.lower().replace(' ', '-')}",
+                "brand": r.name,
+                "model_series": r.series if r.series else r.name,
+                "equipment_type": "split_ac",
+                "seer_rating": None,
+                "tonnage_range": None,
+                "manufacture_years": None,
+                "avg_lifespan_years": None,
+                "known_issues": [],
+                "replacement_models": [],
+            }
+            for r in rows
+        ]
+        return {
+            "models": models,
+            "count": len(models),
+            "cached_at": datetime.now(timezone.utc).isoformat(),
+        }
+
     result = await db.execute(
         select(EquipmentModel)
         .order_by(EquipmentModel.brand.asc(), EquipmentModel.model_series.asc())
