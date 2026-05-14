@@ -375,12 +375,27 @@ async def _generate_service_estimate(
 # ── Question row → response schema ────────────────────────────────────────────
 
 
-def _row_to_question_out(row: Any) -> QuestionOut:
-    """Convert a diagnostic_questions DB row to the API response schema."""
+_PK_PSI_HINTS: dict[str, str] = {
+    "suction":   "PK typical — R-32: 120–140 PSI | R-410A: 125–145 PSI | R-22: 65–88 PSI (at 40 °C ambient)",
+    "discharge":  "PK typical — R-32: 365–410 PSI | R-410A: 325–370 PSI | R-22: 250–310 PSI (at 40 °C ambient)",
+}
+
+
+def _row_to_question_out(row: Any, market: str = "US") -> QuestionOut:
+    """Convert a diagnostic_questions DB row to the API response schema.
+
+    For PK market, PSI reading questions get localised pressure-range hints
+    instead of the US-centric defaults stored in the database.
+    """
+    hint = row.hint_text
+    if market == "PK" and isinstance(row.reading_spec, dict) and row.reading_spec.get("type") == "psi":
+        subtype = row.reading_spec.get("subtype", "suction")
+        hint = _PK_PSI_HINTS.get(subtype, hint)
+
     return QuestionOut(
         step_id=row.step_id,
         question_text=row.question_text,
-        hint_text=row.hint_text,
+        hint_text=hint,
         input_type=row.input_type,
         # options_jsonb serves dual purpose:
         #   visual_select → [{value, label, icon}]
@@ -717,7 +732,7 @@ async def _process_branch(
                 escalation_reason=f"Question '{next_step_id}' not found in database.",
             )
         await _set_session_step(db, session_id, next_step_id)
-        return AnswerResponse(next_step=_row_to_question_out(next_row), finding=finding)
+        return AnswerResponse(next_step=_row_to_question_out(next_row, tables.market), finding=finding)
 
     # ── jump_to_complaint (error_code q4-reset "no" branch) ───────────────────
     if "jump_to_complaint" in branch:
@@ -742,7 +757,7 @@ async def _process_branch(
                 "sid": session_id,
             },
         )
-        return AnswerResponse(next_step=_row_to_question_out(first_row))
+        return AnswerResponse(next_step=_row_to_question_out(first_row, tables.market))
 
     # ── unrecognised branch structure ──────────────────────────────────────────
     logger.error("[diagnostic] branch has no recognised action key: %s", branch)
@@ -813,13 +828,13 @@ async def start_session(
                 await _set_session_step(db, session_id, next_row.step_id)
                 return StartSessionResponse(
                     session_id=session_id,
-                    current_step=_row_to_question_out(next_row),
+                    current_step=_row_to_question_out(next_row, tables.market),
                 )
 
         # phase_2_gate / escalate from Q1 auto — rare, surface to caller
         return StartSessionResponse(
             session_id=session_id,
-            current_step=_row_to_question_out(first_row),
+            current_step=_row_to_question_out(first_row, tables.market),
         )
 
     # ── Normal (non-auto) first question ─────────────────────────────────────
@@ -833,7 +848,7 @@ async def start_session(
     )
     return StartSessionResponse(
         session_id=session_id,
-        current_step=_row_to_question_out(first_row),
+        current_step=_row_to_question_out(first_row, tables.market),
     )
 
 
@@ -1043,6 +1058,7 @@ async def list_questions(
 async def undo_step(
     session_id: str = Path(...),
     auth: AuthContext = Depends(get_current_user),
+    tables: MarketTables = Depends(get_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -1076,32 +1092,10 @@ async def undo_step(
     await _set_session_step(db, session_id, prev_row.step_id)
     return StartSessionResponse(
         session_id=session_id,
-        current_step=_row_to_question_out(prev_row),
+        current_step=_row_to_question_out(prev_row, tables.market),
     )
 
 
 @router.get("/session/{session_id}", response_model=StartSessionResponse)
 async def resume_session(
-    session_id: str = Path(...),
-    auth: AuthContext = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Resume a diagnostic session — return session_id + current question.
-    Used when the tech navigates back to an in-progress assessment.
-    """
-    session = await _load_session(db, session_id, auth.company_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Diagnostic session not found.")
-
-    q_row = await _load_question(db, session.complaint_type, session.current_step_id)
-    if not q_row:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Current step '{session.current_step_id}' not found.",
-        )
-
-    return StartSessionResponse(
-        session_id=session_id,
-        current_step=_row_to_question_out(q_row),
-    )
+    session_id: str =
