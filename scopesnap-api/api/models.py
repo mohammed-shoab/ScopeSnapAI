@@ -175,11 +175,19 @@ async def all_models(
             text("SELECT name, series FROM pak_brands ORDER BY pakistan_prevalence DESC NULLS LAST, name ASC")
         )
         rows = result.fetchall()
+        def _series_str(series_val: object, brand_name: str) -> str:
+            """series column is JSONB — extract .name string or fall back to brand."""
+            if series_val is None:
+                return brand_name
+            if isinstance(series_val, dict):
+                return str(series_val.get("name", brand_name))
+            return str(series_val)
+
         models = [
             {
                 "id": f"pk-{r.name.lower().replace(' ', '-')}",
                 "brand": r.name,
-                "model_series": r.series if r.series else r.name,
+                "model_series": _series_str(r.series, r.name),
                 "equipment_type": "split_ac",
                 "seer_rating": None,
                 "tonnage_range": None,
