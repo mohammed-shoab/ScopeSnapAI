@@ -114,8 +114,9 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
     return () => { terminateTesseractWorker().catch(() => {}); };
   }, []);
 
-  // ── Market detection ───────────────────────────────────────────────────
-  const isPK = typeof window !== "undefined" ? detectMarket() === "PK" : false;
+  // ── Market detection (useEffect so it runs after hydration, not SSR) ──
+  const [isPK, setIsPK] = useState(false);
+  useEffect(() => { setIsPK(detectMarket() === "PK"); }, []);
 
   // ── Section 5C: Manual entry tab ───────────────────────────────────────
   const [activeTab, setActiveTab] = useState<"photo" | "manual">("photo");
