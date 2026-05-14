@@ -21,6 +21,7 @@ import JobConfirmationCard, { FaultCardOption } from "@/components/diagnostic/Jo
 import { PhotoSlotSpec, PhotoResult } from "@/components/diagnostic/PhotoSlot";
 import ServiceChecklist, { ServiceEstimateResult } from "@/components/diagnostic/ServiceChecklist";
 import SendMomentModal, { needsSendMoment, markSendMomentDone } from "@/components/SendMomentModal";
+import { detectMarket } from "@/lib/market";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
@@ -84,9 +85,10 @@ function AssessPageInner() {
   const [pendingEstimateAction, setPendingEstimateAction] = useState<(() => void) | null>(null);
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
-    if (IS_DEV) return DEV_HEADER;
+    const market = detectMarket();
+    if (IS_DEV) return { ...DEV_HEADER, "X-Market": market };
     const token = await getToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    return token ? { Authorization: `Bearer ${token}`, "X-Market": market } : { "X-Market": market };
   }, [getToken]);
 
   /**
