@@ -14,11 +14,12 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, text
 from typing import Optional
 
 from db.database import get_db
 from db.models import EquipmentModel
+from api.dependencies import get_market
 from rate_limit import limiter
 from fastapi import Request
 
@@ -52,19 +53,21 @@ def _model_row(m: EquipmentModel) -> dict:
 @limiter.limit("60/minute")
 async def list_brands(
     request: Request,
+    market: str = Depends(get_market),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Returns all distinct brands with their model count, sorted by prevalence
-    (total_assessments desc, then alphabetically).
-
-    Response:
-      [
-        {"brand": "Carrier", "model_count": 10},
-        {"brand": "Trane",   "model_count": 10},
-        ...
-      ]
+    Returns all distinct brands with their model count, sorted by prevalence.
+    For PK market: returns brands from pak_brands table (Gree, Haier, etc.)
+    For US market: returns brands from equipment_models table (Carrier, Trane, etc.)
     """
+    if market == "PK":
+        result = await db.execute(
+            text("SELECT name FROM pak_brands ORDER BY pakistan_prevalence DESC NULLS LAST, name ASC")
+        )
+        rows = result.fetchall()
+        return [{"brand": r.name, "model_count": 1} for r in rows]
+
     result = await db.execute(
         select(
             EquipmentModel.brand,
