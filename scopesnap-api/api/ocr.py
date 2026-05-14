@@ -29,6 +29,7 @@ from sqlalchemy import select, update
 from db.database import get_db
 from db.models import Assessment, EquipmentModel
 from api.auth import get_current_user, AuthContext
+from api.dependencies import get_market
 from services.vision import get_vision_service, VisionAnalysisError
 from services.serial_decoder import decode_serial
 from prompts.nameplate_ocr import NAMEPLATE_OCR_PROMPT
@@ -307,6 +308,60 @@ async def ocr_nameplate(
     return response
 
 
+# ── PK defaults helper ─────────────────────────────────────────────────────────
+
+async def _apply_pak_defaults(outdoor: dict, db: AsyncSession) -> dict:
+    """
+    For PK market: if cap_uf or electrical fields are missing but tonnage is
+    known, back-fill from pak_data_defaults JSONB columns.
+
+    Tonnage keys in the table are strings "1.0", "1.5", "2.0".
+    capacitor_uf is formatted as "<compressor_uf>/<fan_uf>" e.g. "35/2.5".
+    """
+    from sqlalchemy import text as sql_text
+
+    tonnage = outdoor.get("tonnage")
+    if not tonnage:
+        return outdoor
+
+    # Round to nearest 0.5 ton and format as string key
+    rounded = round(float(tonnage) * 2) / 2
+    ton_key = f"{rounded:.1f}"
+
+    try:
+        row = await db.execute(
+            sql_text("SELECT cap_uf_by_tonnage, electrical_by_tonnage FROM pak_data_defaults LIMIT 1")
+        )
+        defs = row.fetchone()
+        if not defs:
+            return outdoor
+
+        cap_data  = (defs.cap_uf_by_tonnage  or {}).get(ton_key) or {}
+        elec_data = (defs.electrical_by_tonnage or {}).get(ton_key) or {}
+
+        updated = dict(outdoor)
+
+        # capacitor_uf: "<compressor>/<fan>" string
+        if not updated.get("capacitor_uf") and cap_data.get("compressor_uf"):
+            fan_uf  = cap_data.get("fan_uf", "")
+            comp_uf = cap_data["compressor_uf"]
+            updated["capacitor_uf"] = f"{comp_uf}/{fan_uf}" if fan_uf else str(comp_uf)
+            updated["capacitor_uf_from_defaults"] = True   # surface warning in UI
+
+        if not updated.get("mca") and elec_data.get("mca"):
+            updated["mca"] = elec_data["mca"]
+        if not updated.get("mocp") and elec_data.get("mocp"):
+            updated["mocp"] = elec_data["mocp"]
+        if not updated.get("voltage") and elec_data.get("voltage"):
+            updated["voltage"] = elec_data["voltage"]
+
+        return updated
+
+    except Exception as e:
+        logger.warning(f"[OCR] pak_data_defaults lookup failed: {e}")
+        return outdoor
+
+
 # ── PATCH /api/assessments/{id}/nameplate ─────────────────────────────────────
 
 @router.patch("/assessments/{assessment_id}/nameplate", status_code=200)
@@ -314,6 +369,7 @@ async def save_nameplate(
     assessment_id: str,
     body: NameplateSaveRequest,
     auth: AuthContext = Depends(get_current_user),
+    market: str = Depends(get_market),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -333,6 +389,10 @@ async def save_nameplate(
 
     ocr_data = body.ocr_result
     ocr_data["saved_at"] = datetime.now(timezone.utc).isoformat()
+
+    # PK market: back-fill missing cap/electrical from pak_data_defaults
+    if market == "PK" and isinstance(ocr_data.get("outdoor"), dict):
+        ocr_data["outdoor"] = await _apply_pak_defaults(ocr_data["outdoor"], db)
 
     # Persist on assessment
     await db.execute(

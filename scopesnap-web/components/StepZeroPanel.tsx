@@ -14,6 +14,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { API_URL } from "@/lib/api";
 import { checkImageQuality, type ImageQualityResult } from "@/lib/imageQuality";
 import { getBrands, searchModels, type EquipmentModelRecord } from "@/lib/modelCache";
+import { detectMarket } from "@/lib/market";
 import { isOffline, subscribeToQueueCount, saveToOfflineQueue } from "@/lib/offlineQueue";
 import { runTesseractOcr, terminateTesseractWorker } from "@/lib/tesseractOcr";
 
@@ -113,6 +114,9 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
     return () => { terminateTesseractWorker().catch(() => {}); };
   }, []);
 
+  // ── Market detection ───────────────────────────────────────────────────
+  const isPK = typeof window !== "undefined" ? detectMarket() === "PK" : false;
+
   // ── Section 5C: Manual entry tab ───────────────────────────────────────
   const [activeTab, setActiveTab] = useState<"photo" | "manual">("photo");
   const BLANK_UNIT: NameplateUnit = {
@@ -123,6 +127,8 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
     year_of_manufacture: null, r22_alert: false, confidence: 100, notes: null,
   };
   const [manualUnit, setManualUnit] = useState<NameplateUnit>({ ...BLANK_UNIT });
+  // PK-only: explicit refrigerant selection ("R-32" | "R-410A" | "R-22" | "not_sure")
+  const [pkRefrigerant, setPkRefrigerant] = useState<string>("not_sure");
 
   // ── Section 5A: Brand/model lookup ─────────────────────────────────────────
   const [brands,           setBrands]           = useState<Array<{ brand: string; model_count: number }>>([]);
@@ -178,8 +184,8 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
         if (parts.length === 2) next.tonnage = Math.round((parts[0] + parts[1]) / 2 * 2) / 2;
         else if (parts.length === 1) next.tonnage = parts[0];
       }
-      // Refrigerant: derive from manufacture_years (e.g. "2011-2023" → start year)
-      if (model.manufacture_years) {
+      // Refrigerant: derive from manufacture_years — US only; PK uses explicit picker
+      if (!isPK && model.manufacture_years) {
         const yearStr = model.manufacture_years.split("-")[0].trim();
         const yr = parseInt(yearStr, 10);
         if (!isNaN(yr)) {
@@ -209,8 +215,8 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
         ? (value === "" ? null : parseFloat(value))
         : (value || null);
       const next = { ...prev, [key]: parsed };
-      // 5D-1: auto-set refrigerant from year_of_manufacture
-      if (key === "year_of_manufacture" && parsed !== null) {
+      // 5D-1: auto-set refrigerant from year_of_manufacture — US only; PK uses explicit picker
+      if (!isPK && key === "year_of_manufacture" && parsed !== null) {
         const yr = parsed as number;
         if (yr < 2010) {
           next.refrigerant = "R-22";
@@ -230,8 +236,12 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
 
   /** Confirm manual entry — wraps manualUnit into an OcrResult */
   const handleManualConfirm = useCallback(() => {
+    // PK: bake the picker selection into the outdoor unit before confirming
+    const outdoor = isPK
+      ? { ...manualUnit, refrigerant: pkRefrigerant }
+      : { ...manualUnit };
     const result: OcrResult = {
-      outdoor: { ...manualUnit },
+      outdoor,
       indoor: null,
       captured_at: new Date().toISOString(),
       capture_method: "manual",
@@ -239,7 +249,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       d7_brand_name: null,
     };
     onConfirm(result);
-  }, [manualUnit, onConfirm]);
+  }, [manualUnit, pkRefrigerant, isPK, onConfirm]);
 
   // ── Photo selection ─────────────────────────────────────────────────────
 
@@ -614,10 +624,10 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                     {manualUnit.tonnage && (
                       <span className="text-xs text-green-600 ml-2">({manualUnit.tonnage}t</span>
                     )}
-                    {manualUnit.refrigerant && (
+                    {!isPK && manualUnit.refrigerant && (
                       <span className="text-xs text-green-600">, {manualUnit.refrigerant} auto-filled)</span>
                     )}
-                    {manualUnit.tonnage && !manualUnit.refrigerant && (
+                    {!isPK && manualUnit.tonnage && !manualUnit.refrigerant && (
                       <span className="text-xs text-green-600"> auto-filled)</span>
                     )}
                   </div>
@@ -635,6 +645,53 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
               )}
             </div>
           </div>
+
+          {/* ── PK-only: Refrigerant Picker ───────────────────────────────────── */}
+          {isPK && (
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-gray-100">
+                <span className="text-xs font-black uppercase tracking-wider text-blue-600">
+                  ❄️ Refrigerant Type
+                </span>
+              </div>
+              <div className="p-3">
+                <p className="text-[10px] text-gray-400 mb-2">
+                  Check the nameplate or outdoor unit label. If unknown, select "Not Sure".
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["R-32", "R-410A", "R-22", "not_sure"] as const).map((ref) => {
+                    const label = ref === "not_sure" ? "Not Sure" : ref;
+                    const desc: Record<string, string> = {
+                      "R-32":    "Newer inverter units",
+                      "R-410A":  "Common 2010–2022",
+                      "R-22":    "Older / legacy units",
+                      "not_sure": "Use R-410A targets",
+                    };
+                    const isSelected = pkRefrigerant === ref;
+                    return (
+                      <button
+                        key={ref}
+                        onClick={() => setPkRefrigerant(ref)}
+                        className="flex flex-col items-start px-3 py-2 rounded-xl border-2 transition-all text-left"
+                        style={{
+                          borderColor: isSelected ? "#1a8754" : "#e2dfd7",
+                          background:  isSelected ? "#f0faf6" : "#fafaf8",
+                        }}
+                      >
+                        <span
+                          className="text-sm font-black"
+                          style={{ color: isSelected ? "#1a8754" : "#374151" }}
+                        >
+                          {label}
+                        </span>
+                        <span className="text-[10px] text-gray-400 mt-0.5">{desc[ref]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* R-22 alert for manual entry */}
           {manualUnit.r22_alert && (
@@ -656,7 +713,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
               </span>
             </div>
             <div className="p-3 grid grid-cols-2 gap-2">
-              {OCR_FIELDS.map(({ key, label, unit, type }) => {
+              {OCR_FIELDS.filter(f => !(isPK && f.key === "refrigerant")).map(({ key, label, unit, type }) => {
                 const val = manualUnit[key];
                 const displayVal = val === null || val === undefined ? "" : String(val);
                 const isEmpty = displayVal === "";
@@ -705,7 +762,9 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             </button>
           </div>
           <p className="text-center text-xs text-gray-400">
-            Year field auto-selects R-22, R-410A, or R-454B
+            {isPK
+              ? "Select refrigerant type above for accurate pressure targets"
+              : "Year field auto-selects R-22, R-410A, or R-454B"}
           </p>
         </div>
       )}

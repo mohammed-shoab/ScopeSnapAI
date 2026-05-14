@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import posthog from "posthog-js";
 import { API_URL } from "@/lib/api";
+import { detectMarket } from "@/lib/market";
 import YesNoButtons from "./YesNoButtons";
 import VisualSelect from "./VisualSelect";
 import PhotoSlot, { PhotoSlotSpec, PhotoResult } from "./PhotoSlot";
@@ -233,10 +234,29 @@ export default function DiagnosticFlow({
     try {
       const h = await getAuthHeaders();
       setLiveHeaders(h);
+      // PK: include refrigerant_type for server-side pressure evaluation
+      const isPK = detectMarket() === "PK";
+      const isPsiReading =
+        isPK &&
+        currentQuestion.input_type === "reading" &&
+        currentQuestion.reading_spec?.type === "psi";
+      // ocrNameplate is the full OcrResult: {outdoor: {...}, indoor: null, ...}
+      const outdoorUnit = (ocrNameplate as Record<string, unknown> | null)
+        ?.outdoor as Record<string, unknown> | undefined;
+      const refrigerantType = isPsiReading
+        ? ((outdoorUnit?.refrigerant as string) || "not_sure")
+        : undefined;
+
+      const requestBody: Record<string, unknown> = { answer };
+      if (refrigerantType) {
+        requestBody.refrigerant_type = refrigerantType;
+        requestBody.ambient_c = 40; // default mid-summer; future: tech-entered ambient
+      }
+
       const r = await fetch(`${API_URL}/api/diagnostic/session/${sessionId}/answer`, {
         method: "POST",
         headers: { ...h, "Content-Type": "application/json" },
-        body: JSON.stringify({ answer }),
+        body: JSON.stringify(requestBody),
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));

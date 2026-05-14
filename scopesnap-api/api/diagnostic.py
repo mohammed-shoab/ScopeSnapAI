@@ -45,6 +45,9 @@ class StartSessionRequest(BaseModel):
 
 class AnswerRequest(BaseModel):
     answer: Any
+    # PK-only: refrigerant type for server-side pressure evaluation
+    refrigerant_type: Optional[str] = None   # "R-32" | "R-410A" | "R-22" | "not_sure"
+    ambient_c: Optional[int] = None          # outdoor ambient °C; defaults to 40
 
 
 class QuestionOut(BaseModel):
@@ -556,6 +559,54 @@ async def _call_error_code_lookup(
     return bk if bk in after_map else "nuisance_or_unknown"
 
 
+# ── PK pressure evaluation ────────────────────────────────────────────────────
+
+
+async def _pk_evaluate_pressure(
+    db: AsyncSession,
+    value: float,
+    subtype: str,           # "suction" | "discharge"
+    refrigerant: str,       # "R-32" | "R-410A" | "R-22" | "not_sure"
+    ambient_c: int = 40,    # default mid-summer Pakistan
+) -> str:
+    """
+    Look up pak_operating_targets and return "low" | "ok" | "high".
+    "not_sure" defaults to R-410A.
+    Falls back to US thresholds (60/110 PSI suction) if table lookup fails.
+    """
+    ref = refrigerant if refrigerant != "not_sure" else "R-410A"
+
+    # Find the nearest ambient row (floor to nearest available step)
+    try:
+        row = await db.execute(
+            text(
+                "SELECT suction_min_psi, suction_max_psi, discharge_min_psi, discharge_max_psi "
+                "FROM pak_operating_targets "
+                "WHERE refrigerant = :ref AND ambient_c <= :amb "
+                "ORDER BY ambient_c DESC LIMIT 1"
+            ),
+            {"ref": ref, "amb": ambient_c},
+        )
+        targets = row.fetchone()
+    except Exception as e:
+        logger.warning("[diagnostic] pak_operating_targets lookup failed: %s", e)
+        targets = None
+
+    if not targets:
+        # Fallback: US thresholds
+        lo, hi = (60, 110) if subtype == "suction" else (200, 400)
+    elif subtype == "suction":
+        lo, hi = float(targets.suction_min_psi), float(targets.suction_max_psi)
+    else:
+        lo, hi = float(targets.discharge_min_psi), float(targets.discharge_max_psi)
+
+    if value < lo:
+        return "low"
+    if value > hi:
+        return "high"
+    return "ok"
+
+
 # ── Branch following ───────────────────────────────────────────────────────────
 
 
@@ -868,6 +919,25 @@ async def submit_answer(
     # ── Compute branch_key (BUG-003 fix) ─────────────────────────────────
     branch_key = _compute_branch_key(body.answer, q_row.input_type)
 
+    # ── PK pressure override: server-side evaluation against pak_operating_targets ─
+    if (
+        tables.market == "PK"
+        and q_row.input_type == "reading"
+        and isinstance(q_row.reading_spec, dict)
+        and q_row.reading_spec.get("type") == "psi"
+        and isinstance(body.answer, dict)
+        and body.answer.get("value") is not None
+    ):
+        subtype = q_row.reading_spec.get("subtype", "suction")
+        raw_psi = float(body.answer["value"])
+        refrigerant = body.refrigerant_type or "not_sure"
+        ambient = body.ambient_c or 40
+        branch_key = await _pk_evaluate_pressure(db, raw_psi, subtype, refrigerant, ambient)
+        logger.info(
+            "[diagnostic] PK pressure override: %.1f PSI %s → %s (ref=%s, amb=%d°C)",
+            raw_psi, subtype, branch_key, refrigerant, ambient,
+        )
+
     # ── Follow branch ─────────────────────────────────────────────────────────
     branch = _follow_branch(branch_logic, branch_key)
 
@@ -892,6 +962,49 @@ async def submit_answer(
         assessment_id=session.assessment_id, company_id=auth.company_id,
         tables=tables,
     )
+
+
+@router.get("/pk/pressure-targets")
+async def pk_pressure_targets(
+    refrigerant: str = "not_sure",
+    ambient_c: int = 40,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    PK-only: return expected suction/discharge PSI ranges for a given
+    refrigerant type and outdoor ambient temperature.
+
+    Used by the frontend to display target ranges on the pressure reading step.
+
+    GET /api/diagnostic/pk/pressure-targets?refrigerant=R-32&ambient_c=40
+
+    Response:
+      {
+        "refrigerant_used": "R-32",
+        "ambient_c": 40,
+        "suction": {"min": 120, "max": 140},
+        "discharge": {"min": 365, "max": 410}
+      }
+    """
+    ref = refrigerant if refrigerant != "not_sure" else "R-410A"
+    row = await db.execute(
+        text(
+            "SELECT suction_min_psi, suction_max_psi, discharge_min_psi, discharge_max_psi, ambient_c "
+            "FROM pak_operating_targets "
+            "WHERE refrigerant = :ref AND ambient_c <= :amb "
+            "ORDER BY ambient_c DESC LIMIT 1"
+        ),
+        {"ref": ref, "amb": ambient_c},
+    )
+    targets = row.fetchone()
+    if not targets:
+        return {"error": "No targets found", "refrigerant_used": ref, "ambient_c": ambient_c}
+    return {
+        "refrigerant_used": ref,
+        "ambient_c": targets.ambient_c,
+        "suction":   {"min": float(targets.suction_min_psi),   "max": float(targets.suction_max_psi)},
+        "discharge":  {"min": float(targets.discharge_min_psi), "max": float(targets.discharge_max_psi)},
+    }
 
 
 @router.get("/questions/{complaint_type}")
