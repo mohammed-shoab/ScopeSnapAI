@@ -80,4 +80,8 @@ export function formatCurrency(
   const { currencySymbol, locale } = MARKET_CONFIG[m];
   return (
     currencySymbol +
-    Math.round(n 
+    Math.round(n as number).toLocaleString(locale, {
+      maximumFractionDigits: 0,
+    })
+  );
+}
