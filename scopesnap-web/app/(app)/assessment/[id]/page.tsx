@@ -17,7 +17,8 @@ import { API_URL } from "@/lib/api";
 import { trackEvent } from "@/lib/tracking";
 import { ph } from "@/providers/PostHogProvider";
 import PresentMode from "@/components/PresentMode";
-import { formatCurrency } from "@/lib/market";
+import { formatCurrency, detectMarket } from "@/lib/market";
+import { useLang } from "@/lib/language-context";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
@@ -338,6 +339,7 @@ export default function EstimatePage() {
     const token = await getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, [getToken]);
+  const { t } = useLang();
   const [estimate, setEstimate] = useState<EstimateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("estimate");
@@ -1271,7 +1273,7 @@ export default function EstimatePage() {
               )}
 
               <p className="text-xs text-text-secondary">
-                Auto follow-ups: 24h if not viewed &middot; 48h if viewed &middot; 7 days final check-in.
+                {t("Auto follow-ups: 24h if not viewed · 48h if viewed · 7 days final check-in.")}
               </p>
               {estimate.homeowner_report_url && (
                 <>
@@ -1299,17 +1301,17 @@ export default function EstimatePage() {
               {/* Header */}
               <div className="card p-4 space-y-1">
                 <h2 className="font-extrabold text-base">
-                  {homeownerName ? `Send to ${homeownerName}` : "Send to Homeowner"}
+                  {homeownerName ? `${t("Send to Homeowner").replace("Homeowner", homeownerName)}` : t("Send to Homeowner")}
                 </h2>
                 <p className="text-xs text-text-secondary">
-                  They'll get a personalized report with all options, pricing, and energy savings.
+                  {t("They'll get a personalized report with all options, pricing, and energy savings.")}
                 </p>
               </div>
 
               <div className="card p-4 space-y-4">
                 {/* Homeowner name */}
                 <div>
-                  <label className="text-xs text-text-secondary block mb-2 font-semibold">Homeowner Name</label>
+                  <label className="text-xs text-text-secondary block mb-2 font-semibold">{t("Homeowner Name")}</label>
                   <input
                     type="text"
                     placeholder="Sarah Johnson"
@@ -1319,7 +1321,7 @@ export default function EstimatePage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-text-secondary block mb-2 font-semibold">Email Address</label>
+                  <label className="text-xs text-text-secondary block mb-2 font-semibold">{t("Email Address")}</label>
                   <input
                     type="email"
                     placeholder="homeowner@email.com"
@@ -1329,7 +1331,7 @@ export default function EstimatePage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-text-secondary block mb-2 font-semibold">Phone (SMS)</label>
+                  <label className="text-xs text-text-secondary block mb-2 font-semibold">{t("Phone (SMS)")}</label>
                   <input
                     type="tel"
                     placeholder="(555) 555-5555"
@@ -1347,12 +1349,12 @@ export default function EstimatePage() {
               {estimate.homeowner_report_url && (
                 <div className="card p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold">Report Link</p>
+                    <p className="text-sm font-semibold">{t("Report Link")}</p>
                     <button
                       onClick={() => navigator.clipboard.writeText(estimate.homeowner_report_url!)}
                       className="text-xs text-brand-green font-semibold hover:underline"
                     >
-                      Copy
+                      {t("Copy")}
                     </button>
                   </div>
                   <div className="bg-surface-secondary rounded-lg p-3 font-mono text-xs text-brand-green break-all">
@@ -1365,12 +1367,39 @@ export default function EstimatePage() {
                 <p className="text-sm text-brand-red bg-brand-red-light p-3 rounded-xl">⚠ {error}</p>
               )}
 
+              {/* PK market: WhatsApp as primary send option */}
+              {detectMarket() === "PK" && estimate.homeowner_report_url && sendPhone && (
+                <a
+                  href={(() => {
+                    const digits = sendPhone.replace(/\D/g, "");
+                    const pk = digits.startsWith("92") ? digits : `92${digits.replace(/^0/, "")}`;
+                    const msg = encodeURIComponent(`آپ کی AC مرمت کا تخمینہ تیار ہے۔ رپورٹ دیکھیں:\n${estimate.homeowner_report_url}`);
+                    return `https://wa.me/${pk}?text=${msg}`;
+                  })()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full text-white font-bold py-4 rounded-xl text-base transition-all hover:brightness-110 active:scale-95"
+                  style={{ background: "#25D366", boxShadow: "0 4px 14px rgba(37,211,102,.4)" }}
+                >
+                  {/* WhatsApp icon */}
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                  </svg>
+                  {t("Send via WhatsApp")}
+                </a>
+              )}
+
+              {/* Email/SMS send button — primary for US, secondary for PK */}
               <button
                 onClick={sendEstimate}
                 disabled={sending || (!sendEmail && !sendPhone)}
-                className="w-full bg-brand-green text-white font-bold py-4 rounded-xl text-base shadow-lg shadow-green-200 hover:shadow-xl disabled:opacity-40 transition-shadow"
+                className={`w-full font-bold py-4 rounded-xl text-base transition-all disabled:opacity-40 ${
+                  detectMarket() === "PK"
+                    ? "border-2 border-brand-green text-brand-green bg-white hover:bg-green-50"
+                    : "bg-brand-green text-white shadow-lg shadow-green-200 hover:shadow-xl"
+                }`}
               >
-                {sending ? "Sending..." : `Send${homeownerName ? ` to ${homeownerName}` : ""} →`}
+                {sending ? t("Sending...") : (detectMarket() === "PK" ? t("Send via Email") : `Send${homeownerName ? ` to ${homeownerName}` : ""} →`)}
               </button>
             </div>
           )}

@@ -18,6 +18,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { featureFlags } from "@/lib/featureFlags";
 import FeedbackModal from "@/components/FeedbackModal";
+import LanguageToggle from "@/components/LanguageToggle";
+import { useLang } from "@/lib/language-context";
 
 // ââ SVG icon definitions (no emojis â clean, professional, accessible) ââââââââ
 const NavIcons: Record<string, React.ReactNode> = {
@@ -177,6 +179,7 @@ export default function SidebarNav() {
   const { signOut } = useClerk();
   const { user } = useUser();
   const router = useRouter();
+  const { t } = useLang();
 
   const handleSignOut = async () => {
     await signOut();
@@ -269,7 +272,7 @@ export default function SidebarNav() {
                 <circle cx="8" cy="8" r="7.25" stroke="white" strokeWidth="1.5" strokeOpacity="0.6"/>
                 <path d="M8 5v6M5 8h6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
               </svg>
-              New Assessment
+              {t("New Assessment")}
             </Link>
           </div>
 
@@ -302,7 +305,7 @@ export default function SidebarNav() {
                       <span className="w-5 flex-shrink-0 flex items-center justify-center opacity-70">
                         {NavIcons[item.iconKey] ?? null}
                       </span>
-                      <span className="flex-1">{item.label}</span>
+                      <span className="flex-1">{t(item.label)}</span>
                     </Link>
                   ))}
                 </div>
@@ -311,7 +314,12 @@ export default function SidebarNav() {
           </nav>
 
           {/* ââ Feedback Button ââââââââââââââââââââââââââââââââââââââââââââ */}
-          <div className="px-3 pb-2">
+          {/* Language Toggle (PK market only) */}
+          <div className="px-3 pb-1 flex justify-start">
+            <LanguageToggle />
+          </div>
+
+                    <div className="px-3 pb-2">
             <button
               onClick={() => { setFeedbackOpen(true); setIsMobileOpen(false); }}
               className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/5"
@@ -320,7 +328,7 @@ export default function SidebarNav() {
               <span className="w-5 flex-shrink-0 flex items-center justify-center opacity-70">
                 {NavIcons.feedback}
               </span>
-              <span>Send Feedback</span>
+              <span>{t("Send Feedback")}</span>
             </button>
           </div>
 
@@ -359,7 +367,7 @@ export default function SidebarNav() {
               {/* Log Out — always-visible icon, never cut off */}
               <button
                 onClick={handleSignOut}
-                title="Log Out"
+                title={t("Log Out")}
                 className="flex-shrink-0 p-2 rounded-lg transition-all hover:bg-white/10 active:bg-white/20"
                 style={{ color: "rgba(255,255,255,.5)" }}
               >
@@ -374,7 +382,4 @@ export default function SidebarNav() {
       </aside>
 
       {/* In-app feedback modal (BUG-01 fix) */}
-      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
-    </>
-  );
-}
+      <FeedbackModal open={feedbackOpen} on

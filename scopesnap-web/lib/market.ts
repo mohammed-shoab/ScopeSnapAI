@@ -64,24 +64,22 @@ export function detectMarket(): Market {
   return "US";
 }
 
+// ── Language support (Pakistan only) ──────────────────────────────────────────
+
+export type Language = "en" | "ur";
+
 /**
- * Format a numeric amount with the market's currency symbol.
- *
- * @param n      - Amount to format (null/undefined returns "—")
- * @param market - Market override; defaults to detectMarket()
- * @returns      - Formatted string e.g. "$12,500" or "₨12,500"
+ * Get the user's preferred language.
+ * Pakistan market only — US always returns "en".
  */
-export function formatCurrency(
-  n: number | null | undefined,
-  market?: Market
-): string {
-  if (n == null || isNaN(n as number)) return "—";
-  const m = market ?? detectMarket();
-  const { currencySymbol, locale } = MARKET_CONFIG[m];
-  return (
-    currencySymbol +
-    Math.round(n as number).toLocaleString(locale, {
-      maximumFractionDigits: 0,
-    })
-  );
+export function getLanguage(): Language {
+  if (typeof window === "undefined") return "en";
+  if (detectMarket() !== "PK") return "en";
+  return (localStorage.getItem("snap_lang") as Language) || "en";
 }
+
+/**
+ * Persist the user's language choice and flip document direction.
+ * No-op when called server-side.
+ */
+export function setLang

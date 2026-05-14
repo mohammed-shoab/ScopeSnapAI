@@ -22,6 +22,7 @@ import { PhotoSlotSpec, PhotoResult } from "@/components/diagnostic/PhotoSlot";
 import ServiceChecklist, { ServiceEstimateResult } from "@/components/diagnostic/ServiceChecklist";
 import SendMomentModal, { needsSendMoment, markSendMomentDone } from "@/components/SendMomentModal";
 import { detectMarket } from "@/lib/market";
+import { useLang } from "@/lib/language-context";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
@@ -75,6 +76,7 @@ function AssessPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { getToken } = useAuth();
+  const { t } = useLang();
 
   // ── Send Moment Modal (Section 7B) ─────────────────────────────────────────
   // Shows before first estimate generation if company phone is not set.
@@ -430,19 +432,19 @@ function AssessPageInner() {
         {/* Header */}
         <div className="pt-4">
           <button onClick={() => setPhase("step-zero")} className="text-sm text-gray-500 hover:text-gray-800 mb-3 block">
-            &#x2190; Back
+            {t("← Back")}
           </button>
-          <h1 className="text-3xl font-extrabold tracking-tight">New Assessment</h1>
-          <p className="text-text-secondary text-sm mt-1">Fill in job info, then tap the complaint.</p>
+          <h1 className="text-3xl font-extrabold tracking-tight">{t("New Assessment")}</h1>
+          <p className="text-text-secondary text-sm mt-1">{t("Fill in job info, then tap the complaint.")}</p>
         </div>
 
         {/* Job info */}
         <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
-          <p className="text-xs font-mono text-gray-600 uppercase tracking-widest font-bold">Job Info (optional)</p>
+          <p className="text-xs font-mono text-gray-600 uppercase tracking-widest font-bold">{t("Job Info (optional)")}</p>
           <div className="relative">
             <input
               type="text"
-              placeholder="Property address (search existing...)"
+              placeholder={t("Property address (search existing...)")}
               value={address}
               onChange={e => { setAddress(e.target.value); setShowSuggestions(true); }}
               onFocus={() => setShowSuggestions(true)}
@@ -480,12 +482,14 @@ function AssessPageInner() {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <input
-              type="text" placeholder="Homeowner name" value={customerName}
+              type="text" placeholder={t("Homeowner name")} value={customerName}
               onChange={e => setCustomerName(e.target.value)}
               className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-600"
             />
             <input
-              type="tel" placeholder="Phone number" value={customerPhone}
+              type="tel"
+              placeholder={detectMarket() === "PK" ? t("WhatsApp number (0300-1234567)") : t("Phone number")}
+              value={customerPhone}
               onChange={e => setCustomerPhone(e.target.value)}
               className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-600"
             />
@@ -497,7 +501,7 @@ function AssessPageInner() {
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
               <div>
-                <p className="text-xs font-mono text-gray-600 uppercase tracking-widest font-bold">Returning Customer</p>
+                <p className="text-xs font-mono text-gray-600 uppercase tracking-widest font-bold">{t("Returning Customer")}</p>
                 <p className="text-sm font-bold text-gray-900">{selectedProperty.customer_name || selectedProperty.address_line1}</p>
               </div>
               <button
@@ -553,7 +557,7 @@ function AssessPageInner() {
 
         {/* Complaint grid */}
         <div>
-          <p className="text-sm font-bold text-gray-700 mb-3">What&apos;s the complaint?</p>
+          <p className="text-sm font-bold text-gray-700 mb-3">{t("What's the complaint?")}</p>
           <div className="grid grid-cols-2 gap-3">
             {COMPLAINT_OPTIONS.map(opt => (
               <button
@@ -563,7 +567,7 @@ function AssessPageInner() {
                 className="bg-white border-2 border-gray-200 hover:border-green-500 rounded-2xl p-4 text-left transition-all active:scale-95 focus:outline-none disabled:opacity-50"
               >
                 <div className="text-3xl mb-2">{opt.icon}</div>
-                <p className="font-bold text-gray-900 text-sm leading-tight">{opt.label}</p>
+                <p className="font-bold text-gray-900 text-sm leading-tight">{t(opt.label)}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{opt.sub}</p>
               </button>
             ))}
@@ -731,11 +735,4 @@ export default function AssessPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center min-h-screen">
-          <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-        </div>
-      }
-    >
-      <AssessPageInner />
-    </Suspense>
-  );
-}
+          <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full anim

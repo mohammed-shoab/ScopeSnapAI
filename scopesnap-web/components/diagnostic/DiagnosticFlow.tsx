@@ -5,6 +5,7 @@ import posthog from "posthog-js";
 import { API_URL } from "@/lib/api";
 import { detectMarket } from "@/lib/market";
 import YesNoButtons from "./YesNoButtons";
+import { useLang } from "@/lib/language-context";
 import VisualSelect from "./VisualSelect";
 import PhotoSlot, { PhotoSlotSpec, PhotoResult } from "./PhotoSlot";
 import ReadingInput, { ReadingSpec, ReadingResult } from "./ReadingInput";
@@ -151,6 +152,7 @@ export default function DiagnosticFlow({
   onCancel,
 }: DiagnosticFlowProps) {
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const { t } = useLang();
   const [currentQuestion, setCurrentQuestion] = useState<QuestionOut | null>(null);
   const [history, setHistory] = useState<AnswerRecord[]>([]);
   const [totalSteps, setTotalSteps] = useState(0);
@@ -416,7 +418,7 @@ export default function DiagnosticFlow({
         </div>
         <button onClick={onCancel} className="w-full py-3 rounded-2xl font-semibold text-sm"
           style={{ background: "#16213e", color: "#f0f0f0" }}>
-          Back to Complaint Selection
+          {t("Back to complaint selection")}
         </button>
       </div>
     );
@@ -450,13 +452,13 @@ export default function DiagnosticFlow({
                 ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin inline-block" />
                 : <span>&#x2190;</span>
               }
-              Undo last answer
+              {t("Undo last answer")}
             </button>
           ) : (
             <span />
           )}
           <span className="text-xs font-semibold" style={{ color: "#7a8299" }}>
-            {approxTotal ? `Step ${stepNum} of ~${approxTotal}` : `Step ${stepNum}`}
+            {approxTotal ? `${t("Step")} ${stepNum} ${t("of")} ~${approxTotal}` : `Step ${stepNum}`}
           </span>
         </div>
         <div className="flex gap-1">
@@ -655,7 +657,7 @@ export default function DiagnosticFlow({
         className="text-xs font-medium text-center py-2 mt-2"
         style={{ color: "#4a5568" }}
       >
-        Back to complaint selection
+        {t("Back to complaint selection")}
       </button>
     </div>
   );

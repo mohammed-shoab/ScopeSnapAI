@@ -45,7 +45,7 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link
-          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap"
           rel="stylesheet"
         />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -70,8 +70,4 @@ export default function RootLayout({
               }
             `,
           }}
-        />
-      </body>
-    </html>
-  );
-}
+      

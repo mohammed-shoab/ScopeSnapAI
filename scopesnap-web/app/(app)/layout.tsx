@@ -10,6 +10,7 @@ import OfflineBanner from "@/components/OfflineBanner";
 import FeedbackButton from "@/components/FeedbackButton";
 import InstallPrompt from "@/components/InstallPrompt";
 import PostHogUserSync from "@/components/PostHogUserSync";
+import { LanguageProvider } from "@/lib/language-context";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development" ||
   process.env.NODE_ENV === "development";
@@ -62,6 +63,9 @@ export default async function AppLayout({
   }
 
   return (
+    // LanguageProvider is a client component — no-op for US (always en),
+    // activates RTL + Urdu translations for PK market users.
+    <LanguageProvider>
     <div className="min-h-screen bg-surface-bg" suppressHydrationWarning>
       {/* Identify logged-in Clerk user in PostHog for event attribution */}
       <PostHogUserSync />
@@ -92,11 +96,4 @@ export default async function AppLayout({
       {/* Mobile bottom nav — hidden on md+ */}
       <BottomNav />
 
-      {/* PWA install prompt — iOS instructions or Android native install */}
-      <InstallPrompt />
-
-      {/* Floating feedback button — desktop only, hidden on homeowner report pages */}
-      <FeedbackButton />
-    </div>
-  );
-}
+      {/* PWA install 

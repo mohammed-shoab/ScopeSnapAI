@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { featureFlags } from "@/lib/featureFlags";
+import LanguageToggle from "@/components/LanguageToggle";
 
 // ── SVG icon helpers ──────────────────────────────────────────────────────────
 const HomeIcon = ({ active }: { active: boolean }) => (
@@ -146,6 +147,11 @@ export default function BottomNav() {
   const tabs = buildTabs();
 
   return (
+    <>
+      {/* PK market: language toggle pill above bottom nav */}
+      <div className="md:hidden fixed bottom-16 right-3 z-50" style={{ bottom: "calc(64px + env(safe-area-inset-bottom, 0px) + 8px)" }}>
+        <LanguageToggle />
+      </div>
     <nav
       className="md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-end justify-around"
       style={{
@@ -220,5 +226,6 @@ export default function BottomNav() {
         );
       })}
     </nav>
+    </>
   );
 }

@@ -108,6 +108,44 @@ body {
 .badge-approved  { @apply bg-brand-green-light text-brand-green text-xs font-semibold px-2 py-1 rounded-full; }
 .badge-completed { @apply bg-brand-green-light text-brand-green text-xs font-semibold px-2 py-1 rounded-full; }
 
+/* ── Urdu / RTL support (Pakistan market) ─────────────────────────────────── */
+[dir="rtl"] body,
+[dir="rtl"] .font-sans {
+  font-family: "Noto Nastaliq Urdu", "Plus Jakarta Sans", sans-serif;
+  line-height: 2.2; /* Nastaliq needs extra line height for diacritics */
+}
+
+/* Flip padding/margin utilities for RTL */
+[dir="rtl"] .pl-3  { padding-left: 0;    padding-right: 0.75rem; }
+[dir="rtl"] .pr-3  { padding-right: 0;   padding-left: 0.75rem; }
+[dir="rtl"] .pl-4  { padding-left: 0;    padding-right: 1rem; }
+[dir="rtl"] .pr-4  { padding-right: 0;   padding-left: 1rem; }
+[dir="rtl"] .pl-8  { padding-left: 0;    padding-right: 2rem; }
+[dir="rtl"] .pr-8  { padding-right: 0;   padding-left: 2rem; }
+[dir="rtl"] .ml-2  { margin-left: 0;     margin-right: 0.5rem; }
+[dir="rtl"] .mr-2  { margin-right: 0;    margin-left: 0.5rem; }
+[dir="rtl"] .ml-4  { margin-left: 0;     margin-right: 1rem; }
+[dir="rtl"] .mr-4  { margin-right: 0;    margin-left: 1rem; }
+[dir="rtl"] .ml-60 { margin-left: 0;     margin-right: 15rem; }
+[dir="rtl"] .mr-60 { margin-right: 0;    margin-left: 15rem; }
+
+/* Flip rounded corners for RTL nav pills */
+[dir="rtl"] .rounded-l-xl { border-radius: 0 0.75rem 0.75rem 0; }
+[dir="rtl"] .rounded-r-xl { border-radius: 0.75rem 0 0 0.75rem; }
+
+/* Sidebar position in RTL */
+[dir="rtl"] .sidebar-nav {
+  left: unset;
+  right: 0;
+}
+
+/* Technical terms (numbers, brands, R-32, PSI, etc.) stay LTR even in RTL */
+.ltr-segment {
+  unicode-bidi: embed;
+  direction: ltr;
+  display: inline-block;
+}
+
 /* Range slider styling */
 input[type="range"] {
   -webkit-appearance: none;
@@ -153,40 +191,4 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* Dashed circle animation for annotated photos */
-@keyframes dashRotate {
-  to { stroke-dashoffset: -50; }
-}
-.animate-dash-rotate {
-  animation: dashRotate 3s linear infinite;
-}
-
-/* ── Clerk: self-hosted Google OAuth icon ──────────────────────────────────────
-   Clerk loads the Google logo from img.clerk.com (external CDN).
-   On VPNs, strict privacy browsers, or restricted networks this CDN may be
-   blocked, showing a broken-image icon. We hide the remote <img> and replace it
-   with a self-hosted SVG from /google-logo.svg so it always loads from our domain.
-   ─────────────────────────────────────────────────────────────────────────── */
-
-/* Hide the remote img that Clerk injects */
-.cl-providerIcon__google img,
-.cl-socialButtonsButtonIcon__google img,
-[class*="providerIcon__google"] img,
-[class*="socialButtonsButtonIcon__google"] img {
-  opacity: 0 !important;
-  position: absolute !important;
-  pointer-events: none !important;
-}
-
-/* Replace with self-hosted SVG via background-image */
-.cl-providerIcon__google,
-.cl-socialButtonsButtonIcon__google,
-[class*="providerIcon__google"],
-[class*="socialButtonsButtonIcon__google"] {
-  background-image: url('/google-logo.svg') !important;
-  background-size: contain !important;
-  background-repeat: no-repeat !important;
-  background-position: center !important;
-  display: inline-block !important;
-  min-width: 18px !important;
-  min-height: 18px !important;
-}
+@keyframes dashRot
