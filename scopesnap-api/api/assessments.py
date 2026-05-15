@@ -227,6 +227,22 @@ async def create_assessment(
             )
             db.add(prop)
             await db.flush()
+    elif customer_phone or customer_name:
+        # No address provided but phone/name given (e.g. PK WhatsApp-only entry).
+        # Create a minimal property so customer contact data is retrievable later
+        # (used by get_estimate to pre-fill the Send tab WhatsApp field).
+        prop = Property(
+            id=str(uuid.uuid4()),
+            company_id=auth.company_id,
+            address_line1=None,
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            customer_email=customer_email,
+            visit_count=1,
+            last_visit_at=datetime.now(timezone.utc),
+        )
+        db.add(prop)
+        await db.flush()
 
     # ── Upload photos (only if provided) ────────────────────────────────────
     photo_urls = []
