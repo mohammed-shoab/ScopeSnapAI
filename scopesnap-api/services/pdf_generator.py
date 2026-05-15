@@ -493,7 +493,6 @@ def generate_contractor_pdf(
     estimate_data: dict,
     output_dir: str = "/tmp/scopesnap_uploads/pdfs",
     filename: Optional[str] = None,
-    language: str = "en",
 ) -> str:
     """
     Generate a contractor PDF estimate — pure Python, no system dependencies.
@@ -520,9 +519,6 @@ def generate_contractor_pdf(
     short_id          = estimate_data.get("report_short_id", "—")
     overall_condition = estimate_data.get("overall_condition") or "fair"
     today             = datetime.now(timezone.utc).strftime("%B %d, %Y")
-
-    # PK market Urdu edition flag
-    market_label = " [PK-Urdu]" if language == "ur" else ""
 
     p = _PdfWriter()
     M  = 48       # left margin

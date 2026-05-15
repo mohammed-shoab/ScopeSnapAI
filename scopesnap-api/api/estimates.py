@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
@@ -538,7 +538,6 @@ async def list_estimates(
 @router.post("/{estimate_id}/documents")
 async def generate_documents(
     estimate_id: str,
-    request: Request,
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -551,9 +550,6 @@ async def generate_documents(
     - Updates estimate.contractor_pdf_url
     - Returns {contractor_pdf_url, homeowner_report_url, report_short_id}
     """
-    # Extract language for Urdu PDF support (PK market Phase 2)
-    lang = request.headers.get("X-Language", "en")
-
     import os
     import logging as _logging
     from config import get_settings
@@ -721,7 +717,6 @@ async def generate_documents(
                 estimate_data=estimate_context,
                 output_dir=tmp_dir,
                 filename=f"estimate-{estimate.report_short_id}.pdf",
-                language=lang,
             )
         )
         pdf_size_kb = round(os.path.getsize(pdf_path) / 1024, 1)
