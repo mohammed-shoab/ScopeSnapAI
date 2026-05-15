@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import DataConfidenceLabel from "@/components/DataConfidenceLabel";
 import { track } from "@/lib/tracking";
-import { formatCurrency, detectMarket, getLanguage } from "@/lib/market";
-import { URDU_STRINGS } from "@/lib/urdu-strings";
+import { formatCurrency } from "@/lib/market";
 
 /**
  * ReportQRCode — SOW Task 1.9 (Zuckerberg requirement)
@@ -358,32 +357,6 @@ function CostBar({ option, maxVal }: { option: Option; maxVal: number }) {
 }
 
 export default function ReportClient({ report }: { report: Report }) {
-  // Urdu / RTL support for PK homeowner reports
-  const [lang, setLang] = useState<"en" | "ur">("en");
-  useEffect(() => {
-    const stored = getLanguage();
-    setLang(stored);
-    if (typeof document !== "undefined") {
-      document.documentElement.dir = stored === "ur" ? "rtl" : "ltr";
-      document.documentElement.lang = stored;
-    }
-    return () => {
-      // Reset to LTR when navigating away from report
-      if (typeof document !== "undefined") {
-        document.documentElement.dir = "ltr";
-        document.documentElement.lang = "en";
-      }
-    };
-  }, []);
-  const t = (key: string): string => {
-    if (lang !== "ur") return key;
-    return URDU_STRINGS[key] ?? key;
-  };
-  const isRTL = lang === "ur";
-  const reportFont = isRTL
-    ? "'Noto Nastaliq Urdu', serif"
-    : "'Plus Jakarta Sans', sans-serif";
-
   const alreadyApproved = report.status === "approved";
   const [selectedTier, setSelectedTier] = useState<string>(
     alreadyApproved && report.selected_option
@@ -439,7 +412,7 @@ export default function ReportClient({ report }: { report: Report }) {
     : "";
 
   return (
-    <div style={{ background: "#f2f1ec", minHeight: "100vh", fontFamily: reportFont, direction: isRTL ? "rtl" : "ltr" }}>
+    <div style={{ background: "#f2f1ec", minHeight: "100vh", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       {/* Company Header Bar */}
       <div
         style={{
@@ -532,7 +505,7 @@ export default function ReportClient({ report }: { report: Report }) {
             {createdDate && ` · ${createdDate}`}
           </p>
           {property?.customer_name && (
-            <p style={{ fontSize: 13, fontWeight: 600, marginTop: 4 }}>{isRTL ? t("Homeowner Name") + ": " : "Prepared for "}{property.customer_name}</p>
+            <p style={{ fontSize: 13, fontWeight: 600, marginTop: 4 }}>Prepared for {property.customer_name}</p>
           )}
         </div>
 
@@ -659,7 +632,7 @@ export default function ReportClient({ report }: { report: Report }) {
             {/* Issues List */}
             {report.issues.length === 0 ? (
               <p style={{ fontSize: 13, color: "#7a7770", textAlign: "center", padding: "12px 0" }}>
-                {isRTL ? "کوئی بڑا مسئلہ نہیں ملا۔ آپ کا سسٹم اچھی حالت میں ہے۔" : "No significant issues found. Your system is in good condition."}
+                No significant issues found. Your system is in good condition.
               </p>
             ) : (
               <div>
@@ -730,7 +703,7 @@ export default function ReportClient({ report }: { report: Report }) {
                           fontFamily: "IBM Plex Mono, monospace",
                         }}
                       >
-                        {isRTL ? "★ " + t("Recommended").toUpperCase() : "★ RECOMMENDED"}
+                        ★ RECOMMENDED
                       </div>
                     )}
 
@@ -746,7 +719,7 @@ export default function ReportClient({ report }: { report: Report }) {
                             marginBottom: 2,
                           }}
                         >
-                          {t(TIER_LABELS[opt.tier] || `Option ${i + 1}`)}
+                          {TIER_LABELS[opt.tier] || `Option ${i + 1}`}
                         </div>
                         <h4 style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>{opt.name}</h4>
                       </div>
@@ -807,7 +780,7 @@ export default function ReportClient({ report }: { report: Report }) {
                             fontWeight: 700,
                           }}
                         >
-                          <span>{t("Total")}</span>
+                          <span>Total</span>
                           <span style={{ fontFamily: "IBM Plex Mono, monospace", color: "#1a8754" }}>
                             {fmt(opt.total)}
                           </span>

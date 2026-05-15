@@ -96,12 +96,4 @@ export default async function AppLayout({
       {/* Mobile bottom nav — hidden on md+ */}
       <BottomNav />
 
-      {/* PWA install prompt — iOS instructions or Android native install */}
-      <InstallPrompt />
-
-      {/* Floating feedback button — desktop only, hidden on homeowner report pages */}
-      <FeedbackButton />
-    </div>
-  </LanguageProvider>
-  );
-}
+      {/* PWA install 
