@@ -1098,4 +1098,27 @@ async def undo_step(
 
 @router.get("/session/{session_id}", response_model=StartSessionResponse)
 async def resume_session(
-    session_id: str =
+    session_id: str = Path(...),
+    auth: AuthContext = Depends(get_current_user),
+    tables: MarketTables = Depends(get_tables),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Resume a diagnostic session — return session_id + current question.
+    Used when the tech navigates back to an in-progress assessment.
+    """
+    session = await _load_session(db, session_id, auth.company_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Diagnostic session not found.")
+
+    q_row = await _load_question(db, session.complaint_type, session.current_step_id)
+    if not q_row:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Current step '{session.current_step_id}' not found.",
+        )
+
+    return StartSessionResponse(
+        session_id=session_id,
+        current_step=_row_to_question_out(q_row, tables.market),
+    )
