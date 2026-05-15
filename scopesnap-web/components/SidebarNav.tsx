@@ -382,4 +382,7 @@ export default function SidebarNav() {
       </aside>
 
       {/* In-app feedback modal (BUG-01 fix) */}
-      <FeedbackModal open={feedbackOpen} on
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+    </>
+  );
+}C
