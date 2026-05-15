@@ -82,33 +82,4 @@ export function getLanguage(): Language {
  * Persist the user's language choice and flip document direction.
  * No-op when called server-side.
  */
-export function setLanguage(lang: Language): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("snap_lang", lang);
-  document.documentElement.dir = lang === "ur" ? "rtl" : "ltr";
-  document.documentElement.lang = lang;
-}
-
-// ── Currency formatting ────────────────────────────────────────────────────────
-
-/**
- * Format a numeric amount with the market's currency symbol.
- *
- * @param n      - Amount to format (null/undefined returns "—")
- * @param market - Market override; defaults to detectMarket()
- * @returns      - Formatted string e.g. "$12,500" or "₨12,500"
- */
-export function formatCurrency(
-  n: number | null | undefined,
-  market?: Market
-): string {
-  if (n == null || isNaN(n as number)) return "—";
-  const m = market ?? detectMarket();
-  const { currencySymbol, locale } = MARKET_CONFIG[m];
-  return (
-    currencySymbol +
-    Math.round(n as number).toLocaleString(locale, {
-      maximumFractionDigits: 0,
-    })
-  );
-}
+export function setLang
