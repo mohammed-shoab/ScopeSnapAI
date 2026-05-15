@@ -402,6 +402,24 @@ async def get_estimate(
     except Exception:
         data["view_count"] = 0
 
+    # Attach customer contact fields for Send tab pre-fill (WhatsApp + email)
+    try:
+        asmnt_result = await db.execute(
+            select(Assessment).where(Assessment.id == estimate.assessment_id)
+        )
+        assessment = asmnt_result.scalar_one_or_none()
+        if assessment and assessment.property_id:
+            prop_result = await db.execute(
+                select(Property).where(Property.id == assessment.property_id)
+            )
+            prop = prop_result.scalar_one_or_none()
+            if prop:
+                data["customer_name"] = prop.customer_name
+                data["customer_email"] = prop.customer_email
+                data["customer_phone"] = prop.customer_phone
+    except Exception:
+        pass  # Non-fatal — Send tab fields just start empty
+
     return data
 
 
