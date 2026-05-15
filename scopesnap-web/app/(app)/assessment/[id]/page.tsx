@@ -339,7 +339,7 @@ export default function EstimatePage() {
     const token = await getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, [getToken]);
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [estimate, setEstimate] = useState<EstimateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("estimate");
@@ -452,7 +452,7 @@ export default function EstimatePage() {
       const authHeaders = await getAuthHeaders();
       const r = await fetch(`${API_URL}/api/estimates/${id}/documents`, {
         method: "POST",
-        headers: authHeaders,
+        headers: { ...authHeaders, "X-Language": lang },
       });
       if (!r.ok) throw new Error((await r.json()).detail);
       const data = await r.json();
