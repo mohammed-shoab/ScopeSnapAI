@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
@@ -402,24 +402,6 @@ async def get_estimate(
     except Exception:
         data["view_count"] = 0
 
-    # Attach customer contact fields for Send tab pre-fill (WhatsApp + email)
-    try:
-        asmnt_result = await db.execute(
-            select(Assessment).where(Assessment.id == estimate.assessment_id)
-        )
-        assessment = asmnt_result.scalar_one_or_none()
-        if assessment and assessment.property_id:
-            prop_result = await db.execute(
-                select(Property).where(Property.id == assessment.property_id)
-            )
-            prop = prop_result.scalar_one_or_none()
-            if prop:
-                data["customer_name"] = prop.customer_name
-                data["customer_email"] = prop.customer_email
-                data["customer_phone"] = prop.customer_phone
-    except Exception:
-        pass  # Non-fatal — Send tab fields just start empty
-
     return data
 
 
@@ -556,7 +538,6 @@ async def list_estimates(
 @router.post("/{estimate_id}/documents")
 async def generate_documents(
     estimate_id: str,
-    request: Request,
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -569,9 +550,6 @@ async def generate_documents(
     - Updates estimate.contractor_pdf_url
     - Returns {contractor_pdf_url, homeowner_report_url, report_short_id}
     """
-    # Extract language for Urdu PDF support (PK market Phase 2)
-    lang = request.headers.get("X-Language", "en")
-
     import os
     import logging as _logging
     from config import get_settings
@@ -739,7 +717,6 @@ async def generate_documents(
                 estimate_data=estimate_context,
                 output_dir=tmp_dir,
                 filename=f"estimate-{estimate.report_short_id}.pdf",
-                language=lang,
             )
         )
         pdf_size_kb = round(os.path.getsize(pdf_path) / 1024, 1)
