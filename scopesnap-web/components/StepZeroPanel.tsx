@@ -62,19 +62,26 @@ interface Props {
 }
 
 // ── OCR field display config ─────────────────────────────────────────────────
+// Removed: serial_number, factory_charge_oz, voltage (not used in diagnostics)
+// badge: "db"  → value sourced from model-DB lookup (green "DB")
+// badge: "est" → value inferred / estimated (orange "Est.")
+// badge: null  → no badge (plain entry)
 
-const OCR_FIELDS: { key: keyof NameplateUnit; label: string; unit?: string; type: "text" | "number" }[] = [
-  { key: "model_number",      label: "Model #",       type: "text" },
-  { key: "serial_number",     label: "Serial #",      type: "text" },
-  { key: "tonnage",           label: "Tonnage",       unit: "ton",    type: "number" },
-  { key: "refrigerant",       label: "Refrigerant",   type: "text" },
-  { key: "factory_charge_oz", label: "Factory Charge", unit: "oz",   type: "number" },
-  { key: "rla",               label: "RLA",           unit: "A",      type: "number" },
-  { key: "lra",               label: "LRA",           unit: "A",      type: "number" },
-  { key: "capacitor_uf",      label: "Cap",           unit: "uF",     type: "text" },
-  { key: "mca",               label: "MCA",           unit: "A",      type: "number" },
-  { key: "mocp",              label: "MOCP",          unit: "A",      type: "number" },
-  { key: "voltage",           label: "Voltage",       type: "text" },
+const OCR_FIELDS: {
+  key: keyof NameplateUnit;
+  label: string;
+  unit?: string;
+  type: "text" | "number";
+  badge?: "db" | "est" | null;
+}[] = [
+  { key: "model_number",  label: "Model #",     type: "text",   badge: "db"  },
+  { key: "tonnage",       label: "Tonnage",      unit: "ton",    type: "number", badge: "db"  },
+  { key: "refrigerant",   label: "Refrigerant",  type: "text",   badge: "db"  },
+  { key: "rla",           label: "RLA",          unit: "A",      type: "number", badge: "db"  },
+  { key: "lra",           label: "LRA",          unit: "A",      type: "number", badge: "db"  },
+  { key: "capacitor_uf",  label: "Cap",          unit: "µF",     type: "text",   badge: "est" },
+  { key: "mca",           label: "MCA",          unit: "A",      type: "number", badge: "db"  },
+  { key: "mocp",          label: "MOCP",         unit: "A",      type: "number", badge: "db"  },
 ];
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -119,7 +126,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   useEffect(() => { setIsPK(detectMarket() === "PK"); }, []);
 
   // ── Section 5C: Manual entry tab ───────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<"photo" | "manual">("photo");
+  const [activeTab, setActiveTab] = useState<"photo" | "manual">("manual");
   const BLANK_UNIT: NameplateUnit = {
     model_number: null, serial_number: null, tonnage: null, refrigerant: null,
     factory_charge_oz: null, rla: null, lra: null, capacitor_uf: null,
@@ -152,7 +159,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
 
   // Debounced model search when brand or query changes
   useEffect(() => {
-    if (!selectedBrand) {
+    if (!selectedBrand || selectedBrand === "__unlisted__") {
       setModelResults([]);
       setShowModelDropdown(false);
       return;
@@ -387,6 +394,13 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
     setTesseractStatus("");
   }, [outdoorFile, indoorFile, clerkToken]);
 
+  // ── Auto-trigger OCR when outdoor photo is captured ─────────────────────
+  useEffect(() => {
+    if (!outdoorFile || ocrResult || loading) return;
+    const timer = setTimeout(runOCR, 300); // small delay lets UI settle
+    return () => clearTimeout(timer);
+  }, [outdoorFile]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Confirm / persist ───────────────────────────────────────────────────
 
   const handleConfirm = useCallback(async () => {
@@ -545,7 +559,20 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                       {b.brand} ({b.model_count} models)
                     </option>
                   ))}
+                  {/* Task-9: escape hatch so tech can proceed without a DB match */}
+                  <option value="__unlisted__">My brand isn't listed…</option>
                 </select>
+                {selectedBrand === "__unlisted__" && (
+                  <div className="mt-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                    <span className="text-amber-500 flex-shrink-0">ℹ</span>
+                    <div>
+                      <p className="text-xs font-bold text-amber-800">Brand not in database</p>
+                      <p className="text-xs text-amber-700 mt-0.5">
+                        Enter specs manually below. No DB auto-fill — use nameplate values.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Model series search — only shown once brand is selected */}
@@ -708,32 +735,51 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
           )}
 
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-gray-100">
+            <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
               <span className="text-xs font-black uppercase tracking-wider text-gray-500">
                 Enter specs manually
               </span>
+              {/* Path B notice: if tonnage filled but no model match, show generic-range note */}
+              {manualUnit.tonnage && !manualUnit.series_id && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded"
+                      style={{ background: "#fff3e0", color: "#c4600a" }}>
+                  Path B — generic ranges
+                </span>
+              )}
             </div>
             <div className="p-3 grid grid-cols-2 gap-2">
-              {OCR_FIELDS.filter(f => !(isPK && f.key === "refrigerant")).map(({ key, label, unit, type }) => {
+              {OCR_FIELDS.filter(f => !(isPK && f.key === "refrigerant")).map(({ key, label, unit, type, badge }) => {
                 const val = manualUnit[key];
                 const displayVal = val === null || val === undefined ? "" : String(val);
                 const isEmpty = displayVal === "";
+                const isDbField  = badge === "db"  && !isEmpty && !!manualUnit.series_id;
+                const isEstField = badge === "est";
                 return (
                   <div key={key} className="flex flex-col gap-0.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      {label}
-                      {key === "refrigerant" && <span className="text-blue-400 ml-1">(auto)</span>}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                        {label}
+                        {key === "refrigerant" && !isPK && <span className="text-blue-400 ml-1">(auto)</span>}
+                      </span>
+                      {isDbField && (
+                        <span className="text-[9px] font-black px-1 py-0.5 rounded"
+                              style={{ background: "#e8f5ee", color: "#1a8754" }}>DB</span>
+                      )}
+                      {isEstField && (
+                        <span className="text-[9px] font-black px-1 py-0.5 rounded"
+                              style={{ background: "#fff3e0", color: "#c4600a" }}>Est.</span>
+                      )}
+                    </div>
                     <div className="relative flex items-center">
                       <input
                         type={type === "number" ? "number" : "text"}
                         value={displayVal}
                         onChange={e => updateManualField(key, e.target.value)}
-                        placeholder={key === "year_of_manufacture" ? "e.g. 2018" : "—"}
+                        placeholder="—"
                         className="w-full text-sm font-mono font-bold rounded-lg border px-2 py-1.5 focus:outline-none transition-colors"
                         style={{
-                          borderColor: isEmpty ? "#e2dfd7" : "#1a8754",
-                          background: isEmpty ? "#fafaf8" : "#f0faf6",
+                          borderColor: isEmpty ? "#e2dfd7" : isEstField ? "#c4600a" : "#1a8754",
+                          background:  isEmpty ? "#fafaf8" : isEstField ? "#fffaf5" : "#f0faf6",
                           color: isEmpty ? "#aaa" : "#1a1a1a",
                         } as React.CSSProperties}
                       />
@@ -749,15 +795,9 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
 
           <div className="flex gap-3">
             <button
-              onClick={onSkip}
-              className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-sm font-bold text-gray-500 hover:border-gray-300 transition-colors"
-            >
-              Skip
-            </button>
-            <button
               onClick={handleManualConfirm}
-              className="py-3 px-6 rounded-xl text-sm font-black text-white transition-all"
-              style={{ background: "#1a8754", flex: 2 }}
+              className="w-full py-3 px-6 rounded-xl text-sm font-black text-white transition-all"
+              style={{ background: "#1a8754" }}
             >
               Confirm & Continue
             </button>
@@ -924,27 +964,14 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
         </div>
       )}
 
-      {/* Extract button */}
-      {outdoorFile && !ocrResult && (
-        <div className="space-y-2">
-          <button
-            onClick={runOCR}
-            disabled={loading}
-            className="w-full py-3.5 rounded-xl font-black text-white text-sm transition-all"
-            style={{ background: loading ? "#ccc" : "#f39c12" }}
-          >
-            {loading ? "Reading nameplate..." : "Extract Specs with AI"}
-          </button>
-          {/* Section 5B-3: Photo unclear fallback */}
-          {(outdoorQuality?.blurry || outdoorQuality?.tooDark) && (
-            <button
-              onClick={onSkip}
-              className="w-full py-2.5 rounded-xl text-xs font-bold text-gray-500 border border-gray-200 hover:border-gray-300 transition-colors"
-            >
-              Photo too unclear — enter specs manually instead
-            </button>
-          )}
-        </div>
+      {/* Section 5B-3: Photo unclear fallback */}
+      {outdoorFile && !ocrResult && (outdoorQuality?.blurry || outdoorQuality?.tooDark) && (
+        <button
+          onClick={() => setActiveTab("manual")}
+          className="w-full py-2.5 rounded-xl text-xs font-bold text-gray-500 border border-gray-200 hover:border-gray-300 transition-colors"
+        >
+          Photo too unclear — enter specs manually instead
+        </button>
       )}
 
       {/* Section 6B: Loading indicator — Gemini or Tesseract progress */}
@@ -1027,13 +1054,25 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
           )}
 
           <div className="p-3 grid grid-cols-2 gap-2">
-            {OCR_FIELDS.map(({ key, label, unit, type }) => {
+            {OCR_FIELDS.map(({ key, label, unit, type, badge }) => {
               const val = editedUnit[key];
               const displayVal = val === null || val === undefined ? "" : String(val);
               const isEmpty = displayVal === "";
+              const isDbField  = badge === "db"  && !isEmpty;
+              const isEstField = badge === "est";
               return (
                 <div key={key} className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{label}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{label}</span>
+                    {isDbField && (
+                      <span className="text-[9px] font-black px-1 py-0.5 rounded"
+                            style={{ background: "#e8f5ee", color: "#1a8754" }}>DB</span>
+                    )}
+                    {isEstField && (
+                      <span className="text-[9px] font-black px-1 py-0.5 rounded"
+                            style={{ background: "#fff3e0", color: "#c4600a" }}>Est.</span>
+                    )}
+                  </div>
                   <div className="relative flex items-center">
                     <input
                       type={type === "number" ? "number" : "text"}
@@ -1042,8 +1081,8 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                       placeholder="—"
                       className="w-full text-sm font-mono font-bold rounded-lg border px-2 py-1.5 focus:outline-none focus:ring-1 transition-colors"
                       style={{
-                        borderColor: isEmpty ? "#e2dfd7" : "#1a8754",
-                        background: isEmpty ? "#fafaf8" : "#f0faf6",
+                        borderColor: isEmpty ? "#e2dfd7" : isEstField ? "#c4600a" : "#1a8754",
+                        background:  isEmpty ? "#fafaf8" : isEstField ? "#fffaf5" : "#f0faf6",
                         color: isEmpty ? "#aaa" : "#1a1a1a",
                       } as React.CSSProperties}
                     />
@@ -1068,22 +1107,18 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
         </div>
       )}
 
-      {/* Confirm + Skip */}
-      <div className="flex gap-3">
-        <button
-          onClick={onSkip}
-          className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-sm font-bold text-gray-500 hover:border-gray-300 transition-colors"
-        >
-          Skip for now
-        </button>
-        <button
-          onClick={editedUnit ? handleConfirm : onSkip}
-          className="flex-2 py-3 px-6 rounded-xl text-sm font-black text-white transition-all"
-          style={{ background: "#1a8754", flex: 2 }}
-        >
-          {editedUnit ? "Confirm & Continue" : "Continue without scan"}
-        </button>
-      </div>
+      {/* Confirm */}
+      {editedUnit && (
+        <div className="flex gap-3">
+          <button
+            onClick={handleConfirm}
+            className="w-full py-3 px-6 rounded-xl text-sm font-black text-white transition-all"
+            style={{ background: "#1a8754" }}
+          >
+            Confirm & Continue
+          </button>
+        </div>
+      )}
 
       <p className="text-center text-xs text-gray-400">
         Nameplate specs auto-fill all cards — save time on every call
@@ -1095,3 +1130,4 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
     </div>
   );
 }
+          
