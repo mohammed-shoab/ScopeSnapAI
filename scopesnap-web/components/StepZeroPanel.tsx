@@ -1083,4 +1083,62 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                       <span className="text-[9px] font-black px-1 py-0.5 rounded"
                             style={{ background: "#fff3e0", color: "#c4600a" }}>Est.</span>
                     )}
-                
+                  </div>
+                  <div className="relative flex items-center">
+                    <input
+                      type={type === "number" ? "number" : "text"}
+                      value={displayVal}
+                      onChange={e => updateField(key, e.target.value)}
+                      placeholder="—"
+                      className="w-full text-sm font-mono font-bold rounded-lg border px-2 py-1.5 focus:outline-none focus:ring-1 transition-colors"
+                      style={{
+                        borderColor: isEmpty ? "#e2dfd7" : isEstField ? "#c4600a" : "#1a8754",
+                        background:  isEmpty ? "#fafaf8" : isEstField ? "#fffaf5" : "#f0faf6",
+                        color: isEmpty ? "#aaa" : "#1a1a1a",
+                      } as React.CSSProperties}
+                    />
+                    {unit && !isEmpty && (
+                      <span className="absolute right-2 text-[10px] font-bold text-gray-400">{unit}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {editedUnit.brand_id && (
+            <div className="px-4 pb-3">
+              <p className="text-xs text-gray-400">
+                Matched: <span className="font-bold text-gray-600 capitalize">{editedUnit.brand_id}</span>
+                {editedUnit.series_id && ` — ${editedUnit.series_id.split("_").slice(1).join(" ")}`}
+                {editedUnit.is_legacy && " (legacy / pre-2010)"}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Confirm */}
+      {editedUnit && (
+        <div className="flex gap-3">
+          <button
+            onClick={handleConfirm}
+            className="w-full py-3 px-6 rounded-xl text-sm font-black text-white transition-all"
+            style={{ background: "#1a8754" }}
+          >
+            Confirm & Continue
+          </button>
+        </div>
+      )}
+
+      <p className="text-center text-xs text-gray-400">
+        Nameplate specs auto-fill all cards — save time on every call
+      </p>
+
+        </> /* end activeTab === "photo" */
+      )}
+
+    </div>
+  );
+}
+          
