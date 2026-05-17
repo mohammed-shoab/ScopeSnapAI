@@ -88,10 +88,10 @@ function classifyReading(value: number, spec: ReadingSpec, nameplate: Record<str
 
   // Pressure readings (suction / discharge PSI) — threshold-based classification.
   // Thresholds come from reading_spec.low_threshold / high_threshold.
-  // Default R-410A suction: low < 60 psi (refrigerant leak), high > 110 psi (dirty condenser/overcharge).
+  // Default R-410A suction: low < 60 psi (refrigerant leak), high > 145 psi (hot ambient, Houston summer).
   if (spec.type === "psi") {
     const lowT = spec.low_threshold ?? 60;
-    const highT = spec.high_threshold ?? 110;
+    const highT = spec.high_threshold ?? 145;
     if (value < lowT) return { value, unit, classification: "low", passed: false, branchKey: "low" };
     if (value > highT) return { value, unit, classification: "high", passed: false, branchKey: "high" };
     return { value, unit, classification: "ok", passed: true, branchKey: "ok" };

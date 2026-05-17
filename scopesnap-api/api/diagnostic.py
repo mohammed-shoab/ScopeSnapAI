@@ -608,8 +608,22 @@ async def _pk_evaluate_pressure(
         targets = None
 
     if not targets:
-        # Fallback: US thresholds
-        lo, hi = (60, 110) if subtype == "suction" else (200, 400)
+        # Fallback: US thresholds — refrigerant-aware for correct hot-ambient routing
+        # R-410A at 35-40°C ambient (Houston summer): suction 65-145 PSI, discharge 200-400 PSI
+        _us_suction = {
+            "R-410A": (65, 145),
+            "R-22":   (55, 90),
+            "R-32":   (90, 145),
+        }
+        _us_discharge = {
+            "R-410A": (200, 400),
+            "R-22":   (150, 350),
+            "R-32":   (200, 420),
+        }
+        if subtype == "suction":
+            lo, hi = _us_suction.get(ref, (65, 145))
+        else:
+            lo, hi = _us_discharge.get(ref, (200, 400))
     elif subtype == "suction":
         lo, hi = float(targets.suction_min_psi), float(targets.suction_max_psi)
     else:
@@ -683,6 +697,9 @@ async def _process_branch(
     if branch.get("service_complete"):
         # BUG-009 fix: generate estimate before marking session done
         # BUG-010 fix: wrap in try/except so step-8 photo never 503s
+        # BUG-010b fix: rollback session after estimate failure so the session
+        #   isn't left in an aborted-transaction state, which would cause
+        #   _complete_service_session to throw an unhandled exception → 503.
         if branch.get("generate_estimate") and assessment_id and company_id:
             try:
                 await _generate_service_estimate(db, assessment_id, company_id)
@@ -690,7 +707,16 @@ async def _process_branch(
                 logger.error(
                     "[diagnostic] service estimate creation failed (non-fatal): %s", exc
                 )
-        await _complete_service_session(db, session_id)
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+        try:
+            await _complete_service_session(db, session_id)
+        except Exception as exc:
+            logger.error(
+                "[diagnostic] _complete_service_session failed (non-fatal): %s", exc
+            )
         return AnswerResponse(service_step_complete=True, finding=finding)
 
     # ── escalate ───────────────────────────────────────────────────────────────
@@ -1098,4 +1124,27 @@ async def undo_step(
 
 @router.get("/session/{session_id}", response_model=StartSessionResponse)
 async def resume_session(
-    session_id: str =
+    session_id: str = Path(...),
+    auth: AuthContext = Depends(get_current_user),
+    tables: MarketTables = Depends(get_tables),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Resume a diagnostic session — return session_id + current question.
+    Used when the tech navigates back to an in-progress assessment.
+    """
+    session = await _load_session(db, session_id, auth.company_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Diagnostic session not found.")
+
+    q_row = await _load_question(db, session.complaint_type, session.current_step_id)
+    if not q_row:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Current step '{session.current_step_id}' not found.",
+        )
+
+    return StartSessionResponse(
+        session_id=session_id,
+        current_step=_row_to_question_out(q_row, tables.market),
+    )

@@ -132,11 +132,11 @@ async def load_brands(db, data: dict) -> int:
                 "id": b["id"],
                 "name": b["name"],
                 "parent_company": b.get("parent_company"),
-                "sister_brands": _pg_text_array(b.get("sister_brands")),
+                "sister_brands": b.get("sister_brands") or None,
                 "houston_prevalence": b.get("houston_prevalence"),
                 "manufactured_in_tx": b.get("manufactured_in_tx", False),
                 "series": json.dumps(b.get("series", [])),
-                "legacy_model_prefixes": _pg_text_array(b.get("legacy_model_prefixes")),
+                "legacy_model_prefixes": b.get("legacy_model_prefixes") or None,
                 "legacy_years": b.get("legacy_years"),
                 "legacy_refrigerant": b.get("legacy_refrigerant"),
                 "legacy_notes": b.get("legacy_notes"),
@@ -168,7 +168,7 @@ async def load_parts(db, data: dict) -> int:
                 "id": p["id"],
                 "name": p["name"],
                 "category": p.get("category"),
-                "fault_cards": _pg_int_array(p.get("fault_cards") if isinstance(p.get("fault_cards"), list) else None),
+                "fault_cards": (p.get("fault_cards") if isinstance(p.get("fault_cards"), list) else None),
                 "description": p.get("description"),
                 "part_cost_wholesale": json.dumps(p.get("part_cost_wholesale", {})),
                 "part_cost_retail": json.dumps(p.get("part_cost_retail", {})),
@@ -226,8 +226,8 @@ async def load_fault_cards(db, data: dict, price_rows: list) -> int:
                 "card_id": c["card_id"],
                 "card_name": c["card_name"],
                 "houston_freq": c.get("houston_frequency_pct"),
-                "primary_parts": _pg_text_array(c.get("primary_parts")),
-                "optional_parts": _pg_text_array(c.get("optional_parts")),
+                "primary_parts": c.get("primary_parts") or None,
+                "optional_parts": c.get("optional_parts") or None,
                 "labor_min": lo or c["labor_hours"].get("min"),
                 "labor_max": hi or c["labor_hours"].get("max"),
                 "labor_avg": avg or c["labor_hours"].get("average"),
@@ -290,11 +290,10 @@ async def load_error_codes(db, data: dict) -> int:
     total = 0
 
     def _insert_codes(brand_family, brand_family_members, subsystem, codes_list):
-        members_pg = _pg_text_array(brand_family_members)
         return [
             {
                 "brand_family": brand_family,
-                "brand_family_members": members_pg,
+                "brand_family_members": brand_family_members or None,
                 "subsystem": subsystem,
                 "error_code": c.get("code", ""),
                 "meaning": c.get("meaning") or c.get("description"),
@@ -398,7 +397,7 @@ async def load_labor_rates(db, data: dict) -> int:
             "attic_note": lr.get("attic_work_premium", {}).get("note"),
             "r22_min": lr.get("r22_handling_surcharge", {}).get("min"),
             "r22_max": lr.get("r22_handling_surcharge", {}).get("max"),
-            "eff_date": date.today().isoformat(),
+            "eff_date": date.today(),
         },
     )
     print("  ✓ labor_rates_houston: 1 row")
@@ -695,6 +694,6 @@ async def main(dry_run: bool = False) -> None:
     except Exception:
         print("\n❌ FATAL ERROR in load_repo.py — full traceback:")
         traceback.print_exc()
-        sys.exit(1)
+        raise  # re-raise so callers (e.g. admin endpoint) get the real error
 
-    # ── Acceptance check ───────────────────────
+    # ── Acceptance check ───

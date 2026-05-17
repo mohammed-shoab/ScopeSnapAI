@@ -401,8 +401,27 @@ function AssessPageInner() {
 
   // ── complaint: job info + complaint chip grid ──────────────────────────────
   if (phase === "complaint") {
+    // Task-7: detect inverter / variable-speed units from OCR result
+    const ocrOutdoor   = (ocrResult as Record<string, unknown> | null)?.outdoor as Record<string, unknown> | undefined;
+    const compType     = String(ocrOutdoor?.compressor_type ?? "").toLowerCase();
+    const isInverter   = compType.includes("inverter") || compType.includes("variable");
+
     return (
       <div className="max-w-lg mx-auto space-y-5 px-4 pb-6">
+        {/* Task-7: inverter unit banner — standard diagnostic PSI/charge targets don't apply */}
+        {isInverter && (
+          <div className="flex items-start gap-3 bg-orange-50 border-2 border-orange-400 rounded-xl px-4 py-3 mt-2">
+            <span className="text-orange-600 font-black text-lg flex-shrink-0">⚠</span>
+            <div>
+              <p className="text-sm font-black text-orange-800">Variable-Speed / Inverter Unit</p>
+              <p className="text-xs text-orange-700 mt-0.5">
+                Standard static pressure targets do not apply to inverter-driven compressors.
+                Verify readings against the manufacturer spec sheet before using diagnostic cards.
+                Refrigerant charge must be measured at rated capacity (not at startup).
+              </p>
+            </div>
+          </div>
+        )}
         {pendingCount > 0 && (
           <div className="flex items-center gap-3 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 mt-2">
             <span className="text-base">&#x1F4E1;</span>
@@ -729,7 +748,7 @@ function AssessPageInner() {
   return null;
 }
 
-// ── Exported page: Suspense wrapper required for useSearchParams ───────────
+// ── Exported page: Suspense wrapper required for useSearchParams ─────────────────────────
 export default function AssessPage() {
   return (
     <Suspense
