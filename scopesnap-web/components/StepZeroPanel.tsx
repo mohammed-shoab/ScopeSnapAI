@@ -77,12 +77,27 @@ const OCR_FIELDS: {
   { key: "model_number",  label: "Model #",     type: "text",   badge: "db"  },
   { key: "tonnage",       label: "Tonnage",      unit: "ton",    type: "number", badge: "db"  },
   { key: "refrigerant",   label: "Refrigerant",  type: "text",   badge: "db"  },
-  { key: "rla",           label: "RLA",          unit: "A",      type: "number", badge: "db"  },
-  { key: "lra",           label: "LRA",          unit: "A",      type: "number", badge: "db"  },
+  { key: "rla",           label: "RLA",          unit: "A",      type: "number", badge: "est" },
+  { key: "lra",           label: "LRA",          unit: "A",      type: "number", badge: "est" },
   { key: "capacitor_uf",  label: "Cap",          unit: "µF",     type: "text",   badge: "est" },
-  { key: "mca",           label: "MCA",          unit: "A",      type: "number", badge: "db"  },
-  { key: "mocp",          label: "MOCP",         unit: "A",      type: "number", badge: "db"  },
+  { key: "mca",           label: "MCA",          unit: "A",      type: "number", badge: "est" },
+  { key: "mocp",          label: "MOCP",         unit: "A",      type: "number", badge: "est" },
 ];
+
+// ── Electrical spec defaults by tonnage (ac_data_repo.json §electrical_specs_by_tonnage) ──────
+// Used to auto-fill RLA/LRA/MCA/MOCP/Cap when a model is selected from the DB.
+// Values are midpoints from the reference ranges.
+const ELECTRICAL_SPECS_BY_TONNAGE: Record<number, {
+  rla: number; lra: number; mca: number; mocp: number; capacitor_uf: string;
+}> = {
+  1.5: { rla: 7.2,  lra: 45,  mca: 11.0, mocp: 15, capacitor_uf: "25/5 MFD 370V or 440V" },
+  2.0: { rla: 9.5,  lra: 55,  mca: 13.5, mocp: 20, capacitor_uf: "35/5 MFD 370V or 440V" },
+  2.5: { rla: 11.8, lra: 64,  mca: 16.5, mocp: 25, capacitor_uf: "40/5 MFD 370V or 440V" },
+  3.0: { rla: 14.0, lra: 74,  mca: 19.0, mocp: 30, capacitor_uf: "45/5 MFD 370V or 440V" },
+  3.5: { rla: 16.2, lra: 86,  mca: 22.5, mocp: 35, capacitor_uf: "50/5 MFD 370V or 440V" },
+  4.0: { rla: 19.2, lra: 97,  mca: 26.0, mocp: 40, capacitor_uf: "55/5 MFD 370V or 440V" },
+  5.0: { rla: 22.8, lra: 117, mca: 31.5, mocp: 50, capacitor_uf: "60/5 MFD 370V or 440V" },
+};
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -210,6 +225,18 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             next.refrigerant = "R-410A";
             next.r22_alert   = false;
           }
+        }
+      }
+      // Electrical spec estimation from reference table (ac_data_repo.json)
+      // Fill RLA/LRA/MCA/MOCP/Cap only if not already set from a real nameplate
+      if (next.tonnage !== null) {
+        const elecSpec = ELECTRICAL_SPECS_BY_TONNAGE[next.tonnage];
+        if (elecSpec) {
+          if (next.rla === null)          next.rla          = elecSpec.rla;
+          if (next.lra === null)          next.lra          = elecSpec.lra;
+          if (next.mca === null)          next.mca          = elecSpec.mca;
+          if (next.mocp === null)         next.mocp         = elecSpec.mocp;
+          if (next.capacitor_uf === null) next.capacitor_uf = elecSpec.capacitor_uf;
         }
       }
       return next;
