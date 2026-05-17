@@ -608,8 +608,22 @@ async def _pk_evaluate_pressure(
         targets = None
 
     if not targets:
-        # Fallback: US thresholds
-        lo, hi = (60, 110) if subtype == "suction" else (200, 400)
+        # Fallback: US thresholds — refrigerant-aware for correct hot-ambient routing
+        # R-410A at 35-40°C ambient (Houston summer): suction 65-145 PSI, discharge 200-400 PSI
+        _us_suction = {
+            "R-410A": (65, 145),
+            "R-22":   (55, 90),
+            "R-32":   (90, 145),
+        }
+        _us_discharge = {
+            "R-410A": (200, 400),
+            "R-22":   (150, 350),
+            "R-32":   (200, 420),
+        }
+        if subtype == "suction":
+            lo, hi = _us_suction.get(ref, (65, 145))
+        else:
+            lo, hi = _us_discharge.get(ref, (200, 400))
     elif subtype == "suction":
         lo, hi = float(targets.suction_min_psi), float(targets.suction_max_psi)
     else:
