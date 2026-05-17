@@ -14,10 +14,11 @@ import { detectMarket } from "@/lib/market";
 import { useLang } from "@/lib/language-context";
 
 export default function LanguageToggle() {
+  // Hooks must be called unconditionally before any early return
+  const { lang, toggleLang } = useLang();
+
   // Only show for Pakistan market
   if (detectMarket() !== "PK") return null;
-
-  const { lang, toggleLang } = useLang();
 
   const isUrdu = lang === "ur";
 

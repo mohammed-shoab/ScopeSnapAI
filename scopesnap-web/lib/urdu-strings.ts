@@ -20,7 +20,6 @@ export const URDU_STRINGS: Record<string, string> = {
   "Send Feedback":                   "رائے بھیجیں",
 
   // ── Entry / assess form ─────────────────────────────────────────────────────
-  "New Assessment":                  "نئی تشخیص",
   "Fill in job info, then tap the complaint.": "جاب کی معلومات بھریں، پھر شکایت منتخب کریں۔",
   "Job Info (optional)":             "جاب کی معلومات (اختیاری)",
   "Property address (search existing...)":    "پراپرٹی کا پتہ (پرانا تلاش کریں...)",
