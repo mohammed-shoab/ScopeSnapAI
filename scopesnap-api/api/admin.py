@@ -210,3 +210,28 @@ async def admin_dashboard(x_admin_secret: str = Header(default="")):
             "note": "Lower edit rate = AI is more accurate. Target < 20%.",
         },
     }
+
+
+# ── POST /admin/load-repo — reload ac_data_repo.json into DB ─────────────────
+
+@router.post("/load-repo", summary="Reload ac_data_repo.json into brand/parts/fault_cards tables")
+async def run_load_repo(x_admin_secret: str = Header(default="")):
+    """
+    Runs scripts/load_repo.py → truncates and re-seeds brands, parts_catalog,
+    fault_cards, error_codes, pricing_tiers, labor_rates, legacy_model_prefixes,
+    lifecycle_rules, data_defaults, replacement_cost_estimates.
+
+    Run after any update to ac_data_repo.json.
+    Requires X-Admin-Secret header.
+    """
+    _require_admin(x_admin_secret)
+
+    import sys as _sys
+    _sys.path.insert(0, "/app")
+
+    try:
+        from scripts.load_repo import main as load_repo_main
+        await load_repo_main(dry_run=False)
+        return {"message": "load_repo completed successfully"}
+    except BaseException as exc:
+        raise HTTPException(status_code=500, detail=f"load_repo failed: {type(exc).__name__}: {exc}")
