@@ -697,6 +697,9 @@ async def _process_branch(
     if branch.get("service_complete"):
         # BUG-009 fix: generate estimate before marking session done
         # BUG-010 fix: wrap in try/except so step-8 photo never 503s
+        # BUG-010b fix: rollback session after estimate failure so the session
+        #   isn't left in an aborted-transaction state, which would cause
+        #   _complete_service_session to throw an unhandled exception → 503.
         if branch.get("generate_estimate") and assessment_id and company_id:
             try:
                 await _generate_service_estimate(db, assessment_id, company_id)
@@ -704,7 +707,16 @@ async def _process_branch(
                 logger.error(
                     "[diagnostic] service estimate creation failed (non-fatal): %s", exc
                 )
-        await _complete_service_session(db, session_id)
+                try:
+                    await db.rollback()
+                except Exception:
+                    pass
+        try:
+            await _complete_service_session(db, session_id)
+        except Exception as exc:
+            logger.error(
+                "[diagnostic] _complete_service_session failed (non-fatal): %s", exc
+            )
         return AnswerResponse(service_step_complete=True, finding=finding)
 
     # ── escalate ───────────────────────────────────────────────────────────────
