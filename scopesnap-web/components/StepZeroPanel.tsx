@@ -594,7 +594,8 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
           </p>
 
           {/* Section 5A: Brand dropdown + model search */}
-          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+          {/* BUG-014b: overflow-visible so model results dropdown is not clipped */}
+          <div className="bg-white border border-gray-200 rounded-2xl overflow-visible">
             <div className="px-4 py-2.5 border-b border-gray-100">
               <span className="text-xs font-black uppercase tracking-wider text-blue-600">
                 🔍 Model Lookup — auto-fill from database
