@@ -501,7 +501,7 @@ function AssessPageInner() {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <input
-              type="text" placeholder={t("Homeowner name")} value={customerName}
+              type="text" placeholder={detectMarket() === "PK" ? "Ahmed Khan" : t("Homeowner name")} value={customerName}
               onChange={e => setCustomerName(e.target.value)}
               className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-600"
             />
