@@ -337,7 +337,11 @@ export default function EstimatePage() {
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (IS_DEV) return DEV_HEADER;
     const token = await getToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    // BUG-015: include X-Market so PK diagnostic routing hits pak_* tables
+    const market = detectMarket();
+    return token
+      ? { "X-Market": market, Authorization: `Bearer ${token}` }
+      : { "X-Market": market };
   }, [getToken]);
   const { t, lang } = useLang();
   const [estimate, setEstimate] = useState<EstimateData | null>(null);
