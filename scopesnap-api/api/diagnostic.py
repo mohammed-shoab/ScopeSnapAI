@@ -990,6 +990,25 @@ async def submit_answer(
             raw_psi, subtype, branch_key, refrigerant, ambient,
         )
 
+    # ── BUG-016: PK ok suction → discharge PSI step (not US Card 13) ─────────
+    # US q2-nc-suction maps "ok" → Card 13 (TXV/Metering Device).
+    # For PK at 40°C ambient, "ok" means 125-145 PSI (normal operating range).
+    # Routing to Card 13 is wrong — instead continue to discharge PSI to
+    # differentiate dirty condenser (Card 14) vs. overcharge (Card 17).
+    if (
+        tables.market == "PK"
+        and branch_key == "ok"
+        and isinstance(q_row.reading_spec, dict)
+        and q_row.reading_spec.get("subtype") == "suction"
+    ):
+        pk_ok_branch: dict = {"next_step_id": "q2-nc-discharge"}
+        logger.info("[diagnostic] BUG-016: PK normal suction → routing to discharge PSI step")
+        return await _process_branch(
+            db, session_id, session.complaint_type, pk_ok_branch,
+            assessment_id=session.assessment_id, company_id=auth.company_id,
+            tables=tables,
+        )
+
     # ── Follow branch ─────────────────────────────────────────────────────────
     branch = _follow_branch(branch_logic, branch_key)
 
