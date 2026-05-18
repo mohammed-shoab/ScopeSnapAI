@@ -152,6 +152,10 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   const [manualUnit, setManualUnit] = useState<NameplateUnit>({ ...BLANK_UNIT });
   // PK-only: explicit refrigerant selection ("R-32" | "R-410A" | "R-22" | "not_sure")
   const [pkRefrigerant, setPkRefrigerant] = useState<string>("not_sure");
+  // PK-only: selected tonnage key from tonnage_data (e.g. "1.5", "2.0")
+  const [pkSelectedTonnageKey, setPkSelectedTonnageKey] = useState<string | null>(null);
+  // PK-only: tonnage_data from the selected model record
+  const [pkTonnageData, setPkTonnageData] = useState<EquipmentModelRecord["tonnage_data"] | null>(null);
 
   // ── Section 5A: Brand/model lookup ─────────────────────────────────────────
   const [brands,           setBrands]           = useState<Array<{ brand: string; model_count: number }>>([]);
@@ -198,16 +202,25 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
 
   /** Apply a selected model record to the manual unit fields */
   const applyModelRecord = useCallback((model: EquipmentModelRecord) => {
+    // PK: store tonnage_data and reset selected tonnage key (user picks via picker)
+    if (isPK) {
+      setPkTonnageData(model.tonnage_data ?? null);
+      setPkSelectedTonnageKey(null);
+    }
     setManualUnit(prev => {
       const next = { ...prev };
       next.brand_id   = model.brand;
       next.series_id  = model.model_series;
       next.model_number = model.model_series;
-      // Tonnage: parse the low end of "1.5-5" → 3 (midpoint) or leave null
-      if (model.tonnage_range) {
+      // Tonnage: PK — clear until user picks via picker; US — parse range midpoint
+      if (!isPK && model.tonnage_range) {
         const parts = model.tonnage_range.split("-").map(Number).filter(n => !isNaN(n));
         if (parts.length === 2) next.tonnage = Math.round((parts[0] + parts[1]) / 2 * 2) / 2;
         else if (parts.length === 1) next.tonnage = parts[0];
+      } else if (isPK) {
+        next.tonnage = null; // cleared — awaiting PK tonnage picker
+        next.rla = null; next.lra = null; next.mca = null;
+        next.mocp = null; next.capacitor_uf = null;
       }
       // Refrigerant: derive from manufacture_years — US only; PK uses explicit picker
       if (!isPK && model.manufacture_years) {
@@ -227,9 +240,9 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
           }
         }
       }
-      // Electrical spec estimation from reference table (ac_data_repo.json)
-      // Fill RLA/LRA/MCA/MOCP/Cap only if not already set from a real nameplate
-      if (next.tonnage !== null) {
+      // US only: electrical spec estimation from reference table (ac_data_repo.json)
+      // PK: specs come from tonnage_data via applyPkTonnage below
+      if (!isPK && next.tonnage !== null) {
         const elecSpec = ELECTRICAL_SPECS_BY_TONNAGE[next.tonnage];
         if (elecSpec) {
           if (next.rla === null)          next.rla          = elecSpec.rla;
@@ -243,7 +256,32 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
     });
     setShowModelDropdown(false);
     setEditedManualFields(new Set()); // Reset edited badges when new model applied
-  }, []);
+  }, [isPK]);
+
+  /** PK only — apply electrical specs for the chosen tonnage key (e.g. "1.5") */
+  const applyPkTonnage = useCallback((key: string) => {
+    setPkSelectedTonnageKey(key);
+    const td = pkTonnageData?.[key];
+    const tonNum = parseFloat(key);
+    setManualUnit(prev => {
+      const next = { ...prev, tonnage: isNaN(tonNum) ? prev.tonnage : tonNum };
+      if (td) {
+        const amps = td.electrical?.amps;
+        const cap  = td.capacitors;
+        // Compressor cap + indoor fan cap, formatted like "25/5 µF"
+        const capStr = cap?.compressor_uf != null && cap?.indoor_fan_uf != null
+          ? `${cap.compressor_uf}/${cap.indoor_fan_uf} µF`
+          : cap?.compressor_uf != null ? `${cap.compressor_uf} µF` : null;
+        if (amps?.rated != null) next.rla = amps.rated;
+        if (amps?.lra   != null) next.lra = amps.lra;
+        if (td.electrical?.mca  != null) next.mca  = td.electrical.mca;
+        if (td.electrical?.mop  != null) next.mocp = td.electrical.mop;
+        if (capStr) next.capacitor_uf = capStr;
+      }
+      return next;
+    });
+    setEditedManualFields(new Set()); // fresh DB badges
+  }, [pkTonnageData]);
 
   /** Section 5D: Auto-select refrigerant based on manufacture year */
   const updateManualField = useCallback((key: keyof NameplateUnit, value: string) => {
@@ -750,6 +788,59 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                     );
                   })}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── PK-only: Tonnage Picker (shown after model selected) ──────────── */}
+          {isPK && pkTonnageData && Object.keys(pkTonnageData).length > 0 && (
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-gray-100">
+                <span className="text-xs font-black uppercase tracking-wider text-blue-600">
+                  ⚖️ Select Tonnage
+                </span>
+              </div>
+              <div className="p-3">
+                <p className="text-[10px] text-gray-400 mb-2">
+                  Choose the unit capacity — specs will auto-fill from the brand database.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.keys(pkTonnageData).sort((a, b) => parseFloat(a) - parseFloat(b)).map((key) => {
+                    const isSelected = pkSelectedTonnageKey === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => applyPkTonnage(key)}
+                        className="flex flex-col items-center px-3 py-2 rounded-xl border-2 transition-all min-w-[56px]"
+                        style={{
+                          borderColor: isSelected ? "#1a8754" : "#e2dfd7",
+                          background:  isSelected ? "#f0faf6" : "#fafaf8",
+                        }}
+                      >
+                        <span
+                          className="text-sm font-black"
+                          style={{ color: isSelected ? "#1a8754" : "#374151" }}
+                        >
+                          {key}T
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── PK-only: 2.5T commercial warning banner (A-5) ──────────────── */}
+          {isPK && manualUnit.tonnage === 2.5 && (
+            <div className="bg-amber-50 border-2 border-amber-400 rounded-xl p-3 flex gap-2">
+              <span className="text-amber-600 font-bold flex-shrink-0 text-lg">⚠️</span>
+              <div>
+                <p className="text-sm font-black text-amber-800">Commercial / Light Commercial Unit</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  2.5-ton units are typically used in commercial or light-commercial applications in Pakistan.
+                  Verify with the customer whether this is a residential or commercial installation.
+                </p>
               </div>
             </div>
           )}

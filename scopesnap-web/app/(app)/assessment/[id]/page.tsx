@@ -1314,7 +1314,7 @@ export default function EstimatePage() {
                   <label className="text-xs text-text-secondary block mb-2 font-semibold">{t("Homeowner Name")}</label>
                   <input
                     type="text"
-                    placeholder="Sarah Johnson"
+                    placeholder={detectMarket() === "PK" ? "Ahmed Khan" : "Sarah Johnson"}
                     value={homeownerName}
                     onChange={(e) => setHomeownerName(e.target.value)}
                     className="w-full border border-surface-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green focus:ring-opacity-20"

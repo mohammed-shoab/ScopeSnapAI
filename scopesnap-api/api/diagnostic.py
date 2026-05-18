@@ -384,13 +384,24 @@ _PK_PSI_HINTS: dict[str, str] = {
 def _row_to_question_out(row: Any, market: str = "US") -> QuestionOut:
     """Convert a diagnostic_questions DB row to the API response schema.
 
-    For PK market, PSI reading questions get localised pressure-range hints
-    instead of the US-centric defaults stored in the database.
+    For PK market:
+    - PSI reading questions get localised pressure-range hints
+    - Voltage reading questions get PK-specific low_threshold (190 V)
+      so the frontend routes < 190 V as "no_power" / low voltage
     """
     hint = row.hint_text
-    if market == "PK" and isinstance(row.reading_spec, dict) and row.reading_spec.get("type") == "psi":
-        subtype = row.reading_spec.get("subtype", "suction")
-        hint = _PK_PSI_HINTS.get(subtype, hint)
+    reading_spec = row.reading_spec
+
+    if market == "PK" and isinstance(reading_spec, dict):
+        spec_type = reading_spec.get("type")
+        if spec_type == "psi":
+            subtype = reading_spec.get("subtype", "suction")
+            hint = _PK_PSI_HINTS.get(subtype, hint)
+        elif spec_type == "voltage":
+            # PK nominal voltage: 190–260 V single phase 50 Hz.
+            # Override US default low_threshold (100 V) so readings below
+            # 190 V are classified as "no_power" (under-voltage condition).
+            reading_spec = {**reading_spec, "low_threshold": 190}
 
     return QuestionOut(
         step_id=row.step_id,
@@ -401,7 +412,7 @@ def _row_to_question_out(row: Any, market: str = "US") -> QuestionOut:
         #   visual_select → [{value, label, icon}]
         #   multi         → [{kind, spec}]  (frontend casts)
         options=row.options_jsonb,
-        reading_spec=row.reading_spec,
+        reading_spec=reading_spec,
         photo_spec=row.photo_spec,
         is_terminal=bool(row.is_terminal),
     )

@@ -38,6 +38,11 @@ export interface EquipmentModelRecord {
     regions?: string[];
   }>;
   replacement_models: string[];
+  /** PK market only — per-tonnage electrical + capacitor specs from pak_brands */
+  tonnage_data?: Record<string, {
+    electrical?: { amps?: { rated?: number; lra?: number }; mca?: number; mop?: number };
+    capacitors?: { compressor_uf?: number; indoor_fan_uf?: number; outdoor_fan_uf?: number };
+  }>;
 }
 
 // ── In-memory fallback (when IndexedDB isn't available) ───────────────────────

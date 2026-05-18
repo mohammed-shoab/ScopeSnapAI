@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SnapAI — AC Diagnostic Decision Tree v5</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e8eaf0; min-height: 100vh; }
+
+  /* HEADER */
+  .app-header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-bottom: 2px solid #2a2a4a; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .app-logo { font-size: 20px; font-weight: 800; color: #fff; }
+  .app-logo span { color: #3498db; }
+  .app-subtitle { font-size: 11px; color: #7a82a0; margin-top: 2px; }
+  .version-pill { background: #2a2a4a; border: 1px solid #3a3a6a; color: #7a82a0; font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
+
+  /* STATS */
+  .stats-bar { display: flex; gap: 18px; padding: 8px 24px; background: #0c0c18; border-bottom: 1px solid #1a1a2e; flex-wrap: wrap; }
+  .stat-item { text-align: center; }
+  .stat-num { font-size: 15px; font-weight: 800; color: #fff; }
+  .stat-label { font-size: 9px; color: #4a5070; text-transform: uppercase; letter-spacing: 0.8px; margin-top: 1px; }
+
+  /* LEGEND */
+  .legend-bar { background: #161622; border-bottom: 1px solid #222238; padding: 8px 24px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #8a90a8; }
+  .legend-dot { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+  .ld-p0 { background: #f39c12; }
+  .ld-diag { background: #2ecc71; }
+  .ld-pdf  { background: #3498db; }
+  .ld-train { background: #e74c3c; }
+  .ld-p1  { background: #2ecc71; }
+  .ld-p2  { background: #e67e22; }
+  .ld-pj  { background: #9b59b6; }
+  .legend-sep { width: 1px; height: 14px; background: #2a2a4a; }
+
+  /* STEP ZERO */
+  .step-zero-banner { margin: 14px 24px 0; background: linear-gradient(135deg, #1a1200, #2a1e00); border: 2px solid #f39c12; border-radius: 12px; padding: 14px 18px; }
+  .step-zero-title { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .step-zero-badge { background: #f39c12; color: #000; font-size: 10px; font-weight: 900; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.8px; flex-shrink: 0; }
+  .step-zero-heading { font-size: 13px; font-weight: 800; color: #f5c842; }
+  .step-zero-sub { font-size: 10px; color: #c8a030; margin-top: 2px; }
+  .nameplate-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+  .nameplate-photo-box { background: #1a1600; border: 1px solid #3a2e00; border-radius: 8px; padding: 10px 14px; flex: 1; min-width: 170px; }
+  .nameplate-photo-box .label { font-size: 9px; font-weight: 800; color: #8a6a00; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 5px; }
+  .nameplate-photo-box .title { font-size: 12px; font-weight: 700; color: #f5c842; margin-bottom: 3px; }
+  .nameplate-photo-box .desc { font-size: 10px; color: #a08020; line-height: 1.5; }
+  .ocr-extracts { margin-top: 10px; background: #120e00; border: 1px solid #2a2200; border-radius: 8px; padding: 10px 14px; flex: 2; min-width: 240px; }
+  .ocr-label { font-size: 9px; font-weight: 800; color: #6a5800; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 7px; }
+  .ocr-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+  .ocr-tag { background: #1a1800; border: 1px solid #3a3000; color: #d4a820; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+  .ocr-tag span { color: #7a6010; font-weight: 600; margin-right: 3px; }
+  .loc-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .loc-pill { background: #0a0e1a; border: 1px solid #2a2a4a; color: #7a82a0; font-size: 10px; padding: 4px 10px; border-radius: 5px; }
+  .loc-pill strong { color: #a0a8c0; }
+
+  /* TABS */
+  .screen-label { padding: 14px 24px 0; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #4a5070; }
+  .complaint-tabs { display: flex; gap: 7px; padding: 10px 24px 0; flex-wrap: wrap; }
+  .ctab { position: relative; padding: 7px 13px; border-radius: 7px; font-size: 11px; font-weight: 600; cursor: pointer; border: 2px solid #2a2a4a; background: #1a1a2e; color: #7a82a0; transition: all 0.15s; user-select: none; }
+  .ctab:hover { border-color: #3a3a6a; color: #b0b8d0; }
+  .ctab.active { border-color: #3498db; background: #1a3a5c; color: #fff; }
+  .ctab.new-item { border-color: #e74c3c; }
+  .ctab.new-item::after { content: 'ADD'; position: absolute; top: -8px; right: -4px; background: #e74c3c; color: white; font-size: 7px; font-weight: 900; padding: 2px 4px; border-radius: 3px; }
+  .ctab.service-tab { border-color: #16a085; }
+  .ctab.service-tab.active { background: #0d3d30; border-color: #1abc9c; }
+  .ctab-letter { font-size: 10px; color: #4a70a0; margin-right: 3px; font-weight: 800; }
+
+  /* MAIN */
+  .main { padding: 18px 24px 40px; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* COMPLAINT HEADER */
+  .complaint-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #222238; }
+  .complaint-icon { font-size: 22px; }
+  .complaint-name { font-size: 16px; font-weight: 700; color: #fff; }
+  .complaint-meta { font-size: 10px; color: #5a6280; margin-top: 2px; }
+  .houston-badge { margin-left: auto; background: #1a2a1a; border: 1px solid #2a4a2a; color: #4ac274; font-size: 11px; font-weight: 700; padding: 5px 12px; border-radius: 6px; text-align: center; flex-shrink: 0; }
+  .houston-badge small { display: block; font-size: 9px; color: #3a7a3a; font-weight: 600; margin-top: 1px; }
+
+  /* TREE */
+  .tree-area { overflow-x: auto; padding-bottom: 10px; }
+  .branch-row { display: flex; gap: 10px; align-items: flex-start; }
+  .branch-col { display: flex; flex-direction: column; align-items: center; }
+  .v-connector { display: flex; flex-direction: column; align-items: center; }
+  .v-line { width: 2px; background: #2a3050; height: 16px; }
+
+  /* NODES */
+  .node { border-radius: 8px; padding: 9px 13px; font-size: 11px; border: 2px solid; display: inline-flex; flex-direction: column; min-width: 155px; max-width: 230px; }
+  .node-q  { background: #0d2d4a; border-color: #3498db; color: #a8d4f5; }
+  .node-p0 { background: #1a1200; border-color: #f39c12; color: #f5c842; }
+  .node-p1 { background: #0d2d1a; border-color: #2ecc71; color: #a8f5c8; }
+  .node-p2 { background: #2d1a0d; border-color: #e67e22; color: #f5c8a8; }
+  .node-pj { background: #1a0d2d; border-color: #9b59b6; color: #d4a8f5; }
+  .node-svc { background: #0d2d28; border-color: #1abc9c; color: #a8f5e8; }
+
+  .node-tag { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; opacity: 0.7; }
+  .node-title { font-size: 11px; font-weight: 700; line-height: 1.4; }
+  .node-sub { font-size: 10px; margin-top: 3px; opacity: 0.75; line-height: 1.4; }
+  .phase-badge { display: inline-block; font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 10px; margin-top: 5px; }
+  .pb-p1 { background: #2ecc71; color: #001a0a; }
+  .pb-p2 { background: #e67e22; color: #1a0800; }
+  .pb-pj { background: #9b59b6; color: #0a0010; }
+  .actions-count { font-size: 9px; font-weight: 700; opacity: 0.6; margin-top: 3px; }
+
+  /* BRANCH LABELS */
+  .branch-label-wrap { display: flex; flex-direction: column; align-items: center; margin-bottom: 5px; }
+  .branch-label { font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+  .bl-yes   { background: #1a3a1a; color: #4ac274; border: 1px solid #2a5a2a; }
+  .bl-no    { background: #3a1a1a; color: #e07070; border: 1px solid #5a2a2a; }
+  .bl-mild  { background: #1a3a1a; color: #4ac274; border: 1px solid #2a5a2a; }
+  .bl-moderate { background: #3a2a0a; color: #e0b040; border: 1px solid #5a4a1a; }
+  .bl-severe { background: #3a1a1a; color: #e07070; border: 1px solid #5a2a2a; }
+  .bl-clog  { background: #3a1a1a; color: #e07070; border: 1px solid #5a2a2a; }
+  .bl-clear { background: #1a3a1a; color: #4ac274; border: 1px solid #2a5a2a; }
+  .bl-cam   { background: #1a0a3a; color: #b070e0; border: 1px solid #3a1a5a; }
+  .bl-nocam { background: #3a2a0a; color: #e0a040; border: 1px solid #5a4a1a; }
+  .bl-pres  { background: #0d2d4a; color: #a8d4f5; border: 1px solid #1a4a7a; }
+  .bl-hp    { background: #1a0a3a; color: #b070e0; border: 1px solid #3a1a5a; }
+  .bl-gas   { background: #1a3a2a; color: #50c090; border: 1px solid #2a5a3a; }
+  .bl-stuck { background: #3a1a1a; color: #e07070; border: 1px solid #5a2a2a; }
+  .bl-lowp  { background: #3a2a0a; color: #e0b040; border: 1px solid #5a4a1a; }
+
+  /* PHOTO BOXES — two types */
+  .photo-req-row { display: flex; gap: 7px; flex-wrap: wrap; margin: 8px 0 6px; }
+
+  /* DIAGNOSTIC photo — green — helps AI/reading diagnose */
+  .photo-diag {
+    background: #071a0a; border: 1.5px solid #2ecc71; border-radius: 7px;
+    padding: 8px 11px; flex: 1; min-width: 130px;
+  }
+  .photo-diag .ph-label { font-size: 9px; font-weight: 800; color: #2ecc71; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .photo-diag .ph-title { font-size: 11px; font-weight: 700; color: #7adc9a; margin-bottom: 3px; }
+  .photo-diag .ph-desc { font-size: 10px; color: #4a8a5a; line-height: 1.4; }
+  .photo-diag .ph-ai { font-size: 9px; color: #2a7a4a; margin-top: 3px; font-style: italic; }
+
+  /* EVIDENCE photo — blue — homeowner PDF only, not diagnostic */
+  .photo-evidence {
+    background: #071220; border: 1.5px dashed #3498db; border-radius: 7px;
+    padding: 8px 11px; flex: 1; min-width: 130px;
+  }
+  .photo-evidence .ph-label { font-size: 9px; font-weight: 800; color: #3498db; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .photo-evidence .ph-title { font-size: 11px; font-weight: 700; color: #7ab0dc; margin-bottom: 3px; }
+  .photo-evidence .ph-desc { font-size: 10px; color: #4a6a8a; line-height: 1.4; }
+  .photo-evidence .ph-ai { font-size: 9px; color: #2a5a7a; margin-top: 3px; font-style: italic; }
+
+  /* Reading box */
+  .reading-box {
+    background: #0a0a2a; border: 1.5px solid #4a4a9a; border-radius: 7px;
+    padding: 8px 11px; flex: 1; min-width: 130px;
+  }
+  .reading-box .rd-label { font-size: 9px; font-weight: 800; color: #4a5aaa; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .reading-box .rd-title { font-size: 11px; font-weight: 700; color: #8a9adc; margin-bottom: 3px; }
+  .reading-box .rd-desc { font-size: 10px; color: #5a6a9a; line-height: 1.4; }
+  .reading-box .rd-compare { font-size: 9px; color: #3a5a8a; margin-top: 3px; font-style: italic; }
+
+  /* DATA COLLECTION box — for training */
+  .data-collect {
+    margin-top: 12px; background: #1a0a00; border: 2px solid #e74c3c;
+    border-radius: 9px; padding: 12px 14px;
+  }
+  .data-collect-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .dc-badge { background: #e74c3c; color: white; font-size: 9px; font-weight: 900; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .dc-title { font-size: 12px; font-weight: 700; color: #f5a8a0; }
+  .dc-sub { font-size: 10px; color: #a05050; margin-bottom: 8px; line-height: 1.4; }
+  .dc-question { font-size: 11px; font-weight: 600; color: #f5c0b8; margin-bottom: 8px; }
+  .dc-buttons { display: flex; gap: 8px; }
+  .dc-btn { padding: 6px 18px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer; border: none; }
+  .dc-btn-yes { background: #2ecc71; color: #001a0a; }
+  .dc-btn-yes:hover { background: #27ae60; }
+  .dc-btn-no  { background: #e74c3c; color: white; }
+  .dc-btn-no:hover  { background: #c0392b; }
+  .dc-note { font-size: 9px; color: #7a4040; margin-top: 6px; font-style: italic; }
+
+  /* MARK CALLOUT */
+  .mark-callout { background: #0a1a2a; border-left: 4px solid #3498db; border-radius: 0 7px 7px 0; padding: 10px 14px; margin: 10px 0; font-size: 11px; color: #a0c0d8; line-height: 1.6; }
+  .mark-name { font-size: 10px; font-weight: 800; color: #3498db; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+
+  /* PATH LABELS */
+  .path-label { font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 4px; margin-bottom: 6px; text-align: center; }
+  .path-a { background: #1a0a3a; color: #b070e0; border: 1px solid #3a1a5a; }
+  .path-b { background: #3a2a0a; color: #e0a040; border: 1px solid #5a4a1a; }
+
+  /* STEP SEQ */
+  .step-seq { display: flex; flex-direction: column; gap: 5px; }
+  .step-item { display: flex; gap: 8px; align-items: flex-start; background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 6px; padding: 7px 10px; }
+  .step-num { background: #2a2a4a; color: #a0a8c0; font-size: 10px; font-weight: 800; width: 20px; height: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-text { font-size: 11px; color: #c0c8e0; line-height: 1.4; }
+  .step-text strong { color: #fff; }
+
+  /* WARNING */
+  .warning-box { background: #2a1a00; border: 1px solid #5a3a00; border-radius: 7px; padding: 10px 14px; font-size: 11px; color: #e0a040; margin-bottom: 12px; display: flex; gap: 8px; }
+  .warning-icon { font-size: 14px; flex-shrink: 0; }
+
+  /* SERVICE CHECKLIST */
+  .svc-checklist { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; }
+  .svc-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: #0d2d28; border: 1px solid #1a4a40; border-radius: 7px; padding: 9px 12px;
+  }
+  .svc-num { background: #1abc9c; color: #001a14; font-size: 10px; font-weight: 900; width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .svc-content { flex: 1; }
+  .svc-title { font-size: 11px; font-weight: 700; color: #a8f5e8; }
+  .svc-desc { font-size: 10px; color: #4a8a7a; margin-top: 2px; line-height: 1.4; }
+  .svc-tool { font-size: 9px; color: #2a7a6a; margin-top: 2px; }
+  .svc-badge { display: inline-block; font-size: 9px; font-weight: 800; padding: 1px 6px; border-radius: 4px; margin-left: 6px; }
+  .svc-photo { background: #0a3a20; color: #4ac274; border: 1px solid #1a5a30; }
+  .svc-reading { background: #0a0a3a; color: #7a9adc; border: 1px solid #1a1a5a; }
+  .svc-action { background: #2a1a00; color: #e0a040; border: 1px solid #4a3000; }
+
+  .svc-estimate { background: #0d2d28; border: 2px solid #1abc9c; border-radius: 9px; padding: 12px 16px; margin-top: 14px; }
+  .svc-est-title { font-size: 12px; font-weight: 800; color: #1abc9c; margin-bottom: 8px; }
+  .svc-est-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .svc-est-item { background: #071a14; border: 1px solid #1a3a30; border-radius: 6px; padding: 7px 11px; flex: 1; min-width: 120px; }
+  .svc-est-item strong { display: block; font-size: 9px; color: #2a6a5a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+  .svc-est-item span { font-size: 11px; color: #a8f5e8; font-weight: 600; }
+
+  /* CARD DETAIL */
+  .card-detail { margin-top: 14px; background: #161622; border: 1px solid #222238; border-radius: 9px; padding: 12px 16px; }
+  .card-detail h3 { font-size: 11px; font-weight: 700; color: #5a6280; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+  .detail-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .detail-card { background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 6px; padding: 8px 12px; font-size: 11px; flex: 1; min-width: 130px; color: #a0a8c0; }
+  .detail-card strong { display: block; font-size: 9px; color: #5a6280; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+
+  /* QA STATUS BADGES */
+  .qa-pass { display:inline-flex;align-items:center;gap:5px;background:#0d2d1a;border:1.5px solid #2ecc71;color:#4ac274;font-size:10px;font-weight:800;padding:4px 10px;border-radius:5px;margin-top:6px; }
+  .qa-bug  { display:inline-flex;align-items:center;gap:5px;background:#2d0d0d;border:1.5px solid #e74c3c;color:#f08080;font-size:10px;font-weight:800;padding:4px 10px;border-radius:5px;margin-top:6px; }
+  .qa-nt   { display:inline-flex;align-items:center;gap:5px;background:#1a1a2e;border:1.5px solid #5a6280;color:#7a82a0;font-size:10px;font-weight:800;padding:4px 10px;border-radius:5px;margin-top:6px; }
+  .qa-bug-banner { background:#2a0a0a;border:2px solid #e74c3c;border-radius:9px;padding:12px 16px;margin:10px 0; }
+  .qa-bug-banner .bug-title { font-size:12px;font-weight:800;color:#e74c3c;margin-bottom:6px; }
+  .qa-bug-banner .bug-desc  { font-size:11px;color:#c07070;line-height:1.6; }
+  .qa-bug-banner .bug-code  { font-family:monospace;background:#1a0a0a;color:#f08080;font-size:10px;padding:3px 8px;border-radius:4px;margin-top:5px;display:inline-block; }
+  .qa-pass-banner { background:#071a0a;border:1.5px solid #2ecc71;border-radius:7px;padding:8px 12px;margin:6px 0;display:flex;align-items:center;gap:8px;font-size:11px;color:#7adc9a; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #161622; }
+  ::-webkit-scrollbar-thumb { background: #2a2a4a; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div>
+    <div class="app-logo">Snap<span>AI</span> — Diagnostic Engine</div>
+    <div class="app-subtitle">v5 · QA-annotated · May 11 2026 · 12 PASS · 5 BUGS · 3 N/T · Backend fixes required</div>
+  </div>
+  <div class="version-pill">v5.0 · QA Audit 11 May 2026</div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-num" style="color:#2ecc71">12</div><div class="stat-label">PASS ✅</div></div>
+  <div class="stat-item"><div class="stat-num" style="color:#e74c3c">5</div><div class="stat-label">BUGS 🔴</div></div>
+  <div class="stat-item"><div class="stat-num" style="color:#f39c12">3</div><div class="stat-label">Not Tested</div></div>
+  <div class="stat-item"><div class="stat-num">21</div><div class="stat-label">Branches Total</div></div>
+  <div class="stat-item"><div class="stat-num" style="color:#e74c3c">3</div><div class="stat-label">Critical Bugs</div></div>
+  <div class="stat-item"><div class="stat-num" style="color:#e67e22">2</div><div class="stat-label">High Bugs</div></div>
+  <div class="stat-item"><div class="stat-num" style="color:#2026-05-11;">May 11 2026</div><div class="stat-label">QA Date</div></div>
+</div>
+
+<div class="legend-bar">
+  <span style="font-size:10px;font-weight:700;color:#4a5070;text-transform:uppercase;letter-spacing:0.8px;">Photo types:</span>
+  <div class="legend-item"><div class="legend-dot ld-diag"></div><strong style="color:#2ecc71;">Green solid</strong> = Diagnostic (helps detect the fault)</div>
+  <div class="legend-item"><div class="legend-dot ld-pdf"></div><strong style="color:#3498db;">Blue dashed</strong> = Evidence only (homeowner PDF, not diagnostic)</div>
+  <div class="legend-item"><div class="legend-dot ld-train"></div><strong style="color:#e74c3c;">Red box</strong> = Training data collection (yes/no answer trains future AI)</div>
+  <div class="legend-sep"></div>
+  <div class="legend-item"><div class="legend-dot ld-p1"></div>Phase 1 live</div>
+  <div class="legend-item"><div class="legend-dot ld-p2"></div>Phase 2 needed</div>
+  <div class="legend-item"><div class="legend-dot ld-pj"></div>Tech Judgment</div>
+</div>
+
+<!-- QA AUDIT SUMMARY -->
+<div style="margin:14px 24px 0;background:#0a0a1a;border:2px solid #3a3a6a;border-radius:12px;padding:14px 18px;">
+  <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:10px;">📋 QA Audit Summary — May 11, 2026 — Production (snapai.mainnov.tech)</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+    <div style="flex:1;min-width:180px;background:#0d2d1a;border:1px solid #2ecc71;border-radius:8px;padding:10px 14px;">
+      <div style="font-size:10px;font-weight:800;color:#2ecc71;margin-bottom:6px;">✅ 12 PASS</div>
+      <div style="font-size:10px;color:#4a8a5a;line-height:1.7;">
+        High Electric Bill → YES &amp; NO<br>
+        Error Code → Photo/Manual → YES reset<br>
+        Not Heating → No ignition (rpt-2456)<br>
+        Not Cooling → YES (rpt-9273)<br>
+        Intermittent Shutdown → YES &amp; NO<br>
+        Water Dripping → Indoor (rpt-9984)<br>
+        Not Turning On → YES/no error (rpt-8691)<br>
+        Making Noise → Clicking &amp; Squealing
+      </div>
+    </div>
+    <div style="flex:1;min-width:180px;background:#2a0a0a;border:1px solid #e74c3c;border-radius:8px;padding:10px 14px;">
+      <div style="font-size:10px;font-weight:800;color:#e74c3c;margin-bottom:6px;">🔴 5 BUGS (3 Critical · 2 High)</div>
+      <div style="font-size:10px;color:#c07070;line-height:1.7;">
+        <strong style="color:#f08080;">BUG #10 [CRITICAL]</strong> Service/Tune-Up Step 8 → 503<br>
+        <strong style="color:#f08080;">BUG #11 [CRITICAL]</strong> Not Cooling → NO → always escalates<br>
+        <strong style="color:#f08080;">BUG #12 [CRITICAL]</strong> Water Dripping → Outdoor → 404/422<br>
+        <strong style="color:#e0a070;">BUG #13 [HIGH]</strong> Not Heating → Ignites shuts off<br>
+        <strong style="color:#e0a070;">BUG #9 &nbsp;[HIGH]</strong> Error Code → NO reset → escalates
+      </div>
+    </div>
+    <div style="flex:1;min-width:180px;background:#1a1a2e;border:1px solid #5a6280;border-radius:8px;padding:10px 14px;">
+      <div style="font-size:10px;font-weight:800;color:#7a82a0;margin-bottom:6px;">⏭ 3 NOT TESTED</div>
+      <div style="font-size:10px;color:#5a6280;line-height:1.7;">
+        Not Turning On → YES/error code<br>
+        Not Turning On → NO (no power)<br>
+        Making Noise → Banging/Hissing/Grinding
+      </div>
+    </div>
+  </div>
+  <div style="font-size:10px;color:#4a5070;border-top:1px solid #222238;padding-top:8px;">Method: UI click-through + JavaScript DataTransfer photo injection + manual numeric entry fields. All "escalated" branches re-tested with manual entries to confirm genuine backend bug vs photo issue.</div>
+</div>
+
+<!-- STEP ZERO -->
+<div class="step-zero-banner">
+  <div class="step-zero-title">
+    <div class="step-zero-badge">⚡ Step Zero — Every Call</div>
+    <div>
+      <div class="step-zero-heading">Nameplate Photo — Before Any Complaint Branch</div>
+      <div class="step-zero-sub">OCR reads nameplate → pre-loads all system specs → every card below uses this automatically</div>
+    </div>
+  </div>
+  <div class="nameplate-grid">
+    <div class="nameplate-photo-box">
+      <div class="label">📸 Photo 1 — Required</div>
+      <div class="title">Outdoor Unit Nameplate</div>
+      <div class="desc"><strong style="color:#d4a820;">Location: right or front side panel of condenser</strong> — metal plate riveted to cabinet. Take before opening any panel.</div>
+    </div>
+    <div class="nameplate-photo-box">
+      <div class="label">📸 Photo 2 — If accessible</div>
+      <div class="title">Indoor Unit Nameplate</div>
+      <div class="desc"><strong style="color:#d4a820;">Location: inside air handler cabinet door or side panel.</strong> Needed for blower/coil specs. Skip if attic access is difficult.</div>
+    </div>
+    <div class="ocr-extracts">
+      <div class="ocr-label">🤖 App OCR extracts automatically</div>
+      <div class="ocr-tags">
+        <div class="ocr-tag"><span>Model #</span>ID</div>
+        <div class="ocr-tag"><span>Serial #</span>Age</div>
+        <div class="ocr-tag"><span>Tonnage</span>Size</div>
+        <div class="ocr-tag"><span>Refrigerant</span>Type</div>
+        <div class="ocr-tag"><span>Factory charge</span>oz</div>
+        <div class="ocr-tag"><span>RLA</span>Rated amps</div>
+        <div class="ocr-tag"><span>LRA</span>Locked rotor</div>
+        <div class="ocr-tag"><span>Cap µF</span>Expected</div>
+        <div class="ocr-tag"><span>MCA / MOCP</span>Electrical</div>
+        <div class="ocr-tag"><span>Voltage</span>208/230V</div>
+      </div>
+    </div>
+  </div>
+  <div class="loc-pills">
+    <div class="loc-pill">📍 <strong>Outdoor:</strong> Right/front side panel — always outside, never remove panel to find it</div>
+    <div class="loc-pill">📍 <strong>Indoor:</strong> Inside cabinet door — requires opening air handler panel</div>
+    <div class="loc-pill">📍 <strong>Faded/missing:</strong> Serial number on body → app cross-references manufacturer DB</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="screen-label" style="margin-top:14px;">Select Complaint (after nameplate):</div>
+<div class="complaint-tabs">
+  <div class="ctab active" onclick="switchTab('s',this)"><span class="ctab-letter">S</span> Regular Service</div>
+  <div class="ctab" onclick="switchTab('a',this)"><span class="ctab-letter">A</span> Not Cooling</div>
+  <div class="ctab" onclick="switchTab('b',this)"><span class="ctab-letter">B</span> Water Dripping</div>
+  <div class="ctab" onclick="switchTab('c',this)"><span class="ctab-letter">C</span> Not Turning On</div>
+  <div class="ctab" onclick="switchTab('d',this)"><span class="ctab-letter">D</span> Making Noise</div>
+  <div class="ctab" onclick="switchTab('e',this)"><span class="ctab-letter">E</span> High Electric Bill</div>
+  <div class="ctab" onclick="switchTab('f',this)"><span class="ctab-letter">F</span> Error Code</div>
+  <div class="ctab" onclick="switchTab('g',this)"><span class="ctab-letter">G</span> Not Heating</div>
+  <div class="ctab new-item" onclick="switchTab('h',this)"><span class="ctab-letter">H</span> Intermittent Shutdown</div>
+  <div class="ctab" style="border-color:#8e44ad;" onclick="switchTab('m',this)"><span class="ctab-letter" style="color:#8e44ad;">M</span> AI Model Map</div>
+</div>
+
+<div class="main">
+
+<!-- ═══════════════════════ S: REGULAR SERVICE -->
+<div id="tab-s" class="tab-content active">
+  <div class="complaint-header">
+    <div class="complaint-icon">🔧</div>
+    <div>
+      <div class="complaint-name">S — Annual Service / Tune-Up</div>
+      <div class="complaint-meta">No fault complaint · Preventive maintenance · App generates estimate + any findings as add-ons</div>
+    </div>
+    <div class="houston-badge">~15% of calls<small>Houston (seasonal)</small></div>
+  </div>
+
+  <div class="qa-bug-banner">
+    <div class="bug-title">🔴 BUG #10 — CRITICAL — Service/Tune-Up Step 8 → 503 Backend Error</div>
+    <div class="bug-desc">ALL Service/Tune-Up branches are blocked at the final step. GET /api/diagnostic/questions/service returns 404, then POST /api/diagnostic/session/{id}/answer returns 503. None of the three paths (Looks Clean, Dirty-Can Clean, Dirty-Replace) can reach an estimate. This is the highest-volume complaint type — fix is Priority 1.</div>
+    <div><span class="bug-code">GET /api/diagnostic/questions/service → 404</span> <span class="bug-code">POST /answer → 503 Service Unavailable</span></div>
+  </div>
+
+  <div class="mark-callout">
+    <div class="mark-name">💬 Mark — on service calls</div>
+    Service calls are gold. The homeowner already trusts you enough to call for maintenance. Every service call is also a diagnostic call — you will find something on most of them. The app should generate a base service estimate automatically, then let the tech add findings as line items. That is how you turn an $89 tune-up into a $340 visit legitimately.
+  </div>
+
+  <div class="svc-checklist">
+    <div class="svc-item">
+      <div class="svc-num">1</div>
+      <div class="svc-content">
+        <div class="svc-title">Filter inspection / replacement <span class="svc-badge svc-photo">📸 Diagnostic</span></div>
+        <div class="svc-desc">Photo of filter face. App grades: Clean / Dirty / Replace. If dirty → add filter replacement to estimate automatically.</div>
+        <div class="svc-tool">AI: YOLO trainable — high contrast, easiest class. Becomes auto-confirm with training data.</div>
+      </div>
+    </div>
+    <div class="svc-item">
+      <div class="svc-num">2</div>
+      <div class="svc-content">
+        <div class="svc-title">Capacitor check <span class="svc-badge svc-reading">📏 Reading</span><span class="svc-badge svc-photo">📸 Evidence</span></div>
+        <div class="svc-desc">Enter µF reading. App compares vs nameplate spec (pre-loaded). If &gt;10% low → flag as "recommend replacement before peak summer." Photo of capacitor goes in PDF as evidence.</div>
+        <div class="svc-tool">Reading is everything here. Photo is for homeowner PDF only.</div>
+      </div>
+    </div>
+    <div class="svc-item">
+      <div class="svc-num">3</div>
+      <div class="svc-content">
+        <div class="svc-title">Condenser coil inspection <span class="svc-badge svc-photo">📸 Diagnostic</span></div>
+        <div class="svc-desc">Photo of coil face. App grades dirt/debris level. If dirty → add coil cleaning to estimate. Coil cleaning = $80–150 upsell on most service calls in Houston summer.</div>
+        <div class="svc-tool">AI: YOLO partially trained. Strong visual signal.</div>
+      </div>
+    </div>
+    <div class="svc-item">
+      <div class="svc-num">4</div>
+      <div class="svc-content">
+        <div class="svc-title">Condensate drain flush <span class="svc-badge svc-photo">📸 Evidence</span><span class="svc-badge svc-action">✅ Action</span></div>
+        <div class="svc-desc">Tech flushes drain line. Photo of drain pan before/after for homeowner PDF. In Houston this is preventive — drain clog is #1 service call. Flush tablet added to estimate always.</div>
+      </div>
+    </div>
+    <div class="svc-item">
+      <div class="svc-num">5</div>
+      <div class="svc-content">
+        <div class="svc-title">Electrical connections check <span class="svc-badge svc-photo">📸 Evidence</span><span class="svc-badge svc-reading">📏 Reading</span></div>
+        <div class="svc-desc">Inspect and retorque all terminals. Voltage drop reading on main terminals. If &gt;1V drop → flag as "loose terminal — recommend repair" → creates add-on estimate card.</div>
+        <div class="svc-tool">This catches Card #16 (loose terminal) before it causes intermittent shutdown. High value preventive step.</div>
+      </div>
+    </div>
+    <div class="svc-item">
+      <div class="svc-num">6</div>
+      <div class="svc-content">
+        <div class="svc-title">Amp draw check — compressor + blower <span class="svc-badge svc-reading">📏 Reading</span></div>
+        <div class="svc-desc">Enter compressor amp draw. App compares vs nameplate RLA (pre-loaded from Step Zero). If &gt;10% over RLA → "compressor over-amping — schedule assessment." Blower amp vs FLA same logic.</div>
+        <div class="svc-tool">Reading is diagnosis. No photo needed.</div>
+      </div>
+    </div>
+    <div class="svc-item">
+      <div class="svc-num">7</div>
+      <div class="svc-content">
+        <div class="svc-title">Delta-T check — supply vs return <span class="svc-badge svc-reading">📏 Reading</span></div>
+        <div class="svc-desc">Enter supply air temp and return air temp. Normal delta-T is 16–22°F in Houston humidity. Below 14°F = airflow/refrigerant issue. App flags and routes to the relevant card.</div>
+      </div>
+    </div>
+    <div class="svc-item">
+      <div class="svc-num">8</div>
+      <div class="svc-content">
+        <div class="svc-title">Overall system run test + photo <span class="svc-badge svc-photo">📸 Evidence</span></div>
+        <div class="svc-desc">System running photo for homeowner PDF — date-stamped proof of service. Confirms unit is operational at close of visit. Goes on the PDF cover page.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="svc-estimate">
+    <div class="svc-est-title">🧾 Base Service Estimate — Auto-generated by App</div>
+    <div class="svc-est-grid">
+      <div class="svc-est-item"><strong>Base labor</strong><span>1–1.5 hrs · $85–130</span></div>
+      <div class="svc-est-item"><strong>Drain flush tablet</strong><span>Always included · $12–18</span></div>
+      <div class="svc-est-item"><strong>Filter (if replacing)</strong><span>Added if dirty · $18–45</span></div>
+      <div class="svc-est-item"><strong>Coil cleaning</strong><span>Added if dirty · $80–150</span></div>
+      <div class="svc-est-item"><strong>Findings add-ons</strong><span>Each finding → separate card</span></div>
+      <div class="svc-est-item"><strong>Typical total</strong><span>$120–$380 depending on findings</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ A: NOT COOLING -->
+<div id="tab-a" class="tab-content">
+  <div class="complaint-header">
+    <div class="complaint-icon">🥵</div>
+    <div>
+      <div class="complaint-name">A — Not Cooling / Warm Air</div>
+      <div class="complaint-meta">Most complex branch · 6 possible cards · Phase 2 gate for pressure branches</div>
+    </div>
+    <div class="houston-badge">~38% of calls<small>Houston frequency</small></div>
+  </div>
+
+  <div class="v-connector">
+    <div class="node node-q">
+      <div class="node-tag">Step 1 — App Question</div>
+      <div class="node-title">Is the outdoor unit running?</div>
+      <div class="node-sub">Tech listens + looks at condenser fan</div>
+    </div>
+    <div class="v-line"></div>
+  </div>
+
+  <div class="branch-row">
+
+    <!-- NOT RUNNING → Capacitor or Contactor -->
+    <div class="branch-col">
+      <div class="branch-label-wrap">
+        <div class="branch-label bl-no">NO — Unit not running</div>
+        <div class="v-line" style="height:10px;"></div>
+      </div>
+      <div class="node node-q">
+        <div class="node-tag">Step 2</div>
+        <div class="node-title">Open electrical panel. Enter capacitor µF reading.</div>
+        <div class="node-sub">Nameplate µF spec already loaded from Step Zero</div>
+      </div>
+
+      <!-- CAPACITOR -->
+      <div class="photo-req-row">
+        <div class="reading-box">
+          <div class="rd-label">📏 PRIMARY — Reading</div>
+          <div class="rd-title">µF from capacitor tester</div>
+          <div class="rd-desc">This IS the diagnosis. App compares vs nameplate spec instantly.</div>
+          <div class="rd-compare">App rule: &gt;10% below spec = replace</div>
+        </div>
+        <div class="photo-evidence">
+          <div class="ph-label">📋 Evidence Photo Only</div>
+          <div class="ph-title">Capacitor can — for PDF</div>
+          <div class="ph-desc">Shows homeowner the failed part. Not diagnostic — reading already confirmed fault.</div>
+          <div class="ph-ai">AI vision catches bulge/burn in ~30% of failures only. Reading catches 100%.</div>
+        </div>
+      </div>
+
+      <div class="v-line"></div>
+      <div class="branch-row">
+        <div class="branch-col">
+          <div class="branch-label-wrap">
+            <div class="branch-label bl-clog">µF low — capacitor failed</div>
+            <div class="v-line" style="height:10px;"></div>
+          </div>
+          <div class="node node-p1">
+            <div class="node-tag">CARD #1 — Capacitor Failure</div>
+            <div class="node-title">Reading confirmed fault. PDF shows photo + µF reading vs spec.</div>
+            <span class="phase-badge pb-p1">Phase 1 · AUTO-CONFIRM ✓</span>
+            <div class="actions-count">⚡ 2 actions: µF reading + evidence photo</div>
+          </div>
+          <!-- DATA COLLECTION for capacitor -->
+          <div class="data-collect">
+            <div class="data-collect-header">
+              <div class="dc-badge">📊 Training Data</div>
+              <div class="dc-title">Collect for future vision AI</div>
+            </div>
+            <div class="dc-sub">The reading already confirmed this. Your answer below labels the photo for future AI training. Over 500+ labeled photos, the model learns to spot failing capacitors visually.</div>
+            <div class="dc-question">After replacing capacitor, did the unit start and cool normally?</div>
+            <div class="dc-buttons">
+              <button class="dc-btn dc-btn-yes" onclick="logData('cap','yes',this)">✓ YES — Fixed it</button>
+              <button class="dc-btn dc-btn-no" onclick="logData('cap','no',this)">✗ NO — Another issue</button>
+            </div>
+            <div class="dc-note">Your answer trains the future YOLO capacitor detection model. Takes 2 seconds.</div>
+          </div>
+        </div>
+
+        <div class="branch-col" style="margin-left:12px;">
+          <div class="branch-label-wrap">
+            <div class="branch-label bl-clear">µF OK — check contactor</div>
+            <div class="v-line" style="height:10px;"></div>
+          </div>
+          <div class="photo-req-row" style="flex-direction:column;gap:6px;margin-bottom:6px;">
+            <div class="photo-diag">
+              <div class="ph-label">📸 Diagnostic Photo</div>
+              <div class="ph-title">Contactor — contact face close-up</div>
+              <div class="ph-desc">Shoot the contact surface directly. Pitting, carbon, burn marks are visually clear here — photo IS diagnostic for contactor.</div>
+              <div class="ph-ai">AI trainable: pitting depth and carbon tracking are high-contrast visual signals</div>
+            </div>
+            <div class="reading-box">
+              <div class="rd-label">📏 Reading — confirms</div>
+              <div class="rd-title">Voltage at L1 + L2</div>
+              <div class="rd-desc">Power reaching contactor but not passing through = failed. Reading confirms what photo shows.</div>
+            </div>
+          </div>
+          <div class="node node-p1">
+            <div class="node-tag">CARD #3 — Contactor Failure</div>
+            <div class="node-title">Photo shows WHY. Reading confirms it. Both go in homeowner PDF.</div>
+            <span class="phase-badge pb-p1">Phase 1 · AUTO-CONFIRM ✓</span>
+            <div class="actions-count">⚡ 2 actions: contact photo + voltage reading</div>
+          </div>
+          <div class="data-collect">
+            <div class="data-collect-header">
+              <div class="dc-badge">📊 Training Data</div>
+              <div class="dc-title">Label contactor photo</div>
+            </div>
+            <div class="dc-question">After replacing contactor, did the unit run normally?</div>
+            <div class="dc-buttons">
+              <button class="dc-btn dc-btn-yes" onclick="logData('contactor','yes',this)">✓ YES — Fixed it</button>
+              <button class="dc-btn dc-btn-no" onclick="logData('contactor','no',this)">✗ NO — Another issue</button>
+            </div>
+            <div class="dc-note">Labels pitting/burn photo as confirmed failed contactor for YOLO training.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RUNNING BUT WARM -->
+    <div class="branch-col" style="margin-left:18px;">
+      <div class="branch-label-wrap">
+        <div class="branch-label bl-yes">YES — Running but warm</div>
+        <div class="v-line" style="height:10px;"></div>
+      </div>
+      <div class="node node-p2">
+        <div class="node-tag">PHASE 2 GATE — Mandatory</div>
+        <div class="node-title">Enter: suction pressure, discharge pressure, ambient temp, supply air temp</div>
+        <div class="node-sub">XGBoost classifies fault pattern. Refrigerant type known from Step Zero.</div>
+        <span class="phase-badge pb-p2">Phase 2 build needed (Task #9 + #10)</span>
+      </div>
+      <div class="qa-pass-banner">✅ PASS — Not Cooling → YES (70 PSI) → Card #13 Ductwork Leak — rpt-9273</div>
+      <div class="v-line"></div>
+      <div class="branch-row">
+        <div class="branch-col">
+          <div class="branch-label-wrap"><div class="branch-label bl-clog">Low suction · high superheat</div><div class="v-line" style="height:10px;"></div></div>
+          <div class="photo-req-row"><div class="photo-evidence"><div class="ph-label">📋 Evidence Only</div><div class="ph-title">UV dye glow photo</div><div class="ph-desc">No diagnostic value — leak is invisible normally. UV glow photo is compelling homeowner evidence.</div></div></div>
+          <div class="node node-p2"><div class="node-tag">CARD #8 — Refrigerant Leak</div><div class="node-title">XGBoost on pressure pattern. Photo is for PDF only.</div><span class="phase-badge pb-p2">Phase 2</span><div class="actions-count">⚡ 5 actions (readings primary)</div></div>
+        </div>
+        <div class="branch-col" style="margin-left:10px;">
+          <div class="branch-label-wrap"><div class="branch-label bl-moderate">High discharge · restricted airflow</div><div class="v-line" style="height:10px;"></div></div>
+          <div class="photo-req-row"><div class="photo-diag"><div class="ph-label">📸 Diagnostic</div><div class="ph-title">Coil face — dirt/debris</div><div class="ph-desc">Coil blockage is visually clear. YOLO already partially trained for this.</div><div class="ph-ai">AI: strong YOLO signal + XGBoost confirms via pressure</div></div></div>
+          <div class="node node-p2"><div class="node-tag">CARD #14 — Dirty Coil</div><div class="node-title">Both photo AND pressure confirm. Strongest dual-AI card.</div><span class="phase-badge pb-p2">Phase 2</span><div class="actions-count">⚡ 4 actions</div></div>
+        </div>
+        <div class="branch-col" style="margin-left:10px;">
+          <div class="branch-label-wrap"><div class="branch-label bl-severe">High pressure · high subcooling</div><div class="v-line" style="height:10px;"></div></div>
+          <div class="node node-p2"><div class="node-tag">CARD #17 — Overcharge</div><div class="node-title">Readings only — overcharge is invisible. No photo step.</div><div class="node-sub">XGBoost + Gemini differentiate from dirty coil.</div><span class="phase-badge pb-p2">Phase 2</span><div class="actions-count">⚡ 4 actions (readings only)</div></div>
+        </div>
+        <div class="branch-col" style="margin-left:10px;">
+          <div class="branch-label-wrap"><div class="branch-label bl-pres">Normal pressures · warm supply</div><div class="v-line" style="height:10px;"></div></div>
+          <div class="node node-pj"><div class="node-tag">CARD #13 — Ductwork Leak</div><div class="node-title">Gemini reasoning. No single reading or photo diagnoses this.</div><span class="phase-badge pb-pj">Tech Judgment</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="mark-callout" style="margin-top:14px;">
+    <div class="mark-name">💬 Mark on capacitor photo vs reading</div>
+    The reading is the diagnosis. The photo is the close of sale. When you show a homeowner a µF reading of 28 against a nameplate spec of 45, they do not understand what that means. When you show them a photo of the capacitor with a bulging top next to a photo of a new one — they get it immediately. The photo does not diagnose the fault. It sells the repair.
+  </div>
+</div>
+
+<!-- ═══════════════════════ B: WATER DRIPPING -->
+<div id="tab-b" class="tab-content">
+  <div class="complaint-header">
+    <div class="complaint-icon">💧</div>
+    <div>
+      <div class="complaint-name">B — Water Dripping / Leaking</div>
+      <div class="complaint-meta">Drain clog is #1 Houston call · Photo IS the diagnosis here — no reading needed</div>
+    </div>
+    <div class="houston-badge">~25% of calls<small>Houston frequency</small></div>
+  </div>
+
+  <div class="v-connector">
+    <div class="node node-q">
+      <div class="node-tag">Step 1</div>
+      <div class="node-title">Where is water coming from?</div>
+      <div class="node-sub">Indoor / drain pan area  vs  outdoor / refrigerant lines</div>
+    </div>
+    <div class="v-line"></div>
+  </div>
+
+  <div class="branch-row">
+    <div class="branch-col">
+      <div class="branch-label-wrap"><div class="branch-label bl-yes">Indoor — drain pan / unit</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="photo-req-row">
+        <div class="photo-diag">
+          <div class="ph-label">📸 Diagnostic Photo</div>
+          <div class="ph-title">Drain pan — standing water</div>
+          <div class="ph-desc">Photo IS the diagnosis. Standing water + algae visible. No reading needed for drain clog.</div>
+          <div class="ph-ai">AI: highly trainable — standing water vs dry pan is high-contrast. Top training priority.</div>
+        </div>
+        <div class="photo-diag">
+          <div class="ph-label">📸 Diagnostic Photo 2</div>
+          <div class="ph-title">Condensate line exit point</div>
+          <div class="ph-desc">Blocked exit confirms clog. No drip outside = blocked inside.</div>
+          <div class="ph-ai">AI trainable: blocked vs flowing exit is visually clear</div>
+        </div>
+      </div>
+      <div class="v-line"></div>
+      <div class="branch-row">
+        <div class="branch-col">
+          <div class="branch-label-wrap"><div class="branch-label bl-clog">Clog confirmed — pan has water</div><div class="v-line" style="height:10px;"></div></div>
+          <div class="node node-p1">
+            <div class="node-tag">CARD #5 — Drain Clog</div>
+            <div class="node-title">Photo alone is sufficient. Zero readings needed.</div>
+            <span class="phase-badge pb-p1">Phase 1 · AUTO-CONFIRM ✓</span>
+            <div class="actions-count">⚡ 2 photos = diagnosis + estimate</div>
+          </div>
+          <div class="qa-pass-banner">✅ PASS — Water Dripping → Indoor → Card #5 Drain Clog — rpt-9984 ($162–$378)</div>
+          <div class="data-collect">
+            <div class="data-collect-header">
+              <div class="dc-badge">📊 Training Data</div>
+              <div class="dc-title">Train drain clog detection</div>
+            </div>
+            <div class="dc-sub">This is the highest-value training target. 20% of Houston calls. Photos are highly visual. 300 labeled images = reliable auto-confirm.</div>
+            <div class="dc-question">After flushing drain, did water stop dripping?</div>
+            <div class="dc-buttons">
+              <button class="dc-btn dc-btn-yes" onclick="logData('drain','yes',this)">✓ YES — Drain was the issue</button>
+              <button class="dc-btn dc-btn-no" onclick="logData('drain','no',this)">✗ NO — Another cause</button>
+            </div>
+            <div class="dc-note">Priority #1 training dataset. Covers 20% of all Houston calls.</div>
+          </div>
+        </div>
+        <div class="branch-col" style="margin-left:12px;">
+          <div class="branch-label-wrap"><div class="branch-label bl-clear">Drain clear — possible freeze</div><div class="v-line" style="height:10px;"></div></div>
+          <div class="photo-req-row" style="margin-bottom:6px;">
+            <div class="photo-diag"><div class="ph-label">📸 Diagnostic</div><div class="ph-title">Filter + evaporator coil face</div><div class="ph-desc">Dirty filter → restricted airflow → coil freezes → melts. Filter photo is diagnostic.</div><div class="ph-ai">AI trainable: filter dirt density</div></div>
+            <div class="reading-box"><div class="rd-label">📏 Reading</div><div class="rd-title">Supply/return delta-T</div><div class="rd-desc">Low delta-T = poor heat transfer = freezing</div></div>
+          </div>
+          <div class="node node-p1"><div class="node-tag">CARD #9 — Coil Freeze</div><span class="phase-badge pb-p1">Phase 1 · ASSISTED ✓</span><div class="actions-count">⚡ 4 actions</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="branch-col" style="margin-left:18px;">
+      <div class="branch-label-wrap"><div class="branch-label bl-no">Outdoor / refrigerant lines</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="qa-bug-banner">
+        <div class="bug-title">🔴 BUG #12 — CRITICAL — Immediate 404/422 on selection</div>
+        <div class="bug-desc">Selecting "Outdoor – refrigerant lines" immediately hits GET /api/diagnostic/questions/water_dripping → 404, then POST /api/estimates/fault-card → 422. "Estimate generation failed" toast. No questions are configured in the backend for this sub-branch.</div>
+        <div><span class="bug-code">GET /api/diagnostic/questions/water_dripping → 404</span> <span class="bug-code">POST /fault-card → 422 Unprocessable Entity</span></div>
+      </div>
+      <div class="node node-p2">
+        <div class="node-tag">PHASE 2 GATE</div>
+        <div class="node-title">Pressure readings to confirm leak</div>
+        <div class="node-sub">No photo diagnostic value here — leak is invisible. Readings only.</div>
+        <span class="phase-badge pb-p2">Phase 2</span>
+      </div>
+      <div class="v-line"></div>
+      <div class="photo-req-row"><div class="photo-evidence"><div class="ph-label">📋 Evidence Only</div><div class="ph-title">UV dye glow photo</div><div class="ph-desc">Homeowner PDF only. Not diagnostic — readings already confirmed leak.</div></div></div>
+      <div class="node node-p2"><div class="node-tag">CARD #8 — Refrigerant Leak</div><span class="phase-badge pb-p2">Phase 2</span><div class="actions-count">⚡ 5 actions (readings primary)</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ C: NOT TURNING ON -->
+<div id="tab-c" class="tab-content">
+  <div class="complaint-header">
+    <div class="complaint-icon">⚫</div>
+    <div>
+      <div class="complaint-name">C — System Not Turning On</div>
+      <div class="complaint-meta">Reading-first branch · Fastest resolution · 3 actions each card</div>
+    </div>
+    <div class="houston-badge">~12% of calls<small>Houston frequency</small></div>
+  </div>
+
+  <div class="v-connector">
+    <div class="node node-q"><div class="node-tag">Step 1</div><div class="node-title">Any power at all?</div><div class="node-sub">Check breaker, thermostat display, indoor lights</div></div>
+    <div class="v-line"></div>
+  </div>
+  <div class="branch-row">
+
+    <div class="branch-col">
+      <div class="branch-label-wrap"><div class="branch-label bl-no">No power</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="photo-req-row">
+        <div class="photo-diag"><div class="ph-label">📸 Diagnostic</div><div class="ph-title">Contactor contact face</div><div class="ph-desc">Pitting, carbon, welded contacts visible. Photo is diagnostic here.</div><div class="ph-ai">Trainable: pitting vs clean contacts — clear visual classes</div></div>
+        <div class="reading-box"><div class="rd-label">📏 Confirms</div><div class="rd-title">Voltage at L1 + L2</div><div class="rd-compare">Power reaches but doesn't pass = failed</div></div>
+      </div>
+      <div class="node node-p1"><div class="node-tag">CARD #3 — Contactor</div><span class="phase-badge pb-p1">Phase 1 · AUTO-CONFIRM ✓</span><div class="actions-count">⚡ 3 actions</div></div>
+      <div class="qa-nt">⏭ NOT TESTED — schedule for next cycle</div>
+    </div>
+
+    <div class="branch-col" style="margin-left:18px;">
+      <div class="branch-label-wrap"><div class="branch-label bl-yes">Has power — won't start</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="node node-q"><div class="node-tag">Step 2</div><div class="node-title">Error code on board?</div></div>
+      <div class="v-line"></div>
+      <div class="branch-row">
+        <div class="branch-col">
+          <div class="branch-label-wrap"><div class="branch-label bl-yes">Error code shown</div><div class="v-line" style="height:10px;"></div></div>
+          <div class="photo-req-row"><div class="photo-diag"><div class="ph-label">📸 Diagnostic</div><div class="ph-title">Control board — LED pattern</div><div class="ph-desc">OCR reads flash count or alphanumeric code. Photo IS the input here.</div></div></div>
+          <div class="node node-p1"><div class="node-tag">CARD #7 — Control Board</div><span class="phase-badge pb-p1">Phase 1 · ASSISTED ✓</span><div class="actions-count">⚡ 3 actions</div></div>
+          <div class="qa-nt">⏭ NOT TESTED — schedule for next cycle</div>
+        </div>
+        <div class="branch-col" style="margin-left:12px;">
+          <div class="branch-label-wrap"><div class="branch-label bl-no">No error — check capacitor</div><div class="v-line" style="height:10px;"></div></div>
+          <div class="photo-req-row">
+            <div class="reading-box"><div class="rd-label">📏 Primary</div><div class="rd-title">µF reading</div><div class="rd-compare">vs nameplate spec — pre-loaded</div></div>
+            <div class="photo-evidence"><div class="ph-label">📋 Evidence Only</div><div class="ph-title">Capacitor can</div><div class="ph-desc">For homeowner PDF. Reading already diagnosed it.</div></div>
+          </div>
+          <div class="node node-p1"><div class="node-tag">CARD #1 — Capacitor</div><span class="phase-badge pb-p1">Phase 1 · AUTO-CONFIRM ✓</span><div class="actions-count">⚡ 2 actions</div></div>
+          <div class="qa-pass-banner">✅ PASS — Not Turning On → YES → No error code → Card #1 Capacitor — rpt-8691 ($236–$446)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ D: MAKING NOISE -->
+<div id="tab-d" class="tab-content">
+  <div class="complaint-header">
+    <div class="complaint-icon">🔊</div>
+    <div>
+      <div class="complaint-name">D — Making Noise</div>
+      <div class="complaint-meta">Noise type routes to branch · Reading-primary for most · Banging = Tech Judgment</div>
+    </div>
+    <div class="houston-badge">~10% of calls<small>Houston frequency</small></div>
+  </div>
+  <div class="v-connector">
+    <div class="node node-q"><div class="node-tag">Step 1</div><div class="node-title">Select noise type</div><div class="node-sub">Clicking / Grinding / Squealing / Banging / Hissing</div></div>
+    <div class="v-line"></div>
+  </div>
+  <div class="branch-row">
+    <div class="branch-col">
+      <div class="branch-label-wrap"><div class="branch-label bl-mild">Clicking</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="photo-req-row">
+        <div class="reading-box"><div class="rd-label">📏 Primary</div><div class="rd-title">µF reading</div><div class="rd-compare">vs nameplate µF spec</div></div>
+        <div class="photo-evidence"><div class="ph-label">📋 Evidence Only</div><div class="ph-title">Capacitor can</div><div class="ph-desc">PDF only. Reading diagnosed it.</div></div>
+      </div>
+      <div class="node node-p1"><div class="node-tag">CARD #1</div><div class="node-title">Capacitor — hard starting</div><span class="phase-badge pb-p1">Phase 1 ✓</span><div class="actions-count">⚡ 2 actions</div></div>
+      <div class="qa-pass-banner">✅ PASS — Clicking → Card #1 Capacitor — rpt-9168 ($236–$446)</div>
+    </div>
+    <div class="branch-col" style="margin-left:10px;">
+      <div class="branch-label-wrap"><div class="branch-label bl-moderate">Squealing</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="photo-req-row">
+        <div class="photo-diag"><div class="ph-label">📸 Diagnostic</div><div class="ph-title">Blower wheel</div><div class="ph-desc">Debris, worn blades, bearing wear visible</div><div class="ph-ai">Trainable with field photos</div></div>
+        <div class="reading-box"><div class="rd-label">📏 Confirms</div><div class="rd-title">Amp draw vs FLA</div><div class="rd-compare">Nameplate FLA pre-loaded</div></div>
+      </div>
+      <div class="node node-p1"><div class="node-tag">CARD #4 — Blower Motor</div><span class="phase-badge pb-p1">Phase 1 · ASSISTED ✓</span><div class="actions-count">⚡ 4 actions</div></div>
+      <div class="qa-pass-banner">✅ PASS — Squealing → 5A manual amp draw → Card #4 Blower Motor — rpt-3841</div>
+    </div>
+    <div class="branch-col" style="margin-left:10px;">
+      <div class="branch-label-wrap"><div class="branch-label bl-severe">Banging</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="photo-req-row">
+        <div class="reading-box"><div class="rd-label">📏 Primary</div><div class="rd-title">Amp draw vs RLA</div><div class="rd-compare">Nameplate RLA pre-loaded. Over-amping = distress.</div></div>
+        <div class="photo-evidence"><div class="ph-label">📋 Evidence Only</div><div class="ph-title">Compressor exterior</div><div class="ph-desc">Oil stains sometimes visible. For PDF. Reading is diagnosis.</div></div>
+      </div>
+      <div class="node node-pj"><div class="node-tag">CARD #10 — Compressor</div><span class="phase-badge pb-pj">Tech Judgment</span></div>
+      <div class="qa-nt">⏭ NOT TESTED — Banging/Hissing/Grinding — schedule for next cycle</div>
+    </div>
+    <div class="branch-col" style="margin-left:10px;">
+      <div class="branch-label-wrap"><div class="branch-label bl-clog">Hissing</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="node node-p2"><div class="node-tag">CARD #8 — Leak</div><div class="node-title">Readings only. No photo diagnostic value.</div><span class="phase-badge pb-p2">Phase 2</span><div class="actions-count">⚡ 4 actions (readings)</div></div>
+    </div>
+    <div class="branch-col" style="margin-left:10px;">
+      <div class="branch-label-wrap"><div class="branch-label bl-moderate">Grinding</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="photo-req-row"><div class="photo-diag"><div class="ph-label">📸 Diagnostic</div><div class="ph-title">Contactor face</div><div class="ph-desc">Pitting/arcing visible. Photo is diagnostic.</div><div class="ph-ai">Trainable: pitting classes</div></div></div>
+      <div class="node node-p1"><div class="node-tag">CARD #3 — Contactor Arcing</div><span class="phase-badge pb-p1">Phase 1 ✓</span><div class="actions-count">⚡ 3 actions</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ E: HIGH ELECTRIC BILL -->
+<div id="tab-e" class="tab-content">
+  <div class="complaint-header">
+    <div class="complaint-icon">💸</div>
+    <div>
+      <div class="complaint-name">E — High Electric Bill</div>
+      <div class="complaint-meta">Filter and dirty coil most common · Filter = photo diagnosis · Coil = photo + reading</div>
+    </div>
+    <div class="houston-badge">~8% of calls<small>Houston frequency</small></div>
+  </div>
+  <div class="v-connector">
+    <div class="node node-q"><div class="node-tag">Step 1</div><div class="node-title">Running constantly / won't cycle off?</div></div>
+    <div class="v-line"></div>
+  </div>
+  <div class="branch-row">
+    <div class="branch-col">
+      <div class="branch-label-wrap"><div class="branch-label bl-yes">YES — runs constantly</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="photo-req-row">
+        <div class="photo-diag">
+          <div class="ph-label">📸 Diagnostic — Photo primary</div>
+          <div class="ph-title">Air filter — face on shot</div>
+          <div class="ph-desc">Photo IS the diagnosis for dirty filter. Dirt density is obvious visually. No reading needed to confirm a clogged filter.</div>
+          <div class="ph-ai">Highest training priority. 12% of Houston calls. Very clean visual classes.</div>
+        </div>
+      </div>
+      <div class="v-line"></div>
+      <div class="branch-row">
+        <div class="branch-col">
+          <div class="branch-label-wrap"><div class="branch-label bl-clog">Filter clogged</div><div class="v-line" style="height:10px;"></div></div>
+          <div class="node node-p1"><div class="node-tag">CARD #2 — Dirty Filter</div><div class="node-title">Photo alone sufficient for auto-confirm.</div><span class="phase-badge pb-p1">Phase 1 · AUTO-CONFIRM ✓</span><div class="actions-count">⚡ 1 action: photo only</div></div>
+          <div class="qa-pass-banner">✅ PASS — High Electric Bill → YES → Card #2 Dirty Filter</div>
+          <div class="data-collect">
+            <div class="data-collect-header"><div class="dc-badge">📊 Training Data</div><div class="dc-title">Label filter photo</div></div>
+            <div class="dc-question">Was replacing the filter the primary fix for this call?</div>
+            <div class="dc-buttons">
+              <button class="dc-btn dc-btn-yes" onclick="logData('filter','yes',this)">✓ YES</button>
+              <button class="dc-btn dc-btn-no" onclick="logData('filter','no',this)">✗ NO</button>
+            </div>
+            <div class="dc-note">Priority #2 training set. 12% of calls. 200 images = reliable auto-detect.</div>
+          </div>
+        </div>
+        <div class="branch-col" style="margin-left:10px;">
+          <div class="branch-label-wrap"><div class="branch-label bl-clear">Filter OK — still running constantly</div><div class="v-line" style="height:10px;"></div></div>
+          <div class="node node-pj"><div class="node-tag">CARD #18 — Undersizing</div><div class="node-title">Gemini reasoning. No photo, no single reading. Load calc required.</div><span class="phase-badge pb-pj">Tech Judgment</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="branch-col" style="margin-left:18px;">
+      <div class="branch-label-wrap"><div class="branch-label bl-no">NO — normal runtime, high bill</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="photo-req-row">
+        <div class="photo-diag"><div class="ph-label">📸 Diagnostic</div><div class="ph-title">Condenser coil face</div><div class="ph-desc">Dirty coil = poor heat rejection = higher energy use. YOLO partially trained for this.</div><div class="ph-ai">YOLO: partially trained. XGBoost confirms via pressure.</div></div>
+        <div class="reading-box"><div class="rd-label">📏 Confirms</div><div class="rd-title">Discharge pressure + delta-T</div></div>
+      </div>
+      <div class="node node-p2"><div class="node-tag">CARD #14 — Dirty Coil</div><span class="phase-badge pb-p2">Phase 2</span><div class="actions-count">⚡ 4 actions</div></div>
+      <div class="qa-pass-banner">✅ PASS — High Electric Bill → NO → Card #14 Dirty Coil</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ F: ERROR CODE -->
+<div id="tab-f" class="tab-content">
+  <div class="complaint-header">
+    <div class="complaint-icon">⚠️</div>
+    <div>
+      <div class="complaint-name">F — Error Code / Fault Light</div>
+      <div class="complaint-meta">Error codes are brand/model specific — not universal · Task #12 (brand DB) needed for full auto-route</div>
+    </div>
+    <div class="houston-badge">~7% of calls<small>Houston frequency</small></div>
+  </div>
+  <div class="v-connector">
+    <div class="node node-p0">
+      <div class="node-tag">From Step Zero</div>
+      <div class="node-title">Model number known → app selects correct brand error code table</div>
+      <div class="node-sub">Task #12 (brand DB) makes this fully automatic. Without it, tech identifies fault category manually.</div>
+    </div>
+    <div class="v-line"></div>
+  </div>
+  <div class="v-connector">
+    <div class="node node-q">
+      <div class="node-tag">Step 1 — Photo IS the input</div>
+      <div class="node-title">Photo of error code display or LED board</div>
+      <div class="node-sub">OCR reads code. Cross-references brand DB. Routes to fault category.</div>
+    </div>
+    <div class="v-line"></div>
+  </div>
+  <div class="branch-row">
+    <div class="branch-col">
+      <div class="branch-label-wrap"><div class="branch-label bl-clog">Pressure / sensor fault</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="reading-box" style="margin-bottom:6px;"><div class="rd-label">📏 Reading</div><div class="rd-title">Sensor ohm test</div></div>
+      <div class="node node-p1"><div class="node-tag">CARD #7 — Control Board</div><span class="phase-badge pb-p1">Phase 1 · ASSISTED ✓</span><div class="actions-count">⚡ 3 actions</div></div>
+    </div>
+    <div class="branch-col" style="margin-left:10px;">
+      <div class="branch-label-wrap"><div class="branch-label bl-moderate">Refrigerant / low pressure code</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="node node-p2"><div class="node-tag">PHASE 2 GATE</div><div class="node-title">Pressure readings — leak vs piston</div><div class="node-sub">Refrigerant type from Step Zero nameplate</div><span class="phase-badge pb-p2">Phase 2</span></div>
+      <div class="v-line"></div>
+      <div class="branch-row">
+        <div class="branch-col"><div class="branch-label-wrap"><div class="branch-label bl-clog">Leak pattern</div><div class="v-line" style="height:10px;"></div></div><div class="node node-p2"><div class="node-tag">CARD #8</div><div class="node-title">Leak — readings only</div><span class="phase-badge pb-p2">Phase 2</span></div></div>
+        <div class="branch-col" style="margin-left:8px;"><div class="branch-label-wrap"><div class="branch-label bl-moderate">Piston mismatch</div><div class="v-line" style="height:10px;"></div></div><div class="node node-p2"><div class="node-tag">CARD #15</div><div class="node-title">Piston — bore measurement</div><span class="phase-badge pb-p2">Phase 2</span></div></div>
+      </div>
+    </div>
+    <div class="branch-col" style="margin-left:10px;">
+      <div class="branch-label-wrap"><div class="branch-label bl-no">Communication fault</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="photo-req-row"><div class="photo-diag"><div class="ph-label">📸 Diagnostic</div><div class="ph-title">Terminal strip + wiring</div><div class="ph-desc">Burn marks, loose wire visible</div></div><div class="reading-box"><div class="rd-label">📏 Confirms</div><div class="rd-title">Voltage drop</div></div></div>
+      <div class="node node-p1"><div class="node-tag">CARD #6 — Wiring Fault</div><span class="phase-badge pb-p1">Phase 1 · ASSISTED ✓</span><div class="actions-count">⚡ 4 actions</div></div>
+    </div>
+    <div class="branch-col" style="margin-left:10px;">
+      <div class="branch-label-wrap"><div class="branch-label bl-severe">Lockout trip</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="node node-q"><div class="node-tag">Step 2</div><div class="node-title">Reset — does it return?</div></div>
+      <div class="v-line"></div>
+      <div class="branch-row">
+        <div class="branch-col"><div class="branch-label-wrap"><div class="branch-label bl-clear">YES — Clears</div><div class="v-line" style="height:10px;"></div></div><div class="node node-p1"><div class="node-tag">CARD #7</div><div class="node-title">Nuisance trip</div><span class="phase-badge pb-p1">Phase 1</span></div><div class="qa-pass-banner">✅ PASS — Error Code → Photo + Manual → YES reset → Card #7</div></div>
+        <div class="branch-col" style="margin-left:8px;"><div class="branch-label-wrap"><div class="branch-label bl-clog">NO — Does not reset</div><div class="v-line" style="height:10px;"></div></div>
+          <div class="qa-bug-banner"><div class="bug-title">🟠 BUG #9 — HIGH — NO Reset → Escalates</div><div class="bug-desc">Selecting "NO – code did not reset" triggers "Diagnostic escalated — please inspect manually" with no repair path offered. Common field scenario — this path must route to a diagnosis.</div><div><span class="bug-code">POST /answer → 200 but escalation unconditional</span></div></div>
+          <div class="node node-p2"><div class="node-tag">→ Tab H</div><div class="node-title">Intermittent Shutdown branch</div><span class="phase-badge pb-p2">Phase 2</span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ G: NOT HEATING -->
+<div id="tab-g" class="tab-content">
+  <div class="complaint-header">
+    <div class="complaint-icon">🥶</div>
+    <div>
+      <div class="complaint-name">G — Not Heating</div>
+      <div class="complaint-meta">System type from nameplate — no manual selection · Heat pump vs gas = totally different paths</div>
+    </div>
+    <div class="houston-badge">~5% of calls<small>Houston winter</small></div>
+  </div>
+  <div class="v-connector">
+    <div class="node node-p0"><div class="node-tag">From Step Zero</div><div class="node-title">System type identified from nameplate model number</div><div class="node-sub">Heat pump / gas / dual fuel auto-detected. No manual selection needed.</div></div>
+    <div class="v-line"></div>
+  </div>
+  <div class="branch-row">
+    <div class="branch-col">
+      <div class="branch-label-wrap"><div class="branch-label bl-hp">HEAT PUMP</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="node node-p2"><div class="node-tag">PHASE 2 GATE</div><div class="node-title">Pressures in heat mode + reversing valve check</div><div class="node-sub">Refrigerant type from nameplate → correct heat mode targets</div><span class="phase-badge pb-p2">Phase 2</span></div>
+      <div class="v-line"></div>
+      <div class="branch-row">
+        <div class="branch-col"><div class="branch-label-wrap"><div class="branch-label bl-stuck">Valve stuck cool</div><div class="v-line" style="height:10px;"></div></div><div class="node node-p2"><div class="node-tag">CARD #12 — Reversing Valve</div><div class="node-title">Readings only. Internal component — no photo value.</div><span class="phase-badge pb-p2">Phase 2</span><div class="actions-count">⚡ 4 actions (readings only)</div></div></div>
+        <div class="branch-col" style="margin-left:10px;"><div class="branch-label-wrap"><div class="branch-label bl-lowp">Low suction heat mode</div><div class="v-line" style="height:10px;"></div></div><div class="node node-p2"><div class="node-tag">CARD #15 — Fixed Orifice</div><div class="node-title">Bore measurement vs nameplate tonnage. Bore photo as evidence.</div><span class="phase-badge pb-p2">Phase 2</span><div class="actions-count">⚡ 4 actions</div></div></div>
+        <div class="branch-col" style="margin-left:10px;"><div class="branch-label-wrap"><div class="branch-label bl-clear">Normal pressure</div><div class="v-line" style="height:10px;"></div></div><div class="node node-p1"><div class="node-tag">CARD #7 — Defrost Sensor</div><span class="phase-badge pb-p1">Phase 1 · ASSISTED ✓</span><div class="actions-count">⚡ 3 actions</div></div></div>
+      </div>
+    </div>
+    <div class="branch-col" style="margin-left:18px;">
+      <div class="branch-label-wrap"><div class="branch-label bl-gas">GAS FURNACE</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="node node-q"><div class="node-tag">Step 1</div><div class="node-title">Does burner ignite?</div></div>
+      <div class="v-line"></div>
+      <div class="branch-row">
+        <div class="branch-col">
+          <div class="branch-label-wrap"><div class="branch-label bl-no">No ignition</div><div class="v-line" style="height:10px;"></div></div>
+          <div class="photo-req-row">
+            <div class="photo-diag"><div class="ph-label">📸 Diagnostic</div><div class="ph-title">Hot surface ignitor</div><div class="ph-desc">Cracked element visually obvious. Photo IS diagnostic here.</div><div class="ph-ai">Trainable: cracked vs intact ignitor — high contrast</div></div>
+            <div class="reading-box"><div class="rd-label">📏 Confirms</div><div class="rd-title">Ohm test + voltage at ignitor</div></div>
+          </div>
+          <div class="node node-p1"><div class="node-tag">CARD #11 — Ignitor</div><span class="phase-badge pb-p1">Phase 1 · ASSISTED ✓</span><div class="actions-count">⚡ 4 actions</div></div>
+          <div class="qa-pass-banner">✅ PASS — Not Heating → No ignition → Card #11 Ignitor — rpt-2456</div>
+        </div>
+        <div class="branch-col" style="margin-left:10px;">
+          <div class="branch-label-wrap"><div class="branch-label bl-yes">Ignites then shuts off</div><div class="v-line" style="height:10px;"></div></div>
+          <div class="photo-req-row">
+            <div class="photo-diag"><div class="ph-label">📸 Diagnostic</div><div class="ph-title">Flame sensor rod</div><div class="ph-desc">Oxide coating clearly visible on rod surface. Photo is diagnostic.</div><div class="ph-ai">Trainable: oxide-coated vs clean rod</div></div>
+            <div class="reading-box"><div class="rd-label">📏 Confirms</div><div class="rd-title">Micro-amp reading</div><div class="rd-compare">&lt;1µA = replace sensor</div></div>
+          </div>
+          <div class="node node-p1"><div class="node-tag">CARD #11 — Flame Sensor</div><span class="phase-badge pb-p1">Phase 1 · ASSISTED ✓</span><div class="actions-count">⚡ 4 actions</div></div>
+          <div class="qa-bug-banner">
+            <div class="bug-title">🟠 BUG #13 — HIGH — Always Escalates (No Backend Card Configured)</div>
+            <div class="bug-desc">Submitting any micro-amp value — 0.5 µA (below &lt;1 µA replace threshold) or 3 µA (above &gt;2 µA healthy threshold) — always returns "Diagnostic escalated." No diagnosis card or follow-up question is configured in the backend for this path. Both replace and healthy readings need a configured resolution.</div>
+            <div><span class="bug-code">POST /answer → 200 but escalation unconditional (no card mapped)</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ H: INTERMITTENT SHUTDOWN -->
+<div id="tab-h" class="tab-content">
+  <div class="complaint-header">
+    <div class="complaint-icon">🔄</div>
+    <div>
+      <div class="complaint-name">H — Intermittent Shutdown / Short Cycling</div>
+      <div class="complaint-meta">NOT yet in app top screen — must be added as 8th option</div>
+    </div>
+    <div class="houston-badge">~5% of calls<small>Houston frequency</small></div>
+  </div>
+  <div class="warning-box">
+    <div class="warning-icon">⚠️</div>
+    <div><strong>Action required:</strong> Add "Intermittent Shutdown" as the 8th complaint to top screen. Without it, techs misfile this under other complaints and get wrong card routing.</div>
+  </div>
+  <div class="v-connector">
+    <div class="node node-q"><div class="node-tag">Step 1</div><div class="node-title">Does the tech have a thermal camera?</div><div class="node-sub">Determines Path A (2 steps) or Path B (4-step workaround)</div></div>
+    <div class="v-line"></div>
+  </div>
+  <div class="branch-row">
+    <div class="branch-col">
+      <div class="branch-label-wrap"><div class="branch-label bl-cam">YES — camera (35% of techs)</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="path-label path-a">PATH A — Camera (2 steps)</div>
+      <div class="photo-req-row">
+        <div class="photo-diag" style="border-color:#9b59b6;background:#0a0020;">
+          <div class="ph-label" style="color:#9b59b6;">📸 Diagnostic — Thermal Camera</div>
+          <div class="ph-title" style="color:#c070f0;">All terminals — full compartment</div>
+          <div class="ph-desc" style="color:#7a40a0;">Thermal image detects hot spots. New YOLO thermal model needed — not yet built.</div>
+          <div class="ph-ai" style="color:#5a2a7a;">NEW AI model required (not in current stack)</div>
+        </div>
+      </div>
+      <div class="v-line"></div>
+      <div class="branch-row">
+        <div class="branch-col"><div class="branch-label-wrap"><div class="branch-label bl-clog">Hot spot &gt;20°F above ambient</div><div class="v-line" style="height:10px;"></div></div><div class="node node-p2"><div class="node-tag">CARD #16 — Loose Terminal</div><span class="phase-badge pb-p2">Phase 2</span><div class="actions-count">⚡ 2 actions with camera</div></div><div class="qa-pass-banner">✅ PASS — Intermittent Shutdown → YES thermal → Card #16 Loose Terminal — rpt-9827 ($169–$506)</div></div>
+        <div class="branch-col" style="margin-left:10px;"><div class="branch-label-wrap"><div class="branch-label bl-clear">All terminals normal</div><div class="v-line" style="height:10px;"></div></div><div class="node node-p2"><div class="node-tag">Re-route</div><div class="node-title">Check overcharge or undersizing</div><span class="phase-badge pb-p2">→ Card #17 / #18</span></div></div>
+      </div>
+    </div>
+    <div class="branch-col" style="margin-left:20px;">
+      <div class="branch-label-wrap"><div class="branch-label bl-nocam">NO — no camera (65% of techs)</div><div class="v-line" style="height:10px;"></div></div>
+      <div class="path-label path-b">PATH B — Manual workaround (4 steps · 85–90% catch rate)</div>
+      <div class="step-seq">
+        <div class="step-item"><div class="step-num">1</div><div class="step-text"><strong>Visual inspection photo</strong> — YOLO scans for burn marks, carbon, discoloration on terminals <span style="font-size:9px;color:#4a5070;">(diagnostic photo)</span></div></div>
+        <div class="step-item"><div class="step-num">2</div><div class="step-text"><strong>Infrared point thermometer</strong> — enter each terminal temp. App flags &gt;10°F delta as suspect. This replaces thermal camera for most cases.</div></div>
+        <div class="step-item"><div class="step-num">3</div><div class="step-text"><strong>Voltage drop check</strong> — enter voltage across suspect terminal. App rule: &gt;3V = fault confirmed.</div></div>
+      </div>
+      <div class="v-line"></div>
+      <div class="branch-row">
+        <div class="branch-col"><div class="branch-label-wrap"><div class="branch-label bl-clog">Fault confirmed</div><div class="v-line" style="height:10px;"></div></div><div class="node node-p2"><div class="node-tag">CARD #16 — Confirmed</div><div class="node-title">Clean, retorque, retest</div><span class="phase-badge pb-p2">Phase 2</span><div class="actions-count">⚡ 4 actions (no camera)</div></div><div class="qa-pass-banner">✅ PASS — Intermittent Shutdown → NO camera → Card #16 Loose Terminal — rpt-0689</div></div>
+        <div class="branch-col" style="margin-left:10px;"><div class="branch-label-wrap"><div class="branch-label bl-clear">All checks pass</div><div class="v-line" style="height:10px;"></div></div><div class="node node-pj"><div class="node-tag">Escalate</div><div class="node-title">Thermal camera needed</div><div class="node-sub">App: recommend FLIR One ($400). 10–15% of cases missed without camera.</div><span class="phase-badge pb-pj">Tech Judgment</span></div></div>
+      </div>
+      <div class="card-detail" style="margin-top:10px;">
+        <h3>Contractor ROI — Card #16</h3>
+        <div class="detail-row">
+          <div class="detail-card"><strong>FLIR One cost</strong>~$400 one-time</div>
+          <div class="detail-card"><strong>Misdiagnosed compressor</strong>$2,000–$4,000</div>
+          <div class="detail-card"><strong>Break-even</strong>1 avoided misdiagnosis = 5–10× ROI</div>
+          <div class="detail-card"><strong>Path B catch rate</strong>85–90% without camera</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ M: AI MODEL MAP -->
+<div id="tab-m" class="tab-content">
+  <div class="complaint-header">
+    <div class="complaint-icon">🤖</div>
+    <div>
+      <div class="complaint-name">AI Model Map — All 19 Cards</div>
+      <div class="complaint-meta">Which AI model helps each card today · What's trainable · What the primary diagnostic tool actually is</div>
+    </div>
+    <div class="houston-badge" style="background:#1a0a2a;border-color:#3a1a5a;color:#c070f0;">3 models<small>YOLO · XGBoost · Gemini</small></div>
+  </div>
+
+  <!-- KEY INSIGHT BOX -->
+  <div style="background:#0a1a0a;border:2px solid #2ecc71;border-radius:10px;padding:14px 18px;margin-bottom:18px;">
+    <div style="font-size:12px;font-weight:800;color:#2ecc71;margin-bottom:8px;">💡 The Most Important Thing to Understand About This Product</div>
+    <div style="font-size:11px;color:#7adc9a;line-height:1.7;">
+      For <strong style="color:#fff;">14 of the 19 cards</strong>, the reading is the diagnosis — not the AI. The logic is deterministic:<br>
+      <span style="color:#a8f5c8;">• Capacitor µF is 22% below nameplate spec → replace capacitor → estimate generated. No vision AI needed.</span><br>
+      <span style="color:#a8f5c8;">• Suction pressure low + superheat high → XGBoost classifies as leak → estimate for recharge. No vision needed.</span><br>
+      <span style="color:#a8f5c8;">• Voltage drop 4.2V across terminal → loose terminal confirmed → estimate for retorque. No vision needed.</span><br>
+      <span style="color:#a8f5c8;">• Amp draw 18A vs nameplate RLA 12A → compressor over-amping → assessment estimate. No vision needed.</span><br><br>
+      <strong style="color:#fff;">The reading tells you what happened. The nameplate tells you what should have happened. The gap is the diagnosis.</strong><br>
+      That gap drives the estimate. That is a rule-based system, not an AI system — and it works confidently for the majority of calls.<br><br>
+      <strong style="color:#f5c842;">The AI vision is the evidence layer</strong> that makes the PDF compelling and catches the cases a reading can't reach (drain clog, dirty filter, corrosion). The reading is the product.
+    </div>
+  </div>
+
+  <!-- RECOMMENDATION ENGINE NOTE -->
+  <div style="background:#0a0a2a;border:1px solid #3a3a7a;border-radius:8px;padding:12px 16px;margin-bottom:18px;">
+    <div style="font-size:11px;font-weight:800;color:#7a9adc;margin-bottom:6px;">📊 Recommendation Models — Reading-Based, No Vision Needed</div>
+    <div style="font-size:11px;color:#5a7aaa;line-height:1.6;">
+      If a capacitor reads 18% below spec but hasn't failed yet → app recommends: <em style="color:#a0c0e0;">"Schedule preventive replacement before peak summer — this capacitor will likely fail within one season."</em><br>
+      That is a threshold rule, not a trained model. Powerful enough to generate upsell recommendations on every single call.
+    </div>
+  </div>
+
+  <!-- FULL TABLE -->
+  <div style="overflow-x:auto;margin-bottom:20px;">
+    <table style="width:100%;border-collapse:collapse;font-size:11px;">
+      <thead>
+        <tr style="background:#1a1a2e;border-bottom:2px solid #3a3a6a;">
+          <th style="padding:9px 10px;text-align:left;color:#7a82a0;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;white-space:nowrap;">#</th>
+          <th style="padding:9px 10px;text-align:left;color:#7a82a0;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;">Card</th>
+          <th style="padding:9px 10px;text-align:center;color:#f39c12;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;white-space:nowrap;">Houston %</th>
+          <th style="padding:9px 10px;text-align:center;color:#e74c3c;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;">YOLO</th>
+          <th style="padding:9px 10px;text-align:center;color:#3498db;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;">XGBoost</th>
+          <th style="padding:9px 10px;text-align:center;color:#9b59b6;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;">Gemini</th>
+          <th style="padding:9px 10px;text-align:center;color:#2ecc71;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;">Trainable?</th>
+          <th style="padding:9px 10px;text-align:left;color:#7a82a0;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;">Primary Diagnostic Tool</th>
+        </tr>
+      </thead>
+      <tbody id="model-table-body">
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TRAINING PRIORITY SECTION -->
+  <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+
+    <div style="flex:1;min-width:280px;background:#071a0a;border:2px solid #2ecc71;border-radius:9px;padding:14px 16px;">
+      <div style="font-size:11px;font-weight:800;color:#2ecc71;margin-bottom:10px;">✅ Worth Training — Photo adds what reading cannot</div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div style="background:#0d2d1a;border:1px solid #1a4a2a;border-radius:6px;padding:7px 10px;">
+          <div style="font-size:11px;font-weight:700;color:#a8f5c8;">🥇 Priority 1 — Drain Clog + Dirty Filter</div>
+          <div style="font-size:10px;color:#4a8a5a;margin-top:3px;">Combined 32% of Houston calls. No reading exists for these — photo IS the only diagnostic input. High visual contrast. Fast to annotate. Train these first.</div>
+        </div>
+        <div style="background:#0d2d1a;border:1px solid #1a4a2a;border-radius:6px;padding:7px 10px;">
+          <div style="font-size:11px;font-weight:700;color:#a8f5c8;">🥈 Priority 2 — Formicary Corrosion</div>
+          <div style="font-size:10px;color:#4a8a5a;margin-top:3px;">Green powder deposits are unmistakably visual. Photo is everything here — no reading can detect formicary corrosion. 1% of calls but high ticket value.</div>
+        </div>
+        <div style="background:#0d2d1a;border:1px solid #1a4a2a;border-radius:6px;padding:7px 10px;">
+          <div style="font-size:11px;font-weight:700;color:#a8f5c8;">🥉 Priority 3 — Contactor Pitting + Ignitor Crack</div>
+          <div style="font-size:10px;color:#4a8a5a;margin-top:3px;">Readings confirm the fault, but the photo shows WHY and makes the homeowner PDF compelling. Worth training for the evidence value even though reading already diagnoses.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:1;min-width:280px;background:#1a0a0a;border:2px solid #7a2a2a;border-radius:9px;padding:14px 16px;">
+      <div style="font-size:11px;font-weight:800;color:#e07070;margin-bottom:10px;">❌ Not Worth Training — Reading gives everything</div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div style="background:#2d1a1a;border:1px solid #4a2a2a;border-radius:6px;padding:7px 10px;">
+          <div style="font-size:11px;font-weight:700;color:#f5a0a0;">Capacitor</div>
+          <div style="font-size:10px;color:#7a4a4a;margin-top:3px;">µF reading gives 100% accurate diagnosis. Vision catches only 30% even when fully trained. Training effort vs gain is poor.</div>
+        </div>
+        <div style="background:#2d1a1a;border:1px solid #4a2a2a;border-radius:6px;padding:7px 10px;">
+          <div style="font-size:11px;font-weight:700;color:#f5a0a0;">Refrigerant Leak, Overcharge, Fixed Orifice, Reversing Valve</div>
+          <div style="font-size:10px;color:#7a4a4a;margin-top:3px;">These are invisible. No amount of photo training helps. XGBoost on pressure patterns is the right tool and you already have it.</div>
+        </div>
+        <div style="background:#2d1a1a;border:1px solid #4a2a2a;border-radius:6px;padding:7px 10px;">
+          <div style="font-size:11px;font-weight:700;color:#f5a0a0;">Compressor</div>
+          <div style="font-size:10px;color:#7a4a4a;margin-top:3px;">RLA vs actual amps is the diagnosis. Exterior photo adds nothing clinically — though it matters for the homeowner PDF.</div>
+        </div>
+        <div style="background:#2d1a1a;border:1px solid #4a2a2a;border-radius:6px;padding:7px 10px;">
+          <div style="font-size:11px;font-weight:700;color:#f5a0a0;">Ductwork, Undersizing</div>
+          <div style="font-size:10px;color:#7a4a4a;margin-top:3px;">Not trainable. Gemini reasoning through multi-factor inputs is the right and only tool.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PER-MODEL DETAILED BREAKDOWN -->
+  <div style="margin-bottom:14px;">
+    <div style="font-size:13px;font-weight:800;color:#fff;margin-bottom:12px;border-bottom:1px solid #222238;padding-bottom:8px;">Brutally Honest Per-Model Breakdown</div>
+
+    <!-- YOLO -->
+    <div style="background:#1a0808;border:2px solid #e74c3c;border-radius:9px;padding:14px 16px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:800;color:#e74c3c;margin-bottom:6px;">YOLO — Current State: Exterior AC Unit Photos Only</div>
+      <div style="font-size:11px;color:#c08080;line-height:1.6;margin-bottom:10px;">Trained on back/front exterior unit photos. Limited to what is visible without opening any panel.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:160px;background:#0d2d1a;border:1px solid #2a4a2a;border-radius:6px;padding:8px 10px;">
+          <div style="font-size:10px;font-weight:800;color:#2ecc71;margin-bottom:5px;">✓ USEFUL TODAY</div>
+          <div style="font-size:10px;color:#4a8a5a;line-height:1.5;">
+            <strong style="color:#7adc9a;">Card #14 — Dirty Coil (STRONG)</strong><br>Coil face dirt and fin blockage clearly visible from outside. Your strongest existing YOLO use case.<br><br>
+            <strong style="color:#7adc9a;">Card #19 — Formicary Corrosion (MAYBE)</strong><br>Green/white powder deposits visible and distinctive. Depends if corrosion is a trained class.<br><br>
+            <strong style="color:#7adc9a;">Card #10 — Compressor (WEAK)</strong><br>Oil stains sometimes visible near base. Catches ~10% of cases only. Not reliable enough to act on alone.
+          </div>
+        </div>
+        <div style="flex:1;min-width:160px;background:#2d1a1a;border:1px solid #4a2a2a;border-radius:6px;padding:8px 10px;">
+          <div style="font-size:10px;font-weight:800;color:#e07070;margin-bottom:5px;">✗ NOT USEFUL TODAY</div>
+          <div style="font-size:10px;color:#7a4a4a;line-height:1.5;">
+            Any card that requires opening a panel — capacitor, contactor, wiring, drain pan, filter, ignitor.<br><br>The model has never seen those angles or subjects. Different component, different framing, different scale entirely from what it was trained on.
+          </div>
+        </div>
+        <div style="flex:1;min-width:160px;background:#1a1a0a;border:1px solid #4a4a1a;border-radius:6px;padding:8px 10px;">
+          <div style="font-size:10px;font-weight:800;color:#e0c040;margin-bottom:5px;">🎯 NEEDS NEW TRAINING</div>
+          <div style="font-size:10px;color:#7a7a3a;line-height:1.5;">
+            New classes needed: drain pan (standing water), filter face (dirt density), contactor contact face (pitting), ignitor rod (crack/oxide), terminal strip (burn marks).<br><br>Beta field data from Task #3 (5 contractors) is the collection mechanism.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- XGBOOST -->
+    <div style="background:#080a1a;border:2px solid #3498db;border-radius:9px;padding:14px 16px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:800;color:#3498db;margin-bottom:6px;">XGBoost — Most Production-Ready Model (6 Pressure Pattern Classes)</div>
+      <div style="font-size:11px;color:#7090c0;line-height:1.6;margin-bottom:10px;">Reads pressure + temperature inputs and classifies the fault pattern. This is the model doing real diagnostic work right now.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;background:#0d1a2d;border:1px solid #1a3a5a;border-radius:6px;padding:8px 10px;">
+          <div style="font-size:10px;font-weight:800;color:#3498db;margin-bottom:5px;">6 CARDS IT POWERS DIRECTLY</div>
+          <div style="font-size:10px;color:#4a6a9a;line-height:1.6;">
+            <strong style="color:#7ab0dc;">#8 Refrigerant Leak</strong> — Low suction + high superheat = leak pattern. Already running.<br>
+            <strong style="color:#7ab0dc;">#17 Overcharge</strong> — High discharge + high subcooling. Distinguishes from leak.<br>
+            <strong style="color:#7ab0dc;">#14 Dirty Coil</strong> — High discharge + restricted airflow pattern.<br>
+            <strong style="color:#7ab0dc;">#15 Fixed Orifice</strong> — Specific heat-mode superheat pattern.<br>
+            <strong style="color:#7ab0dc;">#12 Reversing Valve</strong> — Heat mode: suction/discharge don't invert correctly.<br>
+            <strong style="color:#7ab0dc;">#9 Coil Freeze</strong> — Low suction secondary to airflow restriction.
+          </div>
+        </div>
+        <div style="flex:1;min-width:160px;background:#2d1a0a;border:1px solid #5a3a1a;border-radius:6px;padding:8px 10px;">
+          <div style="font-size:10px;font-weight:800;color:#e0a040;margin-bottom:5px;">⚠️ CRITICAL GAP</div>
+          <div style="font-size:10px;color:#9a6a2a;line-height:1.5;">
+            XGBoost exists and works BUT it needs the Phase 2 mandatory readings gate (Task #9) to actually collect the pressure inputs before an estimate is generated.<br><br>
+            Without Task #9, techs can skip the pressure step and get an estimate with no pressure data — XGBoost never fires.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GEMINI -->
+    <div style="background:#0a081a;border:2px solid #9b59b6;border-radius:9px;padding:14px 16px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:800;color:#9b59b6;margin-bottom:6px;">Gemini — Complex Reasoning (Multi-Input Situations)</div>
+      <div style="font-size:11px;color:#8060a0;line-height:1.6;margin-bottom:10px;">Not classification — reasoning through ambiguous situations where pressure + photo + context all need to be weighed. Cannot be replaced by rules.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;background:#1a0d2d;border:1px solid #3a1a5a;border-radius:6px;padding:8px 10px;">
+          <div style="font-size:10px;font-weight:800;color:#9b59b6;margin-bottom:5px;">5 SITUATIONS WHERE GEMINI IS THE ONLY TOOL</div>
+          <div style="font-size:10px;color:#6a4a8a;line-height:1.6;">
+            <strong style="color:#c070f0;">#17 vs #14 tiebreak</strong> — Overcharge and dirty coil both show high discharge. Gemini reasons through subcooling level, coil photo, airflow, ambient temp to separate them. XGBoost alone misclassifies a percentage of these.<br><br>
+            <strong style="color:#c070f0;">#13 Ductwork Leak</strong> — No single reading or photo confirms this. Gemini weighs normal pressures, warm supply air, delta-T across zones, system history.<br><br>
+            <strong style="color:#c070f0;">#18 Undersizing</strong> — Square footage, insulation, window count, duct condition, Houston climate. Multi-factor synthesis.<br><br>
+            <strong style="color:#c070f0;">#16 Path B (no camera)</strong> — Visual photo + point thermometer readings + voltage drop. None individually confirms. Gemini connects them.<br><br>
+            <strong style="color:#c070f0;">#7 Error Code (no brand DB)</strong> — When Task #12 isn't complete, Gemini reasons through model series + symptom history + LED pattern.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HONEST COUNT -->
+    <div style="background:#161622;border:1px solid #2a2a4a;border-radius:9px;padding:12px 16px;">
+      <div style="font-size:12px;font-weight:800;color:#fff;margin-bottom:8px;">The Honest Count</div>
+      <div style="font-size:11px;color:#8a90a8;line-height:1.7;">
+        Out of 19 cards, existing models give real value on roughly <strong style="color:#fff;">8</strong>.<br>
+        Cards <strong style="color:#e07070;">#1, #2, #3, #4, #5, #6, #11</strong> — the most common Phase 1 calls — get <strong>zero AI assistance</strong> from existing models.<br>
+        Those cards run purely on the tech entering a reading and the app comparing it against a threshold rule.<br><br>
+        <span style="color:#f5c842;">That is not a failure.</span> Threshold rules are fast, reliable, and zero latency. But it means the "AI" in those cards right now is basically an if-else statement, not a model. The product works. The AI layer will make it more compelling over time as training data accumulates from beta calls.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</div><!-- end .main -->
+
+<script>
+// AI Model Map table data
+const modelData = [
+  {num:'#5', card:'Drain Clog', pct:'~20%', yolo:'✗', xgb:'✗', gem:'✗', train:'✅ Yes — standing water/algae visually clear', tool:'Photo alone — no reading exists', trainColor:'#2ecc71', rowBg:'#0d2d1a'},
+  {num:'#1', card:'Capacitor Failure', pct:'~18%', yolo:'✗', xgb:'✗', gem:'✗', train:'✅ Yes — but only 30% of failures visible', tool:'Reading primary — µF vs nameplate spec', trainColor:'#e0b040', rowBg:''},
+  {num:'#2', card:'Dirty Filter', pct:'~12%', yolo:'✗', xgb:'✗', gem:'✗', train:'✅ Yes — easiest training case', tool:'Photo sufficient — reading optional', trainColor:'#2ecc71', rowBg:'#0d2d1a'},
+  {num:'#8', card:'Refrigerant Leak', pct:'~8%', yolo:'✗', xgb:'✓', gem:'✗', train:'❌ No — leak is invisible', tool:'Reading primary — XGBoost on pressures', trainColor:'#e07070', rowBg:''},
+  {num:'#3', card:'Contactor Failure', pct:'~7%', yolo:'✗', xgb:'✗', gem:'✗', train:'✅ Yes — pitting/burn on contact face', tool:'Reading confirms, photo is strong evidence', trainColor:'#2ecc71', rowBg:'#0d2d1a'},
+  {num:'#14', card:'Dirty Coil', pct:'~6%', yolo:'✓ strong', xgb:'✓', gem:'✓ tiebreak', train:'✅ Yes — partially trained already', tool:'Both — photo + pressure pattern', trainColor:'#2ecc71', rowBg:''},
+  {num:'#9', card:'Coil Freeze', pct:'~5%', yolo:'✗', xgb:'✓ secondary', gem:'✗', train:'✅ Yes — frost on coil/lines visible', tool:'Reading primary — photo supports', trainColor:'#e0b040', rowBg:'#0d2d1a'},
+  {num:'#4', card:'Blower Motor', pct:'~4%', yolo:'✗', xgb:'✗', gem:'✗', train:'⚠️ Partial — some visual signs', tool:'Reading primary — amp draw vs FLA', trainColor:'#e0b040', rowBg:''},
+  {num:'#10', card:'Compressor', pct:'~4%', yolo:'✓ weak', xgb:'✗', gem:'✗', train:'⚠️ Partial — oil stains only', tool:'Reading primary — RLA vs actual amps', trainColor:'#e0b040', rowBg:'#0d2d1a'},
+  {num:'#7', card:'Control Board / Error Code', pct:'~3%', yolo:'✗', xgb:'✗', gem:'✓ partial', train:'⚠️ Partial — code is the signal', tool:'OCR + brand code lookup primary', trainColor:'#e0b040', rowBg:''},
+  {num:'#11', card:'Ignitor / Flame Sensor', pct:'~3%', yolo:'✗', xgb:'✗', gem:'✗', train:'✅ Yes — cracked ignitor, oxide on sensor', tool:'Photo strong — reading confirms', trainColor:'#2ecc71', rowBg:'#0d2d1a'},
+  {num:'#13', card:'Ductwork Leak', pct:'~2%', yolo:'✗', xgb:'✗', gem:'✓', train:'❌ No — invisible inside ducts', tool:'Gemini reasoning — multi-factor only', trainColor:'#e07070', rowBg:''},
+  {num:'#6', card:'Wiring Fault', pct:'~2%', yolo:'✗', xgb:'✗', gem:'✗', train:'⚠️ Partial — burn marks subtle', tool:'Reading primary — voltage drop', trainColor:'#e0b040', rowBg:'#0d2d1a'},
+  {num:'#17', card:'Refrigerant Overcharge', pct:'~2%', yolo:'✗', xgb:'✓', gem:'✓ tiebreak', train:'❌ No — invisible', tool:'Reading primary — XGBoost on pressures', trainColor:'#e07070', rowBg:''},
+  {num:'#15', card:'Fixed Orifice / Piston', pct:'~2%', yolo:'✗', xgb:'✓', gem:'✗', train:'❌ No — bore measurement only', tool:'Reading primary — bore measurement', trainColor:'#e07070', rowBg:'#0d2d1a'},
+  {num:'#16', card:'Loose Terminal', pct:'~2%', yolo:'✗', xgb:'✗', gem:'✓ Path B', train:'✅ Yes — thermal/burn marks trainable', tool:'Reading primary — voltage drop', trainColor:'#e0b040', rowBg:''},
+  {num:'#19', card:'Formicary Corrosion', pct:'~1%', yolo:'✓ maybe', xgb:'✗', gem:'✗', train:'✅ Yes — green powder very distinctive', tool:'Photo is primary — reading adds nothing', trainColor:'#2ecc71', rowBg:'#0d2d1a'},
+  {num:'#12', card:'Reversing Valve', pct:'~1%', yolo:'✗', xgb:'✓', gem:'✗', train:'❌ No — internal component', tool:'Reading primary — pressure in heat mode', trainColor:'#e07070', rowBg:''},
+  {num:'#18', card:'Undersizing', pct:'~1%', yolo:'✗', xgb:'✗', gem:'✓', train:'❌ No — judgment call', tool:'Gemini reasoning — load calc multi-factor', trainColor:'#e07070', rowBg:'#0d2d1a'},
+];
+
+document.addEventListener('DOMContentLoaded', renderModelTable);
+
+function renderModelTable() {
+  const body = document.getElementById('model-table-body');
+  if (!body) return;
+  body.innerHTML = modelData.map(r => `
+    <tr style="border-bottom:1px solid #1e2038;background:${r.rowBg || 'transparent'};">
+      <td style="padding:8px 10px;color:#5a6280;font-weight:700;white-space:nowrap;">${r.num}</td>
+      <td style="padding:8px 10px;color:#c0c8e0;font-weight:600;">${r.card}</td>
+      <td style="padding:8px 10px;text-align:center;color:#f39c12;font-weight:700;">${r.pct}</td>
+      <td style="padding:8px 10px;text-align:center;color:${r.yolo.includes('✓') ? '#e74c3c' : '#3a4060'};">${r.yolo}</td>
+      <td style="padding:8px 10px;text-align:center;color:${r.xgb.includes('✓') ? '#3498db' : '#3a4060'};">${r.xgb}</td>
+      <td style="padding:8px 10px;text-align:center;color:${r.gem.includes('✓') ? '#9b59b6' : '#3a4060'};">${r.gem}</td>
+      <td style="padding:8px 10px;color:${r.trainColor};font-size:10px;">${r.train}</td>
+      <td style="padding:8px 10px;color:#8a90a8;font-size:10px;">${r.tool}</td>
+    </tr>`).join('');
+}
+
+function switchTab(id, el) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.ctab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  el.classList.add('active');
+}
+
+function logData(card, answer, btn) {
+  const box = btn.closest('.data-collect');
+  const ts = new Date().toLocaleTimeString();
+  box.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px;">
+      <div style="font-size:22px;">${answer === 'yes' ? '✅' : '📝'}</div>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#f5a8a0;">Recorded — thank you!</div>
+        <div style="font-size:10px;color:#a05050;margin-top:3px;">${card.toUpperCase()} · Answer: <strong style="color:${answer==='yes'?'#2ecc71':'#e74c3c'}">${answer.toUpperCase()}</strong> · ${ts}</div>
+        <div style="font-size:10px;color:#7a4040;margin-top:2px;">This photo is now labeled in your training dataset.</div>
+      </div>
+    </div>`;
+}
+</script>
+</body>
+</html>

@@ -216,6 +216,7 @@ async def all_models(
                         "avg_lifespan_years": None,
                         "known_issues": [],
                         "replacement_models": [],
+                        "tonnage_data": tonnage_data,
                     })
         return {
             "models": models,
