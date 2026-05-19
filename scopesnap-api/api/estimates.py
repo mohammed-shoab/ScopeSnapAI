@@ -263,6 +263,86 @@ async def get_estimate(
     return data
 
 
+# ── POST /api/estimates/{id}/refresh (Q.7) ──────────────────────────────────────
+
+@router.post("/{estimate_id}/refresh")
+async def refresh_draft_estimate(
+    estimate_id: str,
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Q.7 — Re-stamp description/why_recommended from the latest
+    fault_cards.better_option_estimate onto a draft estimate's stored options.
+    Called by the Estimate Builder on load so descriptions added after estimate
+    creation (e.g. migration 021) appear without requiring a new estimate.
+    Idempotent: safe to call repeatedly; no-op if estimate is not 'draft'.
+    """
+    result = await db.execute(
+        select(Estimate).where(
+            Estimate.id == estimate_id,
+            Estimate.company_id == auth.company_id,
+        )
+    )
+    estimate = result.scalar_one_or_none()
+    if not estimate:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Estimate not found")
+
+    if estimate.status != "draft":
+        return _estimate_to_dict(estimate)
+
+    # Resolve card_id via diagnostic_sessions
+    ds_row = await db.execute(
+        text(
+            "SELECT resolved_card_id FROM diagnostic_sessions "
+            "WHERE assessment_id = :aid AND resolved_card_id IS NOT NULL LIMIT 1"
+        ),
+        {"aid": str(estimate.assessment_id)},
+    )
+    card_id = ds_row.scalar_one_or_none()
+    if card_id is None:
+        return _estimate_to_dict(estimate)
+
+    # Fetch better_option_estimate JSONB for this fault card
+    fc_row = await db.execute(
+        text("SELECT better_option_estimate FROM fault_cards WHERE card_id = :cid"),
+        {"cid": int(card_id)},
+    )
+    better_data = fc_row.scalar_one_or_none() or {}
+
+    # Patch description/why_recommended per tier without touching amounts or line_items
+    updated_options = []
+    for opt in (estimate.options or []):
+        opt = dict(opt)
+        tier = opt.get("tier")
+        if tier == "good":
+            desc = better_data.get("description_good")
+            why  = better_data.get("why_recommended_good")
+        elif tier == "better":
+            desc = better_data.get("description")
+            why  = better_data.get("why_recommended")
+        elif tier == "best":
+            if opt.get("is_replacement"):
+                desc = better_data.get("description_best_replacement")
+                why  = better_data.get("why_recommended_best_replacement")
+            else:
+                desc = better_data.get("description_best_comprehensive")
+                why  = better_data.get("why_recommended_best_comprehensive")
+        else:
+            desc = why = None
+        if desc:
+            opt["description"] = desc
+        if why:
+            opt["why_recommended"] = why
+        updated_options.append(opt)
+
+    estimate.options = updated_options
+    flag_modified(estimate, "options")
+    await db.commit()
+    await db.refresh(estimate)
+    return _estimate_to_dict(estimate)
+
+
 # ── PATCH /api/estimates/{id} ─────────────────────────────────────────────────
 
 @router.patch("/{estimate_id}")

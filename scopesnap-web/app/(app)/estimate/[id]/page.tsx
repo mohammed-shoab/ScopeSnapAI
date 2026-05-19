@@ -401,6 +401,28 @@ export default function EstimatePage() {
           });
           setLocalItems(items);
           setJobTypes(jt);
+          // Q.7 — Refresh draft: re-stamp descriptions from latest fault card data
+          // (migration 021 added descriptions after estimates were already saved)
+          if (data.status === "draft") {
+            fetch(`${API_URL}/api/estimates/${id}/refresh`, {
+              method: "POST",
+              headers,
+            })
+              .then((r) => (r.ok ? r.json() : null))
+              .then((fresh: EstimateData | null) => {
+                if (!fresh) return;
+                setEstimate(fresh);
+                const items2: Record<string, LineItem[]> = {};
+                const jt2: Record<string, JobType> = {};
+                (fresh.options || []).forEach((opt) => {
+                  items2[opt.tier] = [...(opt.line_items || [])];
+                  jt2[opt.tier] = opt.job_type || "replace";
+                });
+                setLocalItems(items2);
+                setJobTypes(jt2);
+              })
+              .catch(() => {/* non-fatal: existing estimate data remains */});
+          }
         })
         .catch(() => setLoading(false));
     })();
