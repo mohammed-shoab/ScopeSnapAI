@@ -368,6 +368,7 @@ export default function EstimatePage() {
   const [sendEmail, setSendEmail] = useState("");
   const [sendPhone, setSendPhone] = useState("");
   const [homeownerName, setHomeownerName] = useState("");
+  const [contractorProfileOk, setContractorProfileOk] = useState(true); // R.7
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -428,6 +429,21 @@ export default function EstimatePage() {
     })();
   }, [id, getAuthHeaders]);
 
+  // R.7: Check contractor profile completeness (name + phone required to send)
+  useEffect(() => {
+    (async () => {
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${API_URL}/api/auth/me`, { headers });
+        if (!res.ok) return;
+        const data = await res.json();
+        const name = data?.company?.name?.trim() || "";
+        const phone = data?.company?.phone?.trim() || "";
+        setContractorProfileOk(!!(name && phone));
+      } catch { /* non-fatal */ }
+    })();
+  }, [getAuthHeaders]);
+
   // Recompute option totals from local items + markup
   function computeTotal(tier: string): number {
     const items = localItems[tier] || [];
@@ -481,6 +497,11 @@ export default function EstimatePage() {
   };
 
   const sendEstimate = async () => {
+    // R.7: Block send if contractor profile is incomplete
+    if (!contractorProfileOk) {
+      setError("Your contractor profile is incomplete. Add your company name and phone in Settings before sending reports.");
+      return;
+    }
     if (!sendEmail && !sendPhone) { setError("Enter email or phone to send the estimate."); return; }
     setSending(true);
     setError(null);
@@ -622,6 +643,17 @@ export default function EstimatePage() {
           onClose={() => setPresenting(false)}
           onSelectTier={(tier) => { setSelectedTier(tier); setPresenting(false); }}
         />
+      )}
+      {/* R.7: Contractor profile incomplete warning */}
+      {!contractorProfileOk && (
+        <div style={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 16 }}>⚠️</span>
+          <span style={{ fontSize: 13, color: "#795548" }}>
+            Your contractor profile is incomplete.{" "}
+            <a href="/settings" style={{ color: "#ef6c00", fontWeight: 600, textDecoration: "underline" }}>Add your company name and phone in Settings</a>{" "}
+            before sending reports to customers.
+          </span>
+        </div>
       )}
       {/* Header */}
       <div className="flex items-center gap-3 pt-4">

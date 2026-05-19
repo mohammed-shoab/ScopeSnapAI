@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import QRCode from "react-qr-code";
 import DataConfidenceLabel from "@/components/DataConfidenceLabel";
 import { track } from "@/lib/tracking";
 import { formatCurrency, detectMarket, getLanguage } from "@/lib/market";
@@ -8,34 +9,27 @@ import { URDU_STRINGS } from "@/lib/urdu-strings";
 
 /**
  * ReportQRCode — SOW Task 1.9 (Zuckerberg requirement)
- * Renders a QR code linking to this report URL with UTM attribution params.
- * Zero-dependency: uses api.qrserver.com (free, no key, privacy-safe).
+ * R.6: Uses react-qr-code npm package (no external CDN, no network request at render time).
  * Homeowner scans to re-open the report on any device, or share with spouse/family.
  * UTM params feed back into app_events (report_viewed) for attribution analysis.
  */
 function ReportQRCode({ reportShortId }: { reportShortId: string }) {
-  const [qrUrl, setQrUrl] = useState("");
+  const [trackingUrl, setTrackingUrl] = useState("");
 
   useEffect(() => {
-    // Build the clean report URL + UTM params for tracking
     const reportUrl = window.location.href.split("?")[0];
-    const trackingUrl = `${reportUrl}?utm_source=report&utm_medium=qr&utm_campaign=${reportShortId}`;
-    const encoded = encodeURIComponent(trackingUrl);
-    setQrUrl(
-      `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encoded}&color=1a8754&bgcolor=ffffff&margin=4`
-    );
+    setTrackingUrl(`${reportUrl}?utm_source=report&utm_medium=qr&utm_campaign=${reportShortId}`);
   }, [reportShortId]);
 
-  if (!qrUrl) return null;
+  if (!trackingUrl) return null;
 
   return (
     <div style={{ marginTop: 14, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={qrUrl}
-        alt="Scan to view this report on any device"
-        width={80}
-        height={80}
+      <QRCode
+        value={trackingUrl}
+        size={80}
+        fgColor="#1a8754"
+        bgColor="#ffffff"
         style={{ borderRadius: 6, border: "1px solid #e2dfd7" }}
       />
       <span style={{ fontSize: 9, color: "#b0aca4", letterSpacing: "0.04em" }}>
@@ -106,7 +100,7 @@ interface Company {
   email?: string;
   license_number?: string;
   logo_url?: string;
-  custom_branding?: boolean;  // true = paid plan, show their branding; false = show SnapAI
+  custom_branding?: boolean;  // Q.4: always true — PAID_PLANS gate removed. Always show contractor logo.
 }
 
 interface Report {
@@ -124,6 +118,7 @@ interface Report {
   photos: Photo[];
   issues: Issue[];
   options: Option[];
+  site_visit_fee_text?: string;  // R.8
 }
 
 const TIER_LABELS: Record<string, string> = {
@@ -498,15 +493,25 @@ export default function ReportClient({ report }: { report: Report }) {
               : "Professional HVAC Assessments"}
           </p>
         </div>
-        {company.custom_branding && company.phone && (
-          <a
-            href={`tel:${company.phone.replace(/\D/g, "")}`}
-            style={{ fontSize: 12, fontWeight: 700, color: "#1a8754", textDecoration: "none", flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          {/* R.1: Print button */}
+          <button
+            onClick={() => window.print()}
+            style={{ fontSize: 11, fontWeight: 600, color: "#7a7770", background: "#f7f6f2", border: "1px solid #e5e2da", borderRadius: 8, padding: "5px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 11 19.79 19.79 0 0 0 .21 2.36 2 2 0 012.22 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.66-.66a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg>
-            Call
-          </a>
-        )}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print
+          </button>
+          {company.custom_branding && company.phone && (
+            <a
+              href={`tel:${company.phone.replace(/\D/g, "")}`}
+              style={{ fontSize: 12, fontWeight: 700, color: "#1a8754", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 11 19.79 19.79 0 0 0 .21 2.36 2 2 0 012.22 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.66-.66a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg>
+              Call
+            </a>
+          )}
+        </div>
       </div>
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 0 40px", width: "100%" }}>
@@ -536,8 +541,8 @@ export default function ReportClient({ report }: { report: Report }) {
           )}
         </div>
 
-        {/* Health Overview Section — Section 5E: only shown when nameplate data exists */}
-        {(equipment?.brand || equipment?.model_number || equipment?.install_year || (condition !== "unknown")) && (
+        {/* R.4: Health Overview — only shown when at least one nameplate data field has a value */}
+        {(equipment?.brand || equipment?.model_number || equipment?.install_year) && (
         <div
           style={{
             background: "white",
@@ -649,11 +654,9 @@ export default function ReportClient({ report }: { report: Report }) {
             What We Found
           </div>
           <div style={{ padding: "12px 16px 16px" }}>
-            {/* Annotated Photo */}
-            {report.photos.length > 0 ? (
+            {/* R.5: Only render photo when photos exist — no placeholder */}
+            {report.photos.length > 0 && (
               <AnnotatedPhotoSvg photo={report.photos[0]} hasIssues={report.issues.length > 0} />
-            ) : (
-              <AnnotatedPhotoSvg photo={{ photo_url: "", annotated_photo_url: "", annotations: [] }} hasIssues={report.issues.length > 0} />
             )}
 
             {/* Issues List */}
@@ -1032,6 +1035,15 @@ export default function ReportClient({ report }: { report: Report }) {
             </div>
           </div>
         </div>
+
+        {/* R.8: Site visit fee disclaimer */}
+        {report.site_visit_fee_text && (
+          <div style={{ margin: "0 10px 4px", padding: "10px 14px", background: "#f7f6f2", borderRadius: 10, border: "1px solid #e5e2da", textAlign: "center" }}>
+            <p style={{ fontSize: 10, color: "#7a7770", margin: 0, lineHeight: 1.5 }}>
+              {report.site_visit_fee_text}
+            </p>
+          </div>
+        )}
 
         {/* Footer — SOW Decision #2: two-line SnapAI footer + QR code (Task 1.9 / Zuckerberg) */}
         <div style={{ textAlign: "center", padding: "20px 16px", fontSize: 10, color: "#a8a49c", lineHeight: 1.8 }}>

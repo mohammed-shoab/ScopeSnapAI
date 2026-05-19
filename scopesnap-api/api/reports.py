@@ -292,6 +292,10 @@ async def get_public_report(
 
         # URLs for approval
         "approve_url": f"/api/reports/{estimate.report_token}/approve",
+
+        # R.8: Site visit fee footer disclaimer (US default; PK follow-up in Track P)
+        # Future: read from company.site_visit_fee_text when column is added
+        "site_visit_fee_text": "Diagnostic visit fee $89 — waived upon repair approval.",
     }
 
     # ── Commit viewed_at + tech notification on first view ────────────────────

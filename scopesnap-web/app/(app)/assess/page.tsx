@@ -233,6 +233,11 @@ function AssessPageInner() {
   // ── Create assessment + enter diagnostic ───────────────────────────────────
   const handleComplaintSelected = async (complaintId: ComplaintId) => {
     setComplaintType(complaintId);
+    // R.3: Address required for US market before creating a job
+    if (!address.trim()) {
+      setError("Please enter the property address before selecting a complaint type.");
+      return;
+    }
     setCreatingAssessment(true);
     setError(null);
     try {

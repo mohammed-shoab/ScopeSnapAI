@@ -190,5 +190,14 @@ input[type="range"]::-moz-range-thumb {
   background: #b0afa8;
 }
 
+/* R.1: Print styles — hide chrome, remove sticky, allow cards to break naturally */
+@media print {
+  nav, header, .no-print, button { display: none !important; }
+  body { background: white !important; }
+  .sticky { position: static !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  section, .card { page-break-inside: avoid; }
+}
+
 /* Dashed circle animation for annotated photos */
 @keyframes dashRot
