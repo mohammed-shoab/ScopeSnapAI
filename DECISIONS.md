@@ -3,7 +3,7 @@
 > This file records decisions made during development that have lasting impact on how the codebase works.
 > Future AI sessions: read this before proposing architecture changes or writing migrations.
 >
-> Last updated: 2026-05-15
+> Last updated: 2026-05-19
 
 ---
 
@@ -223,17 +223,3 @@ Any file showing a net deletion (more `-` than `+` lines) near the end is likely
 3. Commit via Desktop Commander `.bat` and push
 
 **Rationale:** NTFS line-ending translation (LF → CRLF) during stash restore corrupts file content when the sandbox's git and Windows git have mismatched `core.autocrlf` settings.
-
-## DEC-016 — Legacy estimate_engine deletion (2026-05-19)
-
-**Date:** 2026-05-19
-
-**Decision:** Deleted `services/estimate_engine.py`, `POST /api/estimates/generate` route in `api/estimates.py`, and `generateEstimate()` wrapper in `scopesnap-web/lib/api.ts`. The new `fault_estimate.py` is the sole estimate generation path.
-
-**Why:** Live audit confirmed:
-- Zero frontend callers of `generateEstimate()` (grep confirms zero results in scopesnap-web/ excluding lib/api.ts)
-- Zero recent estimates hit the $450 floor (0 of 7 recent rows)
-- `CONDITION_TO_OPTIONS` unused outside the deleted file
-- All live estimate calls go through `POST /api/estimates/fault-card` exclusively
-
-**Impact:** All estimate generation now flows through `POST /api/estimates/fault-card`. Any future estimate logic should be added to `api/fault_estimate.py`, never the deleted module. Existing `GET/PATCH /api/estimates/{id}` routes are unaffected.

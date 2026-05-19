@@ -1,7 +1,20 @@
 # SnapAI AI — Tech Stack & Architecture
 
-> **Last updated:** May 4, 2026 (Session 7 — Phase 3 WS-A3 + WS-B3 complete; backend+DB foundation deployed, infra fixed)
-> **Status:** Beta — live on Vercel + Railway. Phase 2 complete. Phase 3 backend foundation (migrations 008–011) deployed.
+> **Last updated:** May 19, 2026 (Track Q complete — Q.1–Q.7 + Q.6.5 all merged to main. Migration 021 (fault card descriptions, 19 cards × 5 fields) applied. Git HEAD: `f8afced`. Alembic head: `021`. Houston + PK QA-verified.)
+> **Status:** Beta — live on Vercel + Railway. Phase 2 complete. Phase 3 backend foundation (migrations 008–021) deployed. Both markets QA-verified 2026-05-19: PK (6/6 flows PASS) + Houston (Step Zero DB autofill, Not Cooling PSI routing, USD estimate generation, email send end-to-end PASS). Track Q (8 production hotfixes) all resolved.
+
+---
+
+## CRITICAL: Emoji Files & Blob Truncation — MUST READ BEFORE ANY GIT OPERATION
+
+**EMOJI TRUNCATION RULE:** Files containing emoji or non-ASCII characters (✅ ⚠️ 🔧 📸 —) CANNOT be read from the NTFS Windows mount when building git blobs. The Linux sandbox silently truncates multi-byte UTF-8 bytes. Result: SyntaxError at runtime, production outage.
+
+**ALWAYS:** Read previous blob from git object store — `git cat-file blob <sha>` — apply edits in Python memory — write new blob via `git hash-object -w --stdin`. NEVER open the file from the filesystem path.
+
+**BLOB SIZE CHECK:** Before every push run `git cat-file -s <new_blob>` and confirm it is >= the original blob size. A truncated blob commits cleanly and crashes only at runtime.
+
+**Affected file types:** Any `.py`, `.tsx`, `.ts`, `.md` with emoji in strings, comments, or print statements.
+**Full details:** DEC-005 in DECISIONS.md.
 
 ---
 
@@ -41,9 +54,10 @@
 
 | Operation | Status | Notes |
 |---|---|---|
-| git plumbing (hash-object → mktree → commit-tree → push) | ✅ Works | The ONLY working git push method from sandbox |
-| `git add / commit / push` | ❌ Fails | index.lock owned by Windows NTFS |
-| `rm -f .git/index.lock` | ❌ Fails | NTFS cross-OS permission |
+| `/tmp/snapai_tmp` clone + normal git push | ✅ Works | **Preferred method (DEC-004):** `git clone git@github.com:... /tmp/snapai_tmp`, edit files there, `git add / commit / push origin main`. Avoids all NTFS issues. |
+| git plumbing (hash-object → mktree → commit-tree → push) from workspace | ⚠️ Fallback | Works but tedious. Use only if /tmp clone unavailable. Avoid for files with emoji/Unicode — NTFS truncation risk. |
+| `git add / commit / push` from NTFS workspace | ❌ Fails | index.lock owned by Windows NTFS |
+| `rm -f .git/index.lock` from NTFS workspace | ❌ Fails | NTFS cross-OS permission |
 | GitHub REST API via curl | ❌ Blocked | Proxy 403 |
 | Outbound HTTP to external APIs (Clerk, Railway) from sandbox | ❌ Blocked | Sandbox proxy returns 403 for all external API calls. Cannot use httpx, requests, urllib, curl to reach api.clerk.com, railway.app, etc. Must be done locally by user. |
 | Browser fetch() to Clerk Backend API | ❌ Blocked | CORS: api.clerk.com rejects cross-origin `Authorization: Bearer` from any non-Clerk domain. Cannot call Clerk API from browser JS. |
@@ -141,7 +155,7 @@ All non-beta features are hidden behind `NEXT_PUBLIC_SHOW_*` env vars (all `fals
 | `POST` | `/api/assessments/` | Create assessment (upload photos to R2) |
 | `POST` | `/api/assessments/{id}/analyze` | Run Gemini AI analysis |
 | `GET` | `/api/estimates/{id}` | Get estimate detail |
-| `POST` | `/api/estimates/generate` | Generate Good/Better/Best estimate from assessment |
+| `POST` | `/api/estimates/generate` | ~~Generate Good/Better/Best estimate from assessment~~ **DELETED** (DEC-016 — legacy engine removed; use `/api/estimates/fault-card` instead) |
 | `GET` | `/api/reports/{reportId}` | Get homeowner report (public) |
 | `POST` | `/api/reports/{token}/approve` | Homeowner approves an option (public) |
 | `POST` | `/api/events` | Track analytics event (rate-limited: 100/user/60s) |
@@ -162,9 +176,15 @@ All non-beta features are hidden behind `NEXT_PUBLIC_SHOW_*` env vars (all `fals
 | `POST` | `/api/feedback/card` | WS-F | YES/NO tech feedback on fault card |
 | `GET` | `/api/feedback/card/{id}/stats` | WS-F | Feedback stats for a card |
 | `POST` | `/api/estimates/fault-card` | WS-G | A/B/C estimate for specific fault card |
-| `GET` | `/api/estimates/recommend` | WS-H | Lifecycle rules → recommended tier |
+| `GET` | `/api/estimates/recommend` | WS-H | Lifecycle rules → recommended tier (external, auth required). Internal variant: `get_recommended_tier_internal()` in `recommend.py` (Q.6.5) — called by fault_estimate.py; no auth, takes card_id/age_years/condition_signal/db/tables. |
 | `POST` | `/api/followup/schedule` | WS-I | Schedule 24h/48h/7d follow-up |
 | `GET` | `/api/followup/opt-out/{token}` | WS-I | Homeowner opt-out link |
+
+**Track Q additions (hotfixes 2026-05-19):**
+
+| Method | Path | Track Q | Description |
+|---|---|---|---|
+| `POST` | `/api/estimates/{id}/refresh` | Q.7 | Re-stamp descriptions/why_recommended on a draft estimate from latest fault card data. Resolves `card_id` via `diagnostic_sessions.resolved_card_id`. Idempotent — no-op if estimate is not draft. Returns updated estimate dict. |
 
 **Phase 3 (WS-A3/B3/C3 onward, added 2026-05-04):**
 
@@ -183,7 +203,7 @@ All non-beta features are hidden behind `NEXT_PUBLIC_SHOW_*` env vars (all `fals
 ### Database Tables
 
 > All tables have RLS enabled. The `service_role` key (used by the backend) bypasses RLS automatically. Tables with sensitive data also have `company_isolation` policies restricting data per contractor.
-> **Current Alembic revision: 011** (Phase 3 WS-A3 tables added 2026-05-04; migrations 008–011 injected via Supabase Monaco editor, committed pre-set so Railway boot no-ops)
+> **Current Alembic revision: 021** (Track Q migrations applied 2026-05-19; migrations 012–021 cover fault card descriptions, report token fix, and estimate refresh. Migration 021 had a Python SyntaxError in the original file — data applied directly via Supabase MCP, `alembic_version` manually advanced to `021`, file rewritten with valid syntax — see WA-7.)
 
 **WS-A Reference Tables (added migration 007, seeded 2026-04-30):**
 
@@ -191,12 +211,12 @@ All non-beta features are hidden behind `NEXT_PUBLIC_SHOW_*` env vars (all `fals
 |---|---|---|---|
 | `brands` | 15 | HVAC brand registry (Carrier, Trane, etc.) | Python SQL gen → Supabase SQL editor |
 | `parts_catalog` | 43 | Repair parts + installed cost data | Python SQL gen → Supabase SQL editor |
-| `fault_cards` | 19 | The 19 diagnostic cards (1-19) | Python SQL gen → Supabase SQL editor |
-| `pricing_tiers` | 57 | A/B/C tiers per fault card (from price list) | Python SQL gen → Supabase SQL editor |
+| `fault_cards` | 19 | The 19 diagnostic cards (1-19). `better_option_estimate` JSONB column holds per-tier description fields: `description_good`, `why_recommended_good`, `description`, `why_recommended`, `description_best_replacement`, `description_best_comprehensive`, `why_recommended_best`. All 19 cards populated via migration 021 (2026-05-19). | Python SQL gen → Supabase SQL editor |
+| `pricing_tiers` | 57 | A/B/C tiers per fault card (from price list). Each tier in the estimate response includes `recommendation_reason` and `recommendation_source` fields (populated from `lifecycle_rules` via Q.6.5 `get_recommended_tier_internal()`). | Python SQL gen → Supabase SQL editor |
 | `error_codes` | 196 | Error codes for 14 brand families | Python SQL gen → Supabase SQL editor |
 | `labor_rates_houston` | 1 | Houston labor rate benchmarks | Python SQL gen → Supabase SQL editor |
 | `legacy_model_prefixes` | 65 | Pre-2010 unit identification prefixes | Python SQL gen → Supabase SQL editor |
-| `lifecycle_rules` | 16 | Component age → recommended A/B/C tier | Python SQL gen → Supabase SQL editor |
+| `lifecycle_rules` | 17 | Component age + condition_signal → recommended A/B/C tier. "default" signal always returns B. Age-based rules only apply with specific condition signals (pitting, bearing_noise, rla_over_nameplate). | Python SQL gen → Supabase SQL editor |
 | `data_repo_versions` | 1 | Load history + row count manifest | Auto-inserted after seeding |
 
 **Phase 2 tables (added 2026-05-01):**
@@ -416,57 +436,33 @@ SnapAIAI/
 
 ## How to Push Updates to Live App
 
-> ⚠️ **IMPORTANT — Normal `git push` does NOT work from Claude's sandbox.** Use the git plumbing method below instead.
+> **DEC-004 (permanent):** All git operations use `/tmp/snapai_tmp` — a fresh clone in the Linux sandbox's `/tmp` directory (not the NTFS workspace). Do NOT git stash from the sandbox on an NTFS repo (DEC-013).
 
-### Why normal git push fails
-Claude's Linux sandbox cannot delete `.git/index.lock` (Windows NTFS file ownership boundary), so `git add / git commit / git push` all fail. The GitHub REST API is also blocked by the sandbox proxy (403). The solution is git plumbing commands that bypass the index entirely.
-
-### Git plumbing method (what actually works)
+### Standard method (DEC-004 — /tmp clone)
 
 ```bash
-cd "/sessions/.../mnt/Personal Claude/ScopeSnapAI"
+# Clone into /tmp (avoids NTFS index.lock issues entirely)
+git clone git@github.com:mohammed-shoab/SnapAIAI.git /tmp/snapai_tmp
+cd /tmp/snapai_tmp
 
-# 1. Write the changed file as a blob
-BLOB=$(git hash-object -w "scopesnap-api/services/pdf_generator.py")
-
-# 2. Fetch latest commit to get all tree objects locally
-git fetch origin main
-MAIN_COMMIT=$(git rev-parse FETCH_HEAD)
-ROOT_TREE=$(git cat-file -p $MAIN_COMMIT | awk '/^tree/{print $2}')
-
-# 3. Navigate down the tree to find the subdirectory SHA
-API_TREE=$(git cat-file -p $ROOT_TREE | awk '/scopesnap-api/{print $3}')
-SVC_TREE=$(git cat-file -p $API_TREE | awk '/services/{print $3}')
-
-# 4. Rebuild each directory tree bottom-up, replacing the changed file's SHA
-NEW_SVC=$(git cat-file -p $SVC_TREE | python3 -c "
-import sys
-for line in sys.stdin:
-    print(line.rstrip('\n').replace('OLD_BLOB_SHA', '$BLOB'))
-" | git mktree)
-
-NEW_API=$(git cat-file -p $API_TREE | python3 -c "
-import sys
-for line in sys.stdin:
-    print(line.rstrip('\n').replace('OLD_SVC_TREE', '$NEW_SVC'))
-" | git mktree)
-
-NEW_ROOT=$(git cat-file -p $ROOT_TREE | python3 -c "
-import sys
-for line in sys.stdin:
-    print(line.rstrip('\n').replace('OLD_API_TREE', '$NEW_API'))
-" | git mktree)
-
-# 5. Create commit and push directly by SHA
-NEW_COMMIT=$(git commit-tree $NEW_ROOT -p $MAIN_COMMIT -m "your commit message")
-git push origin ${NEW_COMMIT}:refs/heads/main
+# Make changes, then commit and push normally
+git add scopesnap-api/api/estimates.py
+git commit -m "[hotfix] Q.7 — refresh draft estimates on load"
+git push origin main
 ```
 
-**Railway auto-deploys** within ~30 seconds of a push to `main`. No manual step needed.
+**Why this works:** `/tmp` is a real Linux ext4 filesystem — no NTFS boundary, no index.lock issues. Normal `git add / commit / push` all work.
+
+**Railway auto-deploys** within ~4–5 minutes of a push to `main`. No manual step needed.
+
+### Fallback — git plumbing (only if /tmp clone unavailable)
+
+If the /tmp directory is not writable or the clone fails for network reasons, the git plumbing method (hash-object → mktree → commit-tree) still works from the NTFS workspace, but avoid it for files with emoji/Unicode characters (NTFS truncation risk).
 
 ### ❌ Things that do NOT work (do not retry these)
-- `git add / git commit / git push` — fails: index.lock owned by Windows NTFS
-- `rm -f .git/index.lock` from Linux bash — fails: Operation not permitted
+- `git add / git commit / git push` from the NTFS workspace mount — fails: index.lock owned by Windows NTFS
+- `rm -f .git/index.lock` from Linux bash on NTFS — fails: Operation not permitted
+- `git stash` from sandbox on NTFS repo — fails silently or corrupts (DEC-013)
 - GitHub REST API via `curl` — fails: proxy returns 403
 - Browser code injection (CodeMirror/atob) — fails: corrupts UTF-8 multi-byte chars
 
@@ -567,3 +563,124 @@ Logo spec: 120×120px, green `#1a8754` rounded square (radius 24px), white "S" A
 
 **Problem:** The workspace folder is an NTFS-mounted Windows drive. Two issues arise when working git inside it:
 1. `.git/index.lock` left by a failed git operation cannot be deleted — `os.unlink()` and `rm -f` both return "Operation not permitted" on NTFS mounts in t
+
+---
+
+### WA-6 — PK inverter badge in confirmation chip needs separate state var (not manualUnit cast)
+
+**Problem:** After selecting an inverter model on PK market, the blue INVERTER pill showed correctly in the model dropdown but not in the confirmation chip. The chip had `{(manualUnit as any).series_type === "inverter" && (...)}` which always evaluated false because `applyModelRecord` copies fields into `manualUnit` (typed as `NameplateUnit`), and `NameplateUnit` has no `series_type` field — the cast returns `undefined`.
+
+**Fix:** Added `const [selectedSeriesType, setSelectedSeriesType] = useState<string | null>(null)` after `pkTonnageData` state. In `applyModelRecord`'s isPK block: `setSelectedSeriesType(model.series_type ?? null)`. In clear button: `setSelectedSeriesType(null)`. Chip JSX: `{selectedSeriesType === "inverter" && (...)}`. This follows the existing `pkTonnageData` pattern — PK-only extra data lives in separate state vars, not cast onto `manualUnit`.
+
+**Root cause detail:** `model.series_type` comes from the backend `/api/models/all` PK response (added in commit `0adc374`), where `series_type` is derived from `s.get("type", "non_inverter")` in the `pak_brands` JSONB series array. The `inverter` boolean column in `pak_brands` is irrelevant — `type='inverter'` string in the JSON is the correct source (DEC-008).
+
+**Commit:** `a951a02` | **File:** `scopesnap-web/components/StepZeroPanel.tsx` | **Verified live:** 2026-05-19
+
+---
+
+### WA-7 — Migration Python SyntaxError: em-dashes and unescaped quotes crash Railway start.sh
+
+**Problem:** Migration `021_fault_card_descriptions.py` contained Python string literals with unescaped double-quotes inside double-quoted strings (e.g. `"{"description_good": "Replace..."}"`). Python parsed the inner `{description_good` as a dict literal, then hit em-dash characters `—` (U+2014) which are not valid Python identifiers. This caused a SyntaxError at import time. `start.sh` uses `set -e`, so `alembic upgrade head` crashing killed the Railway startup — the last healthy container (pre-Q.5) kept serving. All Q.5–Q.7 code was deployed correctly but the database data was never applied.
+
+**Effect:** Silent production gap — code deployed, migrations silently skipped. `alembic_version` stayed at `020` while git HEAD was at `f8afced`.
+
+**Fix applied 2026-05-19:**
+1. Applied all 19 card UPDATE statements directly via Supabase MCP `execute_sql` (bypassed alembic entirely).
+2. Manually advanced `alembic_version`: `UPDATE alembic_version SET version_num = '021' WHERE version_num = '020'`.
+3. Rewrote migration file using `json.dumps()` with `ensure_ascii=False` — no manual string escaping, no em-dashes, no backslash issues. Verified with `python3 -m py_compile migration_021.py` before committing.
+
+**Rule going forward:** Never put prose text with em-dashes, curly quotes, or unescaped double-quotes inside Python double-quoted string literals in migration files. Use `json.dumps()` for any data blob. If in doubt: `python3 -m py_compile <file>` before committing.
+
+---
+
+## PK (Pakistan) Market — Architecture & Data Reference
+
+> PK QA verified: 2026-05-19. All 6 diagnostic flows confirmed live on pk.snapai.mainnov.tech (commits 9024d035, 0adc374, a951a02). Full PK SOW complete.
+> Houston QA verified: 2026-05-19. Step Zero (York LX DB autofill), Not Cooling 128 PSI–normal–Card 13, USD estimate ($338/$574/$775, 35% markup), email send confirmed (rpt-0513, status=sent in DB). Both markets clean.
+
+### How the dual-market works
+
+One codebase. One Railway backend. One Vercel deployment. Market is determined at runtime:
+
+| Step | Where | How |
+|------|-------|-----|
+| 1. Detect market | Frontend `lib/market.ts` | `detectMarket()` checks hostname — returns "PK" for `pk.*`, "US" otherwise |
+| 2. Set header | All API fetch calls | `X-Market: PK` or `X-Market: US` header added to every request |
+| 3. Route tables | Backend `db/deps.py` | `get_tables()` dependency reads `X-Market` — returns `pak_*` table names for PK |
+| 4. Query PK tables | All route handlers | Use `tables.brands`, `tables.fault_cards` etc. — resolved to `pak_brands`, `pak_fault_cards` etc. |
+
+**Critical rule:** Every PK-only code change must be gated behind `if (detectMarket() === "PK")` (frontend) or handled via `get_tables()` dependency (backend). A single push changes BOTH markets simultaneously.
+
+### PK Supabase Tables
+
+| Table | Purpose | Seeded from |
+|-------|---------|-------------|
+| `pak_brands` | Brand + series registry with electrical specs | `ac_data_repo_pakistan_v4.json` via Python SQL gen |
+| `pak_fault_cards` | PK diagnostic fault cards with PKR pricing | Manually seeded |
+| `pak_diagnostic_questions` | Question tree for PK complaints | Manually seeded |
+| `pak_operating_targets` | PSI/temp targets by refrigerant at 40C ambient | Manually seeded |
+| `pak_data_defaults` | Default values for auto-fill | Manually seeded |
+| `pak_assessments` | PK assessment records (phone-only, no address required) | Created at runtime |
+| `pak_estimates` | PK estimates with PKR pricing | Created at runtime |
+
+### PK Electrical Specs (pak_brands)
+
+All 15 brands seeded with RLA/LRA/MCA/MOCP/capacitor data from `ac_data_repo_pakistan_v4.json` (2026-05-19).
+
+**Known issue — DATA-GAP-001:** `inverter` boolean column is `false` for all rows. The JSON has `inverter=None` (null) on every model but uses `type='inverter'` (string) to mark inverter models. The SQL seeder used the wrong field. Fix: run the UPDATE below in Supabase SQL editor.
+
+```sql
+-- Fix inverter boolean for 10 inverter series
+UPDATE pak_brands SET inverter = true
+WHERE series_name IN (
+  'Triple Inverter (Life/Smart/Color/UV)',
+  'Ultron Divine', 'Smartron',
+  'InverterOn Airy', 'Turbo DC',
+  'eLuxury', 'eSmart',
+  'Digital Inverter', 'Dual Inverter', 'Tropical Inverter'
+);
+```
+
+Inverter models that exist in the data (all R-32, full 1.0T/1.5T/2.0T tonnage_data, lra='N/A (Soft Start)'):
+- Haier: Triple Inverter (Life/Smart/Color/UV)
+- Orient: Ultron Divine, Smartron
+- PEL: InverterOn Airy, Turbo DC
+- Kenwood: eLuxury, eSmart
+- Samsung: Digital Inverter
+- LG: Dual Inverter
+- Mitsubishi: Tropical Inverter
+
+### PK PSI Thresholds (pak_diagnostic_questions)
+
+Confirmed correct as of 2026-05-19:
+
+| Refrigerant | Normal suction range at 40C ambient | high_min value |
+|-------------|-------------------------------------|----------------|
+| R-410A | 125–145 PSI | 145 |
+| R-22 | 65–88 PSI | 88 |
+| R-32 | 120–140 PSI | 140 |
+
+130 PSI (R-410A) correctly classified as `(ok)` — routes to discharge PSI step, NOT to Card 13.
+
+### PK-Specific UI Behaviour (confirmed live 2026-05-19)
+
+| Feature | Implementation | Status |
+|---------|---------------|--------|
+| Currency | PKR (₨) on all estimates | ✅ Confirmed |
+| Voltage | 220-240V / 50Hz single phase | ✅ |
+| WhatsApp Send button | `assessment/[id]/page.tsx` — always rendered when market=PK, `disabled` until phone entered | ✅ Confirmed |
+| Customer name placeholder | "Ahmed Khan" (not "Sarah Johnson") | ✅ Confirmed |
+| Phone field label | "WhatsApp Number" (not "Phone Number") | ✅ Confirmed |
+| 2.5T commercial warning | `StepZeroPanel.tsx` line 836 — orange banner when `tonnage===2.5 && isPK` | ✅ Confirmed |
+| Urdu toggle | `LanguageToggle` navbar button present | ✅ Confirmed |
+| Inverter badge (dropdown) | `StepZeroPanel.tsx` line 691 — blue INVERTER pill shown when `m.series_type === "inverter"` in dropdown results | ✅ Confirmed live 2026-05-19 |
+| Inverter badge (chip) | `StepZeroPanel.tsx` — `selectedSeriesType` state var set in `applyModelRecord` isPK block; chip reads `selectedSeriesType === "inverter"` | ✅ Confirmed live 2026-05-19 (commit a951a02) |
+| Nameplate field badges | MODEL # and TONNAGE show "DB" badge when auto-filled from DB. Edit inline — badge changes to ✏ Edited. RLA/LRA/Cap/MCA/MOCP show "Est." (estimated). No modal, no bulk-clear button. | ✅ Flow 6 confirmed live 2026-05-19 |
+
+### PK Data Source File
+
+**`ac_data_repo_pakistan_v4.json`** — located at `C:\Users\dell\My Drive\Personal Claude\ac_data_repo_pakistan_v4.json`
+
+Structure: `{ metadata, brands[15], fault_card_estimates, operating_targets, error_codes, legacy_model_prefix_lookup, parts_and_labor }`
+
+15 brands total: Gree (8 series), Haier (4), Orient (7), PEL (4), Kenwood (7), EcoStar (6), Samsung (4), LG (3), Mitsubishi (1+), Dawlance, TCL, Waves, Changhong Ruba, Kenwood, Admiral (remaining)
