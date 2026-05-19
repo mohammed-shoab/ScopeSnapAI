@@ -66,4 +66,9 @@ export default function PublicSharePage() {
       {/* Minimal public header */}
       <div style={{ borderBottom: "1px solid #e2e8f0", padding: "12px 20px", display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ fontWeight: 700, fontSize: 15, color: "#0f172a" }}>SnapAI</span>
-        <span style={{ f
+        <span style={{ fontSize: 12, color: "#94a3b8" }}>Diagnostic Report</span>
+      </div>
+      <FaultResolutionScreen data={data} mode="public" />
+    </div>
+  );
+}

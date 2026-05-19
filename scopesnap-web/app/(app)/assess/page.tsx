@@ -788,4 +788,5 @@ export default function AssessPage() {
     >
       <AssessPageInner />
     </Suspense>
-  
+  );
+}
