@@ -1,0 +1,1 @@
+# SnapAI API routes package

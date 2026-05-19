@@ -1,0 +1,55 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.cache/
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+
+# ── Environment / secrets ─────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.env
+
+# ── Alembic local state ───────────────────────────────────────────────────────
+*.pyc
+
+# ── Local uploads (dev storage) ──────────────────────────────────────────────
+uploads/
+
+# ── AI Model files — LARGE FILES, stored in R2, downloaded at startup ─────────
+# .pkl files are small (< 7 MB) — committed to git ✓
+# .pt  files are large (50–149 MB) — stored in R2, NOT in git ✗
+models/*.pt
+models/*.pth
+
+# Exception: keep small model files in git
+!models/*.pkl
+!models/README.md
+
+# ── OS / Editor ───────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── Test / coverage ───────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
