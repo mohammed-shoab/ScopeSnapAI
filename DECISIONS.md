@@ -223,3 +223,34 @@ Any file showing a net deletion (more `-` than `+` lines) near the end is likely
 3. Commit via Desktop Commander `.bat` and push
 
 **Rationale:** NTFS line-ending translation (LF → CRLF) during stash restore corrupts file content when the sandbox's git and Windows git have mismatched `core.autocrlf` settings.
+
+
+## DEC-024 -- Recommendation engine condition_signal vocabulary v1 (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Decision:** Standard condition_signal vocabulary for lifecycle_rules lookups.
+Implemented in services/condition_signals.py (Track REC.2).
+
+| Signal | Derivation |
+|---|---|
+| default | No specific condition matched (fallback) |
+| under_warranty | install_year within last 2 years |
+| photo_confirmed_pitting | AI photo: pitting or electrical_damage in ai_issues |
+| formicary_confirmed | AI photo: formicary in ai_issues |
+| rla_over_nameplate | reading_inputs row with reading_type=amperage_rla and passed=false |
+| recurring_clog | 2nd+ Card 5 diagnosis for same property_id in 12 months |
+| attic_location | ocr_nameplate or tech_overrides location field contains "attic" |
+| bearing_noise | tech_overrides.symptom contains grind/noise/bearing; or complaint_type=making_noise |
+| sensor_only | card_id=11 and error_code_type contains "sensor" but not "ignitor" |
+
+**Priority chain:** first match wins (see services/condition_signals.py _derive()).
+
+**Vocabulary rules:**
+- Vocabulary is v1 -- expected to refine after 50+ approval data points.
+- New signals can be added freely.
+- Existing signal strings MUST NOT be renamed -- breaks lifecycle_rules backward compatibility.
+- lifecycle_rules expanded to 50 rows via migration 028 (Track REC.3).
+
+**Impact:** fault_estimate.py calls derive_condition_signal_from_assessment() before
+lifecycle_rules lookup. If derivation fails, falls back to "default" silently (try/except).

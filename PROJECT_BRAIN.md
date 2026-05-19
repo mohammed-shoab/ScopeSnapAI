@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-19 (Stream B PK QA fixes — DATA-GAP-001/002 verified, B.3 R-32 audit complete)
+> Last updated: 2026-05-20 (Track REC complete -- REC.2+3+5, commit 6ac37b4, alembic head 028)
 
 ---
 

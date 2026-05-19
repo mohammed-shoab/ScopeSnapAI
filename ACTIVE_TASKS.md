@@ -82,3 +82,28 @@
 - [ ] Track R — (defined in SnapAI_Estimate_And_Diagnosis_Implementation.md, not started)
 - [ ] Track REC — (defined in SnapAI_Estimate_And_Diagnosis_Implementation.md, not started)
 
+## Completed (Track REC -- 2026-05-20, commit 6ac37b4)
+
+- [completed] REC.2 -- derive_condition_signal_from_assessment()
+  - New file: scopesnap-api/services/condition_signals.py
+  - 9-signal priority chain: under_warranty, photo_confirmed_pitting, formicary_confirmed,
+    rla_over_nameplate, recurring_clog, attic_location, bearing_noise, sensor_only, default
+  - fault_estimate.py stub replaced with real call (import + await)
+  - py_compile verified before push
+
+- [completed] REC.3 -- lifecycle_rules expanded 17 -> 50 rows
+  - Migration: 028_lifecycle_rules_expansion.py (revision "028", down_revision "025")
+  - 33 new rows: under_warranty (11 cards), photo_confirmed_pitting (4), formicary_confirmed (4),
+    rla_over_nameplate (6), recurring_clog (1), attic_location (4), bearing_noise (2), sensor_only (1)
+  - Idempotent: LEFT JOIN guard prevents duplicates on re-run
+  - NOTE: Revision 026/027 reserved by staging Track D migrations. This is revision 028.
+
+- [completed] REC.5 -- PostHog tracking helpers
+  - scopesnap-web/lib/tracking.ts: 3 new helpers added to track object:
+    track.recommendationShown(cardId, recommendedTier, reason?, source?)
+    track.recommendationOverridden(cardId, originalTier, chosenTier, estimateId?)
+    track.recommendationApproved(cardId, approvedTier, recommendedTier, reportId?)
+  - Wiring note: recommendationShown -> call from assess/page.tsx after R.3 done
+  - Wiring note: recommendationOverridden -> call from estimate/[id]/page.tsx after R.7 done
+  - Wiring note: recommendationApproved -> call from ReportClient.tsx after R.1-R.5 done
+
