@@ -156,6 +156,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   const [pkSelectedTonnageKey, setPkSelectedTonnageKey] = useState<string | null>(null);
   // PK-only: tonnage_data from the selected model record
   const [pkTonnageData, setPkTonnageData] = useState<EquipmentModelRecord["tonnage_data"] | null>(null);
+  const [selectedSeriesType, setSelectedSeriesType] = useState<string | null>(null);
 
   // ── Section 5A: Brand/model lookup ─────────────────────────────────────────
   const [brands,           setBrands]           = useState<Array<{ brand: string; model_count: number }>>([]);
@@ -206,6 +207,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
     if (isPK) {
       setPkTonnageData(model.tonnage_data ?? null);
       setPkSelectedTonnageKey(null);
+      setSelectedSeriesType(model.series_type ?? null);
     }
     setManualUnit(prev => {
       const next = { ...prev };
@@ -728,7 +730,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                       <span className="text-xs font-bold text-green-800">
                         {manualUnit.brand_id} — {manualUnit.series_id}
                       </span>
-                      {(manualUnit as any).series_type === "inverter" && (
+                      {selectedSeriesType === "inverter" && (
                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 uppercase">
                           Inverter
                         </span>
@@ -750,6 +752,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                       setSelectedBrand("");
                       setModelQuery("");
                       setEditedManualFields(new Set());
+                      setSelectedSeriesType(null);
                     }}
                     className="text-xs text-green-500 hover:text-green-700 font-bold flex-shrink-0"
                   >
