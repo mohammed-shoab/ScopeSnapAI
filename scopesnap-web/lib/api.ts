@@ -245,19 +245,7 @@ export async function updateAssessment(
   });
 }
 
-// ── Estimates ─────────────────────────────────────────────────────────────────
-
-export async function generateEstimate(
-  assessmentId: string,
-  token: string,
-  adjustments?: Record<string, unknown>
-): Promise<Estimate> {
-  return apiFetch("/api/estimates/generate", {
-    method: "POST",
-    token,
-    body: JSON.stringify({ assessment_id: assessmentId, ...adjustments }),
-  });
-}
+// ── Estimates ────────────────────────────────────────────────────────────────────────────
 
 export async function getEstimate(estimateId: string, token: string): Promise<Estimate> {
   return apiFetch(`/api/estimates/${estimateId}`, { token });
