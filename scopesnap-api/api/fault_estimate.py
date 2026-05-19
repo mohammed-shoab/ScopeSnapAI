@@ -108,6 +108,7 @@ def _apply_surcharges(
     attic_access: bool,
     after_hours: bool,
     is_r22: bool,
+    seasonal_pct: float = 0.0,
 ) -> tuple:
     breakdown: dict = {}
     total = 0
@@ -121,6 +122,10 @@ def _apply_surcharges(
     if is_r22 and r22_surcharge > 0:
         breakdown["r22_handling"] = r22_surcharge
         total += r22_surcharge
+    if seasonal_pct > 0:
+        sea = round(base * seasonal_pct)
+        breakdown["pk_seasonal"] = sea
+        total += sea
     return total, breakdown
 
 
@@ -244,6 +249,10 @@ async def generate_fault_card_estimate(
     r22_surcharge   = int((lr.r22_surcharge_min + lr.r22_surcharge_max) / 2) if lr else 112
     is_r22          = (body.refrigerant or "").upper().startswith("R-22")
 
+    # P.7 — PK seasonal modifier: April–October (months 4–10), 25% labor surcharge
+    _now_month = datetime.now(timezone.utc).month
+    pk_seasonal_pct = 0.25 if (tables.market == "PK" and 4 <= _now_month <= 10) else 0.0
+
     # 4. Get company markup
     markup_row = await db.execute(
         text("SELECT default_markup_pct FROM companies WHERE id = :cid LIMIT 1"),
@@ -300,7 +309,7 @@ async def generate_fault_card_estimate(
 
     # Tier A: Good
     surcharge_A, bkdn_A = _apply_surcharges(base_A, attic_premium, after_hours_pct, r22_surcharge,
-                                             body.attic_access, body.after_hours, is_r22)
+                                             body.attic_access, body.after_hours, is_r22, pk_seasonal_pct)
     sub_A    = base_A + surcharge_A
     mkup_A   = round(sub_A * (markup_mult - 1))
     total_A  = sub_A + mkup_A
@@ -328,7 +337,7 @@ async def generate_fault_card_estimate(
         b_svc   = []
 
     surcharge_B, bkdn_B = _apply_surcharges(b_base, attic_premium, after_hours_pct, r22_surcharge,
-                                             body.attic_access, body.after_hours, is_r22)
+                                             body.attic_access, body.after_hours, is_r22, pk_seasonal_pct)
     sub_B   = b_base + surcharge_B
     mkup_B  = round(sub_B * (markup_mult - 1))
     total_B = sub_B + mkup_B
@@ -363,7 +372,7 @@ async def generate_fault_card_estimate(
     else:
         c_base = round(b_base * 1.35)
         surcharge_C, bkdn_C = _apply_surcharges(c_base, attic_premium, after_hours_pct, r22_surcharge,
-                                                 body.attic_access, body.after_hours, is_r22)
+                                                 body.attic_access, body.after_hours, is_r22, pk_seasonal_pct)
         sub_C   = c_base + surcharge_C
         mkup_C  = round(sub_C * (markup_mult - 1))
         total_C = sub_C + mkup_C
