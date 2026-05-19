@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import QRCode from "react-qr-code";
 import DataConfidenceLabel from "@/components/DataConfidenceLabel";
 import { track } from "@/lib/tracking";
 import { formatCurrency, detectMarket, getLanguage } from "@/lib/market";
@@ -9,27 +8,32 @@ import { URDU_STRINGS } from "@/lib/urdu-strings";
 
 /**
  * ReportQRCode — SOW Task 1.9 (Zuckerberg requirement)
- * R.6: Uses react-qr-code npm package (no external CDN, no network request at render time).
- * Homeowner scans to re-open the report on any device, or share with spouse/family.
- * UTM params feed back into app_events (report_viewed) for attribution analysis.
+ * Renders a QR code linking to this report URL with UTM attribution params.
+ * Uses api.qrserver.com (free, no key, privacy-safe). R.6 npm approach reverted —
+ * react-qr-code v2 TypeScript types conflict; CDN approach is simpler and reliable.
  */
 function ReportQRCode({ reportShortId }: { reportShortId: string }) {
-  const [trackingUrl, setTrackingUrl] = useState("");
+  const [qrUrl, setQrUrl] = useState("");
 
   useEffect(() => {
     const reportUrl = window.location.href.split("?")[0];
-    setTrackingUrl(`${reportUrl}?utm_source=report&utm_medium=qr&utm_campaign=${reportShortId}`);
+    const trackingUrl = `${reportUrl}?utm_source=report&utm_medium=qr&utm_campaign=${reportShortId}`;
+    const encoded = encodeURIComponent(trackingUrl);
+    setQrUrl(
+      `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encoded}&color=1a8754&bgcolor=ffffff&margin=4`
+    );
   }, [reportShortId]);
 
-  if (!trackingUrl) return null;
+  if (!qrUrl) return null;
 
   return (
     <div style={{ marginTop: 14, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-      <QRCode
-        value={trackingUrl}
-        size={80}
-        fgColor="#1a8754"
-        bgColor="#ffffff"
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={qrUrl}
+        alt="Scan to view this report on any device"
+        width={80}
+        height={80}
         style={{ borderRadius: 6, border: "1px solid #e2dfd7" }}
       />
       <span style={{ fontSize: 9, color: "#b0aca4", letterSpacing: "0.04em" }}>
