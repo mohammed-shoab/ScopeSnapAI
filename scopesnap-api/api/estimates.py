@@ -613,7 +613,10 @@ async def generate_documents(
         pdf_url = f"/files/pdfs/estimate-{estimate.report_short_id}-unavailable.pdf"
 
     # Build homeowner report URL (always generated, regardless of PDF success)
-    homeowner_url = f"/r/{company.slug if company else 'hvac'}/{estimate.report_short_id}"
+    # Q.6: use 32-char report_token for security. Legacy short_id URLs remain
+    # valid for 12 months via the OR clause in reports.py (see reports.py line ~60).
+    # REMOVE 2027-05-19: legacy short-ID lookup, per DEC-016.
+    homeowner_url = f"/r/{company.slug if company else 'hvac'}/{estimate.report_token}"
 
     # Update estimate record
     estimate.contractor_pdf_url = pdf_url
