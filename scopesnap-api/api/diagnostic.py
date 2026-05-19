@@ -434,8 +434,9 @@ def _compute_branch_key(answer: Any, input_type: str) -> str:
         return answer.strip().lower()
 
     if isinstance(answer, dict):
-        # Top-level branch_key (simple reading / photo answers)
-        bk = answer.get("branch_key")
+        # Top-level branch_key — accept both snake_case (backend) and camelCase (frontend ReadingResult)
+        # BUG-021: frontend ReadingInput sends branchKey (camelCase), not branch_key (snake_case)
+        bk = answer.get("branch_key") or answer.get("branchKey")
         if bk:
             return str(bk).strip().lower()
 
@@ -443,7 +444,7 @@ def _compute_branch_key(answer: Any, input_type: str) -> str:
         # The first reading's branch_key is the primary routing key.
         r0 = answer.get("reading_0")
         if isinstance(r0, dict):
-            bk = r0.get("branch_key")
+            bk = r0.get("branch_key") or r0.get("branchKey")
             if bk:
                 logger.info(
                     "[diagnostic] branch_key from reading_0: '%s'", bk
@@ -1171,10 +1172,4 @@ async def resume_session(
     if not q_row:
         raise HTTPException(
             status_code=500,
-            detail=f"Current step '{session.current_step_id}' not found.",
-        )
-
-    return StartSessionResponse(
-        session_id=session_id,
-        current_step=_row_to_question_out(q_row, tables.market),
-    )
+            detail=f"Current s
