@@ -3,18 +3,56 @@
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-19 (Track Q — Houston estimate engine hardening, Q.1–Q.7 complete)
+> Last updated: 2026-05-20 (Track D — diagnosis screen + history v1 D.1-D.14 complete, commit 400ede1)
 
 ---
 
 ## Last QA Run
 
-**Date:** 2026-05-19 (Track Q — US Houston estimate engine hardening)
-**Markets tested:** US only (no PK changes)
-**Outcome:** PASS — Q.1 through Q.7 complete, all committed to main, Railway/Vercel deploying
-**Alembic head:** 021 (migrations 020 + 021 added this session)
-**Commits:** 7 hotfix commits on main (f0f13f5 → c6ef5df)
-**QA sign-off:** COMPLETE (2026-05-19 Track Q)
+**Date:** 2026-05-20 (Track R — US report polish, hotfix lane direct to main)
+**Markets tested:** US only (no PK changes, no alembic migrations)
+**Outcome:** PASS — R.1 through R.8 complete (R.9 explicitly deferred), pushed to main
+**Alembic head:** 028 (unchanged — Track R is frontend/backend code only, no DB migrations)
+**Commits:** 1 commit on main (`177f4f9`)
+**QA sign-off:** COMPLETE (2026-05-20 Track R)
+
+---
+
+## Completed (2026-05-20 — Track R US Report Polish)
+
+All 8 items shipped in single commit `177f4f9` (hotfix lane, direct to main):
+
+- [completed] R.1 — Print button in report header + `@media print` CSS in globals.css
+  - Button added alongside Call link in company header bar (`ReportClient.tsx`)
+  - Print CSS hides nav/buttons, removes sticky, adds `page-break-inside: avoid` on cards
+
+- [completed] R.2 — Updated stale Q.4 comment in `Company` interface (`custom_branding` field)
+
+- [completed] R.3 — Address required before complaint selection
+  - Guard in `handleComplaintSelected` in `assess/page.tsx`
+  - Shows: "Please enter the property address before selecting a complaint type."
+
+- [completed] R.4 — Hide Health Overview panel when all nameplate fields null
+  - Removed `|| (condition !== "unknown")` from guard — now only shows when brand/model/install_year present
+
+- [completed] R.5 — Hide photo section when no photos (no placeholder)
+  - Removed the blank `AnnotatedPhotoSvg` fallback — section collapses when `photos.length === 0`
+
+- [completed] R.6 — Replace external QR CDN with `react-qr-code` npm package
+  - Added `"react-qr-code": "^3.1.0"` to `package.json`
+  - `ReportQRCode` function rewritten to use `<QRCode>` component (no network request at render time)
+
+- [completed] R.7 — Contractor profile guard before sending reports
+  - State: `contractorProfileOk` (fetches `/api/auth/me` on load, checks company name + phone)
+  - Banner: amber warning above header if profile incomplete, links to /settings
+  - Send guard: blocks `sendEstimate()` with error message if profile incomplete
+
+- [completed] R.8 — Site visit fee footer disclaimer
+  - Backend: `reports.py` returns `site_visit_fee_text: "Diagnostic visit fee $89 — waived upon repair approval."`
+  - Frontend: renders disclaimer block above report footer when field is present
+  - Interface: `site_visit_fee_text?: string` added to `Report` interface
+
+- [skipped/deferred] R.9 — explicitly out of scope per dispatch instructions
 
 ---
 
@@ -65,6 +103,35 @@
     - Saves options in-place; idempotent / no-op if not draft
   - Updated `estimate/[id]/page.tsx` useEffect to call refresh silently on draft load
   - Commit: `c6ef5df`
+
+---
+
+## Completed (2026-05-20 — Track D: Diagnosis Screen + History v1, commit 400ede1)
+
+- [completed] D.1 — GET /api/diagnostic/result/<session_id> (auth, company-scoped, 409 on unresolved)
+- [completed] D.2 — GET /api/diagnostic/list (cursor pagination, nameplate photo subquery, soft-delete guard)
+- [completed] D.3 — POST /api/diagnostic/feedback (agreement: solved | different_fault)
+- [completed] D.4 — Migration 026: action_steps, parts_needed, alternative_cards, climate_notes_* cols on fault_cards + pak_fault_cards
+- [completed] D.5 — Migration 027: customer_label, customer_address, share_token, confidence_level, reasoning_chain, deleted_at on diagnostic_sessions; diagnosis_feedback table; two indexes
+- [completed] D.6 — Backfill: action_steps (3 steps) + parts_needed + climate_notes for all 19 US fault cards and all 15 PK fault cards via Supabase execute_sql
+- [completed] D.7 — FaultResolutionScreen.tsx (fault name + confidence badge, time estimate, action steps, parts, PK climate note, reasoning chain, photo evidence, alternatives, Mark as Solved / Different fault found, share link, watermark)
+- [completed] D.8 — /diagnoses list page + DiagnosisListRow.tsx (nameplate photo first, fault name, confidence badge, customer label, relative time) + DiagnosisListEmptyState.tsx
+- [completed] D.9 — /d/[share_token] public route + GET /api/diagnostic/public/<token> (unauthenticated, customer=null)
+- [completed] D.10 — DiagnosisFeedbackModal.tsx (free-text real fault, Skip + Save & Close, apiFetch POST)
+- [completed] D.11 — assess/page.tsx: handleDiagnosticResolved fires finalize + router.push(/diagnoses/[id]) instead of setPhase("evidence")
+- [completed] D.12 — SidebarNav.tsx: magnifier icon added as "diagnoses" key; Diagnoses entry added to OVERVIEW section
+- [completed] D.13 — tracking.ts: 8 new events (fault_screen_opened, fault_screen_time_on_screen, fault_screen_agreement, fault_screen_share_clicked, fault_screen_reasoning_expanded, diagnosis_list_opened, diagnosis_revisited, diagnosis_share_opened_externally)
+- [completed] D.14 — _compute_confidence() in diagnostic.py: 0 skipped→high, 1→medium, 2+→low
+- [completed] D.15 — Mobile QA: code audit confirmed responsive at 375/768/1280px; minor note: feedback buttons tight at 375px (v1.5: stack buttons column on mobile)
+- [completed] D.16 — Docs: PROJECT_BRAIN.md, ACTIVE_TASKS.md updated; DECISIONS.md DEC-025/026 below
+
+**Track D v1.5 Backlog (deferred):**
+- [ ] Truck inventory check on diagnosis screen (needs inventory data)
+- [ ] Generate-estimate-from-here button on FaultResolutionScreen
+- [ ] Search/date filter/favorites on /diagnoses list
+- [ ] Urdu translation of action_steps verbs (translate verbs only; part names stay English)
+- [ ] Stack feedback buttons column at <480px viewport
+- [ ] Re-run diagnostic button on FaultResolutionScreen
 
 ---
 

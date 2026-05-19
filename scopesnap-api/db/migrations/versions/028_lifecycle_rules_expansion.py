@@ -150,4 +150,33 @@ def upgrade() -> None:
                 (card_id, component_name, condition_signal, age_threshold_years, recommended_tier, note)
             SELECT
                 {card_id},
-                '{comp_sql}
+                '{comp_sql}',
+                '{cond_sql}',
+                {age_sql},
+                '{tier_sql}',
+                '{note_sql}'
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM lifecycle_rules
+                WHERE card_id = {card_id}
+                  AND condition_signal = '{cond_sql}'
+                  AND age_threshold_years IS NOT DISTINCT FROM {age_sql}
+            )
+        """))
+
+
+def downgrade() -> None:
+    # Remove the REC.3 rows by signal -- safe because these signals were not in the original 17
+    signals = [
+        "under_warranty", "formicary_confirmed", "rla_over_nameplate",
+        "recurring_clog", "attic_location", "bearing_noise", "sensor_only",
+    ]
+    for signal in signals:
+        signal_sql = signal.replace("'", "''")
+        op.execute(text(f"DELETE FROM lifecycle_rules WHERE condition_signal = '{signal_sql}'"))
+    # photo_confirmed_pitting had partial rows in original -- only delete age <= 7 threshold rows
+    op.execute(text("""
+        DELETE FROM lifecycle_rules
+        WHERE condition_signal = 'photo_confirmed_pitting'
+          AND card_id IN (3, 4, 10)
+    """))

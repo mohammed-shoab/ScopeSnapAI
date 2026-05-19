@@ -254,3 +254,42 @@ Implemented in services/condition_signals.py (Track REC.2).
 
 **Impact:** fault_estimate.py calls derive_condition_signal_from_assessment() before
 lifecycle_rules lookup. If derivation fails, falls back to "default" silently (try/except).
+
+
+## DEC-025 -- Track D: single diagnosis_feedback table for both markets (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Decision:** Use a single `diagnosis_feedback` table for both US and PK markets.
+No `pak_diagnosis_feedback` variant.
+
+**Rationale:** `diagnostic_sessions` is already a single shared table (no pak_ variant).
+Feedback rows reference `diagnostic_sessions.id` via FK. Since the session table is shared,
+the feedback table must also be shared. Market is derivable from the session's assessment_id
+via join if market segmentation is needed in analytics.
+
+**Impact:** DEC-011 shared-DB pattern applies. No market gate needed on POST /api/diagnostic/feedback.
+
+---
+
+## DEC-026 -- Track D: diagnosis screen replaces evidence phase for all resolutions (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Decision:** When DiagnosticFlow resolves to a fault card, the app navigates directly to
+`/diagnoses/<session_id>` (FaultResolutionScreen) instead of the old evidence → estimate flow.
+
+**Rationale:** PK tech feedback: "I bought this for the estimate, but the diagnostic is what I use."
+The diagnosis screen is the product hero. Estimate generation is available from the assessment page
+but is no longer the forced next step after a diagnostic resolution.
+
+**Wiring:** `handleDiagnosticResolved` in `assess/page.tsx` fires:
+1. Fire-and-forget `POST /api/diagnostic/finalize/<session_id>` (idempotent, sets customer_label + share_token)
+2. `router.push('/diagnoses/<session_id>')`
+
+**Deferral:** The "Generate estimate from here" button on FaultResolutionScreen is deferred to v1.5.
+Techs can still navigate to the estimate via Assessments list if needed.
+
+**Impact:** The old `setPhase("evidence")` call is removed. Evidence/photo collection phase still
+exists for non-diagnostic-resolved assessments (e.g., service/tune_up) but is no longer reached
+from the diagnostic resolution path.

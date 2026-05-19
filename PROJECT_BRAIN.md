@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-20 (Track REC complete -- REC.2+3+5+hotfix, commit 4a51c35, alembic head 028)
+> Last updated: 2026-05-20 (Track D complete -- D.1-D.14 diagnosis screen + history v1, commit 400ede1, alembic head 028)
 
 ---
 
@@ -36,19 +36,20 @@
 
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both prod domains) | `177f4f9` | Production Live | 2026-05-20 |
-| Railway backend (prod) | `177f4f9` | Health OK | 2026-05-20 |
-| Alembic migration (prod) | `028` | Applied (unchanged) | 2026-05-20 |
+| Vercel (both prod domains) | `400ede1` | Production Live | 2026-05-20 |
+| Railway backend (prod) | `400ede1` | Health OK | 2026-05-20 |
+| Alembic migration (prod) | `028` | Applied (026+027 schema stamped) | 2026-05-20 |
 | pak_data_defaults | 1 row (market=PK) | Seeded | 2026-05-19 |
 | pak_operating_targets | PK PSI thresholds + R-32 (5 rows, 30–50°C ambient) | Seeded | 2026-05-18 |
 
-**Current git HEAD (main):** `177f4f9` — "feat(track-r): R.1-R.8 print, hide-empty, addr-guard, QR-npm, profile-check, site-visit-fee"
+**Current git HEAD (main):** `400ede1` — "Track D: diagnosis screen + history v1 (D.1-D.14)"
 
 **Recent commits (newest first — main):**
+- `400ede1` — Track D: diagnosis screen + history v1 (D.1-D.14)
+- `4678ee4` — fix(migrations): linearize Alembic chain -- 028 down_revision 025->027, add 026+027
+- `0dad83c` — chore: update brain -- HEAD 4a51c35, REC.3 hotfix noted
+- `4a51c35` — fix(REC.3): migration 028 -- f-string interpolation, not op.execute bind params
 - `177f4f9` — feat(track-r): R.1-R.8 print, hide-empty, addr-guard, QR-npm, profile-check, site-visit-fee
-- `4ae5d35` — docs(REC): DEC-024 condition_signal vocab, Track REC complete, alembic head 028
-- `6ac37b4` — feat(REC.2+3+5): condition_signal engine, lifecycle_rules 17->50, PostHog tracking helpers
-- `e96a59e` — fix(BUG-023): restore assessment/[id]/page.tsx, remove wrong assessment/page.tsx
 
 ---
 
