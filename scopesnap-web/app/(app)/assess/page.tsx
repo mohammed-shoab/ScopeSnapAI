@@ -293,7 +293,7 @@ function AssessPageInner() {
           card_id: continuation.card_id,
           session_id: continuation.session_id,
           gate_continuation: continuation.gate_continuation,
-          ...(detectMarket() === "PK" && { metering_type: meteringType }),
+          ...(detectMarket() === "PK" ? { metering_type: meteringType } : {}),
         }),
       });
     }).then(r => {
@@ -331,7 +331,7 @@ function AssessPageInner() {
       const body: Record<string, unknown> = {
         assessment_id: assessmentId,
         card_id: resolvedCardId,
-        ...(detectMarket() === "PK" && { metering_type: meteringType }),
+        ...(detectMarket() === "PK" ? { metering_type: meteringType } : {}),
       };
       if (diagnosedSessionId) body.session_id = diagnosedSessionId;
       if (photos.length > 0) body.photo_urls = photos.map(p => p.photo_url);
@@ -754,4 +754,4 @@ function AssessPageInner() {
   return null;
 }
 
-// ── 
+//
