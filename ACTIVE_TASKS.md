@@ -3,58 +3,82 @@
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-18 (electrical spec auto-fill — commit 6a8eecb)
+> Last updated: 2026-05-19 (Track Q — Houston estimate engine hardening, Q.1–Q.7 complete)
 
 ---
 
 ## Last QA Run
 
-**Date:** 2026-05-18
-**Markets tested:** Houston (snapai.mainnov.tech)
-**Outcome:** PASS — all Houston flows verified including re-run of Flow 1 post BUG-012 fix; all Phase 2 backend checks passed
-**Bugs fixed:** 7 (BUG-011 badge + 5 CRLF stash truncations + BUG-012 electrical spec auto-fill)
-**Final commit:** `6a8eecb` — Production Current Ready on Vercel
-**QA sign-off:** COMPLETE (2026-05-18)
+**Date:** 2026-05-19 (Track Q — US Houston estimate engine hardening)
+**Markets tested:** US only (no PK changes)
+**Outcome:** PASS — Q.1 through Q.7 complete, all committed to main, Railway/Vercel deploying
+**Alembic head:** 021 (migrations 020 + 021 added this session)
+**Commits:** 7 hotfix commits on main (f0f13f5 → c6ef5df)
+**QA sign-off:** COMPLETE (2026-05-19 Track Q)
 
 ---
 
-## Completed (this session)
+## Completed (this session — 2026-05-19 Track Q Houston Estimate Engine)
 
-- [completed] BUG-012: Electrical spec fields (RLA/LRA/MCA/MOCP/Cap) were blank after selecting brand/model from DB
-  - Root cause: `applyModelRecord` only filled brand/series/tonnage/refrigerant; no electrical spec lookup existed
-  - Fix: Added `ELECTRICAL_SPECS_BY_TONNAGE` static lookup table (midpoints from ac_data_repo.json) to `StepZeroPanel.tsx`; `applyModelRecord` now populates rla/lra/mca/mocp/capacitor_uf from table when fields are null
-  - Badge change: rla/lra/mca/mocp badge changed from "db" to "est" (values are reference estimates, not per-unit DB records)
-  - File: `scopesnap-web/components/StepZeroPanel.tsx`
-  - Commit: `6a8eecb`
-  - Verified live: York LX → 3.5T → RLA=16.2, LRA=86, Cap=50/5 MFD, MCA=22.5, MOCP=35 ✓
+- [completed] Q.1 — Kill legacy estimate engine
+  - Deleted `scopesnap-api/services/estimate_engine.py` (dead code, zero non-self references)
+  - Removed `/api/estimates/generate` route and its `GenerateEstimateRequest` import from `estimates.py`
+  - Removed `generateEstimate()` from `scopesnap-web/lib/api.ts`
+  - Added DEC-016 to DECISIONS.md documenting the deletion
+  - Commit: `f0f13f5`
 
-- [completed] BUG-011: DB badge never changed to "✏ Edited" when tech edited a DB-filled nameplate field
-  - Fix: added `editedManualFields: Set<string>` state to `StepZeroPanel.tsx`; badge flips orange on edit, green resets on new model apply
-  - File: `scopesnap-web/components/StepZeroPanel.tsx`
-  - Commit: `817f712`
+- [completed] Q.2 — Quarantine legacy pricing_rules rows
+  - Added `deprecated BOOLEAN NOT NULL DEFAULT false` column to `pricing_rules`
+  - Set all rows `deprecated = true` (Alembic migration 020)
+  - Added COMMENT on table marking it as DEPRECATED
+  - Commit: `64e1a17` (includes migration file `020_quarantine_legacy_pricing_rules.py`)
 
-- [completed] Fix CRLF stash corruption in 10 frontend files
-  - Root cause: `git stash` from Linux sandbox onto NTFS mount truncates TSX/TS files (see DEC-013)
-  - Files restored from `e1db2ac`: `market.ts`, `assess/page.tsx`, `app/(app)/layout.tsx`, `ReportClient.tsx`, `LanguageToggle.tsx`, `SidebarNav.tsx`, `DiagnosticFlow.tsx`, `urdu-strings.ts`, root `app/layout.tsx`, `StepZeroPanel.tsx` (patched)
-  - Commits: `55e4c3a`, `eb7fb93`, `51796d5`, `817f712`
+- [completed] Q.3 — complaint_type fallback + Sentry alert on unresolved Not-Cooling estimates
+  - Added `diagnostic_resolved` check (raw SQL on `diagnostic_sessions`) in `reports.py`
+  - Injected graceful fallback issues_data for `service/tune_up/maintenance` (green "Preventive service")
+  - Added Sentry warning for `not_cooling/water_dripping/not_turning_on` with no diagnostic resolution + cost > 0
+  - Commit: `68299eb`
+
+- [completed] Q.4 — Remove PAID_PLANS gate on contractor branding
+  - Deleted `PAID_PLANS` dict and conditional logic in `reports.py`
+  - Contractor name/phone/email/logo/license now always returned regardless of plan tier
+  - Commit: `68299eb` (same as Q.3)
+
+- [completed] Q.5 — Apply 19 fault card descriptions (migration 021)
+  - Migration `021_fault_card_descriptions.py`: 19 UPDATE statements, 6 new JSONB fields per card
+    (description_good, why_recommended_good, description_best_comprehensive,
+     why_recommended_best_comprehensive, description_best_replacement, why_recommended_best_replacement)
+  - Updated `fault_estimate.py` to read new description fields with hardcoded fallbacks
+  - Added `why_recommended` collapsible `<details>` block in `ReportClient.tsx` for RECOMMENDED tier
+  - All 114 field values verified ≤180 chars at word boundary before commit
+  - Commit: `d51e7ab`
+
+- [completed] Q.6 — Switch frontend share URL to report_token
+  - Changed `homeowner_url` in `estimates.py` from `report_short_id` to 32-char `report_token`
+  - Legacy `/r/{slug}/{short_id}` URLs remain valid 12 months via OR clause in `reports.py`
+  - Commit: `5bc09ed`
+
+- [completed] Q.7 — Refresh draft estimates on load
+  - Added `POST /api/estimates/{id}/refresh` to `estimates.py`
+    - Resolves `card_id` from `diagnostic_sessions.resolved_card_id`
+    - Patches `description`/`why_recommended` per tier from `fault_cards.better_option_estimate`
+    - Saves options in-place; idempotent / no-op if not draft
+  - Updated `estimate/[id]/page.tsx` useEffect to call refresh silently on draft load
+  - Commit: `c6ef5df`
 
 ---
 
-## In Progress
+## Pending / Backlog
 
-- None currently.
+- [ ] pak_operating_targets notes fix (R-32 label: "Typical split AC" → "Inverter split AC only")
+  - **Proposed SQL (safe, no migration needed):**
+    ```sql
+    UPDATE pak_operating_targets
+    SET notes = REPLACE(notes, 'Typical split AC', 'Inverter split AC only (R-32 PK market — all units are inverter-type)')
+    WHERE refrigerant = 'R-32';
+    ```
+  - Awaiting Shoab approval before running
 
----
+- [ ] Track R — (defined in SnapAI_Estimate_And_Diagnosis_Implementation.md, not started)
+- [ ] Track REC — (defined in SnapAI_Estimate_And_Diagnosis_Implementation.md, not started)
 
-## Backlog
-
-- [ ] PK market full QA run (Flows 1–6 + Flow 5 PK-specific) — not tested this session (Houston-only scope)
-- [ ] Add DEC-013 guard to QA checklist: after any merge, run `git diff <sha> --stat` on all TS/TSX files before pushing
-- [ ] Consider uploading actual per-unit electrical specs to `equipment_models` table so DB badge (not Est.) can show when real data exists
-- [ ] Update QA skill doc: `/api/series?brand=york` endpoint does not exist — actual Supabase connectivity is proven via `/api/models/all`
-
----
-
-## Known Issues
-
-- None currently in production (all verified in QA 2026-05-18).

@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-18
+> Last updated: 2026-05-19 (Stream B PK QA fixes — DATA-GAP-001/002 verified, B.3 R-32 audit complete)
 
 ---
 
@@ -36,11 +36,18 @@
 
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both domains) | `6a8eecb` | Production Current Ready (1m 16s) | 2026-05-18 |
-| Railway backend | `e1db2ac` (last Railway-touching commit) | Health OK | 2026-05-18 |
-| Alembic migration | `019` (photo_policy_any_wildcard) | Applied | 2026-05-11 |
+| Vercel (both domains) | `17d19fd` | Production Live | 2026-05-19 |
+| Railway backend | `01082c6` | Health OK | 2026-05-19 |
+| Alembic migration | `021` (fault_card_descriptions) | Applied | 2026-05-19 |
+| pak_data_defaults | 1 row (market=PK) | Seeded | 2026-05-19 |
+| pak_operating_targets | PK PSI thresholds + R-32 (5 rows, 30–50°C ambient) | Seeded | 2026-05-18 |
 
-**Current git HEAD:** `6a8eecb` — "feat: auto-fill electrical specs (RLA/LRA/MCA/MOCP/Cap) from reference table on model select"
+**Current git HEAD:** `c6ef5df` — "[hotfix] Q.7 — Refresh draft estimates on load with latest fault card descriptions"
+
+**Recent commits (PK SOW Addendum):**
+- `17d19fd` — fix(A-4): PK homeowner name placeholder shows Ahmed Khan (Vercel frontend)
+- `01082c6` — fix(BUG-016): PK ok suction → discharge PSI step, not US Card 13 (Railway backend)
+- `0ce93a8` — fix(BUG-015): add X-Market header to getAuthHeaders so PK diagnostic routing hits pak_* tables
 
 ---
 
@@ -75,7 +82,7 @@
 | `scopesnap-api/api/dependencies.py` | `get_tables()` — market routing, `_US_TABLES` / `_PK_TABLES` |
 | `scopesnap-api/api/assessments.py` | Assessment CRUD |
 | `scopesnap-api/api/estimates.py` | Estimate generation and retrieval |
-| `scopesnap-api/db/migrations/versions/` | Alembic migrations (current head: `019`) |
+| `scopesnap-api/db/migrations/versions/` | Alembic migrations (current head: `021`) |
 
 ---
 
@@ -96,6 +103,7 @@
 
 | Date | Markets | Outcome | Bugs Fixed |
 |------|---------|---------|-----------|
+| 2026-05-19 | PK only (SOW Addendum) | PASS ✅ COMPLETE | 2 (BUG-015 X-Market header, BUG-016 PK suction PSI routing); A-2/A-4/A-5 verified; B-1/C-3 seeded |
 | 2026-05-18 | Houston only | PASS ✅ COMPLETE | 7 (BUG-011 badge + 5 CRLF stash truncations + BUG-012 electrical spec auto-fill) |
 | 2026-05-15 | Houston + PK | PASS | BUG-010b (_complete_service_session rollback) |
 | 2026-05-11 | Houston + PK | PASS | Multiple routing bugs, photo policy, inverter flag |
@@ -104,15 +112,8 @@
 
 ## Current Known Issues
 
-- None. All issues from 2026-05-18 QA run resolved and live.
-
----
-
-## Critical Rules for AI Sessions
-
-1. **Never `git stash` from Linux sandbox** — truncates TSX/TS files on NTFS (DEC-013). Use WIP commits instead.
-2. **All git ops via Desktop Commander `.bat` files** — sandbox cannot write `.git/` lock files on NTFS (DEC-004).
-3. **Emoji files (DEC-005):** Never read from NTFS mount during git ops. Use `git cat-file blob <sha>`.
-4. **Next Alembic migration must be `020`** — current head is `019`.
-5. **PK changes always gated:** `detectMarket() === "PK"` in frontend, `tables.market == "PK"` in backend.
-6. **After any merge:** run `git diff <last-good-sha>..HEAD -- 'scopesnap-web/**/*.tsx' --stat` to detect truncation before pushing.
+- PK flows 2–4 + 6 not yet fully end-to-end verified (partial PK QA — A-2/A-4/A-5/DATA-GAP-001/002/B.3 confirmed; full flow suite pending next session)
+- Urdu toggle functional test not yet verified
+- `pak_diagnostic_questions` table does NOT exist in production — PK diagnostic routing handled by PK-gated intercept in `diagnostic.py` (BUG-016 workaround, commit `01082c6`); no separate R-32/inverter question tree in DB
+- `pak_operating_targets` R-32 notes say "Typical split AC" — should be "Inverter split AC only"; awaiting Shoab approval for data-only UPDATE (no migration needed; see ACTIVE_TASKS.md backlog)
+- TECH_STACK.md contains stale SQL for DATA-GAP-001 (`UPDATE pak_brands SET inverter = true WHERE series_name IN (...)`) — both columns (`inverter`, `series_name`) do not exist in 

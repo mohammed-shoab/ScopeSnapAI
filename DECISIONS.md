@@ -25,7 +25,7 @@
 
 **Impact:** Any new `.py` file added to `scopesnap-api/db/migrations/versions/` will run on next Railway deploy. Do NOT push a migration that is already applied to the DB — Alembic will skip it safely, but a data-changing migration run twice could corrupt data. Always check `alembic_version` table before pushing a new migration.
 
-**Current revision:** 015 (as of 2026-05-11)
+**Current revision:** 021 (as of 2026-05-19)
 
 ---
 
