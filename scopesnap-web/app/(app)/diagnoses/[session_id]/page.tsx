@@ -19,8 +19,8 @@ export default function DiagnosisDetailPage() {
 
   useEffect(() => {
     if (!session_id) return;
-    apiFetch(`/api/diagnostic/result/${session_id}`)
-      .then((res: DiagnosticResult) => {
+    apiFetch<DiagnosticResult>(`/api/diagnostic/result/${session_id}`)
+      .then((res) => {
         setData(res);
         // D.13: revisit tracking — if session is older than 5 minutes it's a revisit
         const age = res.created_at ? Date.now() - new Date(res.created_at).getTime() : 0;
