@@ -500,6 +500,43 @@ export default function EstimatePage() {
     }
   };
 
+  const sendViaWhatsApp = async () => {
+    if (!sendPhone) { setError("Enter WhatsApp number to send."); return; }
+    setSending(true);
+    setError(null);
+    try {
+      const authHeaders = await getAuthHeaders();
+      const r = await fetch(`${API_URL}/api/estimates/${id}/send`, {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ homeowner_name: homeownerName, homeowner_email: sendEmail, homeowner_phone: sendPhone }),
+      });
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        throw new Error(body.detail || `Send failed (${r.status})`);
+      }
+      const data = await r.json().catch(() => ({}));
+      if (data.homeowner_report_url) {
+        setEstimate((prev) => prev ? { ...prev, homeowner_report_url: data.homeowner_report_url } : prev);
+      }
+      const reportUrl = data.homeowner_report_url || estimate?.homeowner_report_url || "";
+      trackEvent("report_sent", { estimate_id: id, homeowner_name: homeownerName, channel: "whatsapp" });
+      ph.reportSent(String(id));
+      setSent(true);
+      const digits = sendPhone.replace(/\D/g, "");
+      const pk = digits.startsWith("92") ? digits : `92${digits.replace(/^0/, "")}`;
+      const urduMsg = reportUrl
+        ? `آپ کی AC مرمت کا تخمینہ تیار ہے۔ رپورٹ دیکھیں:\n${reportUrl}`
+        : `آپ کی AC مرمت کا تخمینہ تیار ہے۔`;
+      window.open(`https://wa.me/${pk}?text=${encodeURIComponent(urduMsg)}`, "_blank");
+    } catch (e: unknown) {
+      trackEvent("whatsapp_send_failed", { estimate_id: id });
+      setError(e instanceof Error ? e.message : "Send failed. Check connection and try again.");
+    } finally {
+      setSending(false);
+    }
+  };
+
   const saveToHistory = async () => {
     try {
       const authHeaders = await getAuthHeaders();
@@ -1335,10 +1372,10 @@ export default function EstimatePage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-text-secondary block mb-2 font-semibold">{t("Phone (SMS)")}</label>
+                  <label className="text-xs text-text-secondary block mb-2 font-semibold">{detectMarket() === "PK" ? t("WhatsApp Number") : t("Phone (SMS)")}</label>
                   <input
                     type="tel"
-                    placeholder="(555) 555-5555"
+                    placeholder={detectMarket() === "PK" ? "03001234567" : "(555) 555-5555"}
                     value={sendPhone}
                     onChange={(e) => setSendPhone(e.target.value)}
                     className="w-full border border-surface-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-green focus:ring-2 focus:ring-brand-green focus:ring-opacity-20"
@@ -1371,26 +1408,20 @@ export default function EstimatePage() {
                 <p className="text-sm text-brand-red bg-brand-red-light p-3 rounded-xl">⚠ {error}</p>
               )}
 
-              {/* PK market: WhatsApp as primary send option */}
-              {detectMarket() === "PK" && estimate.homeowner_report_url && sendPhone && (
-                <a
-                  href={(() => {
-                    const digits = sendPhone.replace(/\D/g, "");
-                    const pk = digits.startsWith("92") ? digits : `92${digits.replace(/^0/, "")}`;
-                    const msg = encodeURIComponent(`آپ کی AC مرمت کا تخمینہ تیار ہے۔ رپورٹ دیکھیں:\n${estimate.homeowner_report_url}`);
-                    return `https://wa.me/${pk}?text=${msg}`;
-                  })()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full text-white font-bold py-4 rounded-xl text-base transition-all hover:brightness-110 active:scale-95"
+              {/* PK market: WhatsApp as primary send option — visible as soon as phone is entered */}
+              {detectMarket() === "PK" && sendPhone && (
+                <button
+                  onClick={sendViaWhatsApp}
+                  disabled={sending || !sendPhone}
+                  className="flex items-center justify-center gap-2 w-full text-white font-bold py-4 rounded-xl text-base transition-all hover:brightness-110 active:scale-95 disabled:opacity-40"
                   style={{ background: "#25D366", boxShadow: "0 4px 14px rgba(37,211,102,.4)" }}
                 >
                   {/* WhatsApp icon */}
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                   </svg>
-                  {t("Send via WhatsApp")}
-                </a>
+                  {sending ? t("Sending...") : t("Send via WhatsApp")}
+                </button>
               )}
 
               {/* Email/SMS send button — primary for US, secondary for PK */}
