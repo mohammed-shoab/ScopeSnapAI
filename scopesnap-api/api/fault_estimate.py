@@ -36,6 +36,7 @@ from db.models import Estimate, Assessment
 from api.auth import get_current_user, AuthContext
 from api.recommend import get_recommended_tier_internal
 from api.dependencies import get_tables, MarketTables
+from services.condition_signals import derive_condition_signal_from_assessment
 
 logger = logging.getLogger(__name__)
 
@@ -124,10 +125,35 @@ def _apply_surcharges(
         total += r22_surcharge
     if seasonal_pct > 0:
         sea = round(base * seasonal_pct)
-        breakdown["pk_seasonal"] = sea
+        breakdown["seasonal"] = sea
         total += sea
     return total, breakdown
 
+
+
+# -- Seasonal labor modifier --------------------------------------------------
+
+def _seasonal_modifier_pct(market: str, company_override) -> int:
+    """
+    Return seasonal labor surcharge % for the current month.
+
+    company_override: value of companies.peak_season_surcharge_percent
+        None  = use market default (25% in peak months, 0 off-peak)
+        0     = contractor has disabled seasonal surcharge
+        1-100 = contractor custom override percent
+
+    Returns integer 0-100. Caller divides by 100 before multiplying labor cost.
+    R.9: Houston peak June-Sept, PK peak April-Oct. Default 25% labor surcharge.
+    """
+    if company_override is not None:
+        return int(company_override)
+
+    month = datetime.now(timezone.utc).month
+    if market == "US":
+        return 25 if 6 <= month <= 9 else 0   # Houston peak: June-Sept
+    elif market == "PK":
+        return 25 if 4 <= month <= 10 else 0  # PK peak: April-Oct
+    return 0
 
 # -- Request / Response models ------------------------------------------------
 
@@ -173,11 +199,13 @@ class FaultCardEstimateResponse(BaseModel):
     r22_alert:           bool
     attic_applied:       bool
     after_hours_applied: bool
-    markup_pct:          float
-    unit_age_years:      Optional[int]
-    using_defaults:      bool = False
-    defaults_warning:    Optional[str] = None
-    generated_at:        str
+    markup_pct:             float
+    unit_age_years:         Optional[int]
+    using_defaults:         bool = False
+    defaults_warning:       Optional[str] = None
+    seasonal_modifier_pct:  int = 0
+    seasonal_note:          Optional[str] = None
+    generated_at:           str
 
 
 # -- POST /api/estimates/fault-card ------------------------------------------
@@ -257,18 +285,21 @@ async def generate_fault_card_estimate(
     r22_surcharge   = int((lr.r22_surcharge_min + lr.r22_surcharge_max) / 2) if lr else 112
     is_r22          = (body.refrigerant or "").upper().startswith("R-22")
 
-    # P.7 — PK seasonal modifier: April–October (months 4–10), 25% labor surcharge
-    _now_month = datetime.now(timezone.utc).month
-    pk_seasonal_pct = 0.25 if (tables.market == "PK" and 4 <= _now_month <= 10) else 0.0
-
-    # 4. Get company markup
+    # 4. Get company markup + seasonal override (R.9)
     markup_row = await db.execute(
-        text("SELECT default_markup_pct FROM companies WHERE id = :cid LIMIT 1"),
+        text("SELECT default_markup_pct, peak_season_surcharge_percent FROM companies WHERE id = :cid LIMIT 1"),
         {"cid": auth.company_id},
     )
     markup_result = markup_row.fetchone()
     markup_pct  = float(markup_result.default_markup_pct) if markup_result else 35.0
     markup_mult = 1 + markup_pct / 100
+    company_seasonal_override = (
+        markup_result.peak_season_surcharge_percent if markup_result else None
+    )
+
+    # R.9 -- seasonal labor surcharge (generation-time freeze per QA Decisions SS15.2 Q4)
+    seasonal_pct_int  = _seasonal_modifier_pct(tables.market, company_seasonal_override)
+    seasonal_pct_frac = seasonal_pct_int / 100.0  # fraction for _apply_surcharges
 
     # 5. Load replacement cost
     repl_row = await db.execute(
@@ -317,7 +348,7 @@ async def generate_fault_card_estimate(
 
     # Tier A: Good
     surcharge_A, bkdn_A = _apply_surcharges(base_A, attic_premium, after_hours_pct, r22_surcharge,
-                                             body.attic_access, body.after_hours, is_r22, pk_seasonal_pct)
+                                             body.attic_access, body.after_hours, is_r22, seasonal_pct_frac)
     sub_A    = base_A + surcharge_A
     mkup_A   = round(sub_A * (markup_mult - 1))
     total_A  = sub_A + mkup_A
@@ -345,7 +376,7 @@ async def generate_fault_card_estimate(
         b_svc   = []
 
     surcharge_B, bkdn_B = _apply_surcharges(b_base, attic_premium, after_hours_pct, r22_surcharge,
-                                             body.attic_access, body.after_hours, is_r22, pk_seasonal_pct)
+                                             body.attic_access, body.after_hours, is_r22, seasonal_pct_frac)
     sub_B   = b_base + surcharge_B
     mkup_B  = round(sub_B * (markup_mult - 1))
     total_B = sub_B + mkup_B
@@ -380,7 +411,7 @@ async def generate_fault_card_estimate(
     else:
         c_base = round(b_base * 1.35)
         surcharge_C, bkdn_C = _apply_surcharges(c_base, attic_premium, after_hours_pct, r22_surcharge,
-                                                 body.attic_access, body.after_hours, is_r22, pk_seasonal_pct)
+                                                 body.attic_access, body.after_hours, is_r22, seasonal_pct_frac)
         sub_C   = c_base + surcharge_C
         mkup_C  = round(sub_C * (markup_mult - 1))
         total_C = sub_C + mkup_C
@@ -424,6 +455,18 @@ async def generate_fault_card_estimate(
         logger.warning("[fault_estimate] lifecycle_rules lookup failed — skipping Q.6.5 overlay",
                        exc_info=True)
 
+    # R.9 -- build seasonal note for report footer
+    _seasonal_note: Optional[str] = None
+    if seasonal_pct_int > 0:
+        if tables.market == "US":
+            _seasonal_note = (
+                f"Includes {seasonal_pct_int}% peak-season labor surcharge (June-Sept Houston)."
+            )
+        elif tables.market == "PK":
+            _seasonal_note = (
+                f"Includes {seasonal_pct_int}% peak-season labor surcharge (April-Oct)."
+            )
+
     # 9. Persist estimate (BUG-011 fix)
     estimate_id = None
     if body.assessment_id:
@@ -465,6 +508,7 @@ async def generate_fault_card_estimate(
                     assessment_id=body.assessment_id, company_id=auth.company_id,
                     report_token=report_token, report_short_id=report_short_id,
                     options=options_payload, markup_percent=markup_pct, status="draft",
+                    seasonal_modifier_pct=seasonal_pct_int,
                 )
                 db.add(new_estimate)
                 await db.flush()
@@ -479,5 +523,7 @@ async def generate_fault_card_estimate(
         attic_applied=body.attic_access, after_hours_applied=body.after_hours,
         markup_pct=markup_pct, unit_age_years=unit_age,
         using_defaults=using_defaults, defaults_warning=defaults_warning,
+        seasonal_modifier_pct=seasonal_pct_int,
+        seasonal_note=_seasonal_note,
         generated_at=datetime.now(timezone.utc).isoformat(),
     )
