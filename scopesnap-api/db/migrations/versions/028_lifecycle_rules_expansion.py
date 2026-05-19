@@ -1,5 +1,5 @@
 """
-026 -- lifecycle_rules expansion: 17 -> ~50 rows (US side only)
+028 -- lifecycle_rules expansion: 17 -> ~50 rows (US side only)
 REC.3 -- Board-approved signals for all 19 fault cards.
 
 New rules added (idempotent -- LEFT JOIN guard prevents duplicates):
@@ -13,6 +13,11 @@ New rules added (idempotent -- LEFT JOIN guard prevents duplicates):
   sensor_only            -> A  (card 11 only)
 
 Total new rows: 33. Total after: ~50.
+
+FIX NOTE (v2): Uses direct f-string interpolation -- NOT op.execute bind params.
+In Alembic 1.13, op.execute(text(...), dict) treats dict as execution_options,
+not query parameters. Direct interpolation avoids this bug entirely.
+All string values are escaped with replace("'", "''") before interpolation.
 """
 from typing import Sequence, Union
 from alembic import op
@@ -112,52 +117,46 @@ _NEW_RULES = [
 
 
 def upgrade() -> None:
-    # Use a LEFT JOIN guard so re-running the migration is fully idempotent.
-    # NULL age_threshold_years is matched via IS NOT DISTINCT FROM.
+    # IMPORTANT: Uses direct f-string interpolation -- NOT op.execute bind params.
+    # In Alembic 1.13, op.execute(text(...), dict) passes dict as execution_options,
+    # not as query parameters. This caused migration failure in v1 (502 on Railway).
+    # All string values escaped via replace("'", "''") before interpolation.
     for (card_id, condition_signal, age_threshold, recommended_tier, note) in _NEW_RULES:
-        age_val = "NULL" if age_threshold is None else str(int(age_threshold))
-        op.execute(
-            text(f"""
-                INSERT INTO lifecycle_rules
-                    (card_id, condition_signal, age_threshold_years, recommended_tier, note)
-                SELECT
-                    {card_id},
-                    :cond,
-                    {age_val}::integer,
-                    :tier,
-                    :note
-                WHERE NOT EXISTS (
-                    SELECT 1
-                    FROM lifecycle_rules
-                    WHERE card_id = {card_id}
-                      AND condition_signal = :cond
-                      AND age_threshold_years IS NOT DISTINCT FROM {age_val}::integer
-                )
-            """),
-            {
-                "cond": condition_signal,
-                "tier": recommended_tier,
-                "note": note,
-            },
-        )
+        age_sql = "NULL" if age_threshold is None else str(int(age_threshold))
+        note_sql = note.replace("'", "''")
+        cond_sql = condition_signal.replace("'", "''")
+        tier_sql = recommended_tier.replace("'", "''")
+        op.execute(text(f"""
+            INSERT INTO lifecycle_rules
+                (card_id, condition_signal, age_threshold_years, recommended_tier, note)
+            SELECT
+                {card_id},
+                '{cond_sql}',
+                {age_sql},
+                '{tier_sql}',
+                '{note_sql}'
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM lifecycle_rules
+                WHERE card_id = {card_id}
+                  AND condition_signal = '{cond_sql}'
+                  AND age_threshold_years IS NOT DISTINCT FROM {age_sql}
+            )
+        """))
 
 
 def downgrade() -> None:
     # Remove the REC.3 rows by signal -- safe because these signals were not in the original 17
-    signals = {
+    signals = [
         "under_warranty", "formicary_confirmed", "rla_over_nameplate",
         "recurring_clog", "attic_location", "bearing_noise", "sensor_only",
-    }
+    ]
     for signal in signals:
-        op.execute(
-            text("DELETE FROM lifecycle_rules WHERE condition_signal = :sig"),
-            {"sig": signal},
-        )
+        signal_sql = signal.replace("'", "''")
+        op.execute(text(f"DELETE FROM lifecycle_rules WHERE condition_signal = '{signal_sql}'"))
     # photo_confirmed_pitting had partial rows in original -- only delete age < 5 threshold rows
-    op.execute(
-        text("""
-            DELETE FROM lifecycle_rules
-            WHERE condition_signal = 'photo_confirmed_pitting'
-              AND card_id IN (3, 4, 10)
-        """)
-    )
+    op.execute(text("""
+        DELETE FROM lifecycle_rules
+        WHERE condition_signal = 'photo_confirmed_pitting'
+          AND card_id IN (3, 4, 10)
+    """))
