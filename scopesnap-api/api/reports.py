@@ -245,19 +245,19 @@ async def get_public_report(
             }
 
     # ── Company branding ──────────────────────────────────────────────────────
-    # Phase 1 branding is paid-only: free plan shows SnapAI default branding.
-    PAID_PLANS = {"early_bird", "pro", "team"}
+    # Q.4: Always show contractor branding — removed PAID_PLANS gate (DEC-016).
+    # Pre-send modal in Estimate Builder ensures contractor profile is complete
+    # before any report reaches a homeowner. See Track R.7 for the modal itself.
     company_data = {}
     if company:
-        is_paid = (company.plan or "free") in PAID_PLANS
         company_data = {
-            "name": company.name if is_paid else None,
+            "name": company.name,
             "slug": company.slug,
-            "logo_url": company.logo_url if is_paid else None,
-            "phone": company.phone if is_paid else None,
-            "email": company.email if is_paid else None,
-            "license_number": company.license_number if is_paid else None,
-            "custom_branding": is_paid,  # frontend uses this to decide what to show
+            "logo_url": company.logo_url if company.logo_url else None,
+            "phone": company.phone,
+            "email": company.email,
+            "license_number": company.license_number,
+            "custom_branding": True,
         }
 
     # ── Build response ────────────────────────────────────────────────────────
