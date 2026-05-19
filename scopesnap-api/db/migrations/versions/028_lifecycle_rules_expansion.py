@@ -48,7 +48,6 @@ _COMPONENT_BY_CARD = {
 }
 
 # Each tuple: (card_id, condition_signal, age_threshold_years_or_None, recommended_tier, note)
-# age_threshold_years: None means "any age"; integer means "unit age >= this value"
 _NEW_RULES = [
     # --- under_warranty -> A (11 cards) ---
     (1,  "under_warranty", 2, "A",
@@ -73,8 +72,7 @@ _NEW_RULES = [
      "New unit -- loose terminal within warranty period"),
     (19, "under_warranty", 2, "A",
      "New unit -- formicary corrosion within warranty period"),
-
-    # --- photo_confirmed_pitting -> C (4 cards, age threshold) ---
+    # --- photo_confirmed_pitting -> C (4 cards) ---
     (1,  "photo_confirmed_pitting", 5, "C",
      "Visible pitting on capacitor terminals -- full electrical replacement recommended"),
     (3,  "photo_confirmed_pitting", 5, "C",
@@ -83,8 +81,7 @@ _NEW_RULES = [
      "Electrical damage on blower motor terminals -- motor replacement recommended"),
     (10, "photo_confirmed_pitting", 5, "C",
      "Pitting on compressor terminals indicates corrosive environment -- replace compressor"),
-
-    # --- formicary_confirmed -> C or B (4 cards) ---
+    # --- formicary_confirmed -> C or B ---
     (8,  "formicary_confirmed", None, "C",
      "Formicary corrosion confirmed on evap coil -- full coil replacement required"),
     (19, "formicary_confirmed", None, "C",
@@ -93,8 +90,7 @@ _NEW_RULES = [
      "Formicary corrosion at control board -- full board replacement to stop spread"),
     (13, "formicary_confirmed", None, "B",
      "Formicary suspected near ductwork leak point -- comprehensive repair with coil treatment"),
-
-    # --- rla_over_nameplate -> C or B (3 cards, age-gated) ---
+    # --- rla_over_nameplate -> C or B ---
     (4,  "rla_over_nameplate", 6,  "C",
      "Blower motor drawing over nameplate RLA on aging unit -- replacement recommended"),
     (4,  "rla_over_nameplate", None, "B",
@@ -107,12 +103,10 @@ _NEW_RULES = [
      "Loose terminal causing motor over nameplate RLA -- full terminal service"),
     (16, "rla_over_nameplate", None, "B",
      "Terminal issue causing elevated RLA on newer unit -- repair with inspection"),
-
-    # --- recurring_clog -> C (card 5 only) ---
+    # --- recurring_clog ---
     (5,  "recurring_clog", None, "C",
      "Second or more drain clog this year -- full drain system service and treatment"),
-
-    # --- attic_location -> B or C (4 rules) ---
+    # --- attic_location ---
     (13, "attic_location", 8,   "C",
      "Attic-installed aging unit with ductwork leak -- replace to improve accessibility"),
     (13, "attic_location", None, "B",
@@ -121,62 +115,54 @@ _NEW_RULES = [
      "Attic access adds service cost -- Better option covers full service visit"),
     (5,  "attic_location", None, "B",
      "Attic drain service requires extra access time -- comprehensive drain service"),
-
-    # --- bearing_noise -> C or B (card 4, age-gated) ---
+    # --- bearing_noise ---
     (4,  "bearing_noise", 5,   "C",
      "Bearing noise on blower motor -- replacement is the safer path on aging unit"),
     (4,  "bearing_noise", None, "B",
      "Bearing noise on newer blower motor -- repair and monitor; replacement not yet justified"),
-
-    # --- sensor_only -> A (card 11 only) ---
+    # --- sensor_only ---
     (11, "sensor_only", None, "A",
      "Error code confirms sensor failure only -- replace sensor, no ignitor needed"),
 ]
 
 
 def upgrade() -> None:
-    # IMPORTANT: Uses direct f-string interpolation -- NOT op.execute bind params.
-    # In Alembic 1.13, op.execute(text(...), dict) passes dict as execution_options,
-    # not as query parameters. This caused migration failure in v1 (502 on Railway).
-    # All string values escaped via replace("'", "''") before interpolation.
     for (card_id, condition_signal, age_threshold, recommended_tier, note) in _NEW_RULES:
         age_sql = "NULL" if age_threshold is None else str(int(age_threshold))
         note_sql = note.replace("'", "''")
         cond_sql = condition_signal.replace("'", "''")
         tier_sql = recommended_tier.replace("'", "''")
         comp_sql = _COMPONENT_BY_CARD[card_id].replace("'", "''")
-        op.execute(text(f"""
-            INSERT INTO lifecycle_rules
-                (card_id, component_name, condition_signal, age_threshold_years, recommended_tier, note)
-            SELECT
-                {card_id},
-                '{comp_sql}',
-                '{cond_sql}',
-                {age_sql},
-                '{tier_sql}',
-                '{note_sql}'
-            WHERE NOT EXISTS (
-                SELECT 1
-                FROM lifecycle_rules
-                WHERE card_id = {card_id}
-                  AND condition_signal = '{cond_sql}'
-                  AND age_threshold_years IS NOT DISTINCT FROM {age_sql}
-            )
-        """))
+        sql = (
+            "INSERT INTO lifecycle_rules"
+            " (card_id, component_name, condition_signal, age_threshold_years, recommended_tier, note)"
+            " SELECT"
+            " " + str(card_id) + ","
+            " '" + comp_sql + "',"
+            " '" + cond_sql + "',"
+            " " + age_sql + ","
+            " '" + tier_sql + "',"
+            " '" + note_sql + "'"
+            " WHERE NOT EXISTS ("
+            " SELECT 1 FROM lifecycle_rules"
+            " WHERE card_id = " + str(card_id) +
+            " AND condition_signal = '" + cond_sql + "'"
+            " AND age_threshold_years IS NOT DISTINCT FROM " + age_sql +
+            " )"
+        )
+        op.execute(text(sql))
 
 
 def downgrade() -> None:
-    # Remove the REC.3 rows by signal -- safe because these signals were not in the original 17
     signals = [
         "under_warranty", "formicary_confirmed", "rla_over_nameplate",
         "recurring_clog", "attic_location", "bearing_noise", "sensor_only",
     ]
     for signal in signals:
         signal_sql = signal.replace("'", "''")
-        op.execute(text(f"DELETE FROM lifecycle_rules WHERE condition_signal = '{signal_sql}'"))
-    # photo_confirmed_pitting had partial rows in original -- only delete age <= 7 threshold rows
-    op.execute(text("""
-        DELETE FROM lifecycle_rules
-        WHERE condition_signal = 'photo_confirmed_pitting'
-          AND card_id IN (3, 4, 10)
-    """))
+        op.execute(text("DELETE FROM lifecycle_rules WHERE condition_signal = '" + signal_sql + "'"))
+    op.execute(text(
+        "DELETE FROM lifecycle_rules"
+        " WHERE condition_signal = 'photo_confirmed_pitting'"
+        " AND card_id IN (3, 4, 10)"
+    ))
