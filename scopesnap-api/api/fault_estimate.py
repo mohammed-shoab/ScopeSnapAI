@@ -298,7 +298,9 @@ async def generate_fault_card_estimate(
         tier="A", label=labels["good"],
         base_amount=base_A, surcharges=bkdn_A, subtotal=sub_A,
         markup_amount=mkup_A, total=total_A, recommended=False,
-        description=f"Diagnose and repair: {fc.card_name}. Gets your system running today.",
+        description=(better_data or {}).get("description_good")
+            or f"Diagnose and repair: {fc.card_name}. Gets your system running today.",
+        why_recommended=(better_data or {}).get("why_recommended_good"),
     ))
 
     # Tier B: Better
@@ -340,10 +342,12 @@ async def generate_fault_card_estimate(
             base_amount=repl_typical, surcharges={}, subtotal=repl_typical,
             markup_amount=repl_mkup, total=repl_total,
             recommended=True, is_replacement=True,
-            description=(
-                f"{age_str}complete system replacement eliminates near-term repair risk "
-                "and reduces electricity costs by approximately 30-40%."
-            ),
+            description=(better_data or {}).get("description_best_replacement")
+                or (
+                    f"{age_str}complete system replacement eliminates near-term repair risk "
+                    "and reduces electricity costs by approximately 30-40%."
+                ),
+            why_recommended=(better_data or {}).get("why_recommended_best_replacement"),
             five_year_comparison=fyr,
         ))
     else:
@@ -357,7 +361,9 @@ async def generate_fault_card_estimate(
             tier="C", label=labels["best"],
             base_amount=c_base, surcharges=bkdn_C, subtotal=sub_C,
             markup_amount=mkup_C, total=total_C, recommended=False,
-            description=f"Comprehensive repair: {fc.card_name} plus full system health check.",
+            description=(better_data or {}).get("description_best_comprehensive")
+                or f"Comprehensive repair: {fc.card_name} plus full system health check.",
+            why_recommended=(better_data or {}).get("why_recommended_best_comprehensive"),
         ))
 
     # 9. Persist estimate (BUG-011 fix)

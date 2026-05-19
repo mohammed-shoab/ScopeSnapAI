@@ -776,6 +776,30 @@ export default function ReportClient({ report }: { report: Report }) {
                       </p>
                     )}
 
+                    {/* Q.5 — Why recommended expansion (only when badge is shown) */}
+                    {isRec && (opt as any).why_recommended && (
+                      <details
+                        style={{ marginTop: 6 }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <summary
+                          style={{
+                            fontSize: 10,
+                            color: "#1a8754",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            listStyle: "none",
+                            userSelect: "none",
+                          }}
+                        >
+                          {isRTL ? "کیوں تجویز کیا گیا؟ ▾" : "Why recommended? ▾"}
+                        </summary>
+                        <p style={{ fontSize: 10, color: "#5a5a55", marginTop: 4, lineHeight: 1.5, paddingLeft: 4 }}>
+                          {(opt as any).why_recommended}
+                        </p>
+                      </details>
+                    )}
+
                     {/* Line items when selected */}
                     {isSelected && opt.line_items && opt.line_items.length > 0 && (
                       <div style={{ marginTop: 10, borderTop: "1px solid #c8efda", paddingTop: 10 }}>
