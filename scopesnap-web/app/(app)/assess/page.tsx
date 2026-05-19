@@ -11,7 +11,7 @@
 import { useState, useCallback, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { API_URL } from "@/lib/api";
+import { API_URL, apiFetch } from "@/lib/api";
 import { processOfflineQueue, getOfflineQueueCount } from "@/lib/offlineQueue";
 import { track } from "@/lib/tracking";
 import StepZeroPanel from "@/components/StepZeroPanel";
@@ -277,12 +277,21 @@ function AssessPageInner() {
     photoSlots: PhotoSlotSpec[],
     history: AnswerRecord[],
   ) => {
+    // Keep local state in case anything on this page still reads it
     setResolvedCardId(cardId);
     setResolvedCardName(cardName);
     setResolvedPhotoSlots(photoSlots);
     setResolvedHistory(history);
     setDiagnosedSessionId(sessionId);
-    setPhase("evidence");
+
+    // D.11 — Track D: finalize the session (idempotent), then navigate to
+    // the new Fault Resolution Screen instead of the old evidence/estimate flow.
+    apiFetch(`/api/diagnostic/finalize/${sessionId}`, {
+      method: "POST",
+      body: JSON.stringify({ customer_label: null }),
+    }).catch(() => {}); // fire-and-forget; backend is idempotent
+
+    router.push(`/diagnoses/${sessionId}`);
   };
 
   /** Inner: actually fires the phase2-gate estimate (called after modal check) */

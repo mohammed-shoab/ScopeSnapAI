@@ -99,6 +99,12 @@ const NavIcons: Record<string, React.ReactNode> = {
       <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
     </svg>
   ),
+  diagnoses: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      <path d="M11 8v6M8 11h6"/>
+    </svg>
+  ),
 };
 
 // ââ Nav item type âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
@@ -119,8 +125,9 @@ function buildNavSections(): NavSection[] {
 
   // ââ OVERVIEW (always visible) âââââââââââââââââââââââââââââââââââââââââââââ
   const overviewItems: NavItem[] = [
-    { label: "Dashboard",    href: "/dashboard",  iconKey: "dashboard" },
-    { label: "Assessments",  href: "/assessments",  iconKey: "assessments" },
+    { label: "Dashboard",    href: "/dashboard",   iconKey: "dashboard" },
+    { label: "Assessments",  href: "/assessments", iconKey: "assessments" },
+    { label: "Diagnoses",    href: "/diagnoses",   iconKey: "diagnoses" },
   ];
   if (featureFlags.showAnalytics) {
     overviewItems.push({ label: "Accuracy Tracker", href: "/analytics", iconKey: "analytics" });

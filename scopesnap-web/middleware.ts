@@ -24,6 +24,7 @@ const IS_DEV =
 // Routes that never require auth
 const PUBLIC_PATHS = [
   "/r/",          // Homeowner report pages
+  "/d/",          // Public diagnosis share pages (Track D)
   "/sign-in",     // Clerk sign-in
   "/sign-up",     // Clerk sign-up
   "/payment-success",
@@ -84,6 +85,7 @@ export async function middleware(request: NextRequest) {
       "/onboarding(.*)",
       "/estimates(.*)",
       "/estimate(.*)",
+      "/diagnoses(.*)",
     ]);
 
     return clerkMiddleware(async (auth, req) => {

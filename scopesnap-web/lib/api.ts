@@ -316,3 +316,75 @@ export async function getPublicReport(
 ): Promise<Record<string, unknown>> {
   return apiFetch(`/api/reports/${reportToken}`);
 }
+
+// ── Track D: Diagnosis API ────────────────────────────────────────────────────
+
+export interface DiagnosticResultAPI {
+  session_id: string;
+  assessment_id?: string;
+  fault: { card_id: number; name: string; confidence: "high" | "medium" | "low" };
+  reasoning_chain: string[];
+  action_steps: string[];
+  parts_needed: string[];
+  time_estimate_minutes: number | null;
+  common_cause_climate: string | null;
+  photo_evidence: { url: string; label?: string }[];
+  alternative_diagnoses: { name: string; confidence: string }[];
+  customer: { label: string | null; address: string | null };
+  share_url: string;
+  created_at?: string | null;
+}
+
+export interface DiagnosisListItem {
+  session_id: string;
+  fault_name: string;
+  confidence: "high" | "medium" | "low";
+  customer_label: string | null;
+  created_at: string;
+  nameplate_photo_url: string | null;
+  share_token: string | null;
+}
+
+export interface DiagnosisListResponse {
+  items: DiagnosisListItem[];
+  next_cursor: string | null;
+  has_more: boolean;
+}
+
+export async function getDiagnosticResult(sessionId: string): Promise<DiagnosticResultAPI> {
+  return apiFetch(`/api/diagnostic/result/${sessionId}`);
+}
+
+export async function listDiagnoses(
+  cursor?: string,
+  limit = 20
+): Promise<DiagnosisListResponse> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
+  return apiFetch(`/api/diagnostic/list?${params}`);
+}
+
+export async function postDiagnosisFeedback(
+  sessionId: string,
+  agreement: "solved" | "different_fault",
+  realFaultText?: string
+): Promise<void> {
+  return apiFetch("/api/diagnostic/feedback", {
+    method: "POST",
+    body: JSON.stringify({
+      session_id: sessionId,
+      agreement,
+      real_fault_text: realFaultText ?? null,
+    }),
+  });
+}
+
+export async function finalizeDiagnosis(
+  sessionId: string,
+  customerLabel?: string
+): Promise<void> {
+  return apiFetch(`/api/diagnostic/finalize/${sessionId}`, {
+    method: "POST",
+    body: JSON.stringify({ customer_label: customerLabel ?? null }),
+  });
+}

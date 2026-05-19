@@ -175,4 +175,38 @@ export const track = {
 
   pageView: (pageName: string) =>
     trackEvent("page_view", { page: pageName }),
+
+  // ── Track D: Diagnosis screen events ────────────────────────────────────────
+
+  // Fires when the /diagnoses list page loads.
+  diagnosisListOpened: () =>
+    trackEvent("diagnosis_list_opened", {}),
+
+  // Fires when a tech opens a diagnosis detail that is older than 5 minutes (a revisit).
+  diagnosisRevisited: (sessionId: string, ageMs: number) =>
+    trackEvent("diagnosis_revisited", { session_id: sessionId, age_ms: ageMs }),
+
+  // Fires on mount of FaultResolutionScreen (both authenticated + public modes).
+  faultScreenOpened: (sessionId: string, mode: string, confidence: string) =>
+    trackEvent("fault_screen_opened", { session_id: sessionId, mode, confidence }),
+
+  // Fires when tech agrees ("solved") or disagrees ("different_fault") with diagnosis.
+  faultScreenAgreement: (sessionId: string, agreement: string, hasText: boolean) =>
+    trackEvent("fault_screen_agreement", { session_id: sessionId, agreement, has_text: hasText }),
+
+  // Fires when the "Copy share link" button is tapped.
+  faultScreenShareClicked: (sessionId: string) =>
+    trackEvent("fault_screen_share_clicked", { session_id: sessionId }),
+
+  // Fires when the reasoning chain <details> is expanded.
+  faultScreenReasoningExpanded: (sessionId: string) =>
+    trackEvent("fault_screen_reasoning_expanded", { session_id: sessionId }),
+
+  // Fires when the public share page (/d/[share_token]) loads successfully.
+  diagnosisShareOpenedExternally: (shareToken: string) =>
+    trackEvent("diagnosis_share_opened_externally", { share_token: shareToken }),
+
+  // Fires on unmount of FaultResolutionScreen with time spent on screen.
+  faultScreenTimeOnScreen: (sessionId: string, seconds: number) =>
+    trackEvent("fault_screen_time_on_screen", { session_id: sessionId, seconds }),
 };
