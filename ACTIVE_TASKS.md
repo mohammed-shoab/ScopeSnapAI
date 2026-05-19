@@ -3,18 +3,19 @@
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-20 (Track D — diagnosis screen + history v1 D.1-D.14 complete, commit 400ede1)
+> Last updated: 2026-05-20 (Track R + Track D build hotfixes complete, Vercel green on commit 43c4dab)
 
 ---
 
 ## Last QA Run
 
-**Date:** 2026-05-20 (Track R — US report polish, hotfix lane direct to main)
+**Date:** 2026-05-20 (Track R — US report polish + Track D apiFetch build fixes)
 **Markets tested:** US only (no PK changes, no alembic migrations)
-**Outcome:** PASS — R.1 through R.8 complete (R.9 explicitly deferred), pushed to main
-**Alembic head:** 028 (unchanged — Track R is frontend/backend code only, no DB migrations)
-**Commits:** 1 commit on main (`177f4f9`)
-**QA sign-off:** COMPLETE (2026-05-20 Track R)
+**Outcome:** PASS — R.1 through R.8 complete (R.9 explicitly deferred); Track D build errors resolved
+**Alembic head:** 028 (unchanged)
+**Commits:** 177f4f9 (Track R), 380b486 (export apiFetch), 43c4dab (DiagnosticResult type param)
+**Vercel:** Ready ✅ — deployment 2bPAP3ZKX, commit 43c4dab, 1m 23s clean build
+**QA sign-off:** COMPLETE (2026-05-20)
 
 ---
 
@@ -53,6 +54,21 @@ All 8 items shipped in single commit `177f4f9` (hotfix lane, direct to main):
   - Interface: `site_visit_fee_text?: string` added to `Report` interface
 
 - [skipped/deferred] R.9 — explicitly out of scope per dispatch instructions
+
+---
+
+## Completed (2026-05-20 — Track D build hotfixes, direct to main)
+
+- [completed] HOT-1 — Export `apiFetch` from `lib/api.ts`
+  - Changed `async function apiFetch<T>` → `export async function apiFetch<T>`
+  - Required by: `FaultResolutionScreen.tsx`, `DiagnosisFeedbackModal.tsx`, `diagnoses/page.tsx`, `diagnoses/[session_id]/page.tsx`, `d/[share_token]/page.tsx`
+  - Commit: `380b486`
+
+- [completed] HOT-2 — Fix DiagnosticResult type param in `diagnoses/[session_id]/page.tsx`
+  - Changed untyped `apiFetch(url).then((res: DiagnosticResult) =>` → `apiFetch<DiagnosticResult>(url).then((res) =>`
+  - Root cause: TypeScript infers `T=unknown` when no type param given; callback annotation from `unknown` to `DiagnosticResult` is rejected
+  - Commit: `43c4dab`
+  - Vercel: ✅ Ready (1m 23s) — deployment 2bPAP3ZKX — **current production**
 
 ---
 
@@ -130,14 +146,14 @@ All 8 items shipped in single commit `177f4f9` (hotfix lane, direct to main):
 - [ ] Generate-estimate-from-here button on FaultResolutionScreen
 - [ ] Search/date filter/favorites on /diagnoses list
 - [ ] Urdu translation of action_steps verbs (translate verbs only; part names stay English)
-- [ ] Stack feedback buttons column at <480px viewport
+- [completed] Stack feedback buttons column at <480px viewport — isMobile state + flexDirection: column (2026-05-20)
 - [ ] Re-run diagnostic button on FaultResolutionScreen
 
 ---
 
 ## Pending / Backlog
 
-- [ ] pak_operating_targets notes fix (R-32 label: "Typical split AC" → "Inverter split AC only")
+- [completed] pak_operating_targets notes fix — R-32 label updated to "Inverter split AC only (R-32 PK market — all units are inverter-type)" via SQL (2026-05-20)
   - **Proposed SQL (safe, no migration needed):**
     ```sql
     UPDATE pak_operating_targets

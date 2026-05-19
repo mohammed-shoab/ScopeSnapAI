@@ -62,7 +62,16 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
   const [showModal, setShowModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [reasoningOpen, setReasoningOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const mountTime = useRef(Date.now());
+
+  // Stack feedback buttons vertically on screens narrower than 480px
+  useEffect(() => {
+    function checkWidth() { setIsMobile(window.innerWidth < 480); }
+    checkWidth();
+    window.addEventListener("resize", checkWidth);
+    return () => window.removeEventListener("resize", checkWidth);
+  }, []);
 
   // D.13: fault_screen_opened on mount; fault_screen_time_on_screen on unmount
   useEffect(() => {
@@ -253,7 +262,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
 
       {/* Mark as Solved / Different fault found — authenticated mode, before feedback */}
       {showActionButtons && (
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10 }}>
           <button
             onClick={handleMarkSolved}
             style={{
