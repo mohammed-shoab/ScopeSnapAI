@@ -399,7 +399,12 @@ async def generate_fault_card_estimate(
     # we do NOT override the recommended flag (which correctly handles age/cost-ratio replacement).
     # When REC.2 provides a real condition_signal, the flag override below will activate.
     try:
-        condition_signal = "default"  # REC.2 will replace this
+        condition_signal = await derive_condition_signal_from_assessment(
+            assessment_id=body.assessment_id,
+            card_id=body.card_id,
+            unit_age_years=unit_age,
+            db=db,
+        )
         rec = await get_recommended_tier_internal(
             card_id=body.card_id,
             age_years=float(unit_age) if unit_age is not None else None,

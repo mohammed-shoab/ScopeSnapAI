@@ -121,6 +121,58 @@ export const track = {
   reportApproved: (reportShortId: string, tier: string) =>
     trackEvent("report_approved", { report_short_id: reportShortId, tier }),
 
+
+  // -- Recommendation engine events (REC.5) ----------------------------------
+
+  // Fires when the estimate tiers are first shown to the tech.
+  // Wire this call in the component that receives the fault-card API response
+  // (assess/page.tsx after R.3 is complete, or estimate/[id]/page.tsx after R.7).
+  recommendationShown: (
+    cardId: number,
+    recommendedTier: string,
+    reason?: string,
+    source?: string,
+  ) =>
+    trackEvent("recommendation_shown", {
+      card_id: cardId,
+      recommended_tier: recommendedTier,
+      ...(reason !== undefined ? { reason } : {}),
+      ...(source !== undefined ? { source } : {}),
+    }),
+
+  // Fires when the tech selects a tier different from the recommended one
+  // before sending the report.
+  // Wire in estimate/[id]/page.tsx after R.7 is complete.
+  recommendationOverridden: (
+    cardId: number,
+    originalTier: string,
+    chosenTier: string,
+    estimateId?: string,
+  ) =>
+    trackEvent("recommendation_overridden", {
+      card_id: cardId,
+      original_recommended_tier: originalTier,
+      chosen_tier: chosenTier,
+      ...(estimateId !== undefined ? { estimate_id: estimateId } : {}),
+    }),
+
+  // Fires when the homeowner approves a tier on the report page.
+  // Captures whether the approved tier matches the original recommendation.
+  // Wire in ReportClient.tsx after R.1-R.5 are complete.
+  recommendationApproved: (
+    cardId: number,
+    approvedTier: string,
+    recommendedTier: string,
+    reportId?: string,
+  ) =>
+    trackEvent("recommendation_approved", {
+      card_id: cardId,
+      approved_tier: approvedTier,
+      recommended_tier: recommendedTier,
+      matched_recommendation: approvedTier === recommendedTier,
+      ...(reportId !== undefined ? { report_id: reportId } : {}),
+    }),
+
   pageView: (pageName: string) =>
     trackEvent("page_view", { page: pageName }),
 };
