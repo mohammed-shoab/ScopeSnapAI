@@ -1179,3 +1179,93 @@ async def resume_session(
         session_id=session_id,
         current_step=_row_to_question_out(q_row, tables.market),
     )
+
+@router.get("/result/{session_id}")
+async def get_diagnostic_result(
+    session_id: str = Path(...),
+    auth: AuthContext = Depends(get_current_user),
+    tables: MarketTables = Depends(get_tables),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Track D D.7 -- GET /api/diagnostic/result/{session_id}
+    Returns the full DiagnosticResult for a resolved diagnostic session.
+    Used by /diagnoses/[session_id] to render FaultResolutionScreen.
+    """
+    # Load session with all Track D columns
+    sess_result = await db.execute(
+        text(
+            "SELECT id, assessment_id, company_id, resolved_card_id, created_at,"
+            "       reasoning_chain, confidence_level, share_token,"
+            "       customer_label, customer_address"
+            " FROM diagnostic_sessions"
+            " WHERE id = :sid AND company_id = :cid AND deleted_at IS NULL LIMIT 1"
+        ),
+        {"sid": session_id, "cid": auth.company_id},
+    )
+    session = sess_result.fetchone()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Diagnosis not found.")
+
+    if not session.resolved_card_id:
+        raise HTTPException(status_code=409, detail="Diagnosis not yet resolved.")
+
+    # Load fault card data (market-aware table + climate notes column)
+    climate_col = "climate_notes_pk" if tables.market == "PK" else "climate_notes_us"
+    fc_result = await db.execute(
+        text(
+            "SELECT card_id, card_name, action_steps, parts_needed, alternative_cards,"
+            " " + climate_col
+            + " FROM " + tables.fault_cards + " WHERE card_id = :cid LIMIT 1"
+        ),
+        {"cid": session.resolved_card_id},
+    )
+    fc = fc_result.fetchone()
+
+    if not fc:
+        raise HTTPException(status_code=404, detail="Fault card not found.")
+
+    # Build share URL from share_token if present
+    share_url = ""
+    if session.share_token:
+        base_url = (
+            "https://pk.snapai.mainnov.tech"
+            if tables.market == "PK"
+            else "https://snapai.mainnov.tech"
+        )
+        share_url = base_url + "/d/" + session.share_token
+
+    # Build alternative_diagnoses from alternative_cards JSONB
+    alt_cards = fc.alternative_cards or []
+    alt_diagnoses = []
+    for alt in alt_cards:
+        if isinstance(alt, dict):
+            alt_diagnoses.append(
+                {"name": alt.get("name", ""), "confidence": alt.get("confidence", "low")}
+            )
+
+    climate_note = getattr(fc, climate_col, None)
+
+    return {
+        "session_id": session_id,
+        "assessment_id": str(session.assessment_id) if session.assessment_id else None,
+        "fault": {
+            "card_id": session.resolved_card_id,
+            "name": fc.card_name,
+            "confidence": session.confidence_level or "high",
+        },
+        "reasoning_chain": session.reasoning_chain or [],
+        "action_steps": fc.action_steps or [],
+        "parts_needed": fc.parts_needed or [],
+        "time_estimate_minutes": None,
+        "common_cause_climate": climate_note,
+        "photo_evidence": [],
+        "alternative_diagnoses": alt_diagnoses,
+        "customer": {
+            "label": session.customer_label,
+            "address": session.customer_address,
+        },
+        "share_url": share_url,
+        "created_at": session.created_at.isoformat() if session.created_at else None,
+    }
