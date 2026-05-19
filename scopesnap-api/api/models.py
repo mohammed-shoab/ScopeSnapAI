@@ -217,6 +217,8 @@ async def all_models(
                         "known_issues": [],
                         "replacement_models": [],
                         "tonnage_data": tonnage_data,
+                        "series_type": s.get("type", "non_inverter"),
+                        "refrigerant": s.get("refrigerant", "R-22"),
                     })
         return {
             "models": models,

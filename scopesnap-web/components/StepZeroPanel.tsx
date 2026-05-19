@@ -687,9 +687,16 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-bold text-gray-800">{m.model_series}</span>
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 uppercase">
-                              {m.equipment_type.replace("_", " ")}
-                            </span>
+                            <div className="flex items-center gap-1">
+                              {m.series_type === "inverter" && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 uppercase">
+                                  Inverter
+                                </span>
+                              )}
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 uppercase">
+                                {m.equipment_type.replace("_", " ")}
+                              </span>
+                            </div>
                           </div>
                           <div className="flex gap-3 mt-0.5">
                             {m.seer_rating && (
@@ -717,9 +724,16 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                 <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-xl">
                   <span className="text-green-600 text-sm">✓</span>
                   <div className="flex-1 min-w-0">
-                    <span className="text-xs font-bold text-green-800">
-                      {manualUnit.brand_id} — {manualUnit.series_id}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-bold text-green-800">
+                        {manualUnit.brand_id} — {manualUnit.series_id}
+                      </span>
+                      {(manualUnit as any).series_type === "inverter" && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 uppercase">
+                          Inverter
+                        </span>
+                      )}
+                    </div>
                     {manualUnit.tonnage && (
                       <span className="text-xs text-green-600 ml-2">({manualUnit.tonnage}t</span>
                     )}

@@ -43,6 +43,10 @@ export interface EquipmentModelRecord {
     electrical?: { amps?: { rated?: number; lra?: number }; mca?: number; mop?: number };
     capacitors?: { compressor_uf?: number; indoor_fan_uf?: number; outdoor_fan_uf?: number };
   }>;
+  /** PK market only — "inverter" or "non_inverter" */
+  series_type?: string;
+  /** PK market only — refrigerant type e.g. "R-32", "R-410A", "R-22" */
+  refrigerant?: string;
 }
 
 // ── In-memory fallback (when IndexedDB isn't available) ───────────────────────
