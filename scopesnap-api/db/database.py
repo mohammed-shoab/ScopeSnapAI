@@ -1,5 +1,5 @@
 """
-SnapAI — Database Connection & Session Management
+SnapAI -- Database Connection & Session Management
 AsyncSession with SQLAlchemy 2.0 async engine.
 Supports both PostgreSQL (production) and SQLite (local testing).
 """
@@ -11,7 +11,7 @@ from config import get_settings
 
 settings = get_settings()
 
-# ── Fix URL for async drivers ─────────────────────────────────────────────────
+# -- Fix URL for async drivers -------------------------------------------------
 def get_async_url(url: str) -> str:
     """Ensure URL uses an async driver.
 
@@ -24,7 +24,7 @@ def get_async_url(url: str) -> str:
     elif url.startswith("sqlite://"):
         return url.replace("sqlite://", "sqlite+aiosqlite://", 1)
 
-    # Convert psycopg2-style sslmode → asyncpg-style ssl
+    # Convert psycopg2-style sslmode -> asyncpg-style ssl
     url = url.replace("sslmode=require", "ssl=require")
     url = url.replace("sslmode=verify-full", "ssl=require")
     url = url.replace("sslmode=verify-ca", "ssl=require")
@@ -37,17 +37,30 @@ def get_async_url(url: str) -> str:
 async_url = get_async_url(settings.database_url)
 is_sqlite = "sqlite" in async_url
 
-# ── Engine ────────────────────────────────────────────────────────────────────
+# -- Engine --------------------------------------------------------------------
 engine_kwargs = dict(echo=settings.is_development)
 if not is_sqlite:
     # Supabase free-tier PgBouncer runs in session mode with a 15-connection
     # cap. Keep pool_size + max_overflow well under that limit to avoid
     # EMAXCONNSESSION errors when multiple Railway replicas are running.
-    engine_kwargs.update(pool_size=3, max_overflow=7, pool_pre_ping=True)
+    #
+    # statement_cache_size=0 disables asyncpg's prepared-statement cache.
+    # Without this, any schema change to a view (CREATE OR REPLACE VIEW) that
+    # is referenced by a cached prepared statement causes asyncpg to raise
+    # InvalidCachedStatementError, which propagates as a raw Python exception
+    # and bypasses FastAPI's CORS middleware (ServerErrorMiddleware catches it
+    # first), so the browser sees "Failed to fetch" instead of a proper error.
+    # Disabling the cache avoids this at a negligible per-query cost.
+    engine_kwargs.update(
+        pool_size=3,
+        max_overflow=7,
+        pool_pre_ping=True,
+        connect_args={"statement_cache_size": 0},
+    )
 
 engine = create_async_engine(async_url, **engine_kwargs)
 
-# ── Session Factory ───────────────────────────────────────────────────────────
+# -- Session Factory -----------------------------------------------------------
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
@@ -56,11 +69,11 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush=False,
 )
 
-# ── Base Class ────────────────────────────────────────────────────────────────
+# -- Base Class ----------------------------------------------------------------
 class Base(DeclarativeBase):
     pass
 
-# ── Dependency ────────────────────────────────────────────────────────────────
+# -- Dependency ----------------------------------------------------------------
 async def get_db() -> AsyncSession:
     async with AsyncSessionLocal() as session:
         try:
@@ -72,7 +85,7 @@ async def get_db() -> AsyncSession:
         finally:
             await session.close()
 
-# ── Health Check ──────────────────────────────────────────────────────────────
+# -- Health Check --------------------------------------------------------------
 async def check_db_connection() -> bool:
     try:
         async with AsyncSessionLocal() as session:
