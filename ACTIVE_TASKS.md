@@ -190,3 +190,17 @@ All 8 items shipped in single commit `177f4f9` (hotfix lane, direct to main):
   - Wiring note: recommendationOverridden -> call from estimate/[id]/page.tsx after R.7 done
   - Wiring note: recommendationApproved -> call from ReportClient.tsx after R.1-R.5 done
 
+## Completed (Track REC.5 wiring -- 2026-05-20, commit e5ffefb)
+
+- [completed] REC.5 wiring -- recommendationShown, Overridden, Approved fully wired
+  - assess/page.tsx: track.recommendationShown() added at 2 call sites
+    - _doPhase2Gate: source="phase2_gate", fires after estimateGenerated
+    - _doGenerateEstimate: source="fault_card", fires after estimateGenerated
+    - Guard: if (est.recommended_tier) -- safe when backend doesn't return field
+  - estimate/[id]/page.tsx: track.recommendationOverridden() wired to Continue button
+    - track import added, recommendedTier state added, captured from API on load
+    - Fires only when selectedTier !== recommendedTier
+  - ReportClient.tsx: track.recommendationApproved() wired in handleApprove success path
+    - initialRecommendedTier derived from report.options (same logic as selectedTier init)
+    - matched_recommendation computed inside tracking.ts helper automatically
+

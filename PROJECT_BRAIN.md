@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-20 (Track D complete -- D.1-D.14 diagnosis screen + history v1, commit 400ede1, alembic head 028)
+> Last updated: 2026-05-20 (Track REC fully complete -- REC.2+3+5 wired, commit e5ffefb, alembic head 028)
 
 ---
 
