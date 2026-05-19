@@ -1409,7 +1409,7 @@ export default function EstimatePage() {
               )}
 
               {/* PK market: WhatsApp as primary send option — visible as soon as phone is entered */}
-              {detectMarket() === "PK" && sendPhone && (
+              {detectMarket() === "PK" && (
                 <button
                   onClick={sendViaWhatsApp}
                   disabled={sending || !sendPhone}
