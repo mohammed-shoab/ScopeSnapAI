@@ -14,7 +14,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
-import { trackEvent } from "@/lib/tracking";
+import { trackEvent, track } from "@/lib/tracking";
 import { ph } from "@/providers/PostHogProvider";
 import PresentMode from "@/components/PresentMode";
 import { formatCurrency, detectMarket } from "@/lib/market";
@@ -80,6 +80,7 @@ interface EstimateData {
   viewed_at?: string;
   view_count?: number;
   card_name?: string;
+  recommended_tier?: string;
 }
 
 function fmt(n?: number) {
@@ -354,6 +355,7 @@ export default function EstimatePage() {
   const [markupUpdating, setMarkupUpdating] = useState(false);
 
   const [selectedTier, setSelectedTier] = useState("better");
+  const [recommendedTier, setRecommendedTier] = useState("better");
 
   // Repair / Replace toggle per option tier
   const [jobTypes, setJobTypes] = useState<Record<string, JobType>>({});
@@ -399,6 +401,7 @@ export default function EstimatePage() {
           }
           setEstimate(data);
           setMarkup(data.markup_percent || 35);
+          if (data.recommended_tier) setRecommendedTier(data.recommended_tier);
           setLoading(false);
           if (data.contractor_pdf_url) setDocsDone(true);
           ph.estimateGenerated(String(id), data.card_name);
@@ -1106,7 +1109,16 @@ export default function EstimatePage() {
 
           {/* CTA to Output */}
           <button
-            onClick={() => setTab("output")}
+            onClick={() => {
+              if (selectedTier !== recommendedTier) {
+                track.recommendationOverridden({
+                  estimate_id: String(id),
+                  selected_tier: selectedTier,
+                  recommended_tier: recommendedTier,
+                });
+              }
+              setTab("output");
+            }}
             className="w-full bg-brand-green text-white font-bold py-4 rounded-xl text-base shadow-lg shadow-green-200 hover:shadow-xl transition-shadow"
           >
             {selectedOption

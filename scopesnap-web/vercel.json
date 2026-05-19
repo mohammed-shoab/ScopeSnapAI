@@ -1,7 +1,0 @@
-{
-  "installCommand": "npm install --legacy-peer-deps",
-  "alias": [
-    "pk.snapai.mainnov.tech"
-  ]
-}
- 
