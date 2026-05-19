@@ -519,7 +519,7 @@ export default function EstimatePage() {
       if (data.homeowner_report_url) {
         setEstimate((prev) => prev ? { ...prev, homeowner_report_url: data.homeowner_report_url } : prev);
       }
-      const reportUrl = data.homeowner_report_url || estimate?.homeowner_report_url || "";
+      const reportUrl = data.report_url || data.homeowner_report_url || estimate?.homeowner_report_url || "";
       trackEvent("report_sent", { estimate_id: id, homeowner_name: homeownerName, channel: "whatsapp" });
       ph.reportSent(String(id));
       setSent(true);
