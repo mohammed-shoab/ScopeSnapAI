@@ -3,23 +3,31 @@
 /**
  * /diagnoses/[session_id] — Authenticated diagnosis detail (Track D, D.7)
  * Fetches from GET /api/diagnostic/result/{session_id} and renders FaultResolutionScreen.
+ * FIX: added useAuth + getToken so the request includes a Bearer token.
  */
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import { apiFetch } from "@/lib/api";
 import { trackEvent } from "@/lib/tracking";
 import FaultResolutionScreen, { type DiagnosticResult } from "@/components/FaultResolutionScreen";
 
 export default function DiagnosisDetailPage() {
   const { session_id } = useParams<{ session_id: string }>();
+  const { getToken } = useAuth();
   const [data, setData] = useState<DiagnosticResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session_id) return;
-    apiFetch<DiagnosticResult>(`/api/diagnostic/result/${session_id}`)
+    getToken()
+      .then((token) =>
+        apiFetch<DiagnosticResult>(`/api/diagnostic/result/${session_id}`, {
+          token: token ?? undefined,
+        })
+      )
       .then((res) => {
         setData(res);
         // D.13: revisit tracking — if session is older than 5 minutes it's a revisit
@@ -35,7 +43,7 @@ export default function DiagnosisDetailPage() {
         else setError("Could not load diagnosis.");
       })
       .finally(() => setLoading(false));
-  }, [session_id]);
+  }, [session_id, getToken]);
 
   if (loading) return (
     <div style={{ maxWidth: 672, margin: "40px auto", padding: "0 16px" }}>
