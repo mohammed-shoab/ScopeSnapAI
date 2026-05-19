@@ -317,7 +317,7 @@ function AssessPageInner() {
       track.estimateGenerated(est.id, est.total_amount || 0);
       // REC.5: Fire when estimate tiers are first shown to the tech (phase2-gate path)
       if (est.recommended_tier) {
-        track.recommendationShown(continuation.card_id, est.recommended_tier, est.condition_signal, "phase2_gate");
+        track.recommendationShown(continuation.card_id ?? 0, est.recommended_tier, est.condition_signal, "phase2_gate");
       }
       router.push(`/assessment/${est.id}`);
     }).catch(e => {
@@ -788,5 +788,4 @@ export default function AssessPage() {
     >
       <AssessPageInner />
     </Suspense>
-  );
-}
+  
