@@ -384,10 +384,16 @@ export default function ReportClient({ report }: { report: Report }) {
     : "'Plus Jakarta Sans', sans-serif";
 
   const alreadyApproved = report.status === "approved";
+  // REC.5: The originally recommended tier (derived once, not reactive)
+  const initialRecommendedTier =
+    report.options?.find((o) => o.recommended)?.tier ||
+    report.options?.[1]?.tier ||
+    report.options?.[0]?.tier ||
+    "better";
   const [selectedTier, setSelectedTier] = useState<string>(
     alreadyApproved && report.selected_option
       ? report.selected_option
-      : report.options?.find((o) => o.recommended)?.tier || report.options?.[1]?.tier || report.options?.[0]?.tier || ""
+      : initialRecommendedTier
   );
   const [approving, setApproving] = useState(false);
   const [approved, setApproved] = useState(alreadyApproved);
@@ -426,6 +432,13 @@ export default function ReportClient({ report }: { report: Report }) {
       }
       setApproved(true);
       setApprovedTier(selectedTier);
+      // REC.5: Track homeowner approval + whether it matched the original recommendation
+      track.recommendationApproved(
+        (report as unknown as { card_id?: number }).card_id || 0,
+        selectedTier,
+        initialRecommendedTier,
+        report.report_short_id,
+      );
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {

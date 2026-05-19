@@ -315,6 +315,10 @@ function AssessPageInner() {
       return r.json();
     }).then(est => {
       track.estimateGenerated(est.id, est.total_amount || 0);
+      // REC.5: Fire when estimate tiers are first shown to the tech (phase2-gate path)
+      if (est.recommended_tier) {
+        track.recommendationShown(continuation.card_id, est.recommended_tier, est.condition_signal, "phase2_gate");
+      }
       router.push(`/assessment/${est.id}`);
     }).catch(e => {
       setError(e instanceof Error ? e.message : "Error generating estimate");
@@ -357,6 +361,10 @@ function AssessPageInner() {
       if (!r.ok) throw new Error((await r.json()).detail || "Generate failed");
       const est = await r.json();
       track.estimateGenerated(est.id, est.total_amount || 0);
+      // REC.5: Fire when estimate tiers are first shown to the tech (fault-card photo path)
+      if (est.recommended_tier) {
+        track.recommendationShown(resolvedCardId!, est.recommended_tier, est.condition_signal, "fault_card");
+      }
       router.push(`/assessment/${est.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error generating estimate");

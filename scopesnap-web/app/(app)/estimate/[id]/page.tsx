@@ -14,7 +14,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
-import { trackEvent } from "@/lib/tracking";
+import { trackEvent, track } from "@/lib/tracking";
 import { ph } from "@/providers/PostHogProvider";
 import PresentMode from "@/components/PresentMode";
 import { formatCurrency } from "@/lib/market";
@@ -79,6 +79,8 @@ interface EstimateData {
   viewed_at?: string;
   view_count?: number;
   card_name?: string;
+  recommended_tier?: string;    // REC.5: from condition_signals engine
+  condition_signal?: string;    // REC.5: from condition_signals engine
 }
 
 function fmt(n?: number) {
@@ -348,6 +350,8 @@ export default function EstimatePage() {
   const [markupUpdating, setMarkupUpdating] = useState(false);
 
   const [selectedTier, setSelectedTier] = useState("better");
+  // REC.5: Original recommended tier from engine (defaults to "better")
+  const [recommendedTier, setRecommendedTier] = useState("better");
 
   // Repair / Replace toggle per option tier
   const [jobTypes, setJobTypes] = useState<Record<string, JobType>>({});
@@ -385,6 +389,8 @@ export default function EstimatePage() {
         .then((data: EstimateData) => {
           setEstimate(data);
           setMarkup(data.markup_percent || 35);
+          // REC.5: Capture recommended tier if engine returned one
+          if (data.recommended_tier) setRecommendedTier(data.recommended_tier);
           setLoading(false);
           if (data.contractor_pdf_url) setDocsDone(true);
           ph.estimateGenerated(String(id), data.card_name);
@@ -1108,7 +1114,18 @@ export default function EstimatePage() {
 
           {/* CTA to Output */}
           <button
-            onClick={() => setTab("output")}
+            onClick={() => {
+              // REC.5: Fire if tech chose a different tier than recommended
+              if (selectedTier !== recommendedTier) {
+                track.recommendationOverridden(
+                  0, // card_id not in estimate page scope -- forward-compat placeholder
+                  recommendedTier,
+                  selectedTier,
+                  estimate?.id,
+                );
+              }
+              setTab("output");
+            }}
             className="w-full bg-brand-green text-white font-bold py-4 rounded-xl text-base shadow-lg shadow-green-200 hover:shadow-xl transition-shadow"
           >
             {selectedOption
