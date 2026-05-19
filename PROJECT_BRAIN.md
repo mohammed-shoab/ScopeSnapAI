@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-20 (Track REC complete -- REC.2+3+5, commit 6ac37b4, alembic head 028)
+> Last updated: 2026-05-20 (Track REC complete -- REC.2+3+5+hotfix, commit 4a51c35, alembic head 028)
 
 ---
 
@@ -36,18 +36,19 @@
 
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both domains) | `17d19fd` | Production Live | 2026-05-19 |
-| Railway backend | `01082c6` | Health OK | 2026-05-19 |
-| Alembic migration | `021` (fault_card_descriptions) | Applied | 2026-05-19 |
+| Vercel (both prod domains) | `177f4f9` | Production Live | 2026-05-20 |
+| Railway backend (prod) | `177f4f9` | Health OK | 2026-05-20 |
+| Alembic migration (prod) | `028` | Applied (unchanged) | 2026-05-20 |
 | pak_data_defaults | 1 row (market=PK) | Seeded | 2026-05-19 |
 | pak_operating_targets | PK PSI thresholds + R-32 (5 rows, 30–50°C ambient) | Seeded | 2026-05-18 |
 
-**Current git HEAD:** `c6ef5df` — "[hotfix] Q.7 — Refresh draft estimates on load with latest fault card descriptions"
+**Current git HEAD (main):** `177f4f9` — "feat(track-r): R.1-R.8 print, hide-empty, addr-guard, QR-npm, profile-check, site-visit-fee"
 
-**Recent commits (PK SOW Addendum):**
-- `17d19fd` — fix(A-4): PK homeowner name placeholder shows Ahmed Khan (Vercel frontend)
-- `01082c6` — fix(BUG-016): PK ok suction → discharge PSI step, not US Card 13 (Railway backend)
-- `0ce93a8` — fix(BUG-015): add X-Market header to getAuthHeaders so PK diagnostic routing hits pak_* tables
+**Recent commits (newest first — main):**
+- `177f4f9` — feat(track-r): R.1-R.8 print, hide-empty, addr-guard, QR-npm, profile-check, site-visit-fee
+- `4ae5d35` — docs(REC): DEC-024 condition_signal vocab, Track REC complete, alembic head 028
+- `6ac37b4` — feat(REC.2+3+5): condition_signal engine, lifecycle_rules 17->50, PostHog tracking helpers
+- `e96a59e` — fix(BUG-023): restore assessment/[id]/page.tsx, remove wrong assessment/page.tsx
 
 ---
 
