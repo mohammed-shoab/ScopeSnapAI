@@ -22,6 +22,80 @@ from api.dependencies import get_tables, MarketTables
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/estimates", tags=["estimates"])
 
+
+async def get_recommended_tier_internal(
+    card_id: int,
+    age_years: Optional[float],
+    condition_signal: Optional[str],
+    db: AsyncSession,
+    tables: MarketTables,
+) -> dict:
+    """
+    Q.6.5 — Internal (no-auth) version of the recommend endpoint.
+    Called directly by fault_estimate.py after tiers are built.
+    Returns {"recommended_tier": "A"/"B"/"C", "reason": "...", "source": "..."}
+
+    Priority order (same as GET /recommend):
+    1. Exact match on card_id + condition_signal + age threshold
+    2. Match on card_id + condition_signal (any age)
+    3. Match on card_id + default condition
+    4. Global default: B
+    """
+    # Try condition + age match first
+    if condition_signal and condition_signal != "default" and age_years is not None:
+        row = await db.execute(
+            text(f"""
+                SELECT recommended_tier, note
+                FROM {tables.lifecycle_rules}
+                WHERE card_id = :card_id
+                  AND condition_signal = :condition
+                  AND (age_threshold_years IS NULL OR :age >= age_threshold_years)
+                ORDER BY
+                    CASE WHEN age_threshold_years IS NOT NULL THEN 0 ELSE 1 END,
+                    age_threshold_years DESC NULLS LAST
+                LIMIT 1
+            """),
+            {"card_id": card_id, "condition": condition_signal, "age": age_years},
+        )
+        r = row.fetchone()
+        if r:
+            return {"recommended_tier": r.recommended_tier,
+                    "reason": r.note, "source": "lifecycle_rule"}
+
+    # Try condition match without age
+    if condition_signal and condition_signal != "default":
+        row = await db.execute(
+            text(f"""
+                SELECT recommended_tier, note FROM {tables.lifecycle_rules}
+                WHERE card_id = :card_id AND condition_signal = :condition
+                ORDER BY age_threshold_years DESC NULLS LAST LIMIT 1
+            """),
+            {"card_id": card_id, "condition": condition_signal},
+        )
+        r = row.fetchone()
+        if r:
+            return {"recommended_tier": r.recommended_tier,
+                    "reason": r.note, "source": "lifecycle_rule_no_age"}
+
+    # Try default for this card
+    row = await db.execute(
+        text(f"""
+            SELECT recommended_tier, note FROM {tables.lifecycle_rules}
+            WHERE card_id = :card_id AND condition_signal = 'default'
+            LIMIT 1
+        """),
+        {"card_id": card_id},
+    )
+    r = row.fetchone()
+    if r:
+        return {"recommended_tier": r.recommended_tier,
+                "reason": r.note, "source": "lifecycle_rule_default"}
+
+    # Global default: B
+    return {"recommended_tier": "B",
+            "reason": "Default recommendation — insufficient data", "source": "global_default"}
+
+
 @router.get("/recommend")
 async def get_recommended_tier(
     card_id: int = Query(..., ge=1, le=19, description="Fault card 1-19"),

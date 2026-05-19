@@ -34,6 +34,7 @@ from sqlalchemy import text, select
 from db.database import get_db
 from db.models import Estimate, Assessment
 from api.auth import get_current_user, AuthContext
+from api.recommend import get_recommended_tier_internal
 from api.dependencies import get_tables, MarketTables
 
 logger = logging.getLogger(__name__)
@@ -148,9 +149,11 @@ class EstimateTier(BaseModel):
     description:          Optional[str] = None
     why_recommended:      Optional[str] = None
     is_replacement:       bool = False
-    five_year_comparison: Optional[dict] = None
-    parts_included:       list = []
-    service_items:        list = []
+    five_year_comparison:       Optional[dict] = None
+    parts_included:             list = []
+    service_items:              list = []
+    recommendation_reason:      Optional[str] = None
+    recommendation_source:      Optional[str] = None
 
 
 class FaultCardEstimateResponse(BaseModel):
@@ -366,6 +369,32 @@ async def generate_fault_card_estimate(
             why_recommended=(better_data or {}).get("why_recommended_best_comprehensive"),
         ))
 
+    # Q.6.5 — Consult lifecycle_rules for recommendation metadata
+    # condition_signal = "default" until Track REC.2 ships derive_condition_signal_from_assessment().
+    # With "default", we only attach reason/source metadata to the already-recommended tier;
+    # we do NOT override the recommended flag (which correctly handles age/cost-ratio replacement).
+    # When REC.2 provides a real condition_signal, the flag override below will activate.
+    try:
+        condition_signal = "default"  # REC.2 will replace this
+        rec = await get_recommended_tier_internal(
+            card_id=body.card_id,
+            age_years=float(unit_age) if unit_age is not None else None,
+            condition_signal=condition_signal,
+            db=db, tables=tables,
+        )
+        # Only override recommended flags when we have a real (non-default) condition signal
+        if condition_signal != "default":
+            for t in tiers:
+                t.recommended = (t.tier == rec["recommended_tier"])
+        # Always attach reason/source to the currently-recommended tier
+        for t in tiers:
+            if t.recommended:
+                t.recommendation_reason = rec.get("reason")
+                t.recommendation_source = rec.get("source")
+    except Exception:
+        logger.warning("[fault_estimate] lifecycle_rules lookup failed — skipping Q.6.5 overlay",
+                       exc_info=True)
+
     # 9. Persist estimate (BUG-011 fix)
     estimate_id = None
     if body.assessment_id:
@@ -394,6 +423,8 @@ async def generate_fault_card_estimate(
                         "is_replacement": t.is_replacement,
                         "description": t.description,
                         "why_recommended": t.why_recommended,
+                        "recommendation_reason": t.recommendation_reason,
+                        "recommendation_source": t.recommendation_source,
                         "five_year_comparison": t.five_year_comparison,
                         "line_items": [{"description": fc.card_name, "amount": float(t.base_amount), "category": "repair"}],
                     }
