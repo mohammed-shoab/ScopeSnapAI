@@ -217,16 +217,24 @@ async def generate_fault_card_estimate(
         raise HTTPException(status_code=404, detail=f"Fault card {body.card_id} not found.")
 
     # 2. Load pricing tiers A/B/C
-    pt_rows = await db.execute(
-        text(
-            f"SELECT tier, estimate_amount FROM {tables.pricing_tiers} "
-            "WHERE card_id = :cid "
-            "AND (metering_type = 'any' OR metering_type = :mt) "
-            "ORDER BY tier, CASE metering_type WHEN 'any' THEN 2 ELSE 1 END "
-            "LIMIT 3"
-        ),
-        {"cid": body.card_id, "mt": body.metering_type or "any"},
-    )
+    # BUG-022: US pricing_tiers has no metering_type column — only pak_pricing_tiers does.
+    # Use market-conditional query so US estimates don't fail with UndefinedColumnError.
+    if tables.market == "PK":
+        pt_rows = await db.execute(
+            text(
+                f"SELECT tier, estimate_amount FROM {tables.pricing_tiers} "
+                "WHERE card_id = :cid "
+                "AND (metering_type = 'any' OR metering_type = :mt) "
+                "ORDER BY tier, CASE metering_type WHEN 'any' THEN 2 ELSE 1 END "
+                "LIMIT 3"
+            ),
+            {"cid": body.card_id, "mt": body.metering_type or "any"},
+        )
+    else:
+        pt_rows = await db.execute(
+            text(f"SELECT tier, estimate_amount FROM {tables.pricing_tiers} WHERE card_id = :cid ORDER BY tier"),
+            {"cid": body.card_id},
+        )
     pricing = {row.tier: row.estimate_amount for row in pt_rows.fetchall()}
     if not pricing:
         raise HTTPException(status_code=404, detail=f"No pricing tiers for card {body.card_id}.")
