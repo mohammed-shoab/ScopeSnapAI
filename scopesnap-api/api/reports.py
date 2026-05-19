@@ -12,7 +12,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+import sentry_sdk
+from sqlalchemy import select, text
 
 from db.database import get_db
 from db.models import (
@@ -180,6 +181,53 @@ async def get_public_report(
                     "description": issue.get("description", ""),
                     "description_plain": issue.get("description_plain", issue.get("description", "")),
                 })
+
+    # ── Q.3: complaint_type fallback when issues list is empty ──────────────────
+    # Check if a diagnostic session resolved a fault card for this assessment
+    diagnostic_resolved = False
+    if assessment:
+        ds_result = await db.execute(
+            text(
+                "SELECT resolved_card_id FROM diagnostic_sessions "
+                "WHERE assessment_id = :aid AND resolved_card_id IS NOT NULL "
+                "LIMIT 1"
+            ),
+            {"aid": str(assessment.id)},
+        )
+        diagnostic_resolved = ds_result.scalar_one_or_none() is not None
+
+    if not issues_data and not diagnostic_resolved and assessment:
+        complaint = (assessment.tech_overrides or {}).get("complaint_type", "")
+        has_cost = bool(
+            estimate.options and
+            any(opt.get("total", 0) or 0 > 0 for opt in estimate.options)
+        )
+
+        if complaint in ("service", "tune_up", "maintenance"):
+            # Legitimate no-fault outcome for service/tune-up visits
+            issues_data = [{
+                "component": "system",
+                "issue": "Preventive service completed",
+                "severity": "low",
+                "color": "green",
+                "description": "Recommended preventive service to keep your system running well.",
+                "description_plain": "Recommended preventive service to keep your system running well.",
+            }]
+        elif complaint in ("not_cooling", "water_dripping", "not_turning_on") and has_cost:
+            # Real app gap — diagnostic tree did not resolve a fault card but estimate was generated
+            sentry_sdk.capture_message(
+                f"Estimate generated without diagnostic resolution for complaint type: {complaint}",
+                level="warning",
+                extras={"assessment_id": str(assessment.id), "complaint_type": complaint},
+            )
+            issues_data = [{
+                "component": "system",
+                "issue": "Technician diagnostic",
+                "severity": "medium",
+                "color": "orange",
+                "description": "Your technician identified the issue during the on-site visit. Contact us if you have questions.",
+                "description_plain": "Your technician identified the issue during the on-site visit. Contact us if you have questions.",
+            }]
 
     # ── Calculate remaining life estimate ─────────────────────────────────────
     remaining_life = None
