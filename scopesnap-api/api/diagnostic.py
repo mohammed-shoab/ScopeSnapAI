@@ -1558,3 +1558,4 @@ async def get_public_diagnosis(
         "share_url": share_url,
         "created_at": session.created_at.isoformat() if session.created_at else None,
     }
+# BUG-020 fix verified: card_id (not id)
