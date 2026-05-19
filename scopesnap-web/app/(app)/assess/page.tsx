@@ -135,6 +135,7 @@ function AssessPageInner() {
   const [creatingAssessment, setCreatingAssessment] = useState(false);
 
   // ── Diagnostic resolution ──────────────────────────────────────────────────
+  const [meteringType, setMeteringType]     = useState<string>("any");
   const [resolvedCardId, setResolvedCardId] = useState<number | null>(null);
   const [resolvedCardName, setResolvedCardName] = useState<string>("");
   const [resolvedPhotoSlots, setResolvedPhotoSlots] = useState<PhotoSlotSpec[]>([]);
@@ -292,6 +293,7 @@ function AssessPageInner() {
           card_id: continuation.card_id,
           session_id: continuation.session_id,
           gate_continuation: continuation.gate_continuation,
+          ...(detectMarket() === "PK" && { metering_type: meteringType }),
         }),
       });
     }).then(r => {
@@ -305,7 +307,7 @@ function AssessPageInner() {
       setPhase("complaint");
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assessmentId, router]);
+  }, [assessmentId, meteringType, router]);
 
   /** Public handler — checks SendMomentModal before firing */
   const handlePhase2Gate = useCallback((continuation: GateContinuation) => {
@@ -329,6 +331,7 @@ function AssessPageInner() {
       const body: Record<string, unknown> = {
         assessment_id: assessmentId,
         card_id: resolvedCardId,
+        ...(detectMarket() === "PK" && { metering_type: meteringType }),
       };
       if (diagnosedSessionId) body.session_id = diagnosedSessionId;
       if (photos.length > 0) body.photo_urls = photos.map(p => p.photo_url);
@@ -346,7 +349,7 @@ function AssessPageInner() {
       setPhase("evidence");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assessmentId, resolvedCardId, diagnosedSessionId, router]);
+  }, [assessmentId, resolvedCardId, diagnosedSessionId, meteringType, router]);
 
   /** Public handler — checks SendMomentModal before firing */
   const handleGenerateEstimate = useCallback(async (photos: PhotoResult[]) => {
@@ -392,6 +395,9 @@ function AssessPageInner() {
         clerkToken={null}
         onConfirm={(result) => {
           setOcrResult(result as unknown as Record<string, unknown>);
+          // PK inverter pricing: capture series_type from DB model selection
+          const st = (result.outdoor as { series_type?: string | null })?.series_type;
+          setMeteringType(st === "inverter" ? "inverter" : "any");
           setPhase("complaint");
         }}
         onSkip={() => setPhase("complaint")}
@@ -748,17 +754,4 @@ function AssessPageInner() {
   return null;
 }
 
-// ── Exported page: Suspense wrapper required for useSearchParams ─────────────────────────
-export default function AssessPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
-        </div>
-      }
-    >
-      <AssessPageInner />
-    </Suspense>
-  );
-}
+// ── 

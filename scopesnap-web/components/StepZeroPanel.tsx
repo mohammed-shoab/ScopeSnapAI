@@ -41,6 +41,8 @@ interface NameplateUnit {
   r22_alert:          boolean;
   confidence:         number;
   notes:              string | null;
+  /** PK market only — "inverter" | "non_inverter" | null */
+  series_type?:       string | null;
 }
 
 interface OcrResult {
@@ -318,7 +320,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   const handleManualConfirm = useCallback(() => {
     // PK: bake the picker selection into the outdoor unit before confirming
     const outdoor = isPK
-      ? { ...manualUnit, refrigerant: pkRefrigerant }
+      ? { ...manualUnit, refrigerant: pkRefrigerant, series_type: selectedSeriesType }
       : { ...manualUnit };
     const result: OcrResult = {
       outdoor,
@@ -1268,13 +1270,4 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       )}
 
       <p className="text-center text-xs text-gray-400">
-        Nameplate specs auto-fill all cards — save time on every call
-      </p>
-
-        </> /* end activeTab === "photo" */
-      )}
-
-    </div>
-  );
-}
-          
+        Nameplate specs auto-fill all ca
