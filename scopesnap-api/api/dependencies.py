@@ -35,6 +35,7 @@ class MarketTables:
     replacement_costs: str
     lifecycle_rules: str
     brands: str
+    pricing_tiers: str
 
 
 _US_TABLES = MarketTables(
@@ -46,6 +47,7 @@ _US_TABLES = MarketTables(
     replacement_costs="replacement_cost_estimates",
     lifecycle_rules="lifecycle_rules",
     brands="brands",
+    pricing_tiers="pricing_tiers",
 )
 
 _PK_TABLES = MarketTables(
@@ -57,6 +59,7 @@ _PK_TABLES = MarketTables(
     replacement_costs="pak_replacement_costs_v",  # view: maps pkr_min/max/typical → price_min/max/typical
     lifecycle_rules="pak_lifecycle_rules_v",      # view: US-compatible schema, 0 rows → falls to default
     brands="pak_brands",                   # direct: not queried by API endpoints (yet)
+    pricing_tiers="pak_pricing_tiers",        # PK PKR pricing tiers (created migration 022)
 )
 
 

@@ -135,6 +135,7 @@ class FaultCardEstimateRequest(BaseModel):
     after_hours:    bool            = Field(False)
     refrigerant:    Optional[str]   = Field(None)
     assessment_id:  Optional[str]   = Field(None)
+    metering_type:  Optional[str]   = Field("any", description="inverter | non_inverter | any")
 
 
 class EstimateTier(BaseModel):
@@ -212,8 +213,14 @@ async def generate_fault_card_estimate(
 
     # 2. Load pricing tiers A/B/C
     pt_rows = await db.execute(
-        text("SELECT tier, estimate_amount FROM pricing_tiers WHERE card_id = :cid ORDER BY tier"),
-        {"cid": body.card_id},
+        text(
+            f"SELECT tier, estimate_amount FROM {tables.pricing_tiers} "
+            "WHERE card_id = :cid "
+            "AND (metering_type = 'any' OR metering_type = :mt) "
+            "ORDER BY tier, CASE metering_type WHEN 'any' THEN 2 ELSE 1 END "
+            "LIMIT 3"
+        ),
+        {"cid": body.card_id, "mt": body.metering_type or "any"},
     )
     pricing = {row.tier: row.estimate_amount for row in pt_rows.fetchall()}
     if not pricing:
