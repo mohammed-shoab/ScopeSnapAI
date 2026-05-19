@@ -1270,4 +1270,13 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       )}
 
       <p className="text-center text-xs text-gray-400">
-        Nameplate specs auto-fill all ca
+        Nameplate specs auto-fill all cards — save time on every call
+      </p>
+
+        </> /* end activeTab === "photo" */
+      )}
+
+    </div>
+  );
+}
+          
