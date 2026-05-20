@@ -1,0 +1,44 @@
+{
+  "model_type": "XGBoostClassifier",
+  "version": "1.0",
+  "trained": "March 2026",
+  "accuracy": 90.09,
+  "f1_score": 90.06,
+  "cv_accuracy_mean": 89.88,
+  "cv_accuracy_std": 0.53,
+  "n_training_samples": 17600,
+  "n_test_samples": 4400,
+  "features": [
+    "outdoor_ambient_temp",
+    "supply_air_temp",
+    "return_air_temp",
+    "suction_pressure",
+    "discharge_pressure",
+    "unit_age_years",
+    "supply_to_outdoor_delta",
+    "return_supply_delta",
+    "pressure_ratio",
+    "superheat_proxy"
+  ],
+  "classes": [
+    "compressor_inefficiency",
+    "dirty_condenser_coil",
+    "dirty_evaporator_coil",
+    "faulty_condenser_fan",
+    "low_airflow_dirty_filter",
+    "normal",
+    "refrigerant_overcharge",
+    "refrigerant_undercharge"
+  ],
+  "n_classes": 8,
+  "hyperparameters": {
+    "n_estimators": 400,
+    "max_depth": 7,
+    "learning_rate": 0.05
+  },
+  "usage": {
+    "input": "6 field readings from tech + 4 derived features (auto-computed)",
+    "output": "fault_label + probability score",
+    "endpoint": "POST /api/sensor-diagnosis"
+  }
+}
