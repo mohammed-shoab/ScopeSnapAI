@@ -224,4 +224,132 @@ export default function SendMomentModal({
           {saving ? "Saving…" : "Save & Generate Report →"}
         </button>
 
-        <
+    <div
+      style={{
+        position: "fixed", inset: 0, zIndex: 9999,
+        background: "rgba(0,0,0,0.55)", backdropFilter: "blur(3px)",
+        display: "flex", alignItems: "flex-end", justifyContent: "center",
+        padding: "0 0 env(safe-area-inset-bottom, 0)",
+      }}
+    >
+      {/* Sheet */}
+      <div
+        style={{
+          width: "100%", maxWidth: 480,
+          background: "white", borderRadius: "20px 20px 0 0",
+          padding: "28px 24px 32px",
+          boxShadow: "0 -8px 32px rgba(0,0,0,0.18)",
+        }}
+      >
+        {/* Handle */}
+        <div style={{ width: 36, height: 4, background: "#e2dfd7", borderRadius: 2, margin: "0 auto 24px" }} />
+
+        {/* Header */}
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <div
+              style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: "#1a8754", display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ color: "white", fontSize: 18 }}>📱</span>
+            </div>
+            <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: "#1a1a18" }}>
+              Before we send this report…
+            </h2>
+          </div>
+          <p style={{ fontSize: 13, color: "#7a7770", margin: 0, lineHeight: 1.5 }}>
+            Your company name and phone appear on the homeowner&apos;s report. Add them once — they&apos;re saved for all future estimates.
+          </p>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div
+            style={{
+              background: "#fef2f2", border: "1px solid #fecaca",
+              borderRadius: 10, padding: "10px 14px",
+              fontSize: 13, color: "#b91c1c", marginBottom: 16,
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        {/* Fields */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 22 }}>
+          <div>
+            <label
+              style={{
+                display: "block", fontSize: 11, fontWeight: 700,
+                color: "#7a7770", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6,
+              }}
+            >
+              Company Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Your Company LLC"
+              style={{
+                width: "100%", boxSizing: "border-box",
+                border: "1.5px solid #e2dfd7", borderRadius: 10,
+                padding: "11px 14px", fontSize: 15, fontWeight: 600,
+                outline: "none", color: "#1a1a18",
+              }}
+              onFocus={e => (e.target.style.borderColor = "#1a8754")}
+              onBlur={e => (e.target.style.borderColor = "#e2dfd7")}
+            />
+          </div>
+
+          <div>
+            <label
+              style={{
+                display: "block", fontSize: 11, fontWeight: 700,
+                color: "#7a7770", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6,
+              }}
+            >
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="(555) 123-4567"
+              style={{
+                width: "100%", boxSizing: "border-box",
+                border: "1.5px solid #e2dfd7", borderRadius: 10,
+                padding: "11px 14px", fontSize: 15, fontWeight: 600,
+                outline: "none", color: "#1a1a18",
+              }}
+              onFocus={e => (e.target.style.borderColor = "#1a8754")}
+              onBlur={e => (e.target.style.borderColor = "#e2dfd7")}
+            />
+          </div>
+        </div>
+
+        {/* Submit */}
+        <button
+          onClick={handleSubmit}
+          disabled={saving || !name.trim() || !phone.trim()}
+          style={{
+            width: "100%", padding: "14px", borderRadius: 12,
+            background: saving || !name.trim() || !phone.trim() ? "#ccc" : "#1a8754",
+            color: "white", fontWeight: 800, fontSize: 15,
+            border: "none", cursor: saving ? "wait" : "pointer",
+            transition: "background 0.15s",
+          }}
+        >
+          {saving ? "Saving…" : "Save & Generate Report →"}
+        </button>
+
+        <p style={{ textAlign: "center", fontSize: 11, color: "#b0aca4", marginTop: 12, marginBottom: 0 }}>
+          You can update these any time in Settings
+        </p>
+      </div>
+    </div>
+  );
+}
