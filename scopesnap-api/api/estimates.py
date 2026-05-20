@@ -21,6 +21,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from db.database import get_db
 from db.models import Assessment, Company, Estimate, EstimateLineItem, FollowUp, Property
 from api.auth import get_current_user, AuthContext
+from api.dependencies import get_tables, MarketTables
 from config import get_settings
 
 router = APIRouter(prefix="/api/estimates", tags=["estimates"])
@@ -61,6 +62,62 @@ def _estimate_to_dict(estimate: Estimate) -> dict:
         "sent_at": estimate.sent_at.isoformat() if estimate.sent_at else None,
         "created_at": estimate.created_at.isoformat() if estimate.created_at else None,
     }
+
+
+
+async def _enrich_tco_from_db(data: dict, estimate, db, tables: "MarketTables") -> dict:
+    """G.4 Track G: overwrite options[].five_year_comparison with TCO table data."""
+    try:
+        ds_result = await db.execute(
+            text(
+                "SELECT resolved_card_id FROM diagnostic_sessions "
+                "WHERE assessment_id = :aid AND resolved_card_id IS NOT NULL "
+                "ORDER BY created_at DESC LIMIT 1"
+            ),
+            {"aid": str(estimate.assessment_id)},
+        )
+        card_id = ds_result.scalar_one_or_none()
+        if card_id is None:
+            return data
+
+        if tables.market == "PK":
+            tco_table = "pak_card_tco_data"
+            cost_col = "avg_repair_cost_pkr_if_event"
+            sav_col = "energy_savings_5yr_pkr"
+        else:
+            tco_table = "card_tco_data"
+            cost_col = "avg_repair_cost_usd_if_event"
+            sav_col = "energy_savings_5yr_usd"
+
+        tco_rows = await db.execute(
+            text(
+                f"SELECT tier, prob_major_repair_5yr_pct, prob_range, "
+                f"{cost_col}, {sav_col} "
+                f"FROM {tco_table} WHERE card_id = :cid"
+            ),
+            {"cid": int(card_id)},
+        )
+        tco_by_tier = {
+            row[0]: {
+                "probability_pct": row[1],
+                "probability_range": row[2],
+                "expected_repair_cost": row[3],
+                "energy_savings_5yr": row[4],
+            }
+            for row in tco_rows.fetchall()
+        }
+
+        if not tco_by_tier:
+            return data
+
+        options = data.get("options") or []
+        for opt in options:
+            tier = opt.get("tier")  # "A", "B", or "C"
+            opt["five_year_comparison"] = tco_by_tier.get(tier)
+        data["options"] = options
+    except Exception:
+        pass  # Never break estimates for TCO enrichment failure
+    return data
 
 
 # ── Request Models ────────────────────────────────────────────────────────────
@@ -232,6 +289,7 @@ async def get_estimate(
     estimate_id: str,
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    tables: MarketTables = Depends(get_tables),
 ):
     """Returns full estimate including all Good/Better/Best options and line items."""
     result = await db.execute(
@@ -245,6 +303,9 @@ async def get_estimate(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Estimate not found")
 
     data = _estimate_to_dict(estimate)
+
+    # G.4 Track G: enrich with TCO probability data
+    data = await _enrich_tco_from_db(data, estimate, db, tables)
 
     # Attach homeowner view count from app_events (report_viewed events)
     try:
