@@ -1050,4 +1050,30 @@ export default function ReportClient({ report }: { report: Report }) {
             Report ID: {report.report_short_id}
           </span>
           {property?.address_line1 && (
-  
+            <>
+              <br />
+              {[property.address_line1, property.city, property.state].filter(Boolean).join(", ")}
+            </>
+          )}
+          <br />
+          <span style={{ color: "#c8c4bc" }}>
+            Verified Assessment by{" "}
+            <a
+              href="https://snapai.mainnov.tech"
+              style={{ color: "#1a8754", fontWeight: 700, textDecoration: "none" }}
+            >
+              SnapAI
+            </a>
+          </span>
+          <br />
+          <span style={{ color: "#b0aca4" }}>
+            Professional HVAC assessments for contractors — snapai.mainnov.tech
+          </span>
+          {/* QR code — Zuckerberg req: homeowner scans to re-open report on any device */}
+          {/* UTM params: utm_source=report&utm_medium=qr for attribution tracking */}
+          <ReportQRCode reportShortId={report.report_short_id} />
+        </div>
+      </div>
+    </div>
+  );
+}
