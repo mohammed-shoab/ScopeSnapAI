@@ -8,7 +8,8 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { formatCurrency } from "@/lib/market";
+import { formatCurrency, detectMarket } from "@/lib/market";
+import FiveYearComparison, { type TierTCO } from "@/components/FiveYearComparison";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 interface LineItem {
@@ -37,6 +38,7 @@ interface Option {
   total: number;
   subtotal?: number;
   five_year_total?: number;
+  five_year_comparison?: TierTCO | null;
   line_items?: LineItem[];
   energy_savings?: EnergySavings | number;
   job_type?: string;
@@ -345,74 +347,23 @@ function Slide3Options({ estimate, selectedTier, onSelectTier }: {
   );
 }
 
-// ─── Slide 4 — 5-Year Value ────────────────────────────────────────────────
+// ─── Slide 4 — 5-Year Value (Track G) ──────────────────────────────────────
 function Slide4Value({ estimate, selectedTier }: { estimate: EstimateData; selectedTier: string }) {
   const options = estimate.options || [];
-  const maxFive = Math.max(...options.map(o => o.five_year_total || o.total * 5));
-  const colors: Record<string, string> = { good: "#6b7280", better: "#1a8754", best: "#1565c0" };
-  const letters: Record<string, string> = { good: "A", better: "B", best: "C" };
-
-  const betterOpt = options.find(o => o.tier === "better");
-  const goodOpt = options.find(o => o.tier === "good");
-  const annSavings = betterOpt ? getAnnualSavings(betterOpt) : 0;
-  const fiveSavings = betterOpt && goodOpt
-    ? ((goodOpt.five_year_total || goodOpt.total * 5) - (betterOpt.five_year_total || betterOpt.total * 5))
-    : 0;
+  const market = detectMarket();
+  const recommendedTier = (selectedTier as "A" | "B" | "C");
 
   return (
-    <div className="flex flex-col h-full px-6 py-6 space-y-5 bg-white">
-      <div className="text-center">
-        <p className="text-text-secondary text-xs font-mono uppercase tracking-widest mb-1">5-Year Total Cost</p>
-        <p className="text-text-primary font-extrabold text-xl">True Value Comparison</p>
-        <p className="text-text-secondary text-xs mt-1">Install cost + operating costs − energy savings</p>
-      </div>
-
-      {/* Bar chart */}
-      <div className="space-y-3 flex-1">
-        {options.map((opt) => {
-          const fiveTotal = opt.five_year_total || opt.total * 5;
-          const pct = maxFive > 0 ? (fiveTotal / maxFive) * 100 : 100;
-          const isSelected = selectedTier === opt.tier;
-          const col = colors[opt.tier] || "#6b7280";
-          return (
-            <div key={opt.tier}>
-              <div className="flex items-center justify-between mb-1">
-                <span className={`text-xs font-bold ${isSelected ? "text-text-primary" : "text-text-secondary"}`}>
-                  Option {letters[opt.tier]}  {opt.name.length > 22 ? opt.name.slice(0, 20) + "…" : opt.name}
-                </span>
-                <span className="text-xs font-mono font-bold" style={{ color: col }}>{fmt(fiveTotal)}</span>
-              </div>
-              <div className="h-8 bg-surface-secondary rounded-xl overflow-hidden">
-                <div
-                  className="h-full rounded-xl flex items-center justify-end pr-2 transition-all duration-700"
-                  style={{
-                    width: `${pct}%`,
-                    background: isSelected ? col : `${col}88`,
-                    minWidth: 40,
-                  }}
-                >
-                  {isSelected && <span className="text-white text-[9px] font-bold">Best value</span>}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Savings highlight */}
-      {fiveSavings > 0 && (
-        <div className="bg-brand-green-light rounded-2xl p-4 text-center">
-          <p className="text-brand-green font-extrabold text-3xl font-mono">{fmt(fiveSavings)}</p>
-          <p className="text-text-secondary text-xs mt-1">saved over 5 years vs. Option A</p>
-          {annSavings > 0 && (
-            <p className="text-brand-green text-xs font-semibold mt-1">+{fmt(annSavings)}/yr energy savings</p>
-          )}
-        </div>
-      )}
-
-      <p className="text-center text-xs text-text-secondary italic">
-        "I'll send this to you — review it with your family at your own pace."
-      </p>
+    <div className="flex flex-col h-full bg-white overflow-y-auto">
+      <FiveYearComparison
+        optionA={options.find((o) => o.tier === "A")?.five_year_comparison ?? null}
+        optionB={options.find((o) => o.tier === "B")?.five_year_comparison ?? null}
+        optionC={options.find((o) => o.tier === "C")?.five_year_comparison ?? null}
+        recommendedTier={recommendedTier}
+        market={market}
+        mode="present_mode"
+        sessionId={estimate.report_short_id}
+      />
     </div>
   );
 }

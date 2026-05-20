@@ -240,4 +240,18 @@ export const track = {
   // Fires when user restarts diagnostic from "..." menu (DX.13).
   diagnosisRestarted: (sessionId: string) =>
     trackEvent("diagnosis_restarted", { session_id: sessionId }),
+  // ── Track G: 5-Year TCO engagement events ────────────────────────────────
+
+  // Fires on mount of FiveYearComparison (once per render, guarded by ref).
+  tcoSectionRendered: (sessionId: string, market: string, recommendedTier: string, mode: string) =>
+    trackEvent("tco_section_rendered", { session_id: sessionId, market, recommended_tier: recommendedTier, mode }),
+
+  // Fires when user hovers or touches a non-recommended tier card.
+  tcoOptionCompared: (sessionId: string, tier: string) =>
+    trackEvent("tco_option_compared", { session_id: sessionId, tier }),
+
+  // Fires when the methodology block scrolls into the viewport (IntersectionObserver).
+  tcoMethodologyViewed: (sessionId: string) =>
+    trackEvent("tco_methodology_viewed", { session_id: sessionId }),
+
 };

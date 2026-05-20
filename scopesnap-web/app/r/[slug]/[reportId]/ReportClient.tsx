@@ -5,6 +5,7 @@ import DataConfidenceLabel from "@/components/DataConfidenceLabel";
 import { track } from "@/lib/tracking";
 import { formatCurrency, detectMarket, getLanguage } from "@/lib/market";
 import { URDU_STRINGS } from "@/lib/urdu-strings";
+import FiveYearComparison, { type TierTCO } from "@/components/FiveYearComparison";
 
 /**
  * ReportQRCode — SOW Task 1.9 (Zuckerberg requirement)
@@ -51,6 +52,7 @@ interface Option {
   line_items?: Array<{ label?: string; amount?: number; description?: string; total?: number }>;
   description?: string;
   savings_note?: string;
+  five_year_comparison?: TierTCO | null;
   recommended?: boolean;
 }
 
@@ -321,42 +323,6 @@ function IssueItem({ issue }: { issue: Issue }) {
   );
 }
 
-function CostBar({ option, maxVal }: { option: Option; maxVal: number }) {
-  const pct = Math.round((option.five_year_total || option.total) / maxVal * 100);
-  const isGood = option.tier === "good";
-  const isBetter = option.tier === "better";
-  const isBest = option.tier === "best";
-  const fillColor = isGood ? "#c4600a" : isBetter ? "#1a8754" : "#1565c0";
-  const label = TIER_LABELS[option.tier] || option.tier;
-
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
-        <span>{label}: {option.name}</span>
-        <span style={{ fontFamily: "IBM Plex Mono, monospace", color: fillColor, fontSize: 14 }}>
-          {fmt(option.five_year_total || option.total)}
-        </span>
-      </div>
-      <div style={{ height: 24, background: "#f7f6f2", borderRadius: 6, overflow: "hidden", position: "relative" }}>
-        <div
-          style={{
-            width: `${Math.max(pct, 15)}%`,
-            height: "100%",
-            background: fillColor,
-            borderRadius: 6,
-            display: "flex",
-            alignItems: "center",
-            paddingLeft: 8,
-          }}
-        >
-          <span style={{ fontSize: 8, fontWeight: 600, color: "white", whiteSpace: "nowrap" }}>
-            {fmt(option.five_year_total || option.total)} over 5 yrs
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function ReportClient({ report }: { report: Report }) {
   // Urdu / RTL support for PK homeowner reports
@@ -415,7 +381,6 @@ export default function ReportClient({ report }: { report: Report }) {
   const equipment = report.equipment;
   const remainingLife = report.remaining_life;
 
-  const maxFiveYr = Math.max(...(report.options || []).map((o) => o.five_year_total || o.total), 1);
 
   const handleApprove = async () => {
     if (!selectedTier || approving || approved) return;
@@ -953,38 +918,18 @@ export default function ReportClient({ report }: { report: Report }) {
           </div>
         )}
 
-        {/* 5-Year Cost Comparison */}
+        {/* 5-Year TCO — Track G */}
         {report.options.length > 0 && (
-          <div
-            style={{
-              background: "white",
-              margin: "10px",
-              borderRadius: 16,
-              boxShadow: "0 1px 4px rgba(0,0,0,.04), 0 6px 16px rgba(0,0,0,.04)",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                padding: "14px 16px 0",
-                fontSize: 10,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: 1,
-                fontFamily: "IBM Plex Mono, monospace",
-                color: "#1565c0",
-              }}
-            >
-              5-Year Cost Comparison
-            </div>
-            <div style={{ padding: "12px 16px 16px" }}>
-              {report.options.map((opt, i) => (
-                <CostBar key={i} option={opt} maxVal={maxFiveYr} />
-              ))}
-              <p style={{ fontSize: 10, color: "#a8a49c", marginTop: 4 }}>
-                Includes upfront cost + estimated energy savings + future repair probability
-              </p>
-            </div>
+          <div style={{ margin: "10px 0" }}>
+            <FiveYearComparison
+              optionA={report.options.find((o) => o.tier === "A")?.five_year_comparison ?? null}
+              optionB={report.options.find((o) => o.tier === "B")?.five_year_comparison ?? null}
+              optionC={report.options.find((o) => o.tier === "C")?.five_year_comparison ?? null}
+              recommendedTier={(initialRecommendedTier as "A" | "B" | "C")}
+              market={detectMarket()}
+              mode="homeowner_report"
+              sessionId={report.report_short_id}
+            />
           </div>
         )}
 
@@ -1086,18 +1031,4 @@ export default function ReportClient({ report }: { report: Report }) {
             Report ID: {report.report_short_id}
           </span>
           {property?.address_line1 && (
-            <>
-              <br />
-              {[property.address_line1, property.city, property.state].filter(Boolean).join(", ")}
-            </>
-          )}
-          <br />
-          <span style={{ color: "#c8c4bc" }}>
-            Verified Assessment by{" "}
-            <a
-              href="https://snapai.mainnov.tech"
-              style={{ color: "#1a8754", fontWeight: 700, textDecoration: "none" }}
-            >
-              SnapAI
-            </a>
-        
+  
