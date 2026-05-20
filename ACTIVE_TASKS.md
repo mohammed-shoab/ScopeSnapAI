@@ -3,7 +3,7 @@
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-20 (All tracks complete. HEAD: fe86144. All bugs fixed. Lessons documented in TECH_STACK.md WA-9 through WA-14. Next session: start fresh backlog.)
+> Last updated: 2026-05-20 (Post-track-F+DX QA complete. HEAD: 85c5755. BUG-025+BUG-026 fixed. Alembic 030. Inverter badge data gap noted.)
 
 ---
 
@@ -27,6 +27,60 @@ These bugs were found during the 2026-05-20 full audit. Full workarounds in TECH
 
 
 ## Last QA Run
+
+**Date:** 2026-05-20 (Post-track-F+DX — BUG-025/026 + full 6-flow UI check both markets)
+**Markets tested:** Both Houston US and Pakistan PK
+**Outcome:** PASS ✅ COMPLETE
+**Alembic head:** 030 (pak_diagnosis_feedback alternative_fault_id column)
+**Commits this session:** 1674b4e (track-F A.1+A.3), 1ca5ed6 (track-DX group-b), d5efc36 (fix migration-030), 85c5755 (BUG-025+BUG-026)
+**Vercel:** Both Houston + PK on build main-app-63c8a702126b03a3.js ✅
+**Railway:** ACTIVE — "Deployment successful" on 85c5755 ✅
+**QA sign-off:** FULLY COMPLETE ✅
+
+### Bugs Found and Fixed
+
+**BUG-025 — seasonal_modifier_pct ORM column missing (FIXED — commit 85c5755)**
+- **Problem:** `seasonal_modifier_pct` passed to Estimate ORM constructor in `fault_estimate.py`
+  but column was missing from the Estimate ORM class in `db/models.py`.
+  SQLAlchemy 2.0 silently sets unknown kwargs as Python attributes — value is never persisted to DB.
+- **Symptom:** Seasonal banner never showed even in peak months; DB column always null/default.
+- **Fix:** Added `seasonal_modifier_pct: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")`
+  to the Estimate class in `scopesnap-api/db/models.py` (before "Accuracy tracking" section).
+- **Verified:** New estimate rpt-0494 shows `seasonal_modifier_pct=0` in DB ✅ (0 is correct for May)
+
+**BUG-026 — handleContinue navigated to assessment_id instead of estimate_id (FIXED — commit 85c5755)**
+- **Problem:** `handleContinue` in `FaultResolutionScreen.tsx` was synchronous and did
+  `router.push(\`/assessment/\${data.assessment_id}\`)` — navigating to the assessment UUID, not an
+  estimate UUID. `/assessment/{assessment_id}` returns 404 because it expects an estimate ID.
+- **Root cause:** assessment_id != estimate_id. Estimate must be created first via
+  `POST /api/estimates/fault-card`, then navigate to the returned `est.id`.
+- **Fix:** Made `handleContinue` async, calls `POST /api/estimates/fault-card` first,
+  then navigates to `/assessment/{est.id}`.
+- **Verified:** POST /api/estimates/fault-card called ✅, navigated to /assessment/97b22e44-…
+  (estimate ID, not assessment ID), rpt-0494 loaded fully with A/B/C options ✅
+
+### Railway Incident (not a code bug)
+- **Platform-wide slow builds** during this session (Railway status page confirmed).
+- Build 85c5755 took ~28 minutes vs. normal ~5 minutes. Pro plan builds processed normally.
+- No action required.
+
+### Staging Banner Observation (out of scope — needs Vercel dashboard action)
+- `NEXT_PUBLIC_ENV=staging` set in Vercel production config → staging banner visible on PK.
+- Fix: Vercel dashboard → project → Environment Variables → set `NEXT_PUBLIC_ENV=production`
+  for Production environment. NOT a code change.
+
+### Inverter Badge Data Gap (observation)
+- QA spec: "Inverter badge: select Gree Fairy Inverter — badge must appear"
+- DB query on pak_brands confirms ALL 8 Gree series have `type: "non_inverter"`.
+- No "Fairy Inverter" variant exists in pak_brands DB.
+- Inverter badge logic exists in `StepZeroPanel.tsx` (line 691) and works correctly when
+  `m.series_type === "inverter"` — but Gree has no inverter models in the seed data.
+- Inverter models DO exist in the DB for: Haier, Orient, PEL, Kenwood, Samsung, LG, Mitsubishi.
+- **Action item:** Test inverter badge against one of those brands (e.g., Haier "Triple Inverter").
+
+---
+
+## Previous QA Run
 
 **Date:** 2026-05-20 (Full audit — Tracks R/R9/REC/D/P/Staging + all decisions resolved)
 **Markets tested:** Both Houston US and Pakistan PK (infrastructure + code path verified)

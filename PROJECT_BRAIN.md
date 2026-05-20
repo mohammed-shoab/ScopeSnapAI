@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-20 (All docs cleaned + updated. HEAD: ba15901. All tracks complete. Alembic 029. All .md files current.)
+> Last updated: 2026-05-20 (QA run post-track-F+DX. HEAD: 85c5755. BUG-025+BUG-026 fixed. Alembic 030. All .md files current.)
 
 ---
 
@@ -80,9 +80,9 @@
 ### Production
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both prod domains) | `ba15901` | Production Live | 2026-05-20 |
-| Railway backend (prod) | `ba15901` | Health OK | 2026-05-20 |
-| Alembic migration (prod) | `029` | Applied via Supabase direct (WA-7 pattern) | 2026-05-20 |
+| Vercel (both prod domains) | `85c5755` | Production Live | 2026-05-20 |
+| Railway backend (prod) | `85c5755` | Health OK — "Deployment successful" | 2026-05-20 |
+| Alembic migration (prod) | `030` | pak_diagnosis_feedback alternative_fault_id col | 2026-05-20 |
 | pak_data_defaults | 1 row (market=PK) | Seeded | 2026-05-19 |
 | pak_operating_targets | PK PSI thresholds + R-32 (5 rows, 30-50C ambient) | Seeded | 2026-05-18 |
 
@@ -99,9 +99,13 @@
 **Staging git HEAD:** `980698b` — "chore(staging): migrations 020-025 + dual keepalive A/B + promote-to-prod.sh"
 **Promote staging → prod:** `scripts/promote-to-prod.sh <file1> [file2 ...]` (run from a local main checkout)
 
-**Current git HEAD (main):** `ba15901` -- "docs(cleanup): remove stale to-dos + update all .md files to HEAD 02ad667 / alembic 029"
+**Current git HEAD (main):** `85c5755` -- "fix(qa): seasonal_modifier_pct ORM column + handleContinue creates estimate before navigating"
 
 **Recent commits (newest first -- main):**
+- `85c5755` -- fix(qa): seasonal_modifier_pct ORM column + handleContinue creates estimate before navigating (2026-05-20)
+- `d5efc36` -- fix(migration-030): diagnosis_feedback only -- pak_diagnosis_feedback does not exist in prod (2026-05-20)
+- `1ca5ed6` -- feat(track-dx-group-b): diagnosis screen UX overhaul (DX.3 through DX.15) (2026-05-20)
+- `1674b4e` -- fix(track-f-a.1+a.3): seasonal report disclosure + dashboard Sent count canonical fix (2026-05-20)
 - `ba15901` -- docs(cleanup): remove stale to-dos + update all .md files (2026-05-20)
 - `02ad667` -- docs(TECH_STACK+BRAIN): full post-audit update (2026-05-20)
 - `35f450c` -- docs: all QA decisions resolved -- D.6 backfill done, R.7+S.7 shipped (2026-05-20)
@@ -160,3 +164,12 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 ## PSI Thresholds (from diagnostic_questions / pak_diagnostic_questions)
 
 | Refrige
+
+---
+
+## QA History
+
+| Date | Markets | Outcome | Bugs Fixed | Commit |
+|------|---------|---------|------------|--------|
+| 2026-05-20 (full audit) | Houston + PK | PASS ✅ | 53 items resolved | ba15901 |
+| 2026-05-20 (post-track-F+DX) | Houston + PK | PASS ✅ | BUG-025, BUG-026 | 85c5755 |

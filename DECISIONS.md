@@ -564,3 +564,86 @@ wc -l scopesnap-api/api/diagnostic.py
 
 **Rule:** Before marking any backend track complete, always grep the actual file for
 every route that was supposed to be added. Task list status alone is not sufficient proof.
+---
+
+## DEC-036 -- SQLAlchemy 2.0 silently drops ORM constructor kwargs for unmapped columns (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Problem:** `fault_estimate.py` passed `seasonal_modifier_pct=seasonal_pct_int` to the
+`Estimate(...)` ORM constructor. The column existed in the database (added by migration 029)
+but was NOT defined in the `Estimate` ORM class in `db/models.py`.
+
+SQLAlchemy 2.0 with `DeclarativeBase` silently sets unknown constructor kwargs as plain Python
+attributes on the instance — no error, no warning. The value is **never persisted to the database**.
+The column always received its `server_default` of 0, regardless of what Python passed.
+
+**Discovery:** Noticed the seasonal banner never appeared in peak months. Traced to
+`seasonal_modifier_pct` always being 0 in DB. Compared `fault_estimate.py` constructor call
+against `db/models.py` Estimate class definition — column was absent from ORM.
+
+**Fix:** Added to `Estimate` class in `db/models.py`:
+```python
+# R.9 seasonal labour surcharge captured at generation time (migration 029)
+seasonal_modifier_pct: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+```
+
+**Rule for future migrations:** Any time a new column is added via Alembic migration AND
+the column value is set in Python code (not purely a server_default), the corresponding
+`Mapped[type] = mapped_column(...)` line MUST be added to the ORM class in `db/models.py`.
+
+**Verification pattern after any new column + ORM work:**
+```python
+# After creating a test record, query the column immediately:
+result = db.execute(text("SELECT seasonal_modifier_pct FROM estimates WHERE id = :id"), {"id": est.id})
+print(result.scalar())  # Must NOT be server_default if Python passed a value
+```
+
+---
+
+## DEC-037 -- FaultResolutionScreen.handleContinue must be async and create estimate before navigating (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Problem:** `handleContinue` in `FaultResolutionScreen.tsx` was synchronous and navigated to
+`/assessment/${data.assessment_id}`. This is wrong for two reasons:
+1. `assessment_id` is the diagnostic assessment UUID — NOT an estimate UUID.
+2. The `/assessment/[id]` page expects an **estimate** ID (from the `estimates` table).
+Navigating to an assessment_id caused a 404 on the estimate builder page.
+
+**Root cause:** The function was written before the diagnoses flow was refactored. After the
+DX track refactor, assessments no longer auto-create estimates — the estimate must be explicitly
+created by calling `POST /api/estimates/fault-card`.
+
+**Fix:** Made `handleContinue` async:
+```typescript
+async function handleContinue() {
+  if (!data.assessment_id || navigating) return;
+  setNavigating(true);
+  // ... track event ...
+  try {
+    const token = await getToken();
+    const est = await apiFetch<{ id: string }>("/api/estimates/fault-card", {
+      method: "POST",
+      token: token ?? undefined,
+      body: JSON.stringify({
+        card_id: data.fault.card_id,
+        assessment_id: data.assessment_id,
+      }),
+    });
+    if (!est.id) throw new Error("No estimate ID");
+    router.push(`/assessment/${est.id}`);  // est.id = estimate UUID
+  } catch (err) {
+    console.error("Estimate creation failed:", err);
+    setNavigating(false);
+  }
+}
+```
+
+**Rule:** Any button that "continues to estimate" from a diagnosis result MUST:
+1. Call `POST /api/estimates/fault-card` with `{card_id, assessment_id}`
+2. Use the returned `est.id` (estimate UUID) for navigation
+3. Never use `data.assessment_id` or `data.session_id` as the route parameter
+
+**Verified live:** rpt-0494 created and loaded correctly after fix. Navigation went to
+`/assessment/97b22e44-c121-4e21-92e6-0d3a158b4e95` (estimate ID). ✅

@@ -875,6 +875,50 @@ the sandbox was restarted between steps. Always add it before the first git read
 
 
 
+
+### WA-15 — SQLAlchemy ORM column must be defined for every DB column set in Python (2026-05-20)
+
+**Problem:** When a new column is added via Alembic migration, you must ALSO add the
+corresponding `Mapped[type] = mapped_column(...)` line to the ORM class in `db/models.py`.
+If you skip this step, SQLAlchemy 2.0 DeclarativeBase silently accepts the constructor kwarg
+as a Python attribute, never persisting it to the database. No error, no warning.
+
+**Detection:** Query the column after creating a test record:
+```python
+db.execute(text("SELECT new_col FROM table WHERE id = :id"), {"id": obj.id}).scalar()
+# Returns server_default value instead of what Python passed? → ORM column missing.
+```
+
+**Fix template:**
+```python
+# In db/models.py, inside the relevant ORM class:
+new_col: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+```
+
+**Real instance:** BUG-025 — `seasonal_modifier_pct` was passed to `Estimate(...)` constructor
+in `fault_estimate.py` but missing from the Estimate ORM class. Seasonal modifier was silently
+dropped on every estimate creation. Fixed in commit 85c5755. See DEC-036.
+
+---
+
+### WA-16 — handleContinue (or any "go to estimate" button) must create estimate first (2026-05-20)
+
+**Problem:** After the DX track refactor, navigating from a diagnosis result to the estimate
+builder requires FIRST creating the estimate via `POST /api/estimates/fault-card`. Navigating
+directly using `assessment_id` causes a 404 because `/assessment/[id]` expects an estimate UUID.
+
+**Rule:** Any component that says "Continue to Estimate" must:
+```typescript
+const est = await apiFetch<{ id: string }>("/api/estimates/fault-card", {
+  method: "POST", token, body: JSON.stringify({ card_id, assessment_id })
+});
+router.push(`/assessment/${est.id}`);  // ← est.id, never data.assessment_id
+```
+
+**Real instance:** BUG-026 — `FaultResolutionScreen.handleContinue` navigated to
+`/assessment/${data.assessment_id}` (assessment UUID, not estimate UUID → 404).
+Fixed in commit 85c5755. See DEC-037.
+
 ---
 
 ## PK (Pakistan) Market — Architecture & Data Reference
@@ -933,6 +977,13 @@ Inverter models that exist in the data (all R-32, full 1.0T/1.5T/2.0T tonnage_da
 - Samsung: Digital Inverter
 - LG: Dual Inverter
 - Mitsubishi: Tropical Inverter
+
+**QA NOTE (2026-05-20):** Gree has ZERO inverter series in pak_brands — all 8 Gree series
+(Console, Crown, Fairy, GS, GWC, GWH, Lomo, Pular) have `type: "non_inverter"`. QA spec item
+"Gree Fairy Inverter — inverter badge must appear" cannot be tested against Gree.
+Use Haier "Triple Inverter" or Orient "Ultron Divine" to verify inverter badge UI logic instead.
+The badge code in StepZeroPanel.tsx is correct (checks `m.series_type === "inverter"`); this is
+purely a seed data gap. DATA-GAP-001 SQL above will fix it.
 
 ### PK PSI Thresholds (pak_diagnostic_questions)
 
