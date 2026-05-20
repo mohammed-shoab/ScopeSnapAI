@@ -1,7 +1,7 @@
 # SnapAI AI — Tech Stack & Architecture
 
-> **Last updated:** May 19, 2026 (Track Q complete — Q.1–Q.7 + Q.6.5 all merged to main. Migration 021 (fault card descriptions, 19 cards × 5 fields) applied. Git HEAD: `f8afced`. Alembic head: `021`. Houston + PK QA-verified.)
-> **Status:** Beta — live on Vercel + Railway. Phase 2 complete. Phase 3 backend foundation (migrations 008–021) deployed. Both markets QA-verified 2026-05-19: PK (6/6 flows PASS) + Houston (Step Zero DB autofill, Not Cooling PSI routing, USD estimate generation, email send end-to-end PASS). Track Q (8 production hotfixes) all resolved.
+> **Last updated:** May 20, 2026 (Full QA audit complete — Tracks R/R9/REC/D/P/Staging. HEAD: `35f450c`. Alembic head: `029`. D.11 share_token fix, R.7 profile guard, S.7 staging banner, D.6 backfill all shipped. 53/53 audit items resolved.)
+> **Status:** Beta — live on Vercel + Railway. Both markets QA-verified 2026-05-20: Houston + PK (all 6 diagnostic flows PASS, all auth patterns correct, staging env complete). Current git HEAD: `35f450c`. Alembic head: `029`.
 
 ---
 
@@ -110,7 +110,7 @@
 | `NEXT_PUBLIC_API_URL` | Points to Railway API URL |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk public key (dev mode) |
 | `CLERK_SECRET_KEY` | Clerk secret key (dev mode) |
-| `NEXT_PUBLIC_ENV` | Set to `production` — enables Clerk middleware |
+| `NEXT_PUBLIC_ENV` | Set to `production` in prod — enables Clerk middleware. Set to `staging` on Vercel staging env to show StagingBanner. Set to `development` to use X-Dev-Clerk-User-Id bypass. |
 | `NEXT_TELEMETRY_DISABLED` | `1` — disables Next.js telemetry |
 
 ### Feature Flags (`lib/featureFlags.ts`)
@@ -218,7 +218,7 @@ All non-beta features are hidden behind `NEXT_PUBLIC_SHOW_*` env vars (all `fals
 ### Database Tables
 
 > All tables have RLS enabled. The `service_role` key (used by the backend) bypasses RLS automatically. Tables with sensitive data also have `company_isolation` policies restricting data per contractor.
-> **Current Alembic revision: 021** (Track Q migrations applied 2026-05-19; migrations 012–021 cover fault card descriptions, report token fix, and estimate refresh. Migration 021 had a Python SyntaxError in the original file — data applied directly via Supabase MCP, `alembic_version` manually advanced to `021`, file rewritten with valid syntax — see WA-7.)
+> **Current Alembic revision: 029** (Migrations 012–021: fault card descriptions, report token, estimate refresh. Migrations 022–025: pak_pricing_tiers + seed, pak_fault_card_descriptions, pak_fault_card_urdu_descriptions. Migration 026: fault_cards action_steps/parts_needed columns. Migration 027: diagnostic_sessions share_token/customer_label/confidence_level + diagnosis_feedback table. Migration 028: lifecycle_rules 17→44 rows. Migration 029: companies.peak_season_surcharge_percent + estimates.seasonal_modifier_pct — applied via Supabase direct (WA-7 pattern).)
 
 **WS-A Reference Tables (added migration 007, seeded 2026-04-30):**
 
@@ -231,7 +231,7 @@ All non-beta features are hidden behind `NEXT_PUBLIC_SHOW_*` env vars (all `fals
 | `error_codes` | 196 | Error codes for 14 brand families | Python SQL gen → Supabase SQL editor |
 | `labor_rates_houston` | 1 | Houston labor rate benchmarks | Python SQL gen → Supabase SQL editor |
 | `legacy_model_prefixes` | 65 | Pre-2010 unit identification prefixes | Python SQL gen → Supabase SQL editor |
-| `lifecycle_rules` | 17 | Component age + condition_signal → recommended A/B/C tier. "default" signal always returns B. Age-based rules only apply with specific condition signals (pitting, bearing_noise, rla_over_nameplate). | Python SQL gen → Supabase SQL editor |
+| `lifecycle_rules` | 44 | Component age + condition_signal -> recommended A/B/C tier. Component age + condition_signal → recommended A/B/C tier. "default" signal always returns B. Age-based rules only apply with specific condition signals (pitting, bearing_noise, rla_over_nameplate). | Python SQL gen → Supabase SQL editor |
 | `data_repo_versions` | 1 | Load history + row count manifest | Auto-inserted after seeding |
 
 **Phase 2 tables (added 2026-05-01):**
@@ -250,6 +250,25 @@ All non-beta features are hidden behind `NEXT_PUBLIC_SHOW_*` env vars (all `fals
 | `reading_inputs` | 010 | Raw meter readings captured during a diagnostic session (µF, amps, volts, PSI, temps); FK to `diagnostic_sessions` | ✅ Enabled | `company_isolation` |
 | `photo_labels` | 010 | Labelled photos for a diagnostic session; `photo_type` = `diagnostic` or `evidence` (tree-derived, NOT tech-chosen); FK to `diagnostic_sessions` | ✅ Enabled | `company_isolation` |
 | `job_confirmations` | 011 | Post-job tech confirmation — `actual_card_id`, `complaint_resolved` bool, `final_invoice_usd`; closes AI training loop | ✅ Enabled | `company_isolation` |
+
+**Migrations 022-029 — Pakistan + Diagnosis + Seasonal (added 2026-05-19/20):**
+
+| Table | Migration | Purpose |
+|-------|-----------|---------|
+| `pak_pricing_tiers` | 022 + 023 (seed) | PK fault card pricing — 45 rows (15 cards x 3 tiers), PKR amounts |
+| `pak_fault_card_descriptions` | 024 | English descriptions for all 15 PK fault cards |
+| `pak_fault_card_urdu_descriptions` | 025 | Urdu descriptions for all 15 PK fault cards |
+| `diagnosis_feedback` | 027 | Tech feedback on resolved diagnoses — agreement, real_fault_text, created_at |
+| `pak_lifecycle_rules` | — | PK recommendation config — JSONB key-value schema (NOT condition-signal-based): `id, rule_key, rule_value JSONB, created_at`. Intentionally different from US `lifecycle_rules`. |
+
+**New columns added by migrations 026-029:**
+
+| Table | Column | Migration | Notes |
+|-------|--------|-----------|-------|
+| `fault_cards` + `pak_fault_cards` | `action_steps`, `parts_needed`, `alternative_cards`, `climate_notes` | 026 | Diagnosis detail fields. All 19 US + 15 PK cards backfilled. |
+| `diagnostic_sessions` | `share_token`, `customer_label`, `confidence_level`, `reasoning_chain`, `deleted_at` | 027 | Share link generation (finalize endpoint). `share_token` backfilled 2026-05-20 (62 rows via gen_random_bytes). |
+| `companies` | `peak_season_surcharge_percent` | 029 | INT nullable. NULL = market default (25%), 0 = disabled, 1-100 = custom override. |
+| `estimates` | `seasonal_modifier_pct` | 029 | INT NOT NULL default 0. Generation-time freeze of seasonal % applied. |
 
 **Important: brands.series column is currently `[]` (empty array) for all 15 brands.** Full series data (entry/mid/premium tiers, refrigerant, SEER range, etc.) is in `ac_data_repo.json` under each brand's `series` key. Needs to be backfilled before WS-B (Step Zero OCR) goes live — WS-B uses series data to cross-reference Model # → tonnage/refrigerant.
 
@@ -355,7 +374,7 @@ The Next.js middleware now protects ALL app routes (not just 3). Full protected 
 ```typescript
 const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)", "/assess(.*)", "/assessment(.*)",
-  "/assessments(.*)", "/settings(.*)", "/billing(.*)",
+  "/assessments(.*)", "/diagnoses(.*)", "/settings(.*)", "/billing(.*)",
   "/analytics(.*)", "/intelligence(.*)", "/equipment(.*)",
   "/team(.*)", "/onboarding(.*)", "/estimates(.*)", "/estimate(.*)",
 ]);
@@ -415,32 +434,47 @@ SnapAIAI/
 │   ├── app/
 │   │   ├── (app)/              # Auth-protected contractor app
 │   │   │   ├── dashboard/      # Dashboard
-│   │   │   ├── assess/         # Camera + AI assessment flow
+│   │   │   ├── assess/         # Phase 3 diagnostic flow entry point
+│   │   │   ├── assessment/[id]/ # Estimate builder (REAL — always route here)
+│   │   │   ├── estimate/[id]/  # DEAD CODE — app never routes here (DEC-032)
+│   │   │   ├── diagnoses/      # Diagnosis history list (Track D)
+│   │   │   ├── diagnoses/[session_id]/ # Fault resolution detail (Track D)
 │   │   │   ├── estimates/      # Assessment list
-│   │   │   ├── estimate/[id]/  # Assessment detail
 │   │   │   ├── onboarding/     # Company setup wizard
 │   │   │   ├── analytics/      # Accuracy tracker (feature-flagged)
 │   │   │   ├── settings/       # Company profile, pricing, privacy
 │   │   │   └── billing/        # Subscription (feature-flagged)
-│   │   ├── r/[slug]/[reportId] # PUBLIC homeowner report
+│   │   ├── d/[share_token]/    # PUBLIC diagnosis share link (Track D)
+│   │   ├── r/[slug]/[reportId] # PUBLIC homeowner estimate report
 │   │   └── page.tsx            # PUBLIC landing page
 │   ├── components/
-│   │   ├── SidebarNav.tsx      # Sidebar with 14 SVG icons
-│   │   └── DataConfidenceLabel.tsx  # AI confidence display
+│   │   ├── SidebarNav.tsx          # Sidebar with 14 SVG icons
+│   │   ├── DataConfidenceLabel.tsx # AI confidence display
+│   │   ├── FaultResolutionScreen.tsx   # Fault detail + share + Mark as Solved (Track D)
+│   │   ├── DiagnosisFeedbackModal.tsx  # Different-fault feedback modal (Track D)
+│   │   ├── StagingBanner.tsx       # Amber fixed bar — visible only on NEXT_PUBLIC_ENV=staging (S.7)
+│   │   └── diagnostic/
+│   │       └── DiagnosticFlow.tsx  # Question-tree step renderer
 │   └── lib/
-│       ├── api.ts              # API_URL + OfflineError
+│       ├── api.ts              # API_URL + apiFetch (requires explicit token — DEC-030)
 │       ├── featureFlags.ts     # NEXT_PUBLIC_SHOW_* env vars
 │       ├── offlineQueue.ts     # IndexedDB offline queue
-│       └── tracking.ts         # Fire-and-forget analytics
+│       ├── tracking.ts         # Fire-and-forget analytics + 8 D.13 events + 3 REC.5 events
+│       └── market.ts           # detectMarket(), formatCurrency(), MARKET_CONFIG
 │
 ├── scopesnap-api/              # FastAPI backend
 │   ├── api/
-│   │   ├── estimates.py        # Assessment CRUD
+│   │   ├── diagnostic.py       # All diagnostic session logic, PSI routing, fault card return
+│   │   ├── fault_estimate.py   # Primary estimate engine — seasonal modifier, recommendation, markup
+│   │   ├── dependencies.py     # get_tables() — dual-market routing (_US_TABLES / _PK_TABLES)
+│   │   ├── estimates.py        # Estimate CRUD + send + refresh
 │   │   ├── reports.py          # Homeowner report endpoints
 │   │   ├── auth.py             # Clerk user sync + company profile
 │   │   └── events.py           # Analytics + waitlist (rate-limited)
+│   ├── services/
+│   │   └── condition_signals.py  # 8-signal priority chain for recommendation engine (Track REC)
 │   └── db/
-│       └── migrations/         # Alembic migration files
+│       └── migrations/         # Alembic migration files (current head: 029)
 │
 ├── TECH_STACK.md               # This file
 ├── README.md                   # Project overview + links

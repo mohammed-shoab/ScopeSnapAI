@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-20 (All pending decisions resolved. HEAD: 172b825. D.6 backfill: 62/62 share_tokens populated. R.7 profile guard live. S.7 staging banner live.)
+> Last updated: 2026-05-20 (All QA decisions resolved and shipped. HEAD: 35f450c. D.6: 62/62 share_tokens. R.7 profile guard. S.7 banner. TECH_STACK.md updated to alembic 029 + all new tables/columns.)
 
 ---
 
@@ -81,9 +81,10 @@
 **Staging git HEAD:** `980698b` — "chore(staging): migrations 020-025 + dual keepalive A/B + promote-to-prod.sh"
 **Promote staging → prod:** `scripts/promote-to-prod.sh <file1> [file2 ...]` (run from a local main checkout)
 
-**Current git HEAD (main):** `172b825` -- "fix(R.7+S.7): contractor profile guard on sendEstimate + staging banner"
+**Current git HEAD (main):** `35f450c` -- "docs: all QA decisions resolved -- D.6 backfill done, R.7+S.7 shipped (172b825)"
 
 **Recent commits (newest first -- main):**
+- `35f450c` -- docs: all QA decisions resolved -- D.6 backfill done, R.7+S.7 shipped (2026-05-20)
 - `172b825` -- fix(R.7+S.7): contractor profile guard on sendEstimate + StagingBanner (2026-05-20)
 - `85197fc` -- docs: full QA audit 2026-05-20 results (2026-05-20)
 - `53db54a` -- fix(D.11): pass Clerk JWT token to diagnostic finalize call (DEC-030) (2026-05-20)
