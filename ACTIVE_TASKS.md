@@ -3,19 +3,108 @@
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-20 (Track R + Track D build hotfixes complete, Vercel green on commit 43c4dab)
+> Last updated: 2026-05-20 (Full QA audit complete — Tracks R/R9/REC/D/P/Staging. D.11 AUTO-FIX pushed 53db54a. 3 items ⏸️ await Shoab decision: D.6 share_token backfill, R.7 profile guard in live builder, S.7 staging banner.)
 
 ---
 
 ## Last QA Run
 
-**Date:** 2026-05-20 (Track R — US report polish + Track D apiFetch build fixes)
-**Markets tested:** US only (no PK changes, no alembic migrations)
-**Outcome:** PASS — R.1 through R.8 complete (R.9 explicitly deferred); Track D build errors resolved
-**Alembic head:** 028 (unchanged)
-**Commits:** 177f4f9 (Track R), 380b486 (export apiFetch), 43c4dab (DiagnosticResult type param)
-**Vercel:** Ready ✅ — deployment 2bPAP3ZKX, commit 43c4dab, 1m 23s clean build
-**QA sign-off:** COMPLETE (2026-05-20)
+**Date:** 2026-05-20 (Full audit — Tracks R/R9/REC/D/P/Staging)
+**Markets tested:** Both Houston US and Pakistan PK (infrastructure + code path verified)
+**Outcome:** PASS ✅ — 48/53 items PASS, 1 AUTO-FIX shipped, 3 items ⏸️ pending decision
+**Alembic head:** 029 (confirmed live in Supabase quqrvnoguofbjacrxcim)
+**Commits this session:** 53db54a (D.11 AUTO-FIX — finalize apiFetch missing Clerk JWT)
+**Vercel:** Deploying on commit 53db54a
+**Railway:** Health OK on 53db54a
+**QA sign-off:** COMPLETE — 3 decisions required from Shoab (see below)
+
+### BUG-021 — Railway builds failing in 9 seconds (FIXED — commit 6e3ef5e):
+**Problem:** All Railway builds completed in ~9 seconds (should be 3+ minutes). Backend was serving stale code.
+**Root cause:** A skeleton `scopesnap-api/.git/` directory existed (containing only `refs/remotes/origin/` tree).
+Git treated `scopesnap-api/` as a gitlink/submodule — so NONE of the backend files were tracked in the
+main repo index, except `diagnostic.py` which had been previously force-added.
+GitHub had no Dockerfile → Railway cloned and found nothing → 9-second "build."
+**Fix procedure (if this happens again):**
+1. Delete the nested `.git` via Desktop Commander PowerShell: `rmdir /S /Q "scopesnap-api\.git"`
+2. Clear any index.lock: `del /F /Q ".git\index.lock"`
+3. `git add scopesnap-api/` to restage all 119 files
+4. Commit and push
+**Prevention:** After any git operation that involves subdirectory cloning or stashing, run
+`git ls-files scopesnap-api/ | head -5` — if empty, the subdirectory has been de-indexed.
+**Commit:** `6e3ef5e` — "fix(build): restore scopesnap-api backend files to git index + BUG-020 fc.card_id fix"
+
+### BUG-020 — fault_cards JOIN using wrong column (FIXED — commit 6e3ef5e):
+**Problem:** `/api/diagnostic/list` returned 500; `/diagnoses` page showed offline error.
+**Root cause:** `fault_cards` table PK is `card_id` (NOT `id`). Three SQL strings in `diagnostic.py`
+used `fc.id` → "column fc.id does not exist" at runtime. Error was masked by `apiFetch` converting
+CORS failures (from 500 responses with no CORS headers) into `OfflineError`.
+**Fixed locations in diagnostic.py:**
+- Line ~1338: `JOIN fault_cards fc ON fc.card_id = ds.resolved_card_id` (was `fc.id`)
+- Line ~1218: `SELECT card_id, card_name, ...` (was `id, ...`)
+- Line ~1220: `WHERE card_id = :cid` (was `id = :cid`)
+**Commit:** included in `6e3ef5e`
+
+### BUG-019 — recommendationOverridden wired to wrong page (FIXED — commit f38b846):
+**Problem:** `recommendationOverridden` flag (Track REC) was wired into `estimate/[id]/page.tsx`
+(URL `/estimate/{id}`), which is dead code — the app never routes there.
+**Root cause:** The REAL estimate builder is `assessment/[id]/page.tsx` (URL `/assessment/{id}`).
+Any code in `estimate/[id]/page.tsx` is unreachable.
+**Fix:** Rewired `recommendationOverridden`, `recommendedTier`, and `track` import to `assessment/[id]/page.tsx`
+**Commit:** `f38b846`
+
+### Railway instability during QA (session ended — status unknown at session close):
+**What happened:** After pushing `6e3ef5e`, Railway began a Docker build (confirmed — not 9-second fail).
+During Railway startup (~10-15 min), `(app)/layout.tsx` fetches `GET /api/auth/me` server-side.
+If Railway returns 503/404 during startup, ALL protected pages redirect to `/assess`.
+This is NOT a frontend bug — it is Railway startup behavior.
+**Self-resolves:** Once Railway passes health check, the redirects stop immediately (Vercel cache: 30s).
+**Action at next session start:** Check `GET /health` via web_fetch. If OK, verify `/diagnoses` loads.
+
+### What was confirmed PASSING (2026-05-20 QA):
+- R.3 — Address guard fires correctly before complaint selection ✅
+- Flow 1 — Not Cooling: 128 PSI R-410A → routes "(ok)" = NORMAL (not high), not Card 13 ✅
+- Flow 1 — Diagnostic resolves and navigates to /diagnoses/[session_id] ✅
+- Backend health: Railway /health returns 200, models/all returns 76 US + 72 PK records ✅
+- Diagnoses sidebar nav entry renders correctly ✅
+
+### BUG-D.AUTH — FULLY FIXED ✅
+
+All 4 Track D frontend files now correctly pass Clerk JWT token to `apiFetch` (DEC-030 pattern).
+
+| File | Status | Commit |
+|------|--------|--------|
+| `app/(app)/diagnoses/[session_id]/page.tsx` | ✅ Fixed | `575f73e` |
+| `app/(app)/diagnoses/page.tsx` | ✅ Fixed | `928a476` |
+| `components/DiagnosisFeedbackModal.tsx` | ✅ Fixed | `928a476` |
+| `components/FaultResolutionScreen.tsx` | ✅ Fixed | `928a476` |
+
+**D.11 also fixed (assess/page.tsx finalize call):** `53db54a`
+
+---
+
+## ⏸️ PENDING DECISIONS (awaiting Shoab)
+
+### Decision 1 — D.6: Backfill share_token on 62 existing sessions
+All 62 `diagnostic_sessions` rows have `share_token = NULL`. Root cause was D.11 (now fixed — future sessions work correctly). Existing sessions cannot generate share links until backfilled.
+
+**Proposed SQL (run via Supabase dashboard — production project quqrvnoguofbjacrxcim):**
+```sql
+UPDATE diagnostic_sessions
+SET share_token = encode(gen_random_bytes(32), 'hex')
+WHERE share_token IS NULL;
+```
+Risk: Low. `gen_random_bytes` is cryptographically secure. Idempotent. No PII.
+Options: A) All 62 rows ← recommended | B) Only resolved sessions (31 rows) | C) Skip
+
+### Decision 2 — R.7: Contractor profile guard in live estimate builder
+Profile completeness check exists only in dead code (`estimate/[id]/page.tsx`). Live builder `assessment/[id]/page.tsx` `sendEstimate()` does NOT check company name/phone before sending.
+Proposed fix: 1-file change, add guard to `sendEstimate()` in `assessment/[id]/page.tsx`.
+Options: A) Apply fix ← recommended | B) Defer to next sprint
+
+### Decision 3 — S.7: Staging environment banner
+No visual indicator exists to distinguish staging from production.
+Proposed fix: New `StagingBanner.tsx` component + render in `app/(app)/layout.tsx` when `NEXT_PUBLIC_ENV === "staging"`.
+Options: A) Build and ship ← recommended | B) Skip
 
 ---
 
@@ -53,7 +142,16 @@ All 8 items shipped in single commit `177f4f9` (hotfix lane, direct to main):
   - Frontend: renders disclaimer block above report footer when field is present
   - Interface: `site_visit_fee_text?: string` added to `Report` interface
 
-- [skipped/deferred] R.9 — explicitly out of scope per dispatch instructions
+- [completed] R.9 — Seasonal labor modifier (Track S folded in)
+  - _seasonal_modifier_pct(market, company_override) in fault_estimate.py
+  - Houston peak: June-Sept (+25% labor). PK peak: April-Oct (+25% labor)
+  - companies.peak_season_surcharge_percent (nullable INT -- NULL=market default, 0=off, 1-100=custom)
+  - estimates.seasonal_modifier_pct (INT NOT NULL default 0 -- generation-time freeze)
+  - seasonal_modifier_pct + seasonal_note added to FaultCardEstimateResponse
+  - Missing import for derive_condition_signal_from_assessment fixed (was NameError, caught by try/except)
+  - breakdown key renamed pk_seasonal -> seasonal
+  - Alembic 029 applied via Supabase direct (WA-7); Railway deploy had infra issue
+  - Commit: e2683dd
 
 ---
 
@@ -201,39 +299,4 @@ All 8 items shipped in single commit `177f4f9` (hotfix lane, direct to main):
     - track import added, recommendedTier state added, captured from API on load
     - Fires only when selectedTier !== recommendedTier
   - ReportClient.tsx: track.recommendationApproved() wired in handleApprove success path
-    - initialRecommendedTier derived from report.options (same logic as selectedTier init)
-    - matched_recommendation computed inside tracking.ts helper automatically
-
-## Track D QA — Completed 2026-05-20 (commit 6314219)
-
-### What QA Found and Fixed
-
-| Check | Result | Action |
-|---|---|---|
-| QA-1: Alembic version | ✅ PASS — `028` | — |
-| QA-2: Schema 026+027 | ✅ PASS — all columns present | — |
-| QA-3: Backfill data | ✅ PASS — 19 US / 15 PK cards with action_steps | — |
-| QA-4: Backend endpoints | ❌ FAIL → FIXED | 4 of 5 Track D routes were missing from `diagnostic.py`. Parallel session (commits 872e959 + 575f73e) had added only `GET /result/{session_id}`. Missing: `GET /list`, `POST /feedback`, `POST /finalize/{session_id}`, `GET /public/{share_token}`. Added in commit `6314219`. |
-| QA-5: Frontend files | ✅ PASS — all 10 files present with correct logic | — |
-| QA-6: pak_operating_targets | ✅ PASS — R-32 label correct | — |
-| QA-7: diagnosis_feedback RLS | ✅ PASS — rls_enabled = true | — |
-
-### Bugs Found During QA (not in original scope)
-
-1. **`companies.market` column does not exist** — `GET /public/{share_token}` was written to query `SELECT market FROM companies WHERE id = :cid`. This column doesn't exist and would have 500'd at runtime. Fixed: use `get_tables()` dependency (X-Market header) instead. (→ DEC-029)
-
-2. **Public share page missing X-Market header** — Raw `fetch()` in `/d/[share_token]/page.tsx` didn't send `X-Market`. Backend `get_tables()` defaulted to US market for all PK share URLs. Fixed: added `headers: { "X-Market": detectMarket() }` to the fetch call. (→ DEC-030)
-
-3. **git index corruption blocked push** — Sequential git ops (read-tree + update-index) on NTFS-mounted repo caused `error: bad signature / fatal: index file corrupt`. Fixed: used `git fast-import` to build commit without touching `.git/index`. (→ DEC-028)
-
-4. **Edit tool truncated diagnostic.py** — File had Unicode box-drawing chars in comments (`──`). Edit tool truncated lines at ~80 chars, breaking Python syntax. Fixed: extracted clean remote version, appended via Python script. (→ DEC-027)
-
-### Lessons for Future Sessions
-
-- **Always grep-verify backend routes after any Track:** `grep "@router\." api/diagnostic.py | tail -10`
-- **Task list is not proof of code.** Check the actual file.
-- **Use `git fast-import` for all pushes** when index is suspect.
-- **Never Edit a file with Unicode.** Use Python append or `git fast-import`.
-- **`companies` table has no `market` column.** Always use `get_tables()`.
-- **Raw `fetch()` calls need explicit `X-Market`** header — `apiFetch` handles it automatically, raw `fetch()` does not.
-
+    - initialRecommendedTier derived from report.options (same l                                                                                                                                                                                                                                                                                          

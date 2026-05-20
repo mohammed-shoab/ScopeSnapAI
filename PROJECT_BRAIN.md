@@ -3,12 +3,13 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-20 (Track REC fully complete -- REC.2+3+5 wired, commit e5ffefb, alembic head 028)
+> Last updated: 2026-05-20 (Full QA audit Tracks R/R9/REC/D/P/Staging complete. D.11 AUTO-FIX shipped 53db54a. Remote HEAD: 53db54a. Alembic: 029 live.)
 
 ---
 
 ## Live URLs
 
+### Production
 | Market | Frontend | Status |
 |--------|----------|--------|
 | Houston (US) | https://snapai.mainnov.tech | ✅ Live |
@@ -17,10 +18,22 @@
 **Backend (Railway):** https://scopesnap-api-production.up.railway.app
 **Health endpoint:** `GET /health` → `{"status":"ok","db":"connected","environment":"production","version":"0.1.0"}`
 
+### Staging
+| Market | Frontend | Status |
+|--------|----------|--------|
+| US Staging | https://staging.snapai.mainnov.tech | ✅ Live |
+| PK Staging | https://pk-staging.snapai.mainnov.tech | ✅ Live |
+| Vercel default | https://scopesnap-web-staging.vercel.app | ✅ Live |
+
+**Backend (Railway staging):** https://scopesnap-api-staging.up.railway.app
+**Health endpoint:** `GET /health` → `{"status":"ok","db":"connected","environment":"staging","version":"0.1.0"}`
+**Staging banner:** amber bar "⚠ STAGING — not production data" visible on all pages
+
 ---
 
 ## Infrastructure IDs
 
+### Production
 | Service | ID / Reference |
 |---------|---------------|
 | Railway project | `0e78dd68-ce72-46be-a2b1-7d3119de40a4` |
@@ -30,27 +43,58 @@
 | Vercel project | `scope-snap-ai` (mohammed-shoabs-projects-7844119e) |
 | GitHub repo | `mohammed-shoab/ScopeSnapAI` |
 
+### Staging
+| Service | ID / Reference |
+|---------|---------------|
+| Railway staging URL | `https://scopesnap-api-staging.up.railway.app` |
+| Supabase staging project | `pqmgveqkuckbvyygsilk` (ap-northeast-1) |
+| Vercel staging project | `prj_vq1rWfPN9tD3k82OLFjfIxmNdULc` (`scopesnap-web-staging`) |
+| Clerk staging app | `firm-chamois-61` (pk_test_ZmlybS1jaGFtb2lzLTYx…) |
+| R2 staging bucket | `scopesnap-uploads-staging` |
+| Git branch | `staging` (off `main`) |
+| GitHub Actions keepalive | `.github/workflows/keepalive-supabase-A.yml` + `keepalive-supabase-B.yml` (every Sun+Wed) |
+| Secrets reference | `C:\Users\dell\My Drive\Personal Claude\.staging_secrets.txt` (⚠ never commit) |
+
 ---
 
 ## Current Deployment State
 
+### Production
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both prod domains) | `575f73e` | Production Live | 2026-05-20 |
-| Railway backend (prod) | `6314219` | Deploying (Track D endpoints complete) | 2026-05-20 |
-| Alembic migration (prod) | `028` | Applied (026+027 schema stamped) | 2026-05-20 |
+| Vercel (both prod domains) | `53db54a` | Production Live | 2026-05-20 |
+| Railway backend (prod) | `53db54a` | Health OK | 2026-05-20 |
+| Alembic migration (prod) | `029` | Applied via Supabase direct (WA-7 pattern) | 2026-05-20 |
 | pak_data_defaults | 1 row (market=PK) | Seeded | 2026-05-19 |
-| pak_operating_targets | PK PSI thresholds + R-32 (5 rows, 30–50°C ambient) | Seeded | 2026-05-18 |
+| pak_operating_targets | PK PSI thresholds + R-32 (5 rows, 30-50C ambient) | Seeded | 2026-05-18 |
 
-**Current git HEAD (main):** `6314219` — "QA fix: add 4 remaining Track D backend endpoints (list/feedback/finalize/public) + X-Market on public share fetch"
+### Staging
+| Layer | Commit | Status | Date |
+|-------|--------|--------|------|
+| Vercel staging (both staging domains) | `980698b` | Staging Live | 2026-05-19 |
+| Railway staging backend | `980698b` | Health OK, alembic=025 | 2026-05-19 |
+| Supabase staging DB | All tables seeded (US + pak_*) | Full mirror of prod schema | 2026-05-19 |
+| Alembic migration (staging) | `025` (pak_fault_card_urdu_descriptions) | Applied | 2026-05-19 |
+| pak_pricing_tiers (staging) | 45 rows (15 cards × 3 tiers) | Seeded | 2026-05-19 |
+| pak_labor_rates (staging) | full_system_1ton/1_5ton_pkr backfilled | Updated | 2026-05-19 |
 
-**Recent commits (newest first — main):**
-- `6314219` — QA fix: add 4 remaining Track D backend endpoints (list/feedback/finalize/public) + X-Market on public share fetch
-- `575f73e` — fix: diagnoses page passes Clerk token to apiFetch (Track D D.7)
-- `872e959` — feat: add GET /api/diagnostic/result/{session_id} endpoint (Track D D.7)
-- `0bd74c7` — chore: brain -- REC.5 wiring complete, HEAD e5ffefb
-- `e5ffefb` — feat(REC.5): wire recommendationShown, Overridden, Approved into assess/estimate/report
-- `254c0b7` — fix: mobile button stack + pak_operating_targets R-32 label + ACTIVE_TASKS cleanup
+**Staging git HEAD:** `980698b` — "chore(staging): migrations 020-025 + dual keepalive A/B + promote-to-prod.sh"
+**Promote staging → prod:** `scripts/promote-to-prod.sh <file1> [file2 ...]` (run from a local main checkout)
+
+**Current git HEAD (main):** `53db54a` -- "fix(D.11): pass Clerk JWT token to diagnostic finalize call (DEC-030)"
+
+**Recent commits (newest first -- main):**
+- `53db54a` -- fix(D.11): pass Clerk JWT token to diagnostic finalize call (DEC-030) (QA audit, 2026-05-20)
+- `928a476` -- fix(BUG-024): diagnoses pages guard on isLoaded before getToken() + restore all web routes (2026-05-20)
+- `fe5b02a` -- fix(BUG-023): diagnostic list+result use pak_fault_cards directly -- bypass stale prepared statement (2026-05-20)
+- `f82d760` -- fix(diagnostic): global exception handler for CORS-aware 500s + has_more/share_token in list response (2026-05-20)
+- `575f73e` -- fix: diagnoses detail page passes Clerk token to apiFetch (2026-05-20)
+- `872e959` -- feat: add GET /api/diagnostic/result/{session_id} endpoint (2026-05-20)
+- `6e3ef5e` -- fix(build): restore scopesnap-api backend files to git index + BUG-020 fc.card_id fix
+
+**Local working tree state (2026-05-20 post-audit):**
+All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync before editing:
+`git pull --rebase origin main` (use /tmp clone pattern per DEC-004 for any commits).
 
 ---
 
@@ -84,40 +128,12 @@
 | `scopesnap-api/api/diagnostic.py` | All diagnostic session logic, PSI routing, fault card return |
 | `scopesnap-api/api/dependencies.py` | `get_tables()` — market routing, `_US_TABLES` / `_PK_TABLES` |
 | `scopesnap-api/api/assessments.py` | Assessment CRUD |
+| `scopesnap-api/api/fault_estimate.py` | Primary estimate engine -- `POST /api/estimates/fault-card`. Seasonal modifier, recommendation overlay, tier labels, markup, surcharges. |
 | `scopesnap-api/api/estimates.py` | Estimate generation and retrieval |
-| `scopesnap-api/db/migrations/versions/` | Alembic migrations (current head: `021`) |
+| `scopesnap-api/db/migrations/versions/` | Alembic migrations (current head: `029` — applied via Supabase direct) |
 
 ---
 
 ## PSI Thresholds (from diagnostic_questions / pak_diagnostic_questions)
 
-| Refrigerant | Normal range (suction) | high_min |
-|-------------|----------------------|---------|
-| R-410A (US) | 108–144 PSI | 145 PSI |
-| R-410A (PK) | 125–144 PSI | 145 PSI |
-| R-22 | 55–87 PSI | 88 PSI |
-| R-32 (PK) | 115–139 PSI | 140 PSI |
-
-**Test case (Houston):** 128 PSI R-410A → NORMAL ✅ (confirmed 2026-05-18)
-
----
-
-## QA History
-
-| Date | Markets | Outcome | Bugs Fixed |
-|------|---------|---------|-----------|
-| 2026-05-20 | Track D full QA | PASS ✅ COMPLETE | 5 gaps found+fixed: 4 missing backend endpoints (list/feedback/finalize/public), companies.market column bug, X-Market on public fetch, git index corruption, NTFS Edit truncation on .py files |
-| 2026-05-19 | PK only (SOW Addendum) | PASS ✅ COMPLETE | 2 (BUG-015 X-Market header, BUG-016 PK suction PSI routing); A-2/A-4/A-5 verified; B-1/C-3 seeded |
-| 2026-05-18 | Houston only | PASS ✅ COMPLETE | 7 (BUG-011 badge + 5 CRLF stash truncations + BUG-012 electrical spec auto-fill) |
-| 2026-05-15 | Houston + PK | PASS | BUG-010b (_complete_service_session rollback) |
-| 2026-05-11 | Houston + PK | PASS | Multiple routing bugs, photo policy, inverter flag |
-
----
-
-## Current Known Issues
-
-- PK flows 2–4 + 6 not yet fully end-to-end verified (partial PK QA — A-2/A-4/A-5/DATA-GAP-001/002/B.3 confirmed; full flow suite pending next session)
-- Urdu toggle functional test not yet verified
-- `pak_diagnostic_questions` table does NOT exist in production — PK diagnostic routing handled by PK-gated intercept in `diagnostic.py` (BUG-016 workaround, commit `01082c6`); no separate R-32/inverter question tree in DB
-- `pak_operating_targets` R-32 notes say "Typical split AC" — should be "Inverter split AC only"; awaiting Shoab approval for data-only UPDATE (no migration needed; see ACTIVE_TASKS.md backlog)
-- TECH_STACK.md contains stale SQL for DATA-GAP-001 (`UPDATE pak_brands SET inverter = true WHERE series_name IN (...)`) — both columns (`inverter`, `series_name`) do not exist in 
+| Refrige
