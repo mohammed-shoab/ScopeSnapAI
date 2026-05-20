@@ -1611,4 +1611,34 @@ async def get_public_diagnosis(
 
 # -- DX.9: PATCH /session/{session_id}/cancel ---------------------------------
 
-@router.patch("/session/{session_id}/cancel", status
+@router.patch("/session/{session_id}/cancel", status_code=200)
+async def cancel_diagnosis_session(
+    session_id: str = Path(...),
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    DX.9 -- Soft-delete a diagnostic session (sets deleted_at).
+    Called when the tech taps Cancel diagnosis from the ... menu.
+    """
+    sess_check = await db.execute(
+        text(
+            "SELECT id FROM diagnostic_sessions"
+            " WHERE id = :sid AND company_id = :cid AND deleted_at IS NULL LIMIT 1"
+        ),
+        {"sid": session_id, "cid": auth.company_id},
+    )
+    if not sess_check.fetchone():
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    await db.execute(
+        text(
+            "UPDATE diagnostic_sessions"
+            " SET deleted_at = :now, updated_at = :now WHERE id = :sid"
+        ),
+        {"now": datetime.now(timezone.utc), "sid": session_id},
+    )
+    await db.commit()
+    return {"status": "cancelled"}
+
+# BUG-020 fix verified: card_id (not id)
