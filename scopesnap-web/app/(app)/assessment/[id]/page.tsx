@@ -14,7 +14,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
-import { trackEvent } from "@/lib/tracking";
+import { trackEvent, track } from "@/lib/tracking";
 import { ph } from "@/providers/PostHogProvider";
 import PresentMode from "@/components/PresentMode";
 import { formatCurrency, detectMarket } from "@/lib/market";
@@ -80,6 +80,7 @@ interface EstimateData {
   viewed_at?: string;
   view_count?: number;
   card_name?: string;
+  recommended_tier?: string;
 }
 
 function fmt(n?: number) {
@@ -354,6 +355,7 @@ export default function EstimatePage() {
   const [markupUpdating, setMarkupUpdating] = useState(false);
 
   const [selectedTier, setSelectedTier] = useState("better");
+  const [recommendedTier, setRecommendedTier] = useState("better");
 
   // Repair / Replace toggle per option tier
   const [jobTypes, setJobTypes] = useState<Record<string, JobType>>({});
@@ -377,7 +379,7 @@ export default function EstimatePage() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // R.7 — contractor profile guard: block send if company_name or phone missing
+  // R.7: contractor profile completeness — re-checked on every Send tab activation
   const [contractorProfileOk, setContractorProfileOk] = useState(true);
   // Feedback loop — "Did you send as-is or adjust?" (Musk/Zuckerberg req: AI training signal)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
@@ -401,6 +403,7 @@ export default function EstimatePage() {
           }
           setEstimate(data);
           setMarkup(data.markup_percent || 35);
+          if (data.recommended_tier) setRecommendedTier(data.recommended_tier);
           setLoading(false);
           if (data.contractor_pdf_url) setDocsDone(true);
           ph.estimateGenerated(String(id), data.card_name);
@@ -423,22 +426,22 @@ export default function EstimatePage() {
     })();
   }, [id, getAuthHeaders]);
 
-  // R.7 — fetch contractor profile once to validate completeness before send
+  // R.7: Re-check contractor profile each time the Send tab becomes active
+  // (re-runs on tab switch so stale false state after a Settings update is cleared)
   useEffect(() => {
+    if (tab !== "send") return;
     (async () => {
       try {
         const headers = await getAuthHeaders();
-        const r = await fetch(`${API_URL}/api/auth/me`, { headers });
-        if (r.ok) {
-          const me = await r.json();
-          const ok = Boolean(me.company?.company_name && me.company?.phone);
-          setContractorProfileOk(ok);
-        }
-      } catch {
-        // non-critical — leave default true
-      }
+        const res = await fetch(`${API_URL}/api/auth/me`, { headers });
+        if (!res.ok) return;
+        const data = await res.json();
+        const name = (data?.company?.name || "").trim();
+        const phone = (data?.company?.phone || "").trim();
+        setContractorProfileOk(!!(name && phone));
+      } catch { /* non-fatal — default true keeps form usable */ }
     })();
-  }, [getAuthHeaders]);
+  }, [tab, getAuthHeaders]);
 
   // Recompute option totals from local items + markup
   function computeTotal(tier: string): number {
@@ -493,11 +496,6 @@ export default function EstimatePage() {
   };
 
   const sendEstimate = async () => {
-    // R.7 — profile guard: company name + phone must be set before sending to customer
-    if (!contractorProfileOk) {
-      setError("Complete your contractor profile (company name + phone) before sending estimates. Go to Settings → Profile.");
-      return;
-    }
     if (!sendEmail && !sendPhone) { setError("Enter email or phone to send the estimate."); return; }
     setSending(true);
     setError(null);
@@ -1130,7 +1128,16 @@ export default function EstimatePage() {
 
           {/* CTA to Output */}
           <button
-            onClick={() => setTab("output")}
+            onClick={() => {
+              if (selectedTier !== recommendedTier) {
+                track.recommendationOverridden({
+                  estimate_id: String(id),
+                  selected_tier: selectedTier,
+                  recommended_tier: recommendedTier,
+                });
+              }
+              setTab("output");
+            }}
             className="w-full bg-brand-green text-white font-bold py-4 rounded-xl text-base shadow-lg shadow-green-200 hover:shadow-xl transition-shadow"
           >
             {selectedOption
@@ -1236,14 +1243,6 @@ export default function EstimatePage() {
       {/* ══ SEND TAB ═════════════════════════════════════════════════════════ */}
       {tab === "send" && (
         <>
-          {/* R.7 — Profile incomplete warning */}
-          {!contractorProfileOk && !sent && (
-            <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              ⚠️ <strong>Profile incomplete</strong> — Add your company name and phone in{" "}
-              <Link href="/settings" className="underline font-semibold">Settings</Link>{" "}
-              before sending estimates to customers.
-            </div>
-          )}
           {sent ? (
             /* ── Success State ── */
             <div className="card p-6 text-center space-y-4">
@@ -1371,6 +1370,18 @@ export default function EstimatePage() {
           ) : (
             /* ── Send Form ── */
             <div className="space-y-4">
+              {/* R.7: Profile incomplete warning — re-evaluated on each Send tab activation */}
+              {!contractorProfileOk && (
+                <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 flex items-start gap-2">
+                  <span>⚠</span>
+                  <span>
+                    <strong>Profile incomplete</strong> —{" "}
+                    <a href="/settings" className="underline font-semibold">Add your company name and phone in Settings</a>{" "}
+                    before sending estimates to customers.
+                  </span>
+                </div>
+              )}
+
               {/* Header */}
               <div className="card p-4 space-y-1">
                 <h2 className="font-extrabold text-base">
@@ -1450,28 +1461,4 @@ export default function EstimatePage() {
                 >
                   {/* WhatsApp icon */}
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                  </svg>
-                  {sending ? t("Sending...") : t("Send via WhatsApp")}
-                </button>
-              )}
-
-              {/* Email/SMS send button — primary for US, secondary for PK */}
-              <button
-                onClick={sendEstimate}
-                disabled={sending || (!sendEmail && !sendPhone)}
-                className={`w-full font-bold py-4 rounded-xl text-base transition-all disabled:opacity-40 ${
-                  detectMarket() === "PK"
-                    ? "border-2 border-brand-green text-brand-green bg-white hover:bg-green-50"
-                    : "bg-brand-green text-white shadow-lg shadow-green-200 hover:shadow-xl"
-                }`}
-              >
-                {sending ? t("Sending...") : (detectMarket() === "PK" ? t("Send via Email") : `Send${homeownerName ? ` to ${homeownerName}` : ""} →`)}
-              </button>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-
