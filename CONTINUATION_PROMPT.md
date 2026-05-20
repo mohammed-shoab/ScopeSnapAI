@@ -2,6 +2,57 @@
 
 Last updated: 2026-05-20 (All tracks complete — Q/R/R.9/REC/D/P/Staging. Full QA audit PASS. BUG-D.AUTH all 4 files fixed. D.6 share_token backfilled 62/62. R.7 profile guard live. S.7 staging banner live. Git HEAD: 02ad667. Alembic: 029.)
 
+---
+
+## CRITICAL LESSONS — Read Before Starting Any Work
+
+These burned us in the 2026-05-20 session. Don't repeat them.
+
+### L1 — apiFetch does NOT auto-inject Clerk JWT (WA-9, DEC-030)
+Omitting `token:` in production sends no Authorization header → backend returns 401 → silent failure if `.catch(()=>{})`.
+Dev mode uses `X-Dev-Clerk-User-Id` bypass, so the bug is INVISIBLE locally.
+**Before shipping any component: grep for `apiFetch` calls and verify each one passes `token: await getToken()`.**
+```typescript
+// WRONG (silent 401 in production):
+apiFetch("/api/endpoint", { method: "POST", body: JSON.stringify({}) }).catch(() => {});
+
+// CORRECT (fire-and-forget):
+getToken().then(token => {
+  apiFetch("/api/endpoint", { method: "POST", token: token ?? undefined, body: JSON.stringify({}) }).catch(() => {});
+}).catch(() => {});
+```
+
+### L2 — Never use Edit tool on any file with non-ASCII chars (WA-10, DEC-027)
+The Edit tool silently truncates NTFS files at the first non-ASCII character (Unicode, em-dashes, emoji in any comment or string).
+**Always use Python `content.replace(old, new, 1)` in the /tmp clone for ALL file edits.**
+After any edit, verify: `git diff --stat HEAD` — a file showing large net deletions is truncated.
+
+### L3 — Task list "completed" ≠ code written (WA-11, DEC-031)
+Track D had 5 routes marked complete; 4 had never been written. The AI ran out of context and marked tasks done optimistically.
+**Before closing any backend track: `grep -c "@router\." file.py` and verify count matches expected routes.**
+
+### L4 — NameError inside try/except Exception = silent feature disable (WA-12, DEC-034)
+A missing import inside a `try/except Exception` block is caught silently. The entire recommendation engine was broken in production for days.
+**After adding any function call inside try/except: `grep -n "from X import Y" file.py` — both import and call must be present.**
+
+### L5 — fault_cards PK is card_id, not id (DEC-033)
+Using `fc.id` causes a runtime SQL error. apiFetch converts the CORS-blocked 500 response into an `OfflineError`, making it look like a network issue.
+**Always use `fc.card_id` in JOINs and WHERE clauses.**
+
+### L6 — estimate/[id]/page.tsx is dead code (DEC-032)
+The real estimate builder is `assessment/[id]/page.tsx`. Any changes to the estimate UI go in the assessment page, not the estimate page.
+
+### L7 — Vercel dashboard needs javascript_tool (WA-13)
+`get_page_text` returns only pre-hydration HTML shell. Use `javascript_tool` with `document.querySelectorAll()` for actual deployment data.
+
+### L8 — Add safe.directory after every fresh /tmp clone (WA-14)
+```bash
+git clone "..." /tmp/snapai_tmpN
+git config --global --add safe.directory /tmp/snapai_tmpN
+```
+
+---
+
 ## Production Environment
 
 - **App URL**: https://snapai.mainnov.tech (Houston) / https://pk.snapai.mainnov.tech (PK)

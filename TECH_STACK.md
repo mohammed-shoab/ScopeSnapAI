@@ -674,6 +674,209 @@ Logo spec: 120×120px, green `#1a8754` rounded square (radius 24px), white "S" A
 
 ---
 
+### WA-9 -- apiFetch silent 401: every authenticated call MUST pass token explicitly (2026-05-20)
+
+**Problem discovered (D.11 / QA audit 2026-05-20):** All 62 `diagnostic_sessions` rows had `share_token = NULL`
+despite the finalize endpoint being called. Root cause chain:
+1. `apiFetch` in `lib/api.ts` does NOT auto-inject the Clerk JWT. The `token?` argument is optional.
+2. In production (non-dev), omitting `token:` means no `Authorization: Bearer <jwt>` header -> backend returns 401.
+3. The finalize call in `assess/page.tsx` had `.catch(() => {})` (fire-and-forget) — the 401 was silently swallowed.
+4. Dev mode uses `X-Dev-Clerk-User-Id` header bypass, so the bug never surfaced locally.
+
+**Effect:** Silent data gap. Share links broken for all 62 sessions. Required SQL backfill:
+```sql
+UPDATE diagnostic_sessions
+SET share_token = encode(gen_random_bytes(32), 'hex')
+WHERE share_token IS NULL;
+```
+
+**Fix pattern for fire-and-forget calls (finalize-style):**
+```typescript
+getToken().then(token => {
+  apiFetch(`/api/endpoint`, {
+    method: "POST",
+    token: token ?? undefined,
+    body: JSON.stringify({...}),
+  }).catch(() => {});
+}).catch(() => {});
+```
+
+**Fix pattern for data-loading calls (useEffect):**
+```typescript
+const { getToken } = useAuth();
+useEffect(() => {
+  (async () => {
+    const token = await getToken();
+    const data = await apiFetch<MyType>("/api/endpoint", { token: token ?? undefined });
+  })();
+}, [getToken]);
+```
+
+**Detection:** If any page shows a generic "Could not load X" message or data silently missing (no error shown):
+1. Open DevTools Network tab — check for 401 responses on `/api/` calls.
+2. Check if the `apiFetch` call passes a `token:` argument.
+3. In dev mode, the bug is invisible — always verify auth behavior in production/staging.
+
+**Commit:** `53db54a` (D.11 fix — assess/page.tsx finalize call)
+**Related commits:** `575f73e`, `928a476` (Track D frontend files)
+**DEC reference:** DEC-030
+
+**Prevention checklist — before shipping ANY new component:**
+- [ ] Does this component call `apiFetch`? If yes, does it import `useAuth` and pass `token`?
+- [ ] Are any apiFetch calls fire-and-forget with `.catch(() => {})`? If yes, wrap in `getToken().then()`.
+- [ ] Does the dev mode bypass mask this? Test in staging with real Clerk tokens.
+
+---
+
+### WA-10 -- Edit tool + NTFS truncation: use Python replace() for all Unicode files (2026-05-20)
+
+**Problem (D.11 fix, 2026-05-20):** The `Edit` tool was used to modify `assess/page.tsx` to fix D.11.
+The file was written correctly from the Edit tool's perspective, but `git diff` showed the last 8 lines
+missing — the file was truncated. The truncation point was exactly where a Unicode em-dash appeared
+in a code comment.
+
+**Detection method that caught it:**
+```bash
+git diff --ignore-cr-at-eol HEAD -- scopesnap-web/app/(app)/assess/page.tsx | tail -20
+# Showed: "\ No newline at end of file" and ~8 lines of "- " deletions with no corresponding "+"
+```
+
+**Recovery (DEC-004 + WA-7 pattern):**
+```bash
+# 1. Restore the original file from the last known-good remote commit
+git show origin/main:scopesnap-web/app/(app)/assess/page.tsx > /tmp/assess_clean.tsx
+cp /tmp/assess_clean.tsx /tmp/snapai_tmp2/scopesnap-web/app/(app)/assess/page.tsx
+
+# 2. Apply changes via Python string replacement (NOT Edit tool)
+python3 -c "
+content = open('/tmp/snapai_tmp2/.../file.tsx', 'rb').read().rstrip(b' ').decode('utf-8')
+content = content.replace(old_str, new_str, 1)
+open('/tmp/snapai_tmp2/.../file.tsx', 'w', encoding='utf-8').write(content)
+"
+```
+
+**Rule (extends DEC-027):**
+> NEVER use the `Edit` tool on ANY file containing non-ASCII characters.
+> This includes ALL .tsx/.ts/.py/.md files in this project (they all have Unicode in comments, strings, or content).
+> ALWAYS use Python open/replace/write instead.
+
+**How to identify if a file is at risk:**
+```bash
+python3 -c "
+data = open('file.tsx', 'rb').read()
+non_ascii = [hex(b) for b in data if b > 127]
+print(f'{len(non_ascii)} non-ASCII bytes found')
+"
+# Any non-zero count = Edit tool unsafe
+```
+
+**Commit:** `53db54a` — fix applied via Python replace in /tmp/snapai_tmp2 clone
+**DEC reference:** DEC-027
+
+---
+
+### WA-11 -- Task completion status never means code exists: always grep before trusting (2026-05-20)
+
+**Problem (Track D QA, 2026-05-20):** Tasks D.1-D.9 were marked [completed] in ACTIVE_TASKS.md.
+QA grep revealed only 1 of 5 expected backend routes existed in `diagnostic.py`.
+Four routes (`/list`, `/feedback`, `/finalize`, `/public`) had never been written — only planned.
+The AI session that "completed" them ran out of context and marked tasks done without verifying the files.
+
+**Detection:**
+```bash
+# Count @router decorators in target file (should match expected route count)
+grep -c "@router\." scopesnap-api/api/diagnostic.py
+
+# Check each expected route exists by signature
+grep "@router\." scopesnap-api/api/diagnostic.py | grep -E "list|feedback|finalize|public|result"
+
+# Syntax check (catches NameError, SyntaxError introduced in edits)
+python3 -c "import ast; ast.parse(open('scopesnap-api/api/diagnostic.py').read()); print('OK')"
+```
+
+**Rule:** Before closing any backend track, run the grep check above. Task list status is evidence of intent,
+not evidence of implementation. Always verify the artifact (file on disk) matches the intention.
+**DEC reference:** DEC-031
+
+---
+
+### WA-12 -- NameError inside try/except Exception silently disables features (2026-05-20)
+
+**Problem (Track REC / R.9):** `fault_estimate.py` called `derive_condition_signal_from_assessment()`
+inside a `try: ... except Exception: logger.warning("lifecycle_rules lookup failed")` block.
+The function was never imported. Python raised `NameError` at runtime, which is a subclass of `Exception`,
+so the except block caught it silently on EVERY estimate generation.
+Result: the entire lifecycle_rules recommendation overlay was completely disabled in production
+from the moment `condition_signals.py` was created until commit `e2683dd` (R.9) fixed the import.
+
+**Detection:**
+```bash
+# Check import exists
+grep -n "from services.condition_signals" scopesnap-api/api/fault_estimate.py
+# Check function call exists  
+grep -n "derive_condition_signal" scopesnap-api/api/fault_estimate.py
+# Both lines must be present
+
+# Verify module imports cleanly at startup
+python3 -c "import sys; sys.path.insert(0,'scopesnap-api'); import api.fault_estimate; print('OK')"
+```
+
+**Rule:** Before shipping any function call inside a `try/except Exception` block:
+1. Grep for the import in the same file — both the `from X import Y` line AND the call site must be present.
+2. If the function comes from a new file (like condition_signals.py), verify the import resolves at module load time.
+3. Watch for log messages like "X lookup failed" that could mask NameError — add `logger.exception()` instead of `logger.warning()` in catch blocks that wrap external calls.
+**DEC reference:** DEC-034
+
+---
+
+### WA-13 -- Vercel dashboard is client-rendered: use javascript_tool, not get_page_text (2026-05-20)
+
+**Problem:** When checking Vercel deployment status via `mcp__Claude_in_Chrome__get_page_text`,
+the returned content was only nav shell HTML with no deployment rows — the page uses React client-side
+rendering and the text tool captures pre-hydration HTML only.
+
+**Fix:**
+```javascript
+// Use javascript_tool to query the rendered DOM instead
+document.querySelectorAll('[data-testid="deployment-item"]').length
+// Or inspect specific deployment state:
+document.querySelector('[data-testid="deployment-status"]')?.textContent
+```
+
+**General rule:** If `get_page_text` returns nav/header but no body content, the page is client-rendered.
+Switch to `javascript_tool` and query `document.querySelector` / `document.querySelectorAll` for the
+specific data you need. This applies to Vercel, Railway, GitHub Actions, and most SaaS dashboards.
+
+---
+
+### WA-14 -- git safe.directory required on every fresh /tmp clone (2026-05-20)
+
+**Problem:** On a fresh Linux sandbox session, git commands against `/tmp/snapai_tmp2`
+(or any /tmp clone) fail with:
+```
+fatal: detected dubious ownership in repository at '/tmp/snapai_tmp2'
+To add an exception for this directory, call:
+  git config --global --add safe.directory /tmp/snapai_tmp2
+```
+
+**Fix (add to top of every git workflow):**
+```bash
+git clone "https://TOKEN@github.com/mohammed-shoab/ScopeSnapAI.git" /tmp/snapai_tmpN
+git config --global --add safe.directory /tmp/snapai_tmpN
+```
+
+Or if the clone already exists from a prior step:
+```bash
+git config --global --add safe.directory /tmp/snapai_tmp2
+```
+
+**Note:** This is required even when the clone was created in the same bash session but
+the sandbox was restarted between steps. Always add it before the first git read/write op.
+
+
+
+---
+
 ## PK (Pakistan) Market — Architecture & Data Reference
 
 > PK QA verified: 2026-05-19. All 6 diagnostic flows confirmed live on pk.snapai.mainnov.tech (commits 9024d035, 0adc374, a951a02). Full PK SOW complete.

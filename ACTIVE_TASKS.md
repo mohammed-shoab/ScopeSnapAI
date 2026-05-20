@@ -3,9 +3,28 @@
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-20 (All QA decisions resolved and shipped. HEAD: 172b825. D.6: 62/62 share_tokens backfilled. R.7: profile guard live. S.7: StagingBanner live. Production fully signed off.)
+> Last updated: 2026-05-20 (All tracks complete. HEAD: fe86144. All bugs fixed. Lessons documented in TECH_STACK.md WA-9 through WA-14. Next session: start fresh backlog.)
 
 ---
+
+---
+
+## Lessons Learned — 2026-05-20 QA Session
+
+These bugs were found during the 2026-05-20 full audit. Full workarounds in TECH_STACK.md WA-9 through WA-14.
+
+| # | Bug / Lesson | Root Cause | Fix | WA Ref |
+|---|-------------|-----------|-----|--------|
+| L1 | 62 sessions had NULL share_token | apiFetch doesn't auto-inject Clerk JWT. Fire-and-forget finalize call had no token + silent .catch(()=>{}) | D.11: wrap in getToken().then(); backfill 62 rows via SQL | WA-9, DEC-030 |
+| L2 | Edit tool truncated assess/page.tsx | Edit tool truncates NTFS files with non-ASCII chars (em-dash in comment) | Restore from git, apply via Python replace() | WA-10, DEC-027 |
+| L3 | /diagnoses showed "offline" error | fault_cards JOIN used fc.id; PK is card_id. 500 response masked as OfflineError by apiFetch CORS failure | Fix all 3 SQL strings to use card_id | WA-11, DEC-033 |
+| L4 | Track D tasks "complete" but routes not written | AI marked tasks done without verifying file on disk. Context window exhaustion. | Grep file for @router decorators before closing any backend track | WA-11, DEC-031 |
+| L5 | Recommendation overlay disabled in prod silently | derive_condition_signal_from_assessment not imported; NameError caught by except Exception | Add import; use grep to verify both import + call site exist | WA-12, DEC-034 |
+| L6 | Profile guard wired to dead page | estimate/[id]/page.tsx is unreachable dead code; real builder is assessment/[id]/page.tsx | Rewired to correct file | DEC-032 |
+| L7 | P.7 seasonal logic duplicated nearly | P.7 PK-only inline block already existed when R.9 started | Grep target file before implementing any feature | WA-12, DEC-035 |
+| L8 | Vercel dashboard check returned empty | get_page_text returns pre-hydration shell for client-rendered pages | Use javascript_tool + document.querySelector() for DOM data | WA-13 |
+| L9 | git safe.directory error on fresh clone | Linux sandbox treats /tmp clones as dubious ownership | Add git config --global --add safe.directory /tmp/clone after every clone | WA-14 |
+
 
 ## Last QA Run
 
@@ -13,8 +32,8 @@
 **Markets tested:** Both Houston US and Pakistan PK (infrastructure + code path verified)
 **Outcome:** PASS ✅ COMPLETE — 53/53 items resolved, all fixes shipped
 **Alembic head:** 029 (confirmed live in Supabase quqrvnoguofbjacrxcim)
-**Commits this session:** 53db54a (D.11), 85197fc (docs), 172b825 (R.7+S.7)
-**Vercel:** Live on commit 172b825
+**Commits this session:** 53db54a (D.11), 85197fc (docs), 172b825 (R.7+S.7), 02ad667 (TECH_STACK), ba15901 (doc cleanup), fe86144 (BRAIN HEAD update)
+**Vercel:** Live on commit fe86144
 **Railway:** Health OK
 **QA sign-off:** FULLY COMPLETE ✅
 
@@ -294,4 +313,4 @@ All 8 items shipped in single commit `177f4f9` (hotfix lane, direct to main):
     - track import added, recommendedTier state added, captured from API on load
     - Fires only when selectedTier !== recommendedTier
   - ReportClient.tsx: track.recommendationApproved() wired in handleApprove success path
-    - initialRecommendedTier derived from report.options (same l                                                                                                                                                                                                                                                                                          
+    - initialRecommendedTier derived from report.options (same l

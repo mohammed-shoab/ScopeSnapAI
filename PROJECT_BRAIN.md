@@ -7,6 +7,24 @@
 
 ---
 
+## Critical Rules (Hard-Won — 2026-05-20)
+
+> Full details in TECH_STACK.md WA-9 through WA-14. Read before starting new work.
+
+| Rule | One-liner | Where |
+|------|-----------|-------|
+| apiFetch needs explicit token | `apiFetch` never auto-injects JWT. Pass `token: await getToken()` on every call. Fire-and-forget: wrap in `getToken().then()`. | WA-9, DEC-030 |
+| No Edit tool on Unicode files | Edit tool truncates NTFS files at non-ASCII chars. Use Python replace() in /tmp clone. | WA-10, DEC-027 |
+| Task done ≠ code written | Grep `@router.` count before closing any backend track. | WA-11, DEC-031 |
+| NameError inside try/except | Silently disables the feature. Grep for import + call both present. | WA-12, DEC-034 |
+| fault_cards PK is card_id | Never use fc.id. Always fc.card_id in JOINs and WHERE. | DEC-033 |
+| estimate/[id] is dead code | Real builder = assessment/[id]/page.tsx | DEC-032 |
+| Vercel = client-rendered | Use javascript_tool + document.querySelector(), not get_page_text. | WA-13 |
+| safe.directory on /tmp clone | `git config --global --add safe.directory /tmp/snapai_tmpN` after every clone. | WA-14 |
+
+
+---
+
 ## Live URLs
 
 ### Production
