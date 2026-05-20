@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-20 (QA run post-track-F+DX. HEAD: 85c5755. BUG-025+BUG-026 fixed. Alembic 030. All .md files current.)
+> Last updated: 2026-05-21 (Track F Group B complete — B.1–B.6 all shipped. HEAD: aa4e65b. Alembic head: 031 (photo_skipped). Vercel + Railway deploying on push.)
 
 ---
 
@@ -80,9 +80,9 @@
 ### Production
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both prod domains) | `85c5755` | Production Live | 2026-05-20 |
-| Railway backend (prod) | `85c5755` | Health OK — "Deployment successful" | 2026-05-20 |
-| Alembic migration (prod) | `030` | pak_diagnosis_feedback alternative_fault_id col | 2026-05-20 |
+| Vercel (both prod domains) | `aa4e65b` | Deploying (pushed 2026-05-21) | 2026-05-21 |
+| Railway backend (prod) | `aa4e65b` | Deploying — migration 031 will auto-run on boot | 2026-05-21 |
+| Alembic migration (prod) | `031` | photo_skipped column on diagnostic_sessions (pending Railway boot) | 2026-05-21 |
 | pak_data_defaults | 1 row (market=PK) | Seeded | 2026-05-19 |
 | pak_operating_targets | PK PSI thresholds + R-32 (5 rows, 30-50C ambient) | Seeded | 2026-05-18 |
 
@@ -99,9 +99,11 @@
 **Staging git HEAD:** `980698b` — "chore(staging): migrations 020-025 + dual keepalive A/B + promote-to-prod.sh"
 **Promote staging → prod:** `scripts/promote-to-prod.sh <file1> [file2 ...]` (run from a local main checkout)
 
-**Current git HEAD (main):** `85c5755` -- "fix(qa): seasonal_modifier_pct ORM column + handleContinue creates estimate before navigating"
+**Current git HEAD (main):** `aa4e65b` -- "feat(track-f-b.1+b.2+b.3+b.5+b.6): UI polish for beta readiness -- all Group B items"
 
 **Recent commits (newest first -- main):**
+- `aa4e65b` -- feat(track-f-b.1+b.2+b.3+b.5+b.6): UI polish for beta readiness -- all Group B items (2026-05-21)
+- `477314b` -- docs(qa-post-track-f+dx): QA sign-off + BUG-025/026 retrospective + DEC-036/037 + WA-15/16 (2026-05-20)
 - `85c5755` -- fix(qa): seasonal_modifier_pct ORM column + handleContinue creates estimate before navigating (2026-05-20)
 - `d5efc36` -- fix(migration-030): diagnosis_feedback only -- pak_diagnosis_feedback does not exist in prod (2026-05-20)
 - `1ca5ed6` -- feat(track-dx-group-b): diagnosis screen UX overhaul (DX.3 through DX.15) (2026-05-20)
@@ -130,6 +132,7 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 - **Frontend:** Next.js (Vercel). Two domains, one deployment. Market detected via hostname → `detectMarket()` in `lib/market.ts`
 - **Backend:** FastAPI (Railway). Single service. Market routed via `X-Market` header → `get_tables()` in `api/dependencies.py`
 - **Database:** Supabase (PostgreSQL). US tables = standard names. PK tables = `pak_*` prefix.
+- **TCO tables:** `card_tco_data` (US, 57 rows) + `pak_card_tco_data` (PK, 45 rows). Keyed on `(card_id, tier)`. Served via `_enrich_tco_from_db()` in `estimates.py`.
 - **Auth:** Clerk JWT. All protected endpoints require `Authorization: Bearer <clerk-token>`
 - **Model data endpoint:** `GET /api/models/all` (with `X-Market` header) → returns all equipment records for that market
 - **US models:** 76 records. Brands include Carrier, Goodman, Lennox, Rheem, Trane, York, etc.
@@ -142,6 +145,7 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 | File | Purpose |
 |------|---------|
 | `scopesnap-web/lib/market.ts` | `detectMarket()`, `MARKET_CONFIG`, `formatCurrency()` |
+| `scopesnap-web/components/FiveYearComparison.tsx` | Unified 5-Year TCO display — prob bars, repair cost, savings, methodology block. Both markets. C->B->A column order. |
 | `scopesnap-web/lib/api.ts` | All typed API fetch wrappers, X-Market header injection |
 | `scopesnap-web/lib/modelCache.ts` | Client-side model cache (`/api/models/all`), `getBrands()`, `searchModels()` |
 | `scopesnap-web/components/StepZeroPanel.tsx` | Nameplate entry screen (Step 0) — brand/model lookup, DB badge, ✏ Edited badge, Est. electrical spec auto-fill |
@@ -157,7 +161,7 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 | `scopesnap-api/api/assessments.py` | Assessment CRUD |
 | `scopesnap-api/api/fault_estimate.py` | Primary estimate engine -- `POST /api/estimates/fault-card`. Seasonal modifier, recommendation overlay, tier labels, markup, surcharges. |
 | `scopesnap-api/api/estimates.py` | Estimate generation and retrieval |
-| `scopesnap-api/db/migrations/versions/` | Alembic migrations (current head: `029` — applied via Supabase direct) |
+| `scopesnap-api/db/migrations/versions/` | Alembic migrations (current head: `032` — applied via Supabase direct) |
 
 ---
 
@@ -171,5 +175,6 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 
 | Date | Markets | Outcome | Bugs Fixed | Commit |
 |------|---------|---------|------------|--------|
+| 2026-05-21 (Track G) | Houston + PK | PASS ✅ | 5-Year TCO display live (G.1-G.12) | 053d554 |
 | 2026-05-20 (full audit) | Houston + PK | PASS ✅ | 53 items resolved | ba15901 |
 | 2026-05-20 (post-track-F+DX) | Houston + PK | PASS ✅ | BUG-025, BUG-026 | 85c5755 |

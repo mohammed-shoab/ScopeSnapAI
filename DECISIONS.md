@@ -647,3 +647,47 @@ async function handleContinue() {
 
 **Verified live:** rpt-0494 created and loaded correctly after fix. Navigation went to
 `/assessment/97b22e44-c121-4e21-92e6-0d3a158b4e95` (estimate ID). ✅
+
+
+---
+
+## DEC-034 — TCO data sourced from DB tables, not live calculation (Track G, 2026-05-21)
+
+**Decision:** `five_year_comparison` data is pre-computed and stored in `card_tco_data` /
+`pak_card_tco_data`, keyed on `(card_id, tier)`. It is NOT calculated at runtime from
+energy prices or live repair history.
+
+**Rationale:** Actuarial-style probability estimates require curated data (AHRI failure studies,
+DOE energy data, PK load-shedding research) that cannot be derived from live signals.
+Pre-computed data is auditable, reviewable by the advisory board, and version-controlled in
+the JSON seed files.
+
+**Implication:** When estimates.py calls `_enrich_tco_from_db()`, a DB miss (no TCO row for
+that card/tier) returns `None` silently — FiveYearComparison renders nothing rather than
+showing bad data.
+
+---
+
+## DEC-035 — TCO column order: C (left) -> B (center) -> A (right) (Track G, 2026-05-21)
+
+**Decision:** FiveYearComparison renders tiers in order C, B, A — most expensive option on
+the LEFT, cheapest on the right. Opposite of typical Good/Better/Best left-to-right ordering.
+
+**Rationale:** Marcus Reed board directive. Presenting the replacement option (C) first anchors
+the homeowner on the premium option and makes the middle tier (B, recommended) feel like
+a reasonable save. Psychological anchoring increases B uptake.
+
+**Implementation:** `TierCard` array is hardcoded `[C, B, A]` in FiveYearComparison.tsx.
+Do not reorder without board approval.
+
+---
+
+## DEC-036 — PresentMode Slide4 selectedTier used as recommendedTier (Track G, 2026-05-21)
+
+**Decision:** In Slide4Value (PresentMode), `selectedTier` is passed as `recommendedTier` to
+FiveYearComparison. The Option interface in PresentMode.tsx does not carry a `recommended`
+boolean (the prop isn't passed through from the estimate builder).
+
+**Rationale:** `selectedTier` in PresentMode is always the tech's recommended tier at the
+point they enter Present Mode. Using it as `recommendedTier` is functionally equivalent and
+avoids adding a new prop to EstimateData.

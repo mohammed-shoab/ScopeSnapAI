@@ -3,7 +3,22 @@
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-20 (Post-track-F+DX QA complete. HEAD: 85c5755. BUG-025+BUG-026 fixed. Alembic 030. Inverter badge data gap noted.)
+> Last updated: 2026-05-21 (Track F Group B complete. HEAD: aa4e65b. Alembic 031 (photo_skipped). B.1–B.6 all shipped.)
+
+---
+
+## Completed (2026-05-21 — Track F Group B: Beta Readiness UI Polish, commit aa4e65b)
+
+| Item | Description | Files changed | Status |
+|------|-------------|---------------|--------|
+| B.1 | "Your Home" → customer_name first in report header h1 + metadata title | `ReportClient.tsx`, `r/[slug]/[reportId]/page.tsx` | ✅ SHIPPED |
+| B.2 | Step Zero button hierarchy — Scan Nameplate primary, manual entry as text link | `StepZeroPanel.tsx` | ✅ SHIPPED |
+| B.3 | PK refrigerant auto-selection from year + inverter type (R-32/R-410A/R-22) | `StepZeroPanel.tsx` | ✅ SHIPPED |
+| B.4 | Jobs 404 fix | Already done in DX Group A (`/assessments` route) | ✅ ALREADY DONE |
+| B.5 | Phone numpad input (`inputMode="tel"`) on all 5 phone inputs | `SendMomentModal.tsx`, `onboarding`, `settings`, `assess`, `assessment/[id]` | ✅ SHIPPED |
+| B.6 | Photo skip disclosure — DB column, skip tracking, skip button text, report render | `DiagnosticFlow.tsx`, `diagnostic.py`, `reports.py`, migration `031_photo_skipped.py` | ✅ SHIPPED |
+
+**Migration 031:** `diagnostic_sessions.photo_skipped BOOLEAN DEFAULT FALSE` — auto-applied by Railway on boot.
 
 ---
 
@@ -342,29 +357,25 @@ All 8 items shipped in single commit `177f4f9` (hotfix lane, direct to main):
 
 - [completed] REC.3 -- lifecycle_rules expanded 17 -> 50 rows
   - Migration: 028_lifecycle_rules_expansion.py (revision "028", down_revision "025")
-  - 33 new rows: under_warranty (11 cards), photo_confirmed_pitting (4), formicary_confirmed (4),
-    rla_over_nameplate (6), recurring_clog (1), attic_location (4), bearing_noise (2), sensor_only (1)
-  - Idempotent: LEFT JOIN guard prevents duplicates on re-run
-  - NOTE: Revision 026/027 reserved by staging Track D migrations. This is revision 028.
+  - 33 new rows: under_warranty (11 cards), photo_confirme
 
-- [completed] REC.5 -- PostHog tracking helpers
-  - scopesnap-web/lib/tracking.ts: 3 new helpers added to track object:
-    track.recommendationShown(cardId, recommendedTier, reason?, source?)
-    track.recommendationOverridden(cardId, originalTier, chosenTier, estimateId?)
-    track.recommendationApproved(cardId, approvedTier, recommendedTier, reportId?)
-  - Wiring note: recommendationShown -> call from assess/page.tsx after R.3 done
-  - Wiring note: recommendationOverridden -> call from estimate/[id]/page.tsx after R.7 done
-  - Wiring note: recommendationApproved -> call from ReportClient.tsx after R.1-R.5 done
+---
 
-## Completed (Track REC.5 wiring -- 2026-05-20, commit e5ffefb)
+## Completed (Track G -- 2026-05-21, commits 545e5ae + 053d554)
 
-- [completed] REC.5 wiring -- recommendationShown, Overridden, Approved fully wired
-  - assess/page.tsx: track.recommendationShown() added at 2 call sites
-    - _doPhase2Gate: source="phase2_gate", fires after estimateGenerated
-    - _doGenerateEstimate: source="fault_card", fires after estimateGenerated
-    - Guard: if (est.recommended_tier) -- safe when backend doesn't return field
-  - estimate/[id]/page.tsx: track.recommendationOverridden() wired to Continue button
-    - track import added, recommendedTier state added, captured from API on load
-    - Fires only when selectedTier !== recommendedTier
-  - ReportClient.tsx: track.recommendationApproved() wired in handleApprove success path
-    - initialRecommendedTier derived from report.options (same l
+- [completed] G.1 -- JSON data edits: 5 numeric corrections + 1 source-note clarification (US Card 5-A, 10-A; PK Card 18-B, 7-A/B/C)
+- [completed] G.2 -- Migration 032_card_tco_data.py: `card_tco_data` + `pak_card_tco_data` tables (revision 032, down_revision 031)
+- [completed] G.3 -- Seeded 57 US rows + 45 PK rows from JSON files via Supabase MCP; alembic_version set to 032
+- [completed] G.4 -- `_enrich_tco_from_db()` in estimates.py: enriches options[].five_year_comparison per tier from DB on every GET /api/estimates/<id>
+- [completed] G.5 -- FiveYearComparison.tsx (205 lines): unified component, both markets, C->B->A column order, risk bars, methodology block, 3 PostHog events
+- [completed] G.6 -- ReportClient.tsx: replaced broken CostBar-based 5-Year block with FiveYearComparison (mode="homeowner_report")
+- [completed] G.7 -- PresentMode.tsx: replaced broken Slide4Value (letters/tier mismatch) with FiveYearComparison (mode="present_mode")
+- [completed] G.9 -- Methodology disclaimer block embedded in FiveYearComparison (DOE SEER/USD for US, inverter/PKR for PK)
+- [completed] G.11 -- tracking.ts: 3 new PostHog events (tco_section_rendered, tco_option_compared, tco_methodology_viewed)
+- [completed] G.12 -- Docs: PROJECT_BRAIN, ACTIVE_TASKS, DECISIONS updated
+
+**Track G v1.1 Backlog (deferred):**
+- [ ] G.10 -- Live mobile QA screenshots at 375/768/1280 on both prod domains (needs deployed build)
+- [ ] Seasonality overlay on TCO (winter vs summer repair probability delta)
+- [ ] Homeowner-facing PDF export of TCO table
+- [ ] PostHog cohort: "TCO Engaged" (viewed methodology + compared option)
