@@ -1213,11 +1213,13 @@ async def get_diagnostic_result(
 
     # Load fault card data (market-aware table + climate notes column)
     climate_col = "climate_notes_pk" if tables.market == "PK" else "climate_notes_us"
+    # BUG-023: use base table directly to avoid pak_fault_cards_v stale-statement issues
+    _fc_table = "pak_fault_cards" if tables.market == "PK" else tables.fault_cards
     fc_result = await db.execute(
         text(
             "SELECT card_id, card_name, action_steps, parts_needed, alternative_cards,"
             " " + climate_col
-            + " FROM " + tables.fault_cards + " WHERE card_id = :cid LIMIT 1"
+            + " FROM " + _fc_table + " WHERE card_id = :cid LIMIT 1"
         ),
         {"cid": session.resolved_card_id},
     )
@@ -1326,7 +1328,8 @@ async def list_diagnoses(
         except Exception:
             pass
 
-    fc_table = tables.fault_cards
+    # BUG-023: use base table directly to avoid pak_fault_cards_v stale-statement issues
+    fc_table = "pak_fault_cards" if tables.market == "PK" else tables.fault_cards
 
     rows_res = await db.execute(
         text(
