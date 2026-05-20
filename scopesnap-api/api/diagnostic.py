@@ -1249,6 +1249,34 @@ async def get_diagnostic_result(
 
     climate_note = getattr(fc, climate_col, None)
 
+    # DX.3: pull repair_plan from existing estimate (created at diagnosis resolution)
+    repair_plan = None
+    if session.assessment_id:
+        try:
+            est_res = await db.execute(
+                text("SELECT options, markup_percent FROM estimates WHERE assessment_id = :aid LIMIT 1"),
+                {"aid": str(session.assessment_id)},
+            )
+            est_row = est_res.fetchone()
+            if est_row and est_row.options:
+                raw_opts = est_row.options if isinstance(est_row.options, list) else []
+                # Identify recommended tier
+                rec_tier = next((o.get("tier") for o in raw_opts if o.get("recommended")), "B")
+                tiers = []
+                for opt in raw_opts:
+                    tier_key = opt.get("tier", "B")
+                    tiers.append({
+                        "key": tier_key,
+                        "name": opt.get("name", tier_key),
+                        "total": float(opt.get("total", 0)),
+                        "line_items": opt.get("line_items", []),
+                        "recommended": bool(opt.get("recommended", False)),
+                    })
+                if tiers:
+                    repair_plan = {"recommended_tier": rec_tier, "tiers": tiers}
+        except Exception as _rp_exc:
+            logger.warning("[diagnostic] repair_plan fetch failed (non-fatal): %s", _rp_exc)
+
     return {
         "session_id": session_id,
         "assessment_id": str(session.assessment_id) if session.assessment_id else None,
@@ -1270,6 +1298,7 @@ async def get_diagnostic_result(
         },
         "share_url": share_url,
         "created_at": session.created_at.isoformat() if session.created_at else None,
+        "repair_plan": repair_plan,
     }
 
 
@@ -1384,6 +1413,7 @@ class DiagnosisFeedbackRequest(BaseModel):
     session_id: str
     agreement: str
     real_fault_text: Optional[str] = None
+    alternative_fault_id: Optional[int] = None  # DX.6: structured picker result
 
 
 @router.post("/feedback", status_code=201)
@@ -1409,15 +1439,16 @@ async def submit_diagnosis_feedback(
     await db.execute(
         text(
             "INSERT INTO diagnosis_feedback"
-            " (id, session_id, tech_user_id, agreement, real_fault_text, created_at)"
-            " VALUES (:id, :sid, :uid, :agr, :rft, :now)"
+            " (id, session_id, tech_user_id, agreement, real_fault_text, alternative_fault_id, created_at)"
+            " VALUES (:id, :sid, :uid, :agr, :rft, :afi, :now)"
         ),
         {
-            "id": str(_uuid_mod.uuid4()),
+            "id":  str(_uuid_mod.uuid4()),
             "sid": body.session_id,
             "uid": auth.user_id,
             "agr": body.agreement,
             "rft": body.real_fault_text,
+            "afi": body.alternative_fault_id,
             "now": datetime.now(timezone.utc),
         },
     )
@@ -1564,4 +1595,38 @@ async def get_public_diagnosis(
         "share_url": share_url,
         "created_at": session.created_at.isoformat() if session.created_at else None,
     }
+
+
+# -- DX.9: PATCH /session/{session_id}/cancel ---------------------------------
+
+@router.patch("/session/{session_id}/cancel", status_code=200)
+async def cancel_diagnosis_session(
+    session_id: str = Path(...),
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    DX.9 -- Soft-delete a diagnostic session (sets deleted_at).
+    Called when the tech taps Cancel diagnosis from the ... menu.
+    """
+    sess_check = await db.execute(
+        text(
+            "SELECT id FROM diagnostic_sessions"
+            " WHERE id = :sid AND company_id = :cid AND deleted_at IS NULL LIMIT 1"
+        ),
+        {"sid": session_id, "cid": auth.company_id},
+    )
+    if not sess_check.fetchone():
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    await db.execute(
+        text(
+            "UPDATE diagnostic_sessions"
+            " SET deleted_at = :now, updated_at = :now WHERE id = :sid"
+        ),
+        {"now": datetime.now(timezone.utc), "sid": session_id},
+    )
+    await db.commit()
+    return {"status": "cancelled"}
+
 # BUG-020 fix verified: card_id (not id)

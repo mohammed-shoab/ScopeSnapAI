@@ -1,23 +1,51 @@
 "use client";
 
 /**
- * FaultResolutionScreen — Track D
- * The diagnosis-screen hero. Renders fault verdict, action steps, parts needed,
- * confidence badge, PK climate note, reasoning chain, feedback buttons.
+ * FaultResolutionScreen — Track D + Track DX (Group B)
+ *
+ * Group B changes (DX.3–DX.11):
+ *   DX.3  — Repair Plan section (3 tier cards, Good/Better/Best)
+ *   DX.4  — Density trim: customer → subtitle, reasoning → bottom link, parts+time merged
+ *   DX.5  — 2-button footer: large Continue + small "Different problem" link
+ *   DX.6  — Different problem opens structured picker modal (DiagnosisFeedbackModal)
+ *   DX.7  — Animated checkmark on fault name mount
+ *   DX.8  — Share icon top-right corner
+ *   DX.9  — "..." menu top-right (Cancel diagnosis / Start over)
+ *   DX.10 — Self-graduating Repair Plan (< 20 diagnoses: all 3; >= 20: only recommended)
+ *   DX.11 — Self-graduating Continue label (sessions 1-3: "Continue to Estimate →"; after: "Continue →")
  *
  * Used in two modes:
- *   "authenticated" — shows customer banner + Mark-as-Solved / Different-fault-found
+ *   "authenticated" — shows customer info + action buttons
  *   "public"        — hides PII + hides action buttons; shown at /d/[share_token]
  */
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
 import { detectMarket } from "@/lib/market";
 import { trackEvent } from "@/lib/tracking";
 import { apiFetch } from "@/lib/api";
 import DiagnosisFeedbackModal from "@/components/DiagnosisFeedbackModal";
+import {
+  incrementDiagnosesOpened,
+  getDiagnosesOpenedCount,
+  getSessionCount,
+} from "@/lib/userSessionCounter";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface RepairPlanTier {
+  key: "A" | "B" | "C";
+  name: string;
+  total: number;
+  line_items: Array<{ description: string; amount: number; category: string }>;
+  recommended: boolean;
+}
+
+export interface RepairPlan {
+  recommended_tier: "A" | "B" | "C";
+  tiers: RepairPlanTier[];
+}
 
 export interface DiagnosticResult {
   session_id: string;
@@ -37,6 +65,7 @@ export interface DiagnosticResult {
   customer: { label: string | null; address: string | null };
   share_url: string;
   created_at?: string | null;
+  repair_plan?: RepairPlan | null;
 }
 
 interface Props {
@@ -52,37 +81,85 @@ const CONFIDENCE: Record<string, { bg: string; text: string; label: string }> = 
   low:    { bg: "rgba(220,38,38,.12)",  text: "#dc2626", label: "Low Confidence" },
 };
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function fmt(n: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+}
+
+const TIER_LABEL: Record<string, "good" | "better" | "best"> = { A: "good", B: "better", C: "best" };
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function FaultResolutionScreen({ data, mode = "authenticated" }: Props) {
-  const market = detectMarket();
+  const market   = detectMarket();
   const isPublic = mode === "public";
-  const conf = CONFIDENCE[data.fault.confidence] ?? CONFIDENCE.high;
+  const conf     = CONFIDENCE[data.fault.confidence] ?? CONFIDENCE.high;
 
   const router = useRouter();
-  const [feedback, setFeedback] = useState<"solved" | "different_fault" | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [reasoningOpen, setReasoningOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [navigating, setNavigating] = useState(false);
-  const mountTime = useRef(Date.now());
+  const { getToken } = useAuth();
 
-  // Stack feedback buttons vertically on screens narrower than 480px
+  // Core state
+  const [feedback, setFeedback]           = useState<"different_fault" | null>(null);
+  const [showModal, setShowModal]          = useState(false);
+  const [copied, setCopied]               = useState(false);
+  const [navigating, setNavigating]       = useState(false);
+  const mountTime                          = useRef(Date.now());
+
+  // DX.7 — animated checkmark
+  const [checkVisible, setCheckVisible]   = useState(false);
+
+  // DX.8/9 — share + menu
+  const [menuOpen, setMenuOpen]           = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showRestartConfirm, setShowRestartConfirm] = useState(false);
+  const [cancelling, setCancelling]       = useState(false);
+  const menuRef                            = useRef<HTMLDivElement>(null);
+
+  // DX.10 — self-graduating Repair Plan
+  const [showOtherTiers, setShowOtherTiers] = useState(false);
+  const [expandedTiers, setExpandedTiers]   = useState<Set<string>>(new Set(["B"]));
+
+  // DX.4 — reasoning modal
+  const [showReasoning, setShowReasoning]  = useState(false);
+
+  // DX.10/11 — localStorage counters (read once, SSR-safe)
+  const diagCount    = typeof window !== "undefined" ? getDiagnosesOpenedCount() : 0;
+  const sessionCount = typeof window !== "undefined" ? getSessionCount() : 0;
+  const showAllTiers = diagCount < 20;
+  const continueLabel = sessionCount <= 3 ? "Continue to Estimate →" : "Continue →";
+
+  const hasPhoto   = data.photo_evidence.length > 0;
+  const hasClimate = market === "PK" && !!data.common_cause_climate;
+  const hasAlts    = data.alternative_diagnoses.length > 0;
+
+  // Repair Plan data (recommended tier first)
+  const repairPlan = data.repair_plan ?? null;
+  const recTier    = repairPlan?.recommended_tier ?? "B";
+  const allTiers   = repairPlan?.tiers ?? [];
+  const orderedTiers: RepairPlanTier[] = [
+    ...allTiers.filter(t => t.key === recTier),
+    ...allTiers.filter(t => t.key !== recTier),
+  ];
+
+  // ── Effects ──────────────────────────────────────────────────────────────
+
+  // DX.7: animate checkmark after first paint
   useEffect(() => {
-    function checkWidth() { setIsMobile(window.innerWidth < 480); }
-    checkWidth();
-    window.addEventListener("resize", checkWidth);
-    return () => window.removeEventListener("resize", checkWidth);
+    const t = setTimeout(() => setCheckVisible(true), 80);
+    return () => clearTimeout(t);
   }, []);
 
-  // D.13: fault_screen_opened on mount; fault_screen_time_on_screen on unmount
+  // Tracking + counter increment on mount
   useEffect(() => {
     trackEvent("fault_screen_opened", {
       session_id: data.session_id,
       mode,
       confidence: data.fault.confidence,
     });
+    if (!isPublic) {
+      incrementDiagnosesOpened();
+    }
     return () => {
       const seconds = Math.round((Date.now() - mountTime.current) / 1000);
       trackEvent("fault_screen_time_on_screen", { session_id: data.session_id, seconds });
@@ -90,33 +167,38 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleMarkSolved() {
-    setFeedback("solved");
-    trackEvent("fault_screen_agreement", {
+  // DX.9: close menu when clicking outside
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    if (menuOpen) document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [menuOpen]);
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
+
+  function handleContinue() {
+    if (!data.assessment_id || navigating) return;
+    setNavigating(true);
+    const variant = sessionCount <= 3 ? "with_destination" : "short";
+    trackEvent("fault_screen_estimate_generated", {
       session_id: data.session_id,
-      agreement: "solved",
-      has_text: false,
+      label_variant: variant,
     });
-    // Fire-and-forget — uses apiFetch so auth headers are injected automatically
-    apiFetch("/api/diagnostic/feedback", {
-      method: "POST",
-      body: JSON.stringify({ session_id: data.session_id, agreement: "solved" }),
-    }).catch(() => {});
+    router.push(`/assessment/${data.assessment_id}`);
   }
 
   function handleDifferentFault() {
     setShowModal(true);
   }
 
-  function handleModalClose(submittedText?: string) {
+  function handleModalClose(result?: { alternativeFaultId: number | null; text: string | null }) {
     setShowModal(false);
-    if (submittedText !== undefined) {
+    if (result !== undefined) {
       setFeedback("different_fault");
-      trackEvent("fault_screen_agreement", {
-        session_id: data.session_id,
-        agreement: "different_fault",
-        has_text: submittedText.length > 0,
-      });
     }
   }
 
@@ -130,67 +212,157 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
     }
   }
 
-  function handleReasoningToggle(open: boolean) {
-    setReasoningOpen(open);
-    if (open) {
-      trackEvent("fault_screen_reasoning_expanded", { session_id: data.session_id });
-    }
-  }
-
-  function handleContinue() {
-    if (!data.assessment_id || navigating) return;
-    setNavigating(true);
-    trackEvent("fault_screen_estimate_generated", {
-      session_id: data.session_id,
-      mode: "authenticated",
+  function toggleTier(key: string) {
+    setExpandedTiers(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+        const label = TIER_LABEL[key];
+        if (label) trackEvent("repair_plan_tier_expanded", { session_id: data.session_id, tier: label });
+      }
+      return next;
     });
-    router.push(`/assessment/${data.assessment_id}`);
   }
 
-  const hasPhoto = data.photo_evidence.length > 0;
-  const hasClimate = market === "PK" && !!data.common_cause_climate;
-  const hasAlts = data.alternative_diagnoses.length > 0;
-  const showActionButtons = !isPublic && feedback === null;
+  async function handleCancelDiagnosis() {
+    if (cancelling) return;
+    setCancelling(true);
+    trackEvent("diagnosis_cancelled", { session_id: data.session_id });
+    try {
+      const token = await getToken();
+      await apiFetch(`/api/diagnostic/session/${data.session_id}/cancel`, {
+        method: "PATCH",
+        token: token ?? undefined,
+      });
+    } catch {
+      // best-effort; navigate regardless
+    }
+    router.push("/diagnoses");
+  }
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  function handleStartOver() {
+    trackEvent("diagnosis_restarted", { session_id: data.session_id });
+    const url = data.assessment_id
+      ? `/assess?assessment_id=${data.assessment_id}`
+      : "/assess";
+    router.push(url);
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ maxWidth: 672, margin: "0 auto", padding: "16px", display: "flex", flexDirection: "column", gap: 16 }}>
+    <div style={{ maxWidth: 672, margin: "0 auto", padding: "16px", display: "flex", flexDirection: "column", gap: 16, position: "relative" }}>
 
-      {/* Customer banner — authenticated mode only */}
-      {!isPublic && (data.customer.label || data.customer.address) && (
-        <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#475569" }}>
-          {data.customer.label && <div style={{ fontWeight: 600, color: "#1e293b" }}>{data.customer.label}</div>}
-          {data.customer.address && <div>{data.customer.address}</div>}
+      {/* Keyframe style for animated checkmark (DX.7) */}
+      <style>{`
+        @keyframes snapcheck {
+          0%   { opacity: 0; transform: scale(0.4); }
+          60%  { transform: scale(1.18); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        .snap-check-icon { animation: snapcheck 0.32s ease-out forwards; }
+      `}</style>
+
+      {/* ── Top-right corner: Share + ... menu (DX.8, DX.9) ── */}
+      {!isPublic && (
+        <div style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: 4, zIndex: 10 }}>
+          {/* Share icon (DX.8) */}
+          <button
+            onClick={handleShareClick}
+            title="Copy share link"
+            style={{
+              width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "none", border: "none", cursor: "pointer", borderRadius: 8,
+              color: copied ? "#16a34a" : "#64748b",
+            }}
+          >
+            {/* Share2 icon SVG */}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+            </svg>
+          </button>
+
+          {/* ... menu (DX.9) */}
+          <div ref={menuRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              title="More options"
+              style={{
+                width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
+                background: menuOpen ? "#f1f5f9" : "none", border: "none", cursor: "pointer", borderRadius: 8,
+                color: "#64748b",
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="5" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="19" r="1.5" fill="currentColor"/>
+              </svg>
+            </button>
+            {menuOpen && (
+              <div style={{
+                position: "absolute", top: "100%", right: 0, marginTop: 4,
+                background: "#fff", borderRadius: 10, border: "1px solid #e2e8f0",
+                boxShadow: "0 4px 16px rgba(0,0,0,.10)", minWidth: 200, overflow: "hidden", zIndex: 100,
+              }}>
+                <button
+                  onClick={() => { setMenuOpen(false); setShowCancelConfirm(true); }}
+                  style={{
+                    width: "100%", padding: "12px 16px", textAlign: "left", background: "none",
+                    border: "none", cursor: "pointer", fontSize: 14, color: "#dc2626", fontWeight: 500,
+                  }}
+                >
+                  Cancel diagnosis
+                </button>
+                <div style={{ height: 1, background: "#f1f5f9" }} />
+                <button
+                  onClick={() => { setMenuOpen(false); setShowRestartConfirm(true); }}
+                  style={{
+                    width: "100%", padding: "12px 16px", textAlign: "left", background: "none",
+                    border: "none", cursor: "pointer", fontSize: 14, color: "#334155",
+                  }}
+                >
+                  Start over
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Fault name + confidence badge */}
-      <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "#0f172a", lineHeight: 1.2 }}>
-          {data.fault.name}
-        </h1>
-        <span style={{
-          padding: "3px 10px",
-          borderRadius: 99,
-          fontSize: 12,
-          fontWeight: 600,
-          background: conf.bg,
-          color: conf.text,
-          whiteSpace: "nowrap",
-        }}>
-          {conf.label}
-        </span>
+      {/* ── Fault name + confidence + animated checkmark (DX.7) ── */}
+      <div style={{ paddingRight: !isPublic ? 96 : 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
+          {/* Animated checkmark (DX.7) */}
+          {!isPublic && checkVisible && (
+            <span
+              className="snap-check-icon"
+              style={{ color: "#16a34a", fontSize: 22, lineHeight: 1, flexShrink: 0 }}
+            >
+              ✓
+            </span>
+          )}
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a", lineHeight: 1.25 }}>
+            {data.fault.name}
+          </h1>
+          <span style={{
+            padding: "3px 10px", borderRadius: 99, fontSize: 12, fontWeight: 600,
+            background: conf.bg, color: conf.text, whiteSpace: "nowrap",
+          }}>
+            {conf.label}
+          </span>
+        </div>
+
+        {/* DX.4: customer info → 12px gray subtitle */}
+        {!isPublic && (data.customer.label || data.customer.address) && (
+          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>
+            {[data.customer.label, data.customer.address].filter(Boolean).join(" · ")}
+          </div>
+        )}
       </div>
 
-      {/* Time estimate */}
-      {data.time_estimate_minutes && (
-        <div style={{ fontSize: 13, color: "#64748b" }}>
-          Estimated time on job: <strong>{data.time_estimate_minutes} min</strong>
-        </div>
-      )}
-
-      {/* Action steps */}
+      {/* ── Action steps ── */}
       {data.action_steps.length > 0 && (
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "14px 16px" }}>
           <div style={{ fontWeight: 600, marginBottom: 10, fontSize: 14, color: "#0f172a" }}>What to do</div>
@@ -202,15 +374,16 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
         </div>
       )}
 
-      {/* Parts needed */}
-      {data.parts_needed.length > 0 && (
+      {/* DX.4: Parts + Time → merged single line ── */}
+      {(data.parts_needed.length > 0 || data.time_estimate_minutes) && (
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "14px 16px" }}>
-          <div style={{ fontWeight: 600, marginBottom: 10, fontSize: 14, color: "#0f172a" }}>Parts needed</div>
-          <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 6 }}>
-            {data.parts_needed.map((part, i) => (
-              <li key={i} style={{ fontSize: 14, color: "#334155" }}>{part}</li>
-            ))}
-          </ul>
+          <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 14, color: "#0f172a" }}>Parts &amp; Time</div>
+          <div style={{ fontSize: 14, color: "#334155" }}>
+            {[
+              data.parts_needed.join(", "),
+              data.time_estimate_minutes ? `${data.time_estimate_minutes} min` : null,
+            ].filter(Boolean).join(" · ")}
+          </div>
         </div>
       )}
 
@@ -237,11 +410,13 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
         </div>
       )}
 
-      {/* Alternative diagnoses — medium/low confidence only */}
+      {/* DX.4: Alternative diagnoses — collapsed link when medium/low confidence ── */}
       {hasAlts && data.fault.confidence !== "high" && (
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "14px 16px" }}>
-          <div style={{ fontWeight: 600, marginBottom: 10, fontSize: 14, color: "#0f172a" }}>Other possibilities considered</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <details style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 14px" }}>
+          <summary style={{ cursor: "pointer", fontSize: 13, color: "#64748b", userSelect: "none" }}>
+            Show alternatives considered
+          </summary>
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
             {data.alternative_diagnoses.map((alt, i) => {
               const altConf = CONFIDENCE[alt.confidence] ?? CONFIDENCE.low;
               return (
@@ -254,97 +429,172 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
               );
             })}
           </div>
+        </details>
+      )}
+
+      {/* ── DX.3: Repair Plan section ── */}
+      {repairPlan && orderedTiers.length > 0 && (
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a", marginBottom: 10 }}>
+            What we&apos;d recommend doing
+          </div>
+
+          {/* Tiers to show based on self-graduating logic (DX.10) */}
+          {(showAllTiers ? orderedTiers : orderedTiers.filter(t => t.key === recTier)).map(tier => {
+            const isExpanded    = expandedTiers.has(tier.key);
+            const isRecommended = tier.key === recTier;
+            const tierName      = tier.name || (tier.key === "A" ? "Good" : tier.key === "B" ? "Better" : "Best");
+
+            return (
+              <div
+                key={tier.key}
+                style={{
+                  border: isRecommended ? "2px solid #16a34a" : "1.5px solid #e2e8f0",
+                  borderRadius: 10, marginBottom: 10, overflow: "hidden",
+                  background: isRecommended ? "rgba(22,163,74,.03)" : "#fff",
+                }}
+              >
+                {/* Card header — always visible, click to toggle */}
+                <button
+                  onClick={() => toggleTier(tier.key)}
+                  style={{
+                    width: "100%", padding: "12px 14px", textAlign: "left",
+                    background: "none", border: "none", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{tierName}</span>
+                    {isRecommended && (
+                      <span style={{
+                        background: "#16a34a", color: "#fff", fontSize: 10, fontWeight: 700,
+                        padding: "2px 7px", borderRadius: 99, letterSpacing: "0.04em",
+                      }}>
+                        RECOMMENDED
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>
+                      {fmt(tier.total)}
+                    </span>
+                    <span style={{ fontSize: 16, color: "#94a3b8", transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+                      &#8964;
+                    </span>
+                  </div>
+                </button>
+
+                {/* Expanded content */}
+                {isExpanded && (
+                  <div style={{ padding: "0 14px 14px", borderTop: "1px solid #f1f5f9" }}>
+                    <ul style={{ margin: "10px 0 0 0", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 }}>
+                      {tier.line_items.map((item, i) => (
+                        <li key={i} style={{ fontSize: 13, color: "#334155" }}>
+                          {item.description}
+                          {item.category === "parts" && (
+                            <span style={{ fontSize: 12, color: "#64748b" }}> — {fmt(item.amount)}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* DX.10: "See other options" link when post-20-diagnoses */}
+          {!showAllTiers && !showOtherTiers && (
+            <button
+              onClick={() => {
+                setShowOtherTiers(true);
+                trackEvent("repair_plan_see_other_options_clicked", { session_id: data.session_id });
+              }}
+              style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#2563eb", padding: "4px 0", textDecoration: "underline" }}
+            >
+              See other options
+            </button>
+          )}
+
+          {/* Show non-recommended tiers when expanded */}
+          {!showAllTiers && showOtherTiers && orderedTiers.filter(t => t.key !== recTier).map(tier => {
+            const isExpanded = expandedTiers.has(tier.key);
+            const tierName   = tier.name || (tier.key === "A" ? "Good" : tier.key === "B" ? "Better" : "Best");
+            return (
+              <div
+                key={tier.key}
+                style={{ border: "1.5px solid #e2e8f0", borderRadius: 10, marginBottom: 10, overflow: "hidden" }}
+              >
+                <button
+                  onClick={() => toggleTier(tier.key)}
+                  style={{
+                    width: "100%", padding: "12px 14px", textAlign: "left",
+                    background: "none", border: "none", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                  }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{tierName}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontWeight: 700, fontSize: 14 }}>{fmt(tier.total)}</span>
+                    <span style={{ fontSize: 16, color: "#94a3b8", transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>&#8964;</span>
+                  </div>
+                </button>
+                {isExpanded && (
+                  <div style={{ padding: "0 14px 14px", borderTop: "1px solid #f1f5f9" }}>
+                    <ul style={{ margin: "10px 0 0 0", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 }}>
+                      {tier.line_items.map((item, i) => (
+                        <li key={i} style={{ fontSize: 13, color: "#334155" }}>
+                          {item.description}
+                          {item.category === "parts" && (
+                            <span style={{ fontSize: 12, color: "#64748b" }}> — {fmt(item.amount)}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Reasoning chain — collapsed details */}
-      <details
-        open={reasoningOpen}
-        onToggle={(e) => handleReasoningToggle((e.target as HTMLDetailsElement).open)}
-        style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 14px" }}
-      >
-        <summary style={{ cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#475569", userSelect: "none" }}>
-          How we got here
-        </summary>
-        <ol style={{ margin: "10px 0 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 4 }}>
-          {data.reasoning_chain.map((r, i) => (
-            <li key={i} style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{r}</li>
-          ))}
-        </ol>
-      </details>
-
-      {/* Continue — primary CTA (authenticated mode only) */}
+      {/* ── DX.5: 2-button footer — Continue (primary) + Different problem (link) ── */}
       {!isPublic && (
-        <button
-          onClick={handleContinue}
-          disabled={navigating || !data.assessment_id}
-          style={{
-            width: "100%",
-            padding: "14px 0",
-            borderRadius: 8,
-            border: "none",
-            background: (navigating || !data.assessment_id) ? "#86efac" : "#16a34a",
-            color: "#fff",
-            fontSize: 16,
-            fontWeight: 700,
-            cursor: (navigating || !data.assessment_id) ? "not-allowed" : "pointer",
-            minHeight: 48,
-          }}
-        >
-          {navigating ? "Opening…" : "Continue →"}
-        </button>
-      )}
-
-      {/* Mark as Solved / Different fault found — authenticated mode, before feedback */}
-      {showActionButtons && (
-        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
+          {/* Primary: Continue button */}
           <button
-            onClick={handleMarkSolved}
+            onClick={handleContinue}
+            disabled={navigating || !data.assessment_id}
             style={{
-              flex: 1, padding: "14px 0", borderRadius: 8, border: "none",
-              background: "#16a34a", color: "#fff", fontSize: 15, fontWeight: 700,
-              cursor: "pointer",
+              width: "100%", padding: "15px 0", borderRadius: 8, border: "none",
+              background: (navigating || !data.assessment_id) ? "#86efac" : "#16a34a",
+              color: "#fff", fontSize: 16, fontWeight: 700,
+              cursor: (navigating || !data.assessment_id) ? "not-allowed" : "pointer",
+              minHeight: 48,
             }}
           >
-            Mark as Solved
+            {navigating ? "Opening…" : continueLabel}
           </button>
-          <button
-            onClick={handleDifferentFault}
-            style={{
-              flex: 1, padding: "14px 0", borderRadius: 8,
-              border: "1.5px solid #94a3b8", background: "#fff",
-              color: "#475569", fontSize: 15, fontWeight: 600, cursor: "pointer",
-            }}
-          >
-            Different fault found
-          </button>
-        </div>
-      )}
 
-      {/* Post-feedback confirmation */}
-      {feedback === "solved" && (
-        <div style={{ background: "rgba(22,163,74,.08)", border: "1px solid #16a34a", borderRadius: 8, padding: "12px 16px", fontSize: 14, color: "#15803d", fontWeight: 600, textAlign: "center" }}>
-          Marked as solved
+          {/* Secondary: Different problem link */}
+          {feedback === null ? (
+            <button
+              onClick={handleDifferentFault}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                fontSize: 14, color: "#64748b", textAlign: "center", padding: "6px 0",
+                textDecoration: "underline",
+              }}
+            >
+              Different problem
+            </button>
+          ) : (
+            <div style={{ fontSize: 14, color: "#16a34a", textAlign: "center", fontWeight: 600, padding: "6px 0" }}>
+              Feedback recorded ✓
+            </div>
+          )}
         </div>
-      )}
-      {feedback === "different_fault" && (
-        <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 16px", fontSize: 14, color: "#475569", textAlign: "center" }}>
-          Feedback recorded
-        </div>
-      )}
-
-      {/* Copy share link */}
-      {data.share_url && (
-        <button
-          onClick={handleShareClick}
-          style={{
-            width: "100%", padding: "10px 0", background: "none",
-            border: "none", color: copied ? "#16a34a" : "#2563eb",
-            fontSize: 13, textDecoration: "underline", cursor: "pointer",
-          }}
-        >
-          {copied ? "Link copied!" : "Copy share link"}
-        </button>
       )}
 
       {/* Public mode footer */}
@@ -355,11 +605,154 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
       )}
 
       {/* Watermark */}
-      <div style={{ textAlign: "center", fontSize: 11, color: "#cbd5e1", marginTop: 4, wordBreak: "break-all" }}>
+      <div style={{ textAlign: "center", fontSize: 11, color: "#cbd5e1", wordBreak: "break-all" }}>
         SnapAI &middot; {data.share_url || "snapai.mainnov.tech"}
       </div>
 
-      {/* Different fault found — modal */}
+      {/* DX.4: "How we got here →" link at very bottom */}
+      {data.reasoning_chain.length > 0 && (
+        <button
+          onClick={() => setShowReasoning(true)}
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            fontSize: 11, color: "#94a3b8", textAlign: "center", padding: "2px 0",
+            textDecoration: "underline",
+          }}
+        >
+          How we got here &rarr;
+        </button>
+      )}
+
+      {/* ── Reasoning chain modal (DX.4) ── */}
+      {showReasoning && (
+        <div
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
+            display: "flex", alignItems: "flex-end", justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setShowReasoning(false)}
+        >
+          <div
+            style={{
+              background: "#fff", borderRadius: "16px 16px 0 0", width: "100%",
+              maxWidth: 540, padding: "24px 20px 32px", maxHeight: "70vh", overflowY: "auto",
+              boxShadow: "0 -4px 24px rgba(0,0,0,.12)",
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 14, color: "#0f172a" }}>How we got here</div>
+            <ol style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6 }}>
+              {data.reasoning_chain.map((r, i) => (
+                <li key={i} style={{ fontSize: 13, color: "#475569", lineHeight: 1.5 }}>{r}</li>
+              ))}
+            </ol>
+            <button
+              onClick={() => setShowReasoning(false)}
+              style={{
+                marginTop: 20, width: "100%", padding: "12px", borderRadius: 8,
+                border: "1.5px solid #e2e8f0", background: "#fff",
+                fontSize: 14, fontWeight: 600, color: "#475569", cursor: "pointer",
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── DX.9: Cancel diagnosis confirm ── */}
+      {showCancelConfirm && (
+        <div
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 1000, padding: "0 20px",
+          }}
+        >
+          <div style={{
+            background: "#fff", borderRadius: 14, padding: "24px 20px",
+            maxWidth: 360, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,.15)",
+          }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: "#0f172a", marginBottom: 8 }}>
+              Cancel this diagnosis?
+            </div>
+            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20, lineHeight: 1.5 }}>
+              It will be marked as cancelled and won&apos;t appear in your active assessments.
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                style={{
+                  flex: 1, padding: "12px 0", borderRadius: 8,
+                  border: "1.5px solid #e2e8f0", background: "#fff",
+                  fontSize: 14, fontWeight: 600, color: "#475569", cursor: "pointer",
+                }}
+              >
+                Keep
+              </button>
+              <button
+                onClick={handleCancelDiagnosis}
+                disabled={cancelling}
+                style={{
+                  flex: 1, padding: "12px 0", borderRadius: 8, border: "none",
+                  background: cancelling ? "#fca5a5" : "#dc2626",
+                  color: "#fff", fontSize: 14, fontWeight: 700, cursor: cancelling ? "not-allowed" : "pointer",
+                }}
+              >
+                {cancelling ? "Cancelling…" : "Cancel diagnosis"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── DX.9: Start over confirm ── */}
+      {showRestartConfirm && (
+        <div
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 1000, padding: "0 20px",
+          }}
+        >
+          <div style={{
+            background: "#fff", borderRadius: 14, padding: "24px 20px",
+            maxWidth: 360, width: "100%", boxShadow: "0 8px 32px rgba(0,0,0,.15)",
+          }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: "#0f172a", marginBottom: 8 }}>
+              Start over?
+            </div>
+            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20, lineHeight: 1.5 }}>
+              Start the diagnostic over from the beginning?
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setShowRestartConfirm(false)}
+                style={{
+                  flex: 1, padding: "12px 0", borderRadius: 8,
+                  border: "1.5px solid #e2e8f0", background: "#fff",
+                  fontSize: 14, fontWeight: 600, color: "#475569", cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleStartOver}
+                style={{
+                  flex: 1, padding: "12px 0", borderRadius: 8, border: "none",
+                  background: "#0f172a", color: "#fff",
+                  fontSize: 14, fontWeight: 700, cursor: "pointer",
+                }}
+              >
+                Start over
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DX.6: Structured feedback modal */}
       {showModal && (
         <DiagnosisFeedbackModal
           sessionId={data.session_id}

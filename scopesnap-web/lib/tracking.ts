@@ -191,8 +191,13 @@ export const track = {
     trackEvent("fault_screen_opened", { session_id: sessionId, mode, confidence }),
 
   // Fires when tech agrees ("solved") or disagrees ("different_fault") with diagnosis.
-  faultScreenAgreement: (sessionId: string, agreement: string, hasText: boolean) =>
-    trackEvent("fault_screen_agreement", { session_id: sessionId, agreement, has_text: hasText }),
+  faultScreenAgreement: (sessionId: string, agreement: string, hasText: boolean, alternativeFaultId?: number | null) =>
+    trackEvent("fault_screen_agreement", {
+      session_id: sessionId,
+      agreement,
+      has_text: hasText,
+      ...(alternativeFaultId != null ? { alternative_fault_id: alternativeFaultId } : {}),
+    }),
 
   // Fires when the "Copy share link" button is tapped.
   faultScreenShareClicked: (sessionId: string) =>
@@ -209,4 +214,30 @@ export const track = {
   // Fires on unmount of FaultResolutionScreen with time spent on screen.
   faultScreenTimeOnScreen: (sessionId: string, seconds: number) =>
     trackEvent("fault_screen_time_on_screen", { session_id: sessionId, seconds }),
+
+  // ── Track DX: Diagnosis screen UX refinement events ──────────────────────
+
+  // Fires when user taps a Repair Plan tier card to expand it (DX.13).
+  repairPlanTierExpanded: (sessionId: string, tier: "good" | "better" | "best") =>
+    trackEvent("repair_plan_tier_expanded", { session_id: sessionId, tier }),
+
+  // Fires when post-20-diagnoses user taps "See other options" link (DX.13).
+  repairPlanSeeOtherOptions: (sessionId: string) =>
+    trackEvent("repair_plan_see_other_options_clicked", { session_id: sessionId }),
+
+  // Fires when user taps the Continue button (DX.13).
+  faultScreenEstimateGenerated: (sessionId: string, labelVariant: "with_destination" | "short") =>
+    trackEvent("fault_screen_estimate_generated", { session_id: sessionId, label_variant: labelVariant }),
+
+  // Fires when user opens Different problem modal then taps Skip (DX.13).
+  faultScreenAgreementSkipped: (sessionId: string) =>
+    trackEvent("fault_screen_agreement_skipped", { session_id: sessionId }),
+
+  // Fires when user cancels diagnosis from "..." menu (DX.13).
+  diagnosisCancelled: (sessionId: string) =>
+    trackEvent("diagnosis_cancelled", { session_id: sessionId }),
+
+  // Fires when user restarts diagnostic from "..." menu (DX.13).
+  diagnosisRestarted: (sessionId: string) =>
+    trackEvent("diagnosis_restarted", { session_id: sessionId }),
 };
