@@ -1269,3 +1269,31 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                 {editedUnit.is_legacy && " (legacy / pre-2010)"}
               </p>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Confirm */}
+      {editedUnit && (
+        <div className="flex gap-3">
+          <button
+            onClick={handleConfirm}
+            className="w-full py-3 px-6 rounded-xl text-sm font-black text-white transition-all"
+            style={{ background: "#1a8754" }}
+          >
+            Confirm & Continue
+          </button>
+        </div>
+      )}
+
+      <p className="text-center text-xs text-gray-400">
+        Nameplate specs auto-fill all cards — save time on every call
+      </p>
+
+        </> /* end activeTab === "photo" */
+      )}
+
+    </div>
+  );
+}
+          
