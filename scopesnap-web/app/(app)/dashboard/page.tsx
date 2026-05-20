@@ -18,11 +18,13 @@
  *  - Date range picker
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
 import { formatCurrency } from "@/lib/market";
+import { supabase } from "@/lib/supabaseClient";
+import posthog from "posthog-js";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 
@@ -38,10 +40,20 @@ interface EstimateItem {
 }
 
 interface CompanyStatus {
+  id?: string;
   plan: string;
   name: string;
   phone?: string | null;
   license_number?: string | null;
+}
+
+interface ApprovalNotification {
+  estimate_id: string;
+  report_short_id: string;
+  selected_option: string;
+  option_name: string;
+  total?: number;
+  company_id: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -86,9 +98,11 @@ export default function DashboardPage() {
   const [estimates, setEstimates]   = useState<EstimateItem[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
-  const [company, setCompany]       = useState<CompanyStatus | null>(null);
+  const [company, setCompany]           = useState<CompanyStatus | null>(null);
+  const [notification, setNotification] = useState<ApprovalNotification | null>(null);
+  const channelRef                      = useRef<ReturnType<NonNullable<typeof supabase>["channel"]> | null>(null);
   // A.3 (track-f): canonical sent count from estimates-summary (DEC-032)
-  const [sentTotal, setSentTotal]   = useState<number | null>(null);
+  const [sentTotal, setSentTotal]       = useState<number | null>(null);
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (IS_DEV) return DEV_HEADER;
@@ -128,6 +142,51 @@ export default function DashboardPage() {
     load();
   }, [getAuthHeaders]);
 
+  // ── Supabase Realtime: approval notifications ──────────────────────────────
+  useEffect(() => {
+    if (!supabase || !company?.id) return;
+
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    const playDing = () => {
+      try {
+        const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.8);
+      } catch (_) { /* audio unavailable */ }
+    };
+
+    const channel = supabase
+      .channel(`approval-${company.id}`)
+      .on("broadcast", { event: "assessment_approved" }, ({ payload }: { payload: ApprovalNotification }) => {
+        setNotification(payload);
+        playDing();
+        try { posthog.capture("assessment_approval_notification_received", { ...payload }); } catch (_) {}
+      })
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current && supabase) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [company?.id]);
+
   // ── Derived stats (only from real data, no hardcoding) ────────────────────
   const safe = Array.isArray(estimates) ? estimates : [];
   const closedCount = safe.filter((e) => ["approved", "completed"].includes(e.status)).length;
@@ -143,6 +202,54 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-2xl mx-auto py-4">
+
+      {/* ── Approval Notification Banner ───────────────────────────────────── */}
+      {notification && (
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 50,
+            background: "#1a8754",
+            color: "white",
+            borderRadius: 16,
+            padding: "14px 16px",
+            marginBottom: 16,
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            boxShadow: "0 4px 24px rgba(26,135,84,.4)",
+          }}
+        >
+          <span
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: "50%",
+              background: "#4ade80",
+              flexShrink: 0,
+              animation: "pulse 1.5s infinite",
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 14 }}>
+              {"New Approval — "}{notification.option_name}
+              {notification.total ? ` · $${notification.total.toLocaleString()}` : ""}
+            </p>
+            <p style={{ margin: "2px 0 0", fontSize: 12, opacity: 0.85 }}>
+              {"REF: RPT-"}{notification.report_short_id}
+            </p>
+          </div>
+          <button
+            onClick={() => setNotification(null)}
+            style={{ background: "none", border: "none", color: "white", fontSize: 18, cursor: "pointer", padding: "0 4px", opacity: 0.8 }}
+            aria-label="Dismiss"
+          >
+            &#x2715;
+          </button>
+        </div>
+      )}
+      <style>{`@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.4)} }`}</style>
 
       {/* ── Setup Banner (shown if profile incomplete) ─────────────────────── */}
       {company && (!company.phone || !company.license_number) && (

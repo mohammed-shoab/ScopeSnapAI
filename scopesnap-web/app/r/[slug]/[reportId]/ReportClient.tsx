@@ -848,24 +848,43 @@ export default function ReportClient({ report }: { report: Report }) {
                     marginTop: 8,
                   }}
                 >
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, color: "#1a8754", margin: "0 0 4px" }}>Approved!</h3>
-                  <p style={{ fontSize: 12, color: "#0f5c38", margin: 0 }}>
-                    You selected{" "}
-                    <strong>{report.options.find((o) => o.tier === approvedTier)?.name || approvedTier}</strong>.
-                    {company.custom_branding && company.name ? ` ${company.name}` : " SnapAI"} will be in touch shortly to schedule.
-                  </p>
-                  {company.custom_branding && company.phone && (
-                    <p style={{ fontSize: 11, color: "#7a7770", marginTop: 8 }}>
-                      Questions? Call us at{" "}
-                      <a
-                        href={`tel:${company.phone.replace(/\D/g, "")}`}
-                        style={{ color: "#1a8754", fontWeight: 700, textDecoration: "none" }}
-                      >
-                        {company.phone}
-                      </a>
-                    </p>
+                  <div style={{ fontSize: 36, marginBottom: 10 }}>{"✅"}</div>
+                  <h3 style={{ fontSize: 18, fontWeight: 800, color: "#1a8754", margin: "0 0 6px" }}>
+                    {report.property?.customer_name ? `Thank you, ${report.property.customer_name}!` : "Thank you!"}
+                  </h3>
+                  {company.name && (
+                    <p style={{ fontSize: 13, fontWeight: 700, color: "#0f5c38", margin: "0 0 4px" }}>{company.name}</p>
                   )}
+                  <p style={{ fontSize: 12, color: "#3a7059", margin: "0 0 8px" }}>
+                    {"You selected "}
+                    <strong>{report.options.find((o) => o.tier === approvedTier)?.name || approvedTier}</strong>{"."}
+                  </p>
+                  {company.phone && (
+                    <a
+                      href={`tel:${company.phone.replace(/\D/g, "")}`}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "10px 20px",
+                        background: "#1a8754",
+                        color: "white",
+                        borderRadius: 8,
+                        fontWeight: 700,
+                        fontSize: 14,
+                        textDecoration: "none",
+                        margin: "8px 0",
+                      }}
+                    >
+                      {"☎"} {company.phone}
+                    </a>
+                  )}
+                  <p style={{ fontSize: 11, color: "#7a7770", margin: "8px 0 6px", lineHeight: 1.5 }}>
+                    We typically respond within 2 hours during business hours.
+                  </p>
+                  <p style={{ fontSize: 10, color: "#a8a49c", margin: 0, fontFamily: "IBM Plex Mono, monospace" }}>
+                    {`REF: RPT-${report.report_short_id}`}
+                  </p>
                 </div>
               ) : (
                 <>

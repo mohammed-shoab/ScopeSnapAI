@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     from_email: str = "estimates@mainnov.tech"
 
+    # ── Supabase Realtime (for approval broadcast) ────────────
+    supabase_url: str = "https://quqrvnoguofbjacrxcim.supabase.co"
+    supabase_service_role_key: str = ""
+
     # ── URLs ──────────────────────────────────────────────────
     frontend_url: str = "http://localhost:3000"
     report_base_url: str = "http://localhost:3000/r"

@@ -147,6 +147,7 @@ function AssessPageInner() {
   const [address, setAddress] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail]   = useState("");
 
   // ── Property search ────────────────────────────────────────────────────────
   const [suggestions, setSuggestions] = useState<PropertySuggestion[]>([]);
@@ -248,6 +249,7 @@ function AssessPageInner() {
       if (address) fd.append("property_address", address);
       if (customerName) fd.append("homeowner_name", customerName);
       if (customerPhone) fd.append("homeowner_phone", customerPhone);
+      if (customerEmail) fd.append("homeowner_email", customerEmail);
       if (ocrResult) fd.append("ocr_nameplate_json", JSON.stringify(ocrResult));
       const r = await fetch(`${API_URL}/api/assessments/`, { method: "POST", headers, body: fd });
       if (!r.ok) {
@@ -546,6 +548,13 @@ function AssessPageInner() {
               className="border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-600"
             />
           </div>
+          <input
+            type="email"
+            placeholder="homeowner@example.com (optional)"
+            value={customerEmail}
+            onChange={e => setCustomerEmail(e.target.value)}
+            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500 transition-colors"
+          />
         </div>
 
         {/* Prior estimates for returning customer */}

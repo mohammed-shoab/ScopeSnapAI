@@ -436,6 +436,42 @@ async def approve_report(
 
     await db.commit()
 
+    # C.4: Fire-and-forget broadcast approval notification via Supabase Realtime
+    try:
+        import asyncio
+        from httpx import AsyncClient
+        from config import get_settings as _get_settings
+        _settings = _get_settings()
+        if _settings.supabase_service_role_key:
+            async def _broadcast():
+                try:
+                    async with AsyncClient() as _client:
+                        await _client.post(
+                            f"{_settings.supabase_url}/realtime/v1/api/broadcast",
+                            headers={
+                                "apikey": _settings.supabase_service_role_key,
+                                "Content-Type": "application/json",
+                            },
+                            json={"messages": [{
+                                "topic": f"approval-{estimate.company_id}",
+                                "event": "assessment_approved",
+                                "payload": {
+                                    "estimate_id": str(estimate.id),
+                                    "report_short_id": estimate.report_short_id,
+                                    "selected_option": body.selected_option,
+                                    "option_name": selected_option_data.get("name") or body.selected_option.title(),
+                                    "total": selected_option_data.get("total"),
+                                    "company_id": str(estimate.company_id),
+                                },
+                            }]},
+                            timeout=3.0,
+                        )
+                except Exception as _e:
+                    print(f"[reports] Realtime broadcast failed (non-fatal): {_e}")
+            asyncio.create_task(_broadcast())
+    except Exception as _e:
+        print(f"[reports] Realtime setup failed (non-fatal): {_e}")
+
     return {
         "message": "Estimate approved",
         "selected_option": body.selected_option,
