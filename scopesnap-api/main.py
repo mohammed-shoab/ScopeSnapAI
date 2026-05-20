@@ -8,6 +8,9 @@ Health:      http://localhost:8000/health
 """
 
 from fastapi import FastAPI, Request
+import logging
+
+_main_logger = logging.getLogger(__name__)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
@@ -76,6 +79,24 @@ app = FastAPI(
 # ── Rate Limit Middleware + Handler ──────────────────────────────────────────
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ── Global fallback: raw exceptions → CORS-aware JSON 500 ─────────────────────
+# FastAPI's ServerErrorMiddleware returns 500 WITHOUT CORS headers when a raw
+# Python exception (e.g. asyncpg.InvalidCachedStatementError) is raised.
+# This handler sits inside ExceptionMiddleware (inside CORSMiddleware) so the
+# response DOES receive Access-Control-Allow-Origin, making the error visible
+# to browser clients instead of showing "Failed to fetch".
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    _main_logger.error(
+        "Unhandled exception on %s %s: %s",
+        request.method, request.url.path, exc,
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"{type(exc).__name__}: {exc}"},
+    )
 app.add_middleware(SlowAPIMiddleware)
 
 # ── CORS ──────────────────────────────────────────────────────────────────────

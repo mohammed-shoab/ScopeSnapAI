@@ -1332,6 +1332,7 @@ async def list_diagnoses(
         text(
             "SELECT ds.id AS session_id, ds.created_at, ds.resolved_card_id,"
             "       ds.confidence_level, ds.customer_label, ds.assessment_id,"
+            "       ds.share_token,"
             "       fc.card_name,"
             "       a.photo_urls[1] AS nameplate_photo_url"
             " FROM diagnostic_sessions ds"
@@ -1359,16 +1360,18 @@ async def list_diagnoses(
         "items": [
             {
                 "session_id": str(r.session_id),
-                "assessment_id": str(r.assessment_id),
+                "assessment_id": str(r.assessment_id) if r.assessment_id else None,
                 "fault_name": r.card_name,
                 "confidence": r.confidence_level or "high",
                 "customer_label": r.customer_label,
                 "nameplate_photo_url": r.nameplate_photo_url,
+                "share_token": getattr(r, "share_token", None),
                 "created_at": r.created_at.isoformat(),
             }
             for r in items
         ],
         "next_cursor": next_cursor,
+        "has_more": has_more,
     }
 
 
