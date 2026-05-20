@@ -841,10 +841,14 @@ async def list_assessments(
                 "id": a.id,
                 "status": a.status,
                 "photo_count": len(a.photo_urls) if a.photo_urls else 0,
+                "nameplate_photo_url": (a.photo_urls[0] if a.photo_urls else None),
                 "property_id": a.property_id,
+                "customer_name": getattr(a, "customer_name", None),
+                "customer_address": getattr(a, "customer_address", None),
                 "brand": a.ai_equipment_id.get("brand") if a.ai_equipment_id else None,
                 "model": a.ai_equipment_id.get("model") if a.ai_equipment_id else None,
                 "condition": a.ai_condition.get("overall") if a.ai_condition else None,
+                "complaint_type": a.complaint_type,
                 "created_at": a.created_at.isoformat() if a.created_at else None,
             }
             for a in assessments

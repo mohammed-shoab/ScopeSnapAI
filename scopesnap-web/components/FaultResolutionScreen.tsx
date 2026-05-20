@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { detectMarket } from "@/lib/market";
 import { trackEvent } from "@/lib/tracking";
 import { apiFetch } from "@/lib/api";
@@ -58,11 +59,13 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
   const isPublic = mode === "public";
   const conf = CONFIDENCE[data.fault.confidence] ?? CONFIDENCE.high;
 
+  const router = useRouter();
   const [feedback, setFeedback] = useState<"solved" | "different_fault" | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const [reasoningOpen, setReasoningOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [navigating, setNavigating] = useState(false);
   const mountTime = useRef(Date.now());
 
   // Stack feedback buttons vertically on screens narrower than 480px
@@ -132,6 +135,16 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
     if (open) {
       trackEvent("fault_screen_reasoning_expanded", { session_id: data.session_id });
     }
+  }
+
+  function handleContinue() {
+    if (!data.assessment_id || navigating) return;
+    setNavigating(true);
+    trackEvent("fault_screen_estimate_generated", {
+      session_id: data.session_id,
+      mode: "authenticated",
+    });
+    router.push(`/assessment/${data.assessment_id}`);
   }
 
   const hasPhoto = data.photo_evidence.length > 0;
@@ -259,6 +272,28 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
           ))}
         </ol>
       </details>
+
+      {/* Continue — primary CTA (authenticated mode only) */}
+      {!isPublic && (
+        <button
+          onClick={handleContinue}
+          disabled={navigating || !data.assessment_id}
+          style={{
+            width: "100%",
+            padding: "14px 0",
+            borderRadius: 8,
+            border: "none",
+            background: (navigating || !data.assessment_id) ? "#86efac" : "#16a34a",
+            color: "#fff",
+            fontSize: 16,
+            fontWeight: 700,
+            cursor: (navigating || !data.assessment_id) ? "not-allowed" : "pointer",
+            minHeight: 48,
+          }}
+        >
+          {navigating ? "Opening…" : "Continue →"}
+        </button>
+      )}
 
       {/* Mark as Solved / Different fault found — authenticated mode, before feedback */}
       {showActionButtons && (
