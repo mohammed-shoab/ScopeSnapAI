@@ -3,7 +3,7 @@
 > This file records decisions made during development that have lasting impact on how the codebase works.
 > Future AI sessions: read this before proposing architecture changes or writing migrations.
 >
-> Last updated: 2026-05-19
+> Last updated: 2026-05-20
 
 ---
 
@@ -25,7 +25,7 @@
 
 **Impact:** Any new `.py` file added to `scopesnap-api/db/migrations/versions/` will run on next Railway deploy. Do NOT push a migration that is already applied to the DB — Alembic will skip it safely, but a data-changing migration run twice could corrupt data. Always check `alembic_version` table before pushing a new migration.
 
-**Current revision:** 021 (as of 2026-05-19)
+**Current revision:** 029 (as of 2026-05-20)
 
 ---
 
@@ -225,6 +225,101 @@ Any file showing a net deletion (more `-` than `+` lines) near the end is likely
 **Rationale:** NTFS line-ending translation (LF → CRLF) during stash restore corrupts file content when the sandbox's git and Windows git have mismatched `core.autocrlf` settings.
 
 
+
+---
+
+## DEC-014 -- Staging Environment Architecture (2026-05-19)
+
+**Decision:** Full parallel staging environment before any further production changes.
+
+**Components:**
+- Separate Supabase project (`pqmgveqkuckbvyygsilk` ap-northeast-1) -- identical schema + seed data
+- Separate Clerk staging app (`firm-chamois-61`) -- test-mode keys, no prod user data
+- Separate Cloudflare R2 bucket (`scopesnap-uploads-staging`)
+- Same Railway project, separate `staging` service watching the `staging` branch
+- Same Vercel account, separate project (`scopesnap-web-staging`) watching the `staging` branch
+- `StagingBanner.tsx` -- amber fixed bar on all staging pages, invisible in production
+- `middleware.ts` -- `NEXT_PUBLIC_ENV=staging` treated as dev to bypass Edge Clerk crash
+
+**Workflow:** Feature branch -> staging branch -> validate -> promote to main -> production.
+**Promote script:** `scripts/promote-to-prod.sh <file1> [file2 ...]` (run from local main checkout).
+
+---
+
+## DEC-015 -- Keepalive workflows prevent Supabase free-tier pauses (2026-05-19)
+
+**Decision:** Two GitHub Actions workflows ping both prod and staging Supabase on alternating days.
+- `keepalive-supabase-A.yml` -- every Sunday 02:00 UTC
+- `keepalive-supabase-B.yml` -- every Wednesday 14:00 UTC
+- Monitored via Healthchecks.io (account ds.shoab@gmail.com)
+
+**Impact:** Both Supabase projects remain active indefinitely without always-on paid tier.
+
+---
+
+## DEC-016 -- Legacy estimate engine deleted (2026-05-19)
+
+**Decision:** `services/estimate_engine.py` deleted. `POST /api/estimates/generate` removed.
+
+**Why:** Q.6.5 merged recommendation engine into `fault_estimate.py`, making old engine redundant.
+
+**Impact:** All estimates flow exclusively through `POST /api/estimates/fault-card` -> `fault_estimate.py`. Never recreate the old engine.
+
+---
+
+## DEC-017 -- condition_signals vocabulary v1 strings are immutable (2026-05-20)
+
+**Decision:** Existing condition_signal strings MUST NOT be renamed -- breaks lifecycle_rules backward compatibility. New signals can be added freely. See DEC-024 for full vocabulary.
+
+---
+
+## DEC-018 -- diagnosis_feedback table is shared (no pak_ variant) (2026-05-20)
+
+**Decision:** Single `diagnosis_feedback` table for both markets. FK references `diagnostic_sessions.id` (already shared). Market derivable via assessment_id join for analytics.
+
+---
+
+## DEC-019 -- DiagnosticFlow resolved -> /diagnoses/<id>, not evidence phase (2026-05-20)
+
+**Decision:** Fault card resolution navigates to `/diagnoses/<session_id>` (FaultResolutionScreen). Estimate still reachable from Assessments list. "Generate estimate from here" deferred to v1.5.
+
+---
+
+## DEC-020 -- pak_pricing_tiers table structure (2026-05-20)
+
+**Decision:** PK pricing uses dedicated `pak_pricing_tiers` table (45 rows: 15 cards x 3 tiers). Columns: `card_id`, `tier` (good/better/best), `label_en`, `label_ur`, `description_en`, `description_ur`, `parts_pkr`, `labor_pkr`, `total_pkr`.
+
+**Why:** PKR amounts + Urdu bilingual content cannot share the US pricing_tiers table without heterogeneous currency columns and market-gated queries everywhere.
+
+---
+
+## DEC-021 -- pak_fault_card_descriptions + pak_fault_card_urdu_descriptions (2026-05-20)
+
+**Decision:** Separate tables for PK fault card bilingual content. Allows independent updates to English vs Urdu without touching pak_fault_cards main data.
+
+---
+
+## DEC-022 -- Desktop Commander bat-file pattern for Windows-side git (2026-05-20)
+
+**Decision:** When Linux sandbox cannot reach git (NTFS lock), use Desktop Commander .bat files on the Windows side.
+- Write bat to `C:\fixNNN.bat` (no spaces in path)
+- Inside bat: `cd /d "C:\Users\dell\My Drive\Personal Claude\ScopeSnapAI"`
+- Log: `>> C:\fixNNN_log.txt 2>&1`
+- Execute via `mcp__Desktop_Commander__start_process` with `shell: "cmd"`
+- Never use interact_with_process (not interactive-capable)
+
+---
+
+## DEC-023 -- NEXT_PUBLIC_ENV=staging controls staging-specific behaviour (2026-05-20)
+
+**Decision:** `NEXT_PUBLIC_ENV=staging` drives three behaviours:
+1. `StagingBanner.tsx` renders amber bar
+2. `middleware.ts` bypasses Clerk Edge Runtime crash
+3. `app/(app)/layout.tsx` adds `pt-6` for banner height
+
+**Never** set `NEXT_PUBLIC_ENV=staging` on the production Vercel project.
+
+
 ## DEC-024 -- Recommendation engine condition_signal vocabulary v1 (2026-05-20)
 
 **Date:** 2026-05-20
@@ -408,7 +503,7 @@ The `X-Market` header must be sent by the client. See DEC-030.
 
 ---
 
-## DEC-030 -- Raw fetch() calls on public pages must explicitly send X-Market header (2026-05-20)
+## DEC-030b -- Raw fetch() calls on public pages must explicitly send X-Market header (2026-05-20)
 
 **Date:** 2026-05-20
 

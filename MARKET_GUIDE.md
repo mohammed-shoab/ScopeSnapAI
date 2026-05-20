@@ -2,7 +2,7 @@
 
 > **READ THIS FIRST** in every new session.
 > SnapAI runs as two separate live apps — one for Houston (US) and one for Pakistan (PK).
-> Last updated: 2026-05-15
+> Last updated: 2026-05-20
 
 ---
 
@@ -171,7 +171,10 @@ if (detectMarket() === "US") {
 | `pak_replacement_costs_v` | View | Schema-compatible with US `replacement_cost_estimates` |
 | `pak_lifecycle_rules` | Table | Lifecycle rules (currently 0 rows → backend defaults) |
 | `pak_lifecycle_rules_v` | View | Schema-compatible with US `lifecycle_rules` |
-| `pak_operating_targets` | Table | Suction/discharge PSI targets by refrigerant type |
+| `pak_operating_targets` | Table | Suction/discharge PSI targets by refrigerant type (5 rows, 30-50C ambient) |
+| `pak_pricing_tiers` | Table | 45 rows: 15 fault cards x 3 tiers (good/better/best) in PKR (Track P) |
+| `pak_fault_card_descriptions` | Table | English descriptions per fault card + tier |
+| `pak_fault_card_urdu_descriptions` | Table | Urdu descriptions per fault card + tier |
 
 ### Seed Script
 `scopesnap-api/scripts/load_repo_pakistan.py` — loads all `pak_*` tables from `ac_data_repo_pakistan.json`.

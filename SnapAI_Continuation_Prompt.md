@@ -1,7 +1,7 @@
 # SnapAI — Master Continuation Prompt
 > Paste this at the start of any new Claude session.
 > This replaces having to re-explain anything about the app, both markets, all architecture, all decisions, all board work, and current state.
-> **Last updated: 2026-05-19 — Track Q complete (Q.1–Q.7 + Q.6.5). Git HEAD: `f8afced`. Alembic: `021`.**
+> **Last updated: 2026-05-20 — All tracks complete (Q/R/R.9/REC/D/P/Staging). Git HEAD: `02ad667`. Alembic: `029`.**
 
 ---
 
@@ -129,7 +129,13 @@ def get_tables(x_market: Optional[str] = Header(None)) -> MarketTables:
 | `components/StepZeroPanel.tsx` | Nameplate entry screen — brand/model lookup, DB/Est./Edited badge logic, electrical spec auto-fill |
 | `components/diagnostic/DiagnosticFlow.tsx` | Main diagnostic step renderer |
 | `app/(app)/assess/page.tsx` | New assessment page — PK-gated: RefrigerantPicker, WhatsApp phone field, Ahmed Khan placeholder |
-| `app/(app)/assessment/[id]/page.tsx` | Assessment view — PK-gated: WhatsApp Send button, X-Market header in `getAuthHeaders()` |
+| `app/(app)/assessment/[id]/page.tsx` | Assessment view — PK-gated: WhatsApp Send button, X-Market header in `getAuthHeaders()`. R.7: contractor profile guard (company_name + phone required before sendEstimate) |
+| `app/(app)/diagnoses/page.tsx` | Diagnosis history list — requires Clerk JWT (DEC-030) |
+| `app/(app)/diagnoses/[session_id]/page.tsx` | Single diagnosis detail + FaultResolutionScreen |
+| `app/d/[share_token]/page.tsx` | Public share page — no auth, raw fetch + X-Market header (DEC-030) |
+| `components/StagingBanner.tsx` | Amber banner shown on all staging pages (NEXT_PUBLIC_ENV=staging) |
+| `components/FaultResolutionScreen.tsx` | Fault card display with action steps + share/feedback buttons |
+| `components/DiagnosisFeedbackModal.tsx` | Thumbs up/down feedback modal for diagnoses |
 
 ### Backend (`scopesnap-api/`)
 | File | Purpose |
@@ -138,7 +144,8 @@ def get_tables(x_market: Optional[str] = Header(None)) -> MarketTables:
 | `api/dependencies.py` | `get_tables()` — `_US_TABLES` / `_PK_TABLES` constants |
 | `api/assessments.py` | Assessment CRUD + `customer_phone/name/email` storage on Assessment row |
 | `api/estimates.py` | Estimate generation — reads `Assessment.customer_*` first, falls back to `Property.customer_*` |
-| `db/migrations/versions/` | Alembic migrations — current head: `021` (fault_card_descriptions applied 2026-05-19 via direct Supabase MCP + manual version advance — see WA-7 in TECH_STACK.md) |
+| `db/migrations/versions/` | Alembic migrations — current head: `029` (peak_season_surcharge_percent + seasonal_modifier_pct — applied 2026-05-20 via Supabase direct, WA-7 pattern) |
+| `services/condition_signals.py` | `derive_condition_signal_from_assessment()` — condition_signal vocabulary for lifecycle_rules lookups |
 | `scripts/load_repo_pakistan.py` | Loads `pak_*` tables from `ac_data_repo_pakistan.json` |
 
 ---
@@ -180,10 +187,10 @@ Never say "done" or "deployed" after just `git push`. Check both. Sandbox cannot
 
 ### Rule 4 — Alembic
 
-Current migration version: **`021`**. Next migration MUST be **`022`**.
+Current migration version: **`029`**. Next migration MUST be **`030`**.
 Migrations run automatically on Railway boot via `start.sh` (`alembic upgrade head`).
 Check `alembic_version` table in Supabase before pushing any new migration.
-**CRITICAL:** Migration 021 had a Python SyntaxError (em-dashes + unescaped double-quotes in string literals) that crashed `alembic upgrade head` on boot. Data was applied directly via Supabase MCP and version advanced manually. Never use em-dashes or unescaped quotes inside Python string literals in migration files. Use `json.dumps()` for data blobs. Always run `python3 -m py_compile <migration.py>` before committing.
+**CRITICAL:** Never use em-dashes or unescaped quotes inside Python string literals in migration files. Use `json.dumps()` for data blobs. Always run `python3 -m py_compile <migration.py>` before committing. See TECH_STACK.md WA-7 for the Supabase-direct apply pattern.
 
 ### Rule 5 — Database is Supabase, never Railway
 
@@ -224,21 +231,23 @@ clean = raw.rstrip(b'\x00')
 
 | Layer | Commit | Status |
 |---|---|---|
-| Vercel (both domains) | `f8afced` | Production Live ✅ |
-| Railway backend | `f8afced` | Health OK ✅ |
-| Alembic migration | `021` (fault_card_descriptions — 19 cards × 5 description fields) | Applied (data via Supabase MCP, version advanced manually) |
+| Vercel (both domains) | `02ad667` | Production Live ✅ |
+| Railway backend | `02ad667` | Health OK ✅ |
+| Alembic migration | `029` (peak_season_surcharge_percent + seasonal_modifier_pct) | Applied via Supabase direct |
 | `pak_data_defaults` | 1 row (market=PK) | Seeded |
-| `pak_operating_targets` | PK PSI thresholds (R-32 notes: "see pak_brands series data") | Seeded |
-| `fault_cards.better_option_estimate` | 19/19 cards populated | Applied 2026-05-19 |
-| `pricing_rules` | 28/28 deprecated (market=US_LEGACY) | Applied Q.2 |
+| `pak_operating_targets` | PK PSI thresholds + R-32 (5 rows, 30-50C ambient) | Seeded |
+| `pak_pricing_tiers` | 45 rows (15 cards × 3 tiers) | Seeded (Track P) |
+| `lifecycle_rules` | 44 rows (expanded via migration 028) | Seeded (Track REC.3) |
+| `diagnostic_sessions.share_token` | 62/62 non-null | Backfilled 2026-05-20 (D.6) |
 
-**Recent commits (Track Q — newest first):**
-- `f8afced` — [fix] migration 021 — rewrite with valid Python syntax (was crashing Railway start.sh)
-- `46dc6bc` — [hotfix] Q.6.5 — merge recommendation engine into fault_estimate.py response
-- `3d1958f` — [docs] Track Q brain file update — ACTIVE_TASKS, PROJECT_BRAIN, DECISIONS
-- `c6ef5df` — [hotfix] Q.7 — Refresh draft estimates on load with latest fault card descriptions
-- `5bc09ed` — [hotfix] Q.6 — homeowner_report_url uses 32-char report_token
-- `d51e7ab` — [hotfix] Q.5 — apply 19 approved fault card descriptions per tier (alembic 021)
+**Recent commits (newest first):**
+- `02ad667` — docs(TECH_STACK+BRAIN): full post-audit update (2026-05-20)
+- `35f450c` — docs: all QA decisions resolved — D.6 backfill done, R.7+S.7 shipped
+- `172b825` — fix(R.7+S.7): contractor profile guard on sendEstimate + StagingBanner
+- `53db54a` — fix(D.11): pass Clerk JWT token to diagnostic finalize call
+- `928a476` — fix(BUG-024): diagnoses pages guard on isLoaded before getToken()
+- `fe5b02a` — fix(BUG-023): diagnostic list+result use pak_fault_cards directly
+- `f82d760` — fix(diagnostic): CORS-aware 500s + has_more/share_token in list response
 
 ---
 
@@ -260,6 +269,18 @@ clean = raw.rstrip(b'\x00')
 | DEC-012 | Customer contact stored on Assessment row (not Property) | `properties.address_line1` is NOT NULL — PK phone-only entries cannot create a Property. Store `customer_name/phone/email` on `assessments` row directly. |
 | DEC-013 | Never `git stash` from Linux sandbox | Stash truncates TSX/TS files on NTFS. Use WIP commits instead. Recovery: `git show <good-sha>:<path> > <path>`. |
 | DEC-016 | Legacy estimate engine deleted (2026-05-19) | `services/estimate_engine.py` deleted, `POST /api/estimates/generate` removed, `generateEstimate()` removed. All estimates now flow through `POST /api/estimates/fault-card` → `fault_estimate.py` only. |
+| DEC-017–023 | Staging infra, condition_signals, diagnoses screen (2026-05-19–20) | See DECISIONS.md for full entries |
+| DEC-024 | condition_signal vocabulary v1 | 9 signals; first match wins; must not rename existing strings |
+| DEC-025 | `diagnosis_feedback` table — single shared table (no pak_ variant) | FK to diagnostic_sessions which is already shared |
+| DEC-026 | DiagnosticFlow resolves → /diagnoses/<id> (not evidence phase) | Estimate still reachable from Assessments list |
+| DEC-027 | Edit tool truncates ALL files with non-ASCII, not just emoji TSX | Use Python replace() for any Unicode-containing file |
+| DEC-028 | git fast-import bypasses corrupted .git/index entirely | Preferred pattern for NTFS repos |
+| DEC-029 | companies table has NO market column | Market always via X-Market header → get_tables() |
+| DEC-030 | apiFetch does NOT auto-inject Clerk JWT | Pass `token: await getToken()` in every authenticated call |
+| DEC-031 | fault_cards PK is card_id, never id | JOIN on fc.card_id; SELECT card_id |
+| DEC-032 | estimate/[id]/page.tsx is dead code | Real builder is assessment/[id]/page.tsx |
+| DEC-034 | Missing imports inside try/except silently swallow NameError | Verify import exists AND resolves at startup |
+| DEC-035 | Grep target files before implementing any feature | Feature may be partially present already |
 
 ---
 
@@ -375,6 +396,7 @@ Heil QCD: electrical data NOT available (page 33 of ICP doc inaccessible). `data
 
 | Date | Markets | Outcome | Bugs Fixed |
 |---|---|---|---|
+| 2026-05-20 | Full QA — Tracks R/R9/REC/D/P/Staging | PASS ✅ | 48 PASS / 1 AUTO-FIX. D.6 backfill (62/62 share_tokens), R.7 profile guard, S.7 staging banner shipped |
 | 2026-05-19 | PK (SOW Addendum) | PASS ✅ | BUG-015 (X-Market header), BUG-016 (PK PSI routing); A-2/A-4/A-5 verified; B-1/C-3 seeded |
 | 2026-05-18 | Houston | PASS ✅ | BUG-011 (badge logic), BUG-012 (electrical spec auto-fill), DEC-013 CRLF truncation recovery (10 files) |
 | 2026-05-15 | Houston + PK | PASS | BUG-010b (`_complete_service_session` rollback) |
@@ -392,29 +414,27 @@ Heil QCD: electrical data NOT available (page 33 of ICP doc inaccessible). `data
 
 ---
 
-## SECTION 13 — PENDING / BACKLOG (as of 2026-05-19)
+## SECTION 13 — COMPLETED TRACKS + PENDING BACKLOG (as of 2026-05-20)
 
-### Track Q — COMPLETE ✅
-All 8 production hotfixes (Q.1–Q.7 + Q.6.5) merged to main. See Section 7 for commit history.
+### All Tracks — COMPLETE ✅
 
-### Track R — Staging branch (next up)
-Set up a Railway preview environment + staging git branch before further production hotfixes. Validates migrations and endpoints before touching production.
+| Track | Status | Notes |
+|-------|--------|-------|
+| Track Q (Q.1–Q.7 + Q.6.5) | ✅ Complete | 8 production hotfixes, recommendation engine, draft refresh |
+| Track R (R.1–R.8) | ✅ Complete | Staging env, keepalive, promote script, contractor profile guard (R.7) |
+| Track R.9 | ✅ Complete | DB-driven seasonal modifier, both markets, alembic 029 |
+| Track REC (REC.1–REC.3) | ✅ Complete | condition_signals.py, lifecycle_rules 44 rows, DEC-034 import fix |
+| Track D (D.1–D.15) | ✅ Complete | Diagnoses screen, 5 endpoints, BUG-D.AUTH all fixed, D.6 backfill |
+| Track P | ✅ Complete | PK pricing tiers 45 rows, bilingual descriptions, WhatsApp deeplink |
+| Track Staging | ✅ Complete | StagingBanner.tsx, dual keepalive, promote-to-prod.sh |
 
-### Track REC — Recommendation engine (Phase 2 of Q.6.5)
-- **REC.1**: Surface `recommendation_reason` and `recommendation_source` in estimate tier UI (fields already in API response)
-- **REC.2**: Wire actual `condition_signal` from diagnostic session (pitting, bearing_noise, rla_over_nameplate) into the `fault_estimate` call — currently hardcoded `"default"`, so age-based replacement override doesn't fire
+### Remaining Backlog / Future Tracks
 
-### Houston + PK SOW (not started)
-- Houston SOW Tasks 2–9 (Water Dripping 404, Contactor crash, Service/Tune-Up 503, Phase 2 PSI routing, photo policy, inverter flag, diagnostic event logging, brand escape path)
-- PK SOW gaps A-1 (electrical spec auto-fill from `pak_brands` JSONB), A-3 (Send via WhatsApp button)
-
-### Data pending
-- Heil QCD electrical data (RLA, LRA, Cap, MCA, MOCP) — needs ICP TechAssist portal or AHRI database. `data_status: "pending"` in app.
-
-### Tech debt
-- Consider uploading actual per-unit electrical specs to `equipment_models` table so real "DB" badge (not "Est.") can show for verified records
-- Add DEC-013 guard to QA checklist: after any merge, run `git diff <sha> --stat` on all TS/TSX files before pushing
-- Migration 022+ reminder: always `python3 -m py_compile` before committing, no em-dashes in string literals
+- **Houston SOW Tasks 2–9**: Water Dripping 404, Contactor crash, Service/Tune-Up 503, Phase 2 PSI routing, photo policy, inverter flag, diagnostic event logging, brand escape path
+- **PK SOW gaps**: A-1 (electrical spec auto-fill from `pak_brands` JSONB), A-3 (Send via WhatsApp button) — A-2/A-4/A-5 complete
+- **Heil QCD data**: RLA, LRA, Cap µF, MCA, MOCP pending. `data_status: "pending"` in app. Needs ICP TechAssist portal or AHRI database.
+- **Tech debt**: Per-unit electrical specs in `equipment_models` for real "DB" badge vs "Est."
+- **Diagnoses → Estimate flow**: "Generate estimate from here" button on FaultResolutionScreen deferred to v1.5 (DEC-026)
 
 ---
 
