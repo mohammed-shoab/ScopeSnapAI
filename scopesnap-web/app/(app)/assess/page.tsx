@@ -286,10 +286,14 @@ function AssessPageInner() {
 
     // D.11 — Track D: finalize the session (idempotent), then navigate to
     // the new Fault Resolution Screen instead of the old evidence/estimate flow.
-    apiFetch(`/api/diagnostic/finalize/${sessionId}`, {
-      method: "POST",
-      body: JSON.stringify({ customer_label: null }),
-    }).catch(() => {}); // fire-and-forget; backend is idempotent
+    // DEC-030: apiFetch does NOT auto-inject Clerk JWT — must pass token explicitly.
+    getToken().then(token => {
+      apiFetch(`/api/diagnostic/finalize/${sessionId}`, {
+        method: "POST",
+        token: token ?? undefined,
+        body: JSON.stringify({ customer_label: null }),
+      }).catch(() => {}); // fire-and-forget; backend is idempotent
+    }).catch(() => {});
 
     router.push(`/diagnoses/${sessionId}`);
   };
