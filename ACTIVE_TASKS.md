@@ -3,20 +3,20 @@
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-20 (Full QA audit complete — Tracks R/R9/REC/D/P/Staging. D.11 AUTO-FIX pushed 53db54a. 3 items ⏸️ await Shoab decision: D.6 share_token backfill, R.7 profile guard in live builder, S.7 staging banner.)
+> Last updated: 2026-05-20 (All QA decisions resolved and shipped. HEAD: 172b825. D.6: 62/62 share_tokens backfilled. R.7: profile guard live. S.7: StagingBanner live. Production fully signed off.)
 
 ---
 
 ## Last QA Run
 
-**Date:** 2026-05-20 (Full audit — Tracks R/R9/REC/D/P/Staging)
+**Date:** 2026-05-20 (Full audit — Tracks R/R9/REC/D/P/Staging + all decisions resolved)
 **Markets tested:** Both Houston US and Pakistan PK (infrastructure + code path verified)
-**Outcome:** PASS ✅ — 48/53 items PASS, 1 AUTO-FIX shipped, 3 items ⏸️ pending decision
+**Outcome:** PASS ✅ COMPLETE — 53/53 items resolved, all fixes shipped
 **Alembic head:** 029 (confirmed live in Supabase quqrvnoguofbjacrxcim)
-**Commits this session:** 53db54a (D.11 AUTO-FIX — finalize apiFetch missing Clerk JWT)
-**Vercel:** Deploying on commit 53db54a
-**Railway:** Health OK on 53db54a
-**QA sign-off:** COMPLETE — 3 decisions required from Shoab (see below)
+**Commits this session:** 53db54a (D.11), 85197fc (docs), 172b825 (R.7+S.7)
+**Vercel:** Live on commit 172b825
+**Railway:** Health OK
+**QA sign-off:** FULLY COMPLETE ✅
 
 ### BUG-021 — Railway builds failing in 9 seconds (FIXED — commit 6e3ef5e):
 **Problem:** All Railway builds completed in ~9 seconds (should be 3+ minutes). Backend was serving stale code.
@@ -82,29 +82,24 @@ All 4 Track D frontend files now correctly pass Clerk JWT token to `apiFetch` (D
 
 ---
 
-## ⏸️ PENDING DECISIONS (awaiting Shoab)
+## Completed (2026-05-20 — Post-audit decisions, commit 172b825)
 
-### Decision 1 — D.6: Backfill share_token on 62 existing sessions
-All 62 `diagnostic_sessions` rows have `share_token = NULL`. Root cause was D.11 (now fixed — future sessions work correctly). Existing sessions cannot generate share links until backfilled.
+- [completed] D.6 — Backfill share_token on all 62 existing diagnostic_sessions
+  - SQL: `UPDATE diagnostic_sessions SET share_token = encode(gen_random_bytes(32), 'hex') WHERE share_token IS NULL`
+  - Verified: 62/62 tokens populated, 0 NULL remaining
+  - Future sessions: auto-populated by finalize endpoint (D.11 fix, commit 53db54a)
 
-**Proposed SQL (run via Supabase dashboard — production project quqrvnoguofbjacrxcim):**
-```sql
-UPDATE diagnostic_sessions
-SET share_token = encode(gen_random_bytes(32), 'hex')
-WHERE share_token IS NULL;
-```
-Risk: Low. `gen_random_bytes` is cryptographically secure. Idempotent. No PII.
-Options: A) All 62 rows ← recommended | B) Only resolved sessions (31 rows) | C) Skip
+- [completed] R.7 — Contractor profile guard in live estimate builder (assessment/[id]/page.tsx)
+  - `contractorProfileOk` state: fetches /api/auth/me on load, checks company_name + phone
+  - `sendEstimate()` blocked with clear error if profile incomplete
+  - Amber warning banner in send tab with link to /settings
+  - Commit: 172b825
 
-### Decision 2 — R.7: Contractor profile guard in live estimate builder
-Profile completeness check exists only in dead code (`estimate/[id]/page.tsx`). Live builder `assessment/[id]/page.tsx` `sendEstimate()` does NOT check company name/phone before sending.
-Proposed fix: 1-file change, add guard to `sendEstimate()` in `assessment/[id]/page.tsx`.
-Options: A) Apply fix ← recommended | B) Defer to next sprint
-
-### Decision 3 — S.7: Staging environment banner
-No visual indicator exists to distinguish staging from production.
-Proposed fix: New `StagingBanner.tsx` component + render in `app/(app)/layout.tsx` when `NEXT_PUBLIC_ENV === "staging"`.
-Options: A) Build and ship ← recommended | B) Skip
+- [completed] S.7 — Staging environment banner
+  - New file: `scopesnap-web/components/StagingBanner.tsx`
+  - Fixed amber bar, visible only when NEXT_PUBLIC_ENV === "staging" (zero production cost)
+  - `app/(app)/layout.tsx`: imports and renders StagingBanner; adds pt-6 on staging
+  - Commit: 172b825
 
 ---
 

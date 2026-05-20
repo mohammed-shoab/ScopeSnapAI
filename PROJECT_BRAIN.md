@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-20 (Full QA audit Tracks R/R9/REC/D/P/Staging complete. D.11 AUTO-FIX shipped 53db54a. Remote HEAD: 53db54a. Alembic: 029 live.)
+> Last updated: 2026-05-20 (All pending decisions resolved. HEAD: 172b825. D.6 backfill: 62/62 share_tokens populated. R.7 profile guard live. S.7 staging banner live.)
 
 ---
 
@@ -62,8 +62,8 @@
 ### Production
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both prod domains) | `53db54a` | Production Live | 2026-05-20 |
-| Railway backend (prod) | `53db54a` | Health OK | 2026-05-20 |
+| Vercel (both prod domains) | `172b825` | Production Live | 2026-05-20 |
+| Railway backend (prod) | `172b825` | Health OK | 2026-05-20 |
 | Alembic migration (prod) | `029` | Applied via Supabase direct (WA-7 pattern) | 2026-05-20 |
 | pak_data_defaults | 1 row (market=PK) | Seeded | 2026-05-19 |
 | pak_operating_targets | PK PSI thresholds + R-32 (5 rows, 30-50C ambient) | Seeded | 2026-05-18 |
@@ -81,10 +81,12 @@
 **Staging git HEAD:** `980698b` — "chore(staging): migrations 020-025 + dual keepalive A/B + promote-to-prod.sh"
 **Promote staging → prod:** `scripts/promote-to-prod.sh <file1> [file2 ...]` (run from a local main checkout)
 
-**Current git HEAD (main):** `53db54a` -- "fix(D.11): pass Clerk JWT token to diagnostic finalize call (DEC-030)"
+**Current git HEAD (main):** `172b825` -- "fix(R.7+S.7): contractor profile guard on sendEstimate + staging banner"
 
 **Recent commits (newest first -- main):**
-- `53db54a` -- fix(D.11): pass Clerk JWT token to diagnostic finalize call (DEC-030) (QA audit, 2026-05-20)
+- `172b825` -- fix(R.7+S.7): contractor profile guard on sendEstimate + StagingBanner (2026-05-20)
+- `85197fc` -- docs: full QA audit 2026-05-20 results (2026-05-20)
+- `53db54a` -- fix(D.11): pass Clerk JWT token to diagnostic finalize call (DEC-030) (2026-05-20)
 - `928a476` -- fix(BUG-024): diagnoses pages guard on isLoaded before getToken() + restore all web routes (2026-05-20)
 - `fe5b02a` -- fix(BUG-023): diagnostic list+result use pak_fault_cards directly -- bypass stale prepared statement (2026-05-20)
 - `f82d760` -- fix(diagnostic): global exception handler for CORS-aware 500s + has_more/share_token in list response (2026-05-20)
