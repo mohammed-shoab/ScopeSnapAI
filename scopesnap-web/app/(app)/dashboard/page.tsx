@@ -87,6 +87,8 @@ export default function DashboardPage() {
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
   const [company, setCompany]       = useState<CompanyStatus | null>(null);
+  // A.3 (track-f): canonical sent count from estimates-summary (DEC-032)
+  const [sentTotal, setSentTotal]   = useState<number | null>(null);
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (IS_DEV) return DEV_HEADER;
@@ -101,6 +103,12 @@ export default function DashboardPage() {
       fetch(`${API_URL}/api/auth/me`, { headers })
         .then((r) => r.json())
         .then((data) => setCompany(data.company ?? null))
+        .catch(() => {});
+
+      // A.3 (track-f): fetch canonical sent count (DEC-032)
+      fetch(`${API_URL}/api/analytics/estimates-summary`, { headers })
+        .then((r) => r.json())
+        .then((data) => { if (typeof data?.sent === "number") setSentTotal(data.sent); })
         .catch(() => {});
 
       // Load recent assessments (limit 5 for dashboard)
@@ -126,6 +134,9 @@ export default function DashboardPage() {
   const closeRate   = safe.length > 0 ? Math.round((closedCount / safe.length) * 100) : null;
   const totalValue  = safe.reduce((sum, e) => sum + (e.total_amount ?? 0), 0);
   const avgTicket   = safe.length > 0 ? Math.round(totalValue / safe.length) : null;
+  // A.3 (track-f): canonical sent count — summary API or local fallback (DEC-032)
+  const SENT_STATUSES = ["sent", "viewed", "approved", "deposit_paid", "completed"];
+  const sentCount = sentTotal ?? safe.filter((e) => SENT_STATUSES.includes(e.status)).length;
 
   const hasEstimates = safe.length > 0;
   const isFirstTime  = !loading && !error && !hasEstimates;
@@ -332,9 +343,9 @@ export default function DashboardPage() {
             Last {safe.length} Assessment{safe.length !== 1 ? "s" : ""}
           </p>
           <div className="flex items-center gap-0 divide-x divide-surface-border">
-            {/* Total sent */}
+            {/* Total sent — A.3 (track-f): canonical sent count (DEC-032) */}
             <div className="flex-1 text-center pr-4">
-              <p className="font-bold text-xl font-mono">{safe.length}</p>
+              <p className="font-bold text-xl font-mono">{sentCount}</p>
               <p className="text-[10px] text-text-secondary mt-0.5">Sent</p>
             </div>
 

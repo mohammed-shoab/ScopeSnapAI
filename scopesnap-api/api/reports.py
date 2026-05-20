@@ -296,6 +296,14 @@ async def get_public_report(
         # R.8: Site visit fee footer disclaimer (US default; PK follow-up in Track P)
         # Future: read from company.site_visit_fee_text when column is added
         "site_visit_fee_text": "Diagnostic visit fee $89 — waived upon repair approval.",
+
+        # R.9 (track-f-a.1): Seasonal labor surcharge disclosure for homeowner report.
+        # Reads estimate.seasonal_modifier_pct (frozen at generation time, migration 029).
+        "seasonal_note": (
+            f"Includes {estimate.seasonal_modifier_pct}% peak-season labor surcharge."
+            if (getattr(estimate, 'seasonal_modifier_pct', 0) or 0) > 0
+            else None
+        ),
     }
 
     # ── Commit viewed_at + tech notification on first view ────────────────────
