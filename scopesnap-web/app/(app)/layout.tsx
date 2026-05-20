@@ -11,9 +11,11 @@ import FeedbackButton from "@/components/FeedbackButton";
 import InstallPrompt from "@/components/InstallPrompt";
 import PostHogUserSync from "@/components/PostHogUserSync";
 import { LanguageProvider } from "@/lib/language-context";
+import StagingBanner from "@/components/StagingBanner";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development" ||
   process.env.NODE_ENV === "development";
+const IS_STAGING = process.env.NEXT_PUBLIC_ENV === "staging";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://scopesnap-api-production.up.railway.app";
 
@@ -66,7 +68,9 @@ export default async function AppLayout({
     // LanguageProvider is a client component — no-op for US (always en),
     // activates RTL + Urdu translations for PK market users.
     <LanguageProvider>
-    <div className="min-h-screen bg-surface-bg" suppressHydrationWarning>
+    {/* S.7 — staging environment indicator (amber bar, fixed top, invisible in prod) */}
+    <StagingBanner />
+    <div className={`min-h-screen bg-surface-bg${IS_STAGING ? " pt-6" : ""}`} suppressHydrationWarning>
       {/* Identify logged-in Clerk user in PostHog for event attribution */}
       <PostHogUserSync />
       <OfflineBanner />

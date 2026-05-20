@@ -377,6 +377,8 @@ export default function EstimatePage() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // R.7 — contractor profile guard: block send if company_name or phone missing
+  const [contractorProfileOk, setContractorProfileOk] = useState(true);
   // Feedback loop — "Did you send as-is or adjust?" (Musk/Zuckerberg req: AI training signal)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [feedbackStep, setFeedbackStep] = useState<"ask" | "amount">("ask");
@@ -420,6 +422,23 @@ export default function EstimatePage() {
         .catch(() => setLoading(false));
     })();
   }, [id, getAuthHeaders]);
+
+  // R.7 — fetch contractor profile once to validate completeness before send
+  useEffect(() => {
+    (async () => {
+      try {
+        const headers = await getAuthHeaders();
+        const r = await fetch(`${API_URL}/api/auth/me`, { headers });
+        if (r.ok) {
+          const me = await r.json();
+          const ok = Boolean(me.company?.company_name && me.company?.phone);
+          setContractorProfileOk(ok);
+        }
+      } catch {
+        // non-critical — leave default true
+      }
+    })();
+  }, [getAuthHeaders]);
 
   // Recompute option totals from local items + markup
   function computeTotal(tier: string): number {
@@ -474,6 +493,11 @@ export default function EstimatePage() {
   };
 
   const sendEstimate = async () => {
+    // R.7 — profile guard: company name + phone must be set before sending to customer
+    if (!contractorProfileOk) {
+      setError("Complete your contractor profile (company name + phone) before sending estimates. Go to Settings → Profile.");
+      return;
+    }
     if (!sendEmail && !sendPhone) { setError("Enter email or phone to send the estimate."); return; }
     setSending(true);
     setError(null);
@@ -1212,6 +1236,14 @@ export default function EstimatePage() {
       {/* ══ SEND TAB ═════════════════════════════════════════════════════════ */}
       {tab === "send" && (
         <>
+          {/* R.7 — Profile incomplete warning */}
+          {!contractorProfileOk && !sent && (
+            <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              ⚠️ <strong>Profile incomplete</strong> — Add your company name and phone in{" "}
+              <Link href="/settings" className="underline font-semibold">Settings</Link>{" "}
+              before sending estimates to customers.
+            </div>
+          )}
           {sent ? (
             /* ── Success State ── */
             <div className="card p-6 text-center space-y-4">
