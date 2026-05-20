@@ -124,6 +124,7 @@ interface Report {
   options: Option[];
   site_visit_fee_text?: string;  // R.8
   seasonal_note?: string;         // R.9 (track-f-a.1)
+  photo_skipped?: boolean;          // B.6 — on-site photo not captured disclosure
 }
 
 const TIER_LABELS: Record<string, string> = {
@@ -548,7 +549,7 @@ export default function ReportClient({ report }: { report: Report }) {
             Equipment Health Report
           </p>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px", letterSpacing: -0.5 }}>
-            {property?.address_line1 || "Your Home"}
+            {property?.customer_name ? `${property.customer_name}'s Home` : property?.address_line1 || ""}
           </h1>
           <p style={{ fontSize: 12, color: "#7a7770" }}>
             {[property?.city, property?.state].filter(Boolean).join(", ")}
@@ -1071,6 +1072,13 @@ export default function ReportClient({ report }: { report: Report }) {
             </p>
           </div>
         )}
+        {report.photo_skipped && (
+          <div style={{ margin: "0 10px 4px", padding: "8px 14px", background: "#f5f5f5", borderRadius: 10, border: "1px solid #e0e0e0", textAlign: "center" }}>
+            <p style={{ fontSize: 10, color: "#6b7280", margin: 0, lineHeight: 1.5 }}>
+              On-site photo not captured during this visit.
+            </p>
+          </div>
+        )}
 
         {/* Footer — SOW Decision #2: two-line SnapAI footer + QR code (Task 1.9 / Zuckerberg) */}
         <div style={{ textAlign: "center", padding: "20px 16px", fontSize: 10, color: "#a8a49c", lineHeight: 1.8 }}>
@@ -1092,16 +1100,4 @@ export default function ReportClient({ report }: { report: Report }) {
             >
               SnapAI
             </a>
-          </span>
-          <br />
-          <span style={{ color: "#b0aca4" }}>
-            Professional HVAC assessments for contractors — snapai.mainnov.tech
-          </span>
-          {/* QR code — Zuckerberg req: homeowner scans to re-open report on any device */}
-          {/* UTM params: utm_source=report&utm_medium=qr for attribution tracking */}
-          <ReportQRCode reportShortId={report.report_short_id} />
-        </div>
-      </div>
-    </div>
-  );
-}
+        

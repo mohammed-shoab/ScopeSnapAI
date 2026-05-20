@@ -66,7 +66,9 @@ export async function generateMetadata({ params }: ReportPageProps) {
   const report = await fetchReport(reportId);
 
   const companyName = report?.company?.name || slug.replace(/-/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase());
-  const address = report?.property?.address_line1 || "Your Home";
+  const address = report?.property?.customer_name
+      ? `${report.property.customer_name}'s Home`
+      : report?.property?.address_line1 || "";
 
   return {
     title: `HVAC Report — ${address} — ${companyName}`,

@@ -255,6 +255,7 @@ export default function SettingsPage() {
                   <input
                     id="company-phone-field"
                     type="tel"
+                    inputMode="tel"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     disabled={!isOwner}
@@ -551,19 +552,4 @@ function MarkupSetting({
             {history.slice(0, 3).map((h, i) => (
               <div key={i} className="flex items-center justify-between text-xs text-text-secondary">
                 <span>
-                  <span className="font-semibold text-text-primary">{h.from_pct}%</span>
-                  {" → "}
-                  <span className="font-semibold text-brand-green">{h.to_pct}%</span>
-                  {h.note && <span className="text-gray-400"> — {h.note}</span>}
-                </span>
-                <span className="text-[10px] font-mono">
-                  {new Date(h.changed_at).toLocaleDateString()}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+                  <span className=

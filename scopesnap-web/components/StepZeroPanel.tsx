@@ -143,7 +143,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   useEffect(() => { setIsPK(detectMarket() === "PK"); }, []);
 
   // ── Section 5C: Manual entry tab ───────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<"photo" | "manual">("manual");
+  const [activeTab, setActiveTab] = useState<"photo" | "manual">("photo");
   const BLANK_UNIT: NameplateUnit = {
     model_number: null, serial_number: null, tonnage: null, refrigerant: null,
     factory_charge_oz: null, rla: null, lra: null, capacitor_uf: null,
@@ -159,6 +159,19 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   // PK-only: tonnage_data from the selected model record
   const [pkTonnageData, setPkTonnageData] = useState<EquipmentModelRecord["tonnage_data"] | null>(null);
   const [selectedSeriesType, setSelectedSeriesType] = useState<string | null>(null);
+
+  // B.3: Auto-select PK refrigerant based on manufacture year + inverter type
+  useEffect(() => {
+    if (!isPK || manualUnit.year_of_manufacture === null) return;
+    const yr = manualUnit.year_of_manufacture as number;
+    if (yr >= 2018 && selectedSeriesType === "inverter") {
+      setPkRefrigerant("R-32");
+    } else if (yr >= 2010) {
+      setPkRefrigerant("R-410A");
+    } else {
+      setPkRefrigerant("R-22");
+    }
+  }, [isPK, manualUnit.year_of_manufacture, selectedSeriesType]);
 
   // ── Section 5A: Brand/model lookup ─────────────────────────────────────────
   const [brands,           setBrands]           = useState<Array<{ brand: string; model_count: number }>>([]);
@@ -566,27 +579,31 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
         </div>
       </div>
 
-      {/* Section 5C: Tab switcher — Photo OCR | Manual Entry */}
-      <div className="flex rounded-xl border border-gray-200 overflow-hidden bg-gray-50 p-0.5 gap-0.5">
+      {/* Section 5C: Entry method — Scan Nameplate primary, manual secondary (B.2) */}
+      <div className="flex flex-col gap-2">
         <button
           onClick={() => setActiveTab("photo")}
-          className="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
+          className="w-full py-3 rounded-2xl font-bold text-sm transition-all"
           style={{
-            background: activeTab === "photo" ? "#1a8754" : "transparent",
-            color: activeTab === "photo" ? "white" : "#6b7280",
+            background: activeTab === "photo" ? "#1a8754" : "#e8f5ef",
+            color: activeTab === "photo" ? "white" : "#1a8754",
+            border: activeTab === "photo" ? "none" : "1.5px solid #a7d9be",
           }}
         >
-          📸 Photo OCR
+          📸 Scan Nameplate
         </button>
         <button
           onClick={() => setActiveTab("manual")}
-          className="flex-1 py-2 text-xs font-bold rounded-lg transition-all"
+          className="text-xs font-medium text-center py-1 w-full"
           style={{
-            background: activeTab === "manual" ? "#1a8754" : "transparent",
-            color: activeTab === "manual" ? "white" : "#6b7280",
+            color: activeTab === "manual" ? "#1a8754" : "#9ca3af",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            textDecoration: activeTab === "manual" ? "underline" : "none",
           }}
         >
-          ✏️ Manual Entry
+          ✏️ I&apos;ll enter manually
         </button>
       </div>
 
@@ -1252,31 +1269,3 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                 {editedUnit.is_legacy && " (legacy / pre-2010)"}
               </p>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Confirm */}
-      {editedUnit && (
-        <div className="flex gap-3">
-          <button
-            onClick={handleConfirm}
-            className="w-full py-3 px-6 rounded-xl text-sm font-black text-white transition-all"
-            style={{ background: "#1a8754" }}
-          >
-            Confirm & Continue
-          </button>
-        </div>
-      )}
-
-      <p className="text-center text-xs text-gray-400">
-        Nameplate specs auto-fill all cards — save time on every call
-      </p>
-
-        </> /* end activeTab === "photo" */
-      )}
-
-    </div>
-  );
-}
-          

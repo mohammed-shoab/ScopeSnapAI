@@ -512,7 +512,7 @@ export default function DiagnosticFlow({
                   {skipConfig.type === "simple" && (
                     <button onClick={() => handleSkipSimple(spec.slot_name)} disabled={submitting}
                       className="text-xs font-medium text-center py-1.5" style={{ color: "#4a5568" }}>
-                      Skip photo and continue →
+                      Can&apos;t access right now?
                     </button>
                   )}
 
@@ -636,29 +636,4 @@ export default function DiagnosticFlow({
             <div key={i} className="flex items-start gap-1.5 text-xs" style={{ color: "#4a5568" }}>
               <span style={{ color: "#3a4060" }}>{i + 1}.</span>
               <span className="flex-1 truncate">{h.question_text}</span>
-              <span className="font-semibold flex-shrink-0" style={{ color: "#6a8090" }}>
-                {h.answer_display}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Cancel */}
-      <button
-        onClick={() => {
-          trackEvent("diagnostic_cancelled", {
-            complaint_type: complaintType,
-            step_id: currentQuestion?.step_id ?? "unknown",
-            steps_completed: history.length,
-          });
-          onCancel();
-        }}
-        className="text-xs font-medium text-center py-2 mt-2"
-        style={{ color: "#4a5568" }}
-      >
-        {t("Back to complaint selection")}
-      </button>
-    </div>
-  );
-}
+              <span className="font-semibold flex-shri

@@ -937,7 +937,19 @@ async def submit_answer(
 
         # WS-A4: tech used the code_input photo-skip — honour the "skipped" branch
         # directly instead of running OCR lookup (no photo was taken).
+        # B.6: also set photo_skipped flag on session for report disclosure
         if isinstance(body.answer, dict) and body.answer.get("branch_key") == "skipped":
+            from datetime import datetime, timezone
+            await db.execute(
+                text(
+                    "UPDATE diagnostic_sessions SET photo_skipped = TRUE, updated_at = :now WHERE id = :sid"
+                ),
+                {"now": datetime.now(timezone.utc), "sid": session_id},
+            )
+            logger.info(
+                "[diagnostic] photo step '%s' skipped — photo_skipped flag set on session %s",
+                session.current_step_id, session_id,
+            )
             skip_branch = branch_logic.get("skipped") or branch_logic.get("any")
             if skip_branch:
                 logger.info("[diagnostic] error_code q1: skipped photo — routing via 'skipped' branch")
@@ -1599,34 +1611,4 @@ async def get_public_diagnosis(
 
 # -- DX.9: PATCH /session/{session_id}/cancel ---------------------------------
 
-@router.patch("/session/{session_id}/cancel", status_code=200)
-async def cancel_diagnosis_session(
-    session_id: str = Path(...),
-    auth: AuthContext = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    DX.9 -- Soft-delete a diagnostic session (sets deleted_at).
-    Called when the tech taps Cancel diagnosis from the ... menu.
-    """
-    sess_check = await db.execute(
-        text(
-            "SELECT id FROM diagnostic_sessions"
-            " WHERE id = :sid AND company_id = :cid AND deleted_at IS NULL LIMIT 1"
-        ),
-        {"sid": session_id, "cid": auth.company_id},
-    )
-    if not sess_check.fetchone():
-        raise HTTPException(status_code=404, detail="Session not found.")
-
-    await db.execute(
-        text(
-            "UPDATE diagnostic_sessions"
-            " SET deleted_at = :now, updated_at = :now WHERE id = :sid"
-        ),
-        {"now": datetime.now(timezone.utc), "sid": session_id},
-    )
-    await db.commit()
-    return {"status": "cancelled"}
-
-# BUG-020 fix verified: card_id (not id)
+@router.patch("/session/{session_id}/cancel", status

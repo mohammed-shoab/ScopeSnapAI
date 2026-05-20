@@ -363,6 +363,7 @@ export default function OnboardingPage() {
                     </label>
                     <input
                       type="tel"
+                      inputMode="tel"
                       value={profile.phone}
                       onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                       placeholder="(555) 123-4567"
@@ -438,20 +439,3 @@ export default function OnboardingPage() {
                   {saving ? "Launching..." : "Launch SnapAI 🚀"}
                 </button>
               </div>
-
-              <button
-                onClick={handleSkip}
-                disabled={saving}
-                className="w-full text-center text-xs text-text-secondary hover:text-text-primary py-2 transition-colors"
-              >
-                I'll finish this later
-              </button>
-            </div>
-
-            <DotIndicators />
-          </>
-        )}
-      </div>
-    </div>
-  );
-}

@@ -188,13 +188,15 @@ async def get_public_report(
     if assessment:
         ds_result = await db.execute(
             text(
-                "SELECT resolved_card_id FROM diagnostic_sessions "
+                "SELECT resolved_card_id, photo_skipped FROM diagnostic_sessions "
                 "WHERE assessment_id = :aid AND resolved_card_id IS NOT NULL "
-                "LIMIT 1"
+                "ORDER BY created_at DESC LIMIT 1"
             ),
             {"aid": str(assessment.id)},
         )
-        diagnostic_resolved = ds_result.scalar_one_or_none() is not None
+        ds_row = ds_result.fetchone()
+        diagnostic_resolved = ds_row is not None
+        photo_skipped_flag = bool(ds_row[1]) if ds_row is not None else False
 
     if not issues_data and not diagnostic_resolved and assessment:
         complaint = (assessment.tech_overrides or {}).get("complaint_type", "")
@@ -304,6 +306,9 @@ async def get_public_report(
             if (getattr(estimate, 'seasonal_modifier_pct', 0) or 0) > 0
             else None
         ),
+
+        # B.6: on-site photo not captured — triggers disclosure on homeowner report
+        "photo_skipped": photo_skipped_flag,
     }
 
     # ── Commit viewed_at + tech notification on first view ────────────────────
@@ -438,5 +443,4 @@ async def approve_report(
         "total": selected_option_data.get("total"),
         "deposit_amount": estimate.deposit_amount,
         "approved_at": estimate.approved_at.isoformat(),
-        "status": "approved",
-    }
+       

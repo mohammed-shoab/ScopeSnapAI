@@ -193,6 +193,7 @@ export default function SendMomentModal({
             </label>
             <input
               type="tel"
+              inputMode="tel"
               value={phone}
               onChange={e => setPhone(e.target.value)}
               placeholder="(555) 123-4567"
@@ -223,10 +224,4 @@ export default function SendMomentModal({
           {saving ? "Saving…" : "Save & Generate Report →"}
         </button>
 
-        <p style={{ textAlign: "center", fontSize: 11, color: "#b0aca4", marginTop: 12, marginBottom: 0 }}>
-          You can update these any time in Settings
-        </p>
-      </div>
-    </div>
-  );
-}
+        <
