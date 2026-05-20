@@ -443,4 +443,5 @@ async def approve_report(
         "total": selected_option_data.get("total"),
         "deposit_amount": estimate.deposit_amount,
         "approved_at": estimate.approved_at.isoformat(),
-       
+        "status": "approved",
+    }
