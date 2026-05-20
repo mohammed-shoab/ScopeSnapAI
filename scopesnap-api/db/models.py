@@ -494,6 +494,9 @@ class Estimate(Base):
     # 'email' | 'sms' | 'both'
     sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # R.9 seasonal labour surcharge captured at generation time (migration 029)
+    seasonal_modifier_pct: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+
     # Accuracy tracking (filled in after job completion)
     actual_cost: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
     accuracy_score: Mapped[Optional[float]] = mapped_column(Numeric(5, 2), nullable=True)

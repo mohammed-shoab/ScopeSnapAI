@@ -180,7 +180,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
 
   // ── Handlers ─────────────────────────────────────────────────────────────
 
-  function handleContinue() {
+  async function handleContinue() {
     if (!data.assessment_id || navigating) return;
     setNavigating(true);
     const variant = sessionCount <= 3 ? "with_destination" : "short";
@@ -188,7 +188,22 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
       session_id: data.session_id,
       label_variant: variant,
     });
-    router.push(`/assessment/${data.assessment_id}`);
+    try {
+      const token = await getToken();
+      const est = await apiFetch<{ id: string }>("/api/estimates/fault-card", {
+        method: "POST",
+        token: token ?? undefined,
+        body: JSON.stringify({
+          card_id: data.fault.card_id,
+          assessment_id: data.assessment_id,
+        }),
+      });
+      if (!est.id) throw new Error("No estimate ID");
+      router.push(`/assessment/${est.id}`);
+    } catch (err) {
+      console.error("Estimate creation failed:", err);
+      setNavigating(false);
+    }
   }
 
   function handleDifferentFault() {
