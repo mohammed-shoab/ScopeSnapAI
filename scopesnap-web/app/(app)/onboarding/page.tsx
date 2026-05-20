@@ -439,3 +439,20 @@ export default function OnboardingPage() {
                   {saving ? "Launching..." : "Launch SnapAI 🚀"}
                 </button>
               </div>
+
+              <button
+                onClick={handleSkip}
+                disabled={saving}
+                className="w-full text-center text-xs text-text-secondary hover:text-text-primary py-2 transition-colors"
+              >
+                I'll finish this later
+              </button>
+            </div>
+
+            <DotIndicators />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

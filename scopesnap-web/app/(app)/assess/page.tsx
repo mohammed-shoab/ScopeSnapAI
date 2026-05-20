@@ -780,4 +780,27 @@ function AssessPageInner() {
           diagnosedCardName={resolvedCardName}
           faultCards={faultCards}
           authHeaders={resolvedHeaders}
-     
+          onConfirmed={() => router.push(`/assessment/${assessmentId}`)}
+          onSkip={() => router.push(`/assessment/${assessmentId}`)}
+        />
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// ── Exported page: Suspense wrapper required for useSearchParams ──────────────────────────────────────────────
+export default function AssessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="w-8 h-8 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <AssessPageInner />
+    </Suspense>
+  );
+}
