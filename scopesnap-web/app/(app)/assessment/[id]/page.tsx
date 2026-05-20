@@ -14,7 +14,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
-import { trackEvent, track } from "@/lib/tracking";
+import { trackEvent } from "@/lib/tracking";
 import { ph } from "@/providers/PostHogProvider";
 import PresentMode from "@/components/PresentMode";
 import { formatCurrency, detectMarket } from "@/lib/market";
@@ -1130,7 +1130,7 @@ export default function EstimatePage() {
           <button
             onClick={() => {
               if (selectedTier !== recommendedTier) {
-                track.recommendationOverridden({
+                trackEvent("recommendation_overridden", {
                   estimate_id: String(id),
                   selected_tier: selectedTier,
                   recommended_tier: recommendedTier,
@@ -1485,4 +1485,3 @@ export default function EstimatePage() {
       )}
     </div>
   );
-}
