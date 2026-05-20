@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-20 (All QA decisions resolved and shipped. HEAD: 35f450c. D.6: 62/62 share_tokens. R.7 profile guard. S.7 banner. TECH_STACK.md updated to alembic 029 + all new tables/columns.)
+> Last updated: 2026-05-20 (All docs cleaned + updated. HEAD: ba15901. All tracks complete. Alembic 029. All .md files current.)
 
 ---
 
@@ -62,8 +62,8 @@
 ### Production
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both prod domains) | `172b825` | Production Live | 2026-05-20 |
-| Railway backend (prod) | `172b825` | Health OK | 2026-05-20 |
+| Vercel (both prod domains) | `ba15901` | Production Live | 2026-05-20 |
+| Railway backend (prod) | `ba15901` | Health OK | 2026-05-20 |
 | Alembic migration (prod) | `029` | Applied via Supabase direct (WA-7 pattern) | 2026-05-20 |
 | pak_data_defaults | 1 row (market=PK) | Seeded | 2026-05-19 |
 | pak_operating_targets | PK PSI thresholds + R-32 (5 rows, 30-50C ambient) | Seeded | 2026-05-18 |
@@ -81,9 +81,11 @@
 **Staging git HEAD:** `980698b` — "chore(staging): migrations 020-025 + dual keepalive A/B + promote-to-prod.sh"
 **Promote staging → prod:** `scripts/promote-to-prod.sh <file1> [file2 ...]` (run from a local main checkout)
 
-**Current git HEAD (main):** `35f450c` -- "docs: all QA decisions resolved -- D.6 backfill done, R.7+S.7 shipped (172b825)"
+**Current git HEAD (main):** `ba15901` -- "docs(cleanup): remove stale to-dos + update all .md files to HEAD 02ad667 / alembic 029"
 
 **Recent commits (newest first -- main):**
+- `ba15901` -- docs(cleanup): remove stale to-dos + update all .md files (2026-05-20)
+- `02ad667` -- docs(TECH_STACK+BRAIN): full post-audit update (2026-05-20)
 - `35f450c` -- docs: all QA decisions resolved -- D.6 backfill done, R.7+S.7 shipped (2026-05-20)
 - `172b825` -- fix(R.7+S.7): contractor profile guard on sendEstimate + StagingBanner (2026-05-20)
 - `85197fc` -- docs: full QA audit 2026-05-20 results (2026-05-20)
