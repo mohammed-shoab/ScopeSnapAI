@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-22 (Track H Group B complete. HEAD: 7d164d1. Alembic: 032. All known bugs resolved.)
+> Last updated: 2026-05-22 (Track H Group A complete. A.3 issues/report fix + A.5 QR code fix deployed. HEAD: c009dbb. Alembic: 032. A.2 share_token backfill 18 rows — pending approval.)
 
 ---
 
@@ -93,8 +93,8 @@
 ### Production
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both prod domains) | `7d164d1` | ✅ Live | 2026-05-22 |
-| Railway backend (prod) | `4743a40` | ✅ Live — health OK | 2026-05-21 |
+| Vercel (both prod domains) | `c009dbb` (A.5 ReportClient fix in `55d76f8`) | ✅ Auto-deploying | 2026-05-22 |
+| Railway backend (prod) | `c009dbb` (A.3 reports.py fix) | ✅ Auto-deploying | 2026-05-22 |
 | Alembic migration (prod) | `032` | ✅ Applied (031 photo_skipped applied directly via Supabase MCP) | 2026-05-21 |
 | diagnostic_sessions.photo_skipped | BOOLEAN NOT NULL DEFAULT false | ✅ Applied directly (031 was skipped by Railway during outage) | 2026-05-21 |
 | card_tco_data (US) | 57 rows | ✅ Seeded | 2026-05-21 |
@@ -115,9 +115,13 @@
 **Staging git HEAD:** `980698b` — "chore(staging): migrations 020-025 + dual keepalive A/B + promote-to-prod.sh"
 **Promote staging → prod:** `scripts/promote-to-prod.sh <file1> [file2 ...]` (run from a local main checkout)
 
-**Current git HEAD (main):** `7d164d1` -- "fix(B.1/B.2/B.3): enrich assessment+diagnoses list rows; hide confidence pill"
+**Current git HEAD (main):** `c009dbb` -- "fix(A.3): fault card is primary issue source in homeowner report"
 
 **Recent commits (newest first -- main):**
+- `c009dbb` -- fix(A.3): fault card is primary issue source in homeowner report (2026-05-22)
+- `ac0c3d4` -- docs: update DECISIONS, TECH_STACK, ACTIVE_TASKS (2026-05-22)
+- `55d76f8` -- fix(A.5): QR code renders synchronously for PDF print (2026-05-22)
+- `c5abd24` -- docs(track-h-b): PROJECT_BRAIN update -- B.1/B.2/B.3 shipped, HEAD 7d164d1 (2026-05-22)
 - `7d164d1` -- fix(B.1/B.2/B.3): enrich assessment+diagnoses list rows; hide confidence pill (2026-05-22)
 - `31c2b6c` -- docs(D.1+D.2): add /tech + /homeowner landing page URLs to PROJECT_BRAIN (2026-05-22)
 - `65f0b00` -- fix(C.2+C.3): diagnostic visit fee above TCO section; peak-season notice gray (2026-05-22)
@@ -160,6 +164,7 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 
 | Date | Markets | Outcome | Bugs Fixed | HEAD |
 |------|---------|---------|------------|------|
+| 2026-05-22 | Houston + PK | FIXES DEPLOYED ✅ | Track H Group A: A.3 fault card as primary issue source (reports.py), A.5 QR code sync render (ReportClient.tsx). A.1/A.4/A.6/A.7 already done. A.2 backfill pending. | c009dbb |
 | 2026-05-22 | Houston + PK | PASS ✅ | Track H Group C: C.1 TCO polarity arrows + labels, C.2 fee placement above TCO, C.3 peak-season notice gray | 65f0b00 |
 | 2026-05-21 | Houston + PK | PASS ✅ | BUG-033 resolved (photo skip UI in ServiceChecklist) | 23e3019 |
 | 2026-05-21 | Houston + PK | CONDITIONAL PASS ✅ | BUG-031 resolved; BUG-033 open (skip buttons) | 4743a40 (no deploy) |
@@ -167,7 +172,8 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 | 2026-05-21 | Houston + PK | PASS ✅ | BUG-025 (ORM col missing), BUG-026 (wrong nav ID), Track F B.1-B.6 | 66a772c |
 | 2026-05-20 | Houston + PK | PASS ✅ | BUG-D.AUTH (4 files), D.6 backfill, R.7+S.7 | 85c5755 |
 
-**Open known issues:** None.
+**Open known issues:**
+- A.2 — 18 NULL share_token rows in diagnostic_sessions. Backfill SQL ready. Awaiting Shoab approval to execute.
 
 **Resolved issues:**
 - BUG-033: ~~Service/Tune-Up skip buttons not in DOM~~ — RESOLVED 2026-05-21. Root cause: ServiceChecklist.tsx (not DiagnosticFlow.tsx) renders the service flow; PHOTO_SKIP_CONFIG was never reached. Fix: SVC_PHOTO_SKIP_CONFIG + skip UI added to ServiceChecklist.tsx. Commit 23e3019.
@@ -205,6 +211,4 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 | File | Purpose |
 |------|---------|
 | `scopesnap-api/api/diagnostic.py` | All diagnostic session logic, PSI routing, fault card return |
-| `scopesnap-api/api/dependencies.py` | `get_tables()` — market routing, `_US_TABLES` / `_PK_TABLES` |
-| `scopesnap-api/api/assessments.py` | Assessment CRUD |
-| `scopesnap-api/api/fault_estimate.py` | Primary estimate engine -- `POST /api/estimates/fault-card`. Seasonal modifier, recommendatio
+| `scopesnap-api/api/dependencies.py` | `get_tables()` — market routing, `_US_TABLES` / 
