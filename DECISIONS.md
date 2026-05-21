@@ -3,7 +3,7 @@
 > This file records decisions made during development that have lasting impact on how the codebase works.
 > Future AI sessions: read this before proposing architecture changes or writing migrations.
 >
-> Last updated: 2026-05-21
+> Last updated: 2026-05-22 (DEC-058, DEC-059, DEC-060 added — ServiceChecklist auth, estimates INSERT, missing endpoint)
 
 ---
 
@@ -1175,3 +1175,129 @@ location.reload(true);
 ```
 
 **Cross-reference:** WA-26 (IndexedDB cache), `models.py` PK market branch, `StepZeroPanel.tsx`
+
+---
+
+## DEC-058 — ServiceChecklist must receive a getAuthHeaders callback, not pre-baked headers (2026-05-22)
+
+**Date:** 2026-05-22
+
+**Problem (BUG-034):** `ServiceChecklist.tsx` originally received `authHeaders: Record<string,string>` as a prop. This token was captured once when the technician selected the complaint type. Clerk JWTs expire in 60 seconds. Any service checklist session lasting longer than 60 seconds caused every subsequent step submission to return 401 "Invalid or expired session token".
+
+**Fix:** Changed prop to `getAuthHeaders: () => Promise<Record<string,string>>`. Each fetch call inside ServiceChecklist now calls `const headers = await getAuthHeaders()` immediately before the request.
+
+**Rule:** Any component that makes multiple authenticated API calls over a potentially long user session MUST receive a `getAuthHeaders` callback, NOT a pre-baked headers object. This applies specifically to:
+- `ServiceChecklist.tsx` (service flow, 8 steps, can take 5+ minutes)
+- Any future multi-step flow with long dwell time
+
+**Pattern:**
+```typescript
+// assess/page.tsx — correct
+const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+  const market = detectMarket();
+  if (IS_DEV) return { ...DEV_HEADER, "X-Market": market };
+  const token = await getToken();
+  return token ? { Authorization: `Bearer ${token}`, "X-Market": market } : { "X-Market": market };
+}, [getToken]);
+
+<ServiceChecklist getAuthHeaders={getAuthHeaders} ... />
+
+// ServiceChecklist.tsx — correct
+const headers = await getAuthHeaders();  // called fresh per API call
+const r = await fetch(`${API_URL}/api/...`, { headers: { ...headers, "Content-Type": "application/json" } });
+```
+
+**Commit:** `0140c83`
+
+---
+
+## DEC-059 — estimates table has NO updated_at column — omit from all INSERTs (2026-05-22)
+
+**Date:** 2026-05-22
+
+**Problem (BUG-035):** `_generate_service_estimate()` in `api/diagnostic.py` included `updated_at` in its INSERT INTO estimates statement. The `estimates` table does not have an `updated_at` column. The SQL error was caught by a `try/except Exception` block and logged, but the session was still marked `service_complete`. No estimate row was created.
+
+**Fix:** Removed `updated_at` from both the column list and VALUES in the INSERT.
+
+**Confirmed estimates table columns (verified 2026-05-22 via information_schema):**
+```
+id, assessment_id, company_id, report_token, report_short_id, options, selected_option,
+total_amount, deposit_amount, markup_percent, status, viewed_at, approved_at,
+stripe_payment_intent_id, contractor_pdf_url, homeowner_report_url, sent_via, sent_at,
+actual_cost, accuracy_score, created_at, seasonal_modifier_pct
+```
+**No `updated_at`. No `updated_at`. No `updated_at`.** If you need to update a row, use `SET created_at` is wrong — just omit timestamps from UPDATE clauses entirely or add the column via migration first.
+
+**Rule:** Before inserting into `estimates`, verify the column list against `information_schema.columns` if any doubt. Never assume `updated_at` exists.
+
+**Commit:** `937b8c7`
+
+---
+
+## DEC-060 — POST /api/estimates/service does NOT exist — call onComplete directly after service_step_complete (2026-05-22)
+
+**Date:** 2026-05-22
+
+**Problem (BUG-036):** `ServiceChecklist.tsx` had a `generateServiceEstimate()` function that POSTed to `POST /api/estimates/service`. This endpoint was never implemented on the Railway backend. The OpenAPI spec at `/openapi.json` confirms it does not exist. The 405 Method Not Allowed response caused the service checklist to show an error and never navigate away.
+
+**How service estimates actually work:**
+1. Tech submits step 8 answer (svc-8-run) via `POST /api/diagnostic/session/{id}/answer`
+2. Backend `_resolve_branch()` sees `generate_estimate: true` in svc-8-run branch_logic
+3. Backend calls `_generate_service_estimate(db, assessment_id, company_id)` — creates estimate row in DB
+4. Backend returns `{resolved: true, service_step_complete: true}` to frontend
+5. Frontend should call `onComplete()` directly — no additional API call needed
+6. `handleServiceComplete` in `assess/page.tsx` ignores the result and calls `router.push(/assessment/{assessmentId})`
+7. `/assessment/{id}` page fetches `GET /api/estimates/{assessment_id}` to show the estimate
+
+**Fix:** Removed `generateServiceEstimate()` entirely. After `service_step_complete`, build a summary from `findings` state and call `onComplete()` immediately.
+
+**Rule:** There is no POST endpoint for service estimates. The estimate is auto-generated server-side. Frontend only needs to navigate. Do not add a POST /api/estimates/service endpoint unless the service estimate response format is redesigned.
+
+**Available estimate-related POST endpoints (as of 2026-05-22):**
+- `POST /api/estimates/fault-card` — generates fault card estimate from assessment
+- `POST /api/estimates/{id}/refresh` — refreshes a draft estimate
+- `POST /api/estimates/{id}/documents` — generates PDF documents
+- `POST /api/estimates/{id}/send` — sends estimate to homeowner
+
+**Commit:** `4db39be`
+
+---
+
+## DEC-061 — Restoring NTFS files truncated by Edit tool: use git cat-file blob (2026-05-22)
+
+**Date:** 2026-05-22
+
+**Problem:** The Edit tool (DEC-027) truncated `api/diagnostic.py` from 1646 to 1602 lines when removing `updated_at` from an INSERT. The truncation happened even though the target string had no non-ASCII chars — the file itself does, elsewhere. SyntaxError at line 1594 confirmed the tail was missing.
+
+**Recovery procedure:**
+```bash
+# Step 1 (Linux sandbox — read-only, OK on NTFS mount):
+cd '/sessions/.../mnt/Personal Claude/ScopeSnapAI/scopesnap-api'
+git ls-tree HEAD api/diagnostic.py
+# → outputs: 100644 blob <sha>  api/diagnostic.py
+
+git cat-file blob <sha> | wc -l
+# → confirms correct line count
+
+# Step 2: Write a Python script to the outputs dir (not NTFS):
+# Script reads blob bytes from git cat-file, applies the fix via .replace(), writes to NTFS target.
+# Run it via Desktop Commander (Windows Python subprocess).
+```
+
+**Recovery script pattern:**
+```python
+import subprocess
+r = subprocess.run(["git", "cat-file", "blob", sha], cwd=repo_dir, capture_output=True)
+content = r.stdout  # raw bytes from HEAD
+fixed = content.replace(old_bytes, new_bytes, 1)
+with open(target_path, "wb") as f:
+    f.write(fixed)
+# Verify:
+import ast
+ast.parse(fixed.decode("utf-8"))  # must not raise
+```
+
+**Rule:** If `ast.parse` or `wc -l` after a Python-script edit shows truncation: `git ls-tree HEAD <file>` → `git cat-file blob <sha>` → restore + patch in one Python script run from Desktop Commander.
+
+**Note:** `git checkout HEAD -- <file>` fails on NTFS mount (Operation not permitted). The cat-file → Python write approach is the only reliable restore path from the Linux sandbox.
+
