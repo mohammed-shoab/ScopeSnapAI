@@ -937,6 +937,14 @@ export default function ReportClient({ report }: { report: Report }) {
           </div>
         )}
 
+        {/* R.8: Site visit fee disclaimer */}
+        {report.site_visit_fee_text && (
+          <div style={{ margin: "0 10px 4px", padding: "10px 14px", background: "#f7f6f2", borderRadius: 10, border: "1px solid #e5e2da", textAlign: "center" }}>
+            <p style={{ fontSize: 10, color: "#7a7770", margin: 0, lineHeight: 1.5 }}>
+              {report.site_visit_fee_text}
+            </p>
+          </div>
+        )}
         {/* 5-Year TCO — Track G */}
         {report.options.length > 0 && (
           <div style={{ margin: "10px 0" }}>
@@ -1019,20 +1027,12 @@ export default function ReportClient({ report }: { report: Report }) {
           </div>
         </div>
 
-        {/* R.8: Site visit fee disclaimer */}
-        {report.site_visit_fee_text && (
-          <div style={{ margin: "0 10px 4px", padding: "10px 14px", background: "#f7f6f2", borderRadius: 10, border: "1px solid #e5e2da", textAlign: "center" }}>
-            <p style={{ fontSize: 10, color: "#7a7770", margin: 0, lineHeight: 1.5 }}>
-              {report.site_visit_fee_text}
-            </p>
-          </div>
-        )}
 
         {/* R.9 (track-f-a.1): Peak season surcharge disclosure */}
         {report.seasonal_note && (
-          <div style={{ margin: "0 10px 4px", padding: "8px 14px", background: "#fff8e7", borderRadius: 10, border: "1px solid #f0e6c0", textAlign: "center" }}>
-            <p style={{ fontSize: 10, color: "#7a6020", margin: 0, lineHeight: 1.5 }}>
-              Peak season service rate applied. {report.seasonal_note}
+          <div style={{ margin: "0 10px 4px", padding: "8px 14px", background: "#f3f4f6", borderRadius: 10, border: "1px solid #e5e7eb", textAlign: "center" }}>
+            <p style={{ fontSize: 10, color: "#6b7280", margin: 0, lineHeight: 1.5 }}>
+              ℹ️ Peak season service rate applied. {report.seasonal_note}
             </p>
           </div>
         )}
