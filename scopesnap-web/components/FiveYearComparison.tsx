@@ -84,30 +84,30 @@ function TierCard({
       <p style={{ fontSize: 10, color: "#6b7280", margin: "0 0 10px" }}>{OPTION_LABELS[tier]}</p>
 
       <p style={{ fontSize: 9, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 2px" }}>
-        Risk of major repair (5 yr)
+        Risk of needing another repair (5 yr)
       </p>
       <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
         <span style={{ fontSize: 20, fontWeight: 800, color, fontFamily: "IBM Plex Mono, monospace" }}>
           {tco.probability_pct}%
         </span>
-        <span style={{ fontSize: 9, color: "#9ca3af" }}>({tco.probability_range})</span>
+        <span style={{ fontSize: 9, color: "#9ca3af" }}>chance &middot; {tco.probability_range} range</span>
       </div>
       <RiskBar pct={tco.probability_pct} color={color} />
 
       {tco.expected_repair_cost > 0 && (
         <div style={{ marginTop: 10 }}>
-          <p style={{ fontSize: 9, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 2px" }}>If repair happens</p>
-          <p style={{ fontSize: 13, fontWeight: 700, color: "#374151", margin: 0, fontFamily: "IBM Plex Mono, monospace" }}>
-            ~{formatCurrency(tco.expected_repair_cost, market)} avg
+          <p style={{ fontSize: 9, fontWeight: 600, color: "#d97706", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 2px" }}>↑ Typical cost if it happens</p>
+          <p style={{ fontSize: 13, fontWeight: 700, color: "#d97706", margin: 0, fontFamily: "IBM Plex Mono, monospace" }}>
+            {formatCurrency(tco.expected_repair_cost, market)} average extra spend
           </p>
         </div>
       )}
 
       {tco.energy_savings_5yr > 0 && (
         <div style={{ marginTop: 10 }}>
-          <p style={{ fontSize: 9, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 2px" }}>Energy savings (5 yr)</p>
+          <p style={{ fontSize: 9, fontWeight: 600, color: "#16a34a", textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 2px" }}>↓ Electricity saved (5 yr)</p>
           <p style={{ fontSize: 13, fontWeight: 700, color: "#16a34a", margin: 0, fontFamily: "IBM Plex Mono, monospace" }}>
-            ~{formatCurrency(tco.energy_savings_5yr, market)}
+            {formatCurrency(tco.energy_savings_5yr, market)} average savings
           </p>
         </div>
       )}
