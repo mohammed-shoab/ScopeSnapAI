@@ -950,3 +950,228 @@ is what causes `index.lock` failures.
 
 **Prevention:** After any staging environment setup, immediately audit the PRODUCTION Vercel
 project's environment variables to confirm `NEXT_PUBLIC_ENV` is absent or set to `production`.
+
+
+---
+
+## DEC-032 -- estimate/[id] route is dead code; real estimate builder is assessment/[id] (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Decision:** The route `/estimate/[id]` in the Next.js app is dead code and should not be used.
+The real estimate builder page is `/assessment/[id]/page.tsx`.
+
+**Rationale:** During early development, an `/estimate/[id]` route was scaffolded.
+The canonical page that renders the estimate builder UI was built at `/assessment/[id]`.
+The two routes co-existed without cleanup. All navigation (from FaultResolutionScreen,
+from the Assessments list, from email links) should point to `/assessment/[id]`.
+
+**Rule:** Never link or navigate to `/estimate/<id>`. Always use `/assessment/<id>` for estimate display.
+
+**Cross-reference:** PROJECT_BRAIN.md Critical Rules table.
+
+---
+
+## DEC-033 -- pak_fault_cards (and pak_fault_cards_v) use card_id as the PK business key (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Decision:** Pakistan fault card rows use `card_id` (INTEGER) as the business key, not `id` (UUID).
+All JOINs and WHERE clauses involving `pak_fault_cards` / `pak_fault_cards_v` / `fault_cards` must
+reference `card_id`, not `id`.
+
+**Rationale:** `pak_fault_cards` was seeded from `ac_data_repo_pakistan.json` where each card has
+a numeric `card_id` that is the stable identifier used across `pak_card_tco_data`, `pak_pricing_tiers`,
+`pak_fault_card_descriptions`, etc. The `id` UUID column is an internal row identifier and is NOT
+shared across tables.
+
+**Rule:**
+```python
+# CORRECT
+WHERE fc.card_id = :cid
+JOIN pak_card_tco_data tco ON tco.card_id = fc.card_id
+
+# WRONG -- fc.id is a UUID that has no cross-table meaning
+WHERE fc.id = :cid
+```
+
+**Cross-reference:** PROJECT_BRAIN.md Critical Rules table.
+
+---
+
+## DEC-052 -- Track DX: structured alternative fault card picker (DX.9) (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Decision:** The "alternative diagnosis" UX presents a structured picker of fault card options
+rather than a freeform text input. When a technician disagrees with the primary diagnosis,
+they select from a short list of plausible alternative fault cards (populated from the fault_cards
+table filtered by the same complaint category).
+
+**Rationale:** Freeform text is hard to analyse and useless for improving the diagnostic model.
+A structured picker creates labelled training data: (original_card_id, selected_alternative_card_id,
+session context). This feeds back into future fault card probability calibration.
+
+**Implementation:**
+- `diagnosis_feedback.alternative_fault_id` (INTEGER, FK to fault_cards.card_id) — added in migration 030
+- Backend: `POST /api/diagnostic/feedback` accepts `alternative_fault_id`
+- Frontend: picker shows cards from same complaint category, ordered by frequency
+
+**Cross-reference:** Migration 030, DEC-030 (migration 030_diagnosis_feedback_alternative_fault_id).
+
+---
+
+## DEC-053 -- Track DX: "Mark as Solved" button removed from FaultResolutionScreen (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Decision:** The "Mark as Solved" button that previously appeared on FaultResolutionScreen
+has been permanently removed. There is no replacement button or flow for marking a diagnosis
+as solved in v1.
+
+**Rationale:** PK tech feedback showed that "Mark as Solved" was never tapped. Techs use the
+diagnosis screen as a live reference while working, and the concept of "solved" is ambiguous
+mid-job. The button added UI clutter with zero usage. The feedback flow (alternative picker,
+thumb up/down) replaces it as the primary signal of resolution quality.
+
+**Rule:** Do NOT re-add "Mark as Solved" or any equivalent without explicit product decision.
+Grep for this string before any FaultResolutionScreen edit to confirm it stays absent.
+
+---
+
+## DEC-054 -- Track DX: self-graduating UI thresholds (DX.12) (2026-05-20)
+
+**Date:** 2026-05-20
+
+**Decision:** Two UI behaviours graduate automatically based on localStorage usage counters:
+
+1. **Repair Plan section visibility** (`snapai_diagnoses_opened_count`):
+   - Sessions 1–19: all three tier cards in the Repair Plan section are expanded by default.
+   - Session 20+: section collapses to a single recommended tier; user taps to expand others.
+   - Threshold: 20 diagnosis screens opened (counted by `incrementDiagnosesOpened()` in
+     `lib/userSessionCounter.ts`, called on FaultResolutionScreen mount).
+
+2. **Continue button label** (`snapai_app_sessions_count`):
+   - Sessions 1–3: full label "Generate Estimate & See Pricing" (hand-holding copy).
+   - Session 4+: shorter label "See Estimate" (experienced-user copy).
+   - Threshold: 3 app sessions (counted by `incrementSessionCount()` in
+     `lib/userSessionCounter.ts`, 6-hour cooldown between increments).
+
+**Rationale:** New techs need guidance; experienced techs find it patronising. Graduated UX
+removes friction for power users without abandoning new users.
+
+**Implementation:** `lib/userSessionCounter.ts` — localStorage only, per-device, no server sync.
+Cross-device sync deferred to v1.5.
+
+---
+
+## DEC-055 -- Track F A.3: canonical definition of "Sent" estimate count on dashboard (2026-05-21)
+
+**Date:** 2026-05-21
+
+**Decision:** The "Sent" count on the contractor dashboard counts estimates where:
+```sql
+sent_at IS NOT NULL AND deleted_at IS NULL
+```
+
+**Rationale:** Previously, some code paths counted `status = 'sent'` and others counted
+`sent_at IS NOT NULL`. The two diverged when estimates were soft-deleted (deleted_at set)
+but kept `status='sent'`. The `sent_at IS NOT NULL AND deleted_at IS NULL` predicate is the
+canonical definition and must be used everywhere a "Sent" count is displayed or returned.
+
+**Rule:** Any dashboard metric, API count, or frontend display showing "Sent" estimates
+MUST use the `sent_at IS NOT NULL AND deleted_at IS NULL` predicate. Never use `status='sent'`
+alone as a proxy for sent count.
+
+**Cross-reference:** Track F A.3, backend estimates.py dashboard endpoint.
+
+---
+
+## DEC-056 -- BUG-033: Service/Tune-Up photo skip buttons absent from deployed DOM (2026-05-21) ✅ RESOLVED
+
+**Date:** 2026-05-21
+**Status:** RESOLVED — commit `23e3019`
+
+**Problem:** Service/Tune-Up diagnostic flow has three photo steps (svc-1-filter, svc-3-coil, svc-8-run).
+Skip choice buttons (e.g. "Dirty – Replace / Dirty – Can Clean / Looks Clean") were absent from the DOM
+despite `PHOTO_SKIP_CONFIG` being confirmed present in the deployed JS bundle.
+
+**Root cause:** Service/Tune-Up flow is rendered by `ServiceChecklist.tsx`, NOT `DiagnosticFlow.tsx`.
+The `PHOTO_SKIP_CONFIG` block only exists in `DiagnosticFlow.tsx` and was never reached for
+`complaint_type=service`. `ServiceChecklist.tsx` rendered `<PhotoSlot>` components with no skip UI at all.
+
+**Fix (commit 23e3019):**
+- Added `SVC_PHOTO_SKIP_CONFIG` (equivalent to DiagnosticFlow's PHOTO_SKIP_CONFIG) to `ServiceChecklist.tsx`
+- Added `skipExpanded` state + reset `useEffect` per step
+- Added skip choice button JSX inline in the photo step render path
+- No DB changes needed — `step_id` values matched config keys exactly
+
+**Key lesson:** When a diagnostic complaint_type routes through a separate component (ServiceChecklist vs DiagnosticFlow),
+any UI enhancements added to DiagnosticFlow will silently not apply to that flow. Always check which component
+renders for the target complaint_type before adding skip/override UI.
+
+**Markets affected:** Both Houston and PK (shared component, same fix)
+**Cross-reference:** `ServiceChecklist.tsx`, `DiagnosticFlow.tsx`, PHOTO_SKIP_CONFIG
+
+---
+
+## DEC-057 — PK models are stored as JSONB series array in pak_brands, not a separate table (2026-05-21)
+
+**Date:** 2026-05-21
+
+**Context:** During QA, needed to verify and update Gree inverter model data. Searched for
+`pak_equipment_models` table — it does not exist. The `equipment_models` table only contains
+US market records (Carrier, Trane, Lennox, etc.).
+
+**How PK models are stored:**
+PK brand + model data lives in the `pak_brands` table as a JSONB column called `series`.
+Each row = one brand. `series` is an array of objects:
+
+```json
+[
+  {
+    "name": "Fairy Inverter",
+    "type": "inverter",
+    "refrigerant": "R-32",
+    "tonnage_data": {
+      "1.0": { "capacitors": {...}, "electrical": {...} },
+      "1.5": { "capacitors": {...}, "electrical": {...} },
+      "2.0": { "capacitors": {...}, "electrical": {...} }
+    }
+  }
+]
+```
+
+**How the backend serves it (`models.py`):**
+`GET /api/models/all` (X-Market: PK) explodes each series entry into a synthetic model record:
+```python
+"series_type": s.get("type", "non_inverter"),   # drives inverter badge in StepZeroPanel
+"refrigerant": s.get("refrigerant", "R-22"),
+"tonnage_data": tonnage_data,                    # drives auto-fill specs per tonnage
+```
+
+**The inverter badge rule:**
+`StepZeroPanel.tsx` renders `<span>Inverter</span>` badge when `m.series_type === "inverter"`.
+The `series_type` field comes directly from `pak_brands.series[].type`.
+Set `type: "inverter"` in the pak_brands JSONB to show the inverter badge.
+
+**To add a new PK model series:**
+```sql
+UPDATE pak_brands
+SET series = series || '[{
+  "name": "New Model Name",
+  "type": "inverter",
+  "refrigerant": "R-32",
+  "tonnage_data": { "1.0": {...}, "1.5": {...}, "2.0": {...} }
+}]'::jsonb
+WHERE id = 'brand_id_here';
+```
+
+**After updating pak_brands:**
+The browser's IndexedDB model cache (TTL 24h) must be cleared before new models appear:
+```js
+await indexedDB.deleteDatabase('snapai_models_pk');
+location.reload(true);
+```
+
+**Cross-reference:** WA-26 (IndexedDB cache), `models.py` PK market branch, `StepZeroPanel.tsx`

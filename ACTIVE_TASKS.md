@@ -3,7 +3,7 @@
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-21 (Track F Group B complete. HEAD: aa4e65b. Alembic 031 (photo_skipped). B.1–B.6 all shipped.)
+> Last updated: 2026-05-21 (BUG-033 FIXED commit 23e3019. Gree Fairy Inverter seeded. HEAD: 23e3019. All QA flows PASS. No open bugs.)
 
 ---
 
@@ -34,11 +34,24 @@
 **BUG-032 (FIXED — commit 4743a40):** Approve endpoint rejected tier "A"/"B"/"C" from stored estimates.
 Fix: `reports.py` validation expanded to accept both "A"/"B"/"C" and "good"/"better"/"best". See DEC-049.
 
-**BUG-031 (OPEN):** Staging banner visible on `pk.snapai.mainnov.tech` production.
-Root cause: Vercel production env has `NEXT_PUBLIC_ENV=staging`. Fix via Vercel dashboard only.
+**BUG-031 (RESOLVED — 2026-05-21):** Staging banner no longer visible on `pk.snapai.mainnov.tech`. Confirmed resolved via Vercel dashboard env var correction.
 
 
 ---
+
+---
+
+## Lessons Learned — 2026-05-21 QA Session (Tracks G + TCO + F + DX)
+
+Full workarounds in TECH_STACK.md WA-25 through WA-27. DEC entries: DEC-056, DEC-057.
+
+| # | What Went Wrong | Root Cause | How We Fixed It | WA Ref |
+|---|-----------------|-----------|-----------------|--------|
+| L10 | Service/Tune-Up skip buttons absent from DOM despite code existing | Service/Tune-Up renders `ServiceChecklist.tsx`, not `DiagnosticFlow.tsx`. PHOTO_SKIP_CONFIG only lived in DiagnosticFlow — never reached for service complaints. | Duplicated skip config and UI directly inside ServiceChecklist.tsx | WA-25, DEC-056 |
+| L11 | New Gree Fairy Inverter model didn't appear after DB seed | `modelCache.ts` stores models in **IndexedDB** with 24-hour TTL. Hard reload clears module memory but NOT IndexedDB. Stale IDB data served instead of fresh API fetch. | `indexedDB.deleteDatabase('snapai_models_pk')` + reload forces fresh fetch | WA-26, DEC-057 |
+| L12 | Gree had no inverter models — QA spec for "Fairy Inverter" couldn't be tested | All 8 Gree series in `pak_brands` had `type: "non_inverter"`. pak_equipment_models does not exist — PK models are JSONB inside pak_brands.series[] | Added "Fairy Inverter" series with `type: "inverter"` to pak_brands via SQL | DEC-057 |
+| L13 | React button clicks via `element.click()` didn't update state | React controlled components use synthetic events. Native `click()` / `dispatchEvent` bypass React reconciler entirely — state never updates. | Must call `element[__reactPropsKey].onClick()` or `.onChange()` directly | WA-27 |
+| L14 | Staging banner on pk.snapai.mainnov.tech (BUG-031) | `NEXT_PUBLIC_ENV=staging` set in Vercel's Production environment config | Removed/corrected via Vercel dashboard → Environment Variables. No code change. | DEC-051 |
 
 ---
 
@@ -61,6 +74,34 @@ These bugs were found during the 2026-05-20 full audit. Full workarounds in TECH
 
 ## Last QA Run
 
+**Date:** 2026-05-21 (Full audit Tracks G+TCO+F+DX — both markets + BUG-033 fix + Gree Fairy Inverter seed)
+**Markets tested:** Both Houston US and Pakistan PK
+**Outcome:** PASS ✅ — all 6 flows pass on both markets
+**Alembic head:** 032
+**Git HEAD:** 23e3019 — "fix(BUG-033): add photo skip UI to ServiceChecklist"
+**Vercel:** Both Houston + PK serving 23e3019 ✅
+**Railway:** ACTIVE — health OK ✅
+**QA sign-off:** FULLY COMPLETE ✅
+**Full report:** `QA_Audit_Reports/QA_Audit_2026-05-21_Tracks_G_TCO_F_DX.md`
+
+### Data Changes This Session
+- **Gree Fairy Inverter** added to `pak_brands` (series index 9, type=inverter, refrigerant=R-32, 1.0T/1.5T/2.0T). Gree now has 9 series total.
+
+### Bugs Fixed This QA Run
+
+**BUG-033 (FIXED — commit 23e3019) — Service/Tune-Up photo skip buttons**
+- **Root cause:** Service/Tune-Up flow is rendered by `ServiceChecklist.tsx`, not `DiagnosticFlow.tsx`. `PHOTO_SKIP_CONFIG` in DiagnosticFlow was never reached.
+- **Fix:** Added `SVC_PHOTO_SKIP_CONFIG` + `skipExpanded` state + skip JSX directly to `ServiceChecklist.tsx`
+- **Verified:** Skip buttons confirmed rendering in DOM for svc-1-filter, svc-3-coil, svc-8-run
+
+### Bugs Resolved This QA Run
+
+**BUG-031 (RESOLVED) — Staging banner on pk.snapai.mainnov.tech**
+- No staging banner observed on pk.snapai.mainnov.tech as of this session
+- Root cause was `NEXT_PUBLIC_ENV=staging` in Vercel production env — fixed via Vercel dashboard
+
+### Previous QA Run
+
 **Date:** 2026-05-21 (Track F C.1-C.4 + BUG-032 fix + full 6-flow UI check both markets)
 **Markets tested:** Both Houston US and Pakistan PK
 **Outcome:** PASS COMPLETE
@@ -70,19 +111,13 @@ These bugs were found during the 2026-05-20 full audit. Full workarounds in TECH
 **Railway:** ACTIVE -- health OK on 4743a40
 **QA sign-off:** FULLY COMPLETE
 
-### Bugs Found and Fixed This QA Run
+### Bugs Found and Fixed (Previous Run)
 
 **BUG-032 -- Approve endpoint rejected stored tier values A/B/C (FIXED -- commit 4743a40)**
 - **Problem:** Homeowner clicked Approve on report, got "selected_option must be good/better/best" -- approval silently failed
 - **Root cause:** `fault_estimate.py` stores tiers as "A"/"B"/"C" in DB but `reports.py` validated against ("good","better","best") only
 - **Fix:** `reports.py` line 365 expanded to accept both sets: `("good","better","best","A","B","C")`
 - **Verified:** "Thank you! You selected..." confirmation screen shown live after fix
-
-### Open Issues After This QA Run
-
-**BUG-031 -- Staging banner on production PK (OPEN -- no code fix needed)**
-- Staging banner shows on pk.snapai.mainnov.tech
-- Fix: Vercel dashboard -> production project -> remove NEXT_PUBLIC_ENV=staging from env vars
 
 ### Previous QA Run
 

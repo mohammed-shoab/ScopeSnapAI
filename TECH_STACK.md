@@ -1249,3 +1249,108 @@ is specific to Linux sandbox git operations (DEC-013 and DEC-004).
 run `git stash` FIRST (before fetch), then `git stash pop` after rebase.
 
 **DEC reference:** DEC-050
+
+---
+
+## WA-25 — Service/Tune-Up renders through ServiceChecklist.tsx, NOT DiagnosticFlow.tsx (2026-05-21)
+
+**Discovery (BUG-033):** When `complaint_type = "service/tune_up"`, the app renders
+`ServiceChecklist.tsx` — a completely separate component from `DiagnosticFlow.tsx`.
+
+**Consequence:** Any UI feature added to `DiagnosticFlow.tsx` (photo skip buttons, override panels,
+skip-and-branch logic, etc.) is silently absent for Service/Tune-Up flows. There is no error — the
+service flow just doesn't have the feature.
+
+**Rule:** Before adding any UI enhancement to `DiagnosticFlow.tsx`, always ask:
+> "Does this also need to apply to Service/Tune-Up? If yes, ServiceChecklist.tsx needs a parallel implementation."
+
+**Component routing by complaint_type:**
+| complaint_type | Component |
+|---|---|
+| not_cooling, water_dripping, not_turning_on | `DiagnosticFlow.tsx` |
+| service / tune_up / maintenance | `ServiceChecklist.tsx` |
+
+**Fix pattern:** Duplicate the relevant config (e.g. `PHOTO_SKIP_CONFIG` → `SVC_PHOTO_SKIP_CONFIG`)
+and render logic inside `ServiceChecklist.tsx`. No DB changes needed — step_id values from
+diagnostic_questions matched config keys directly.
+
+**DEC reference:** DEC-056
+
+---
+
+## WA-26 — PK model data is cached in IndexedDB with 24-hour TTL (2026-05-21)
+
+**Discovery:** After updating `pak_brands` in Supabase (adding Gree Fairy Inverter), the new model
+did not appear in the app's brand/model lookup — even after a hard page reload.
+
+**Root cause:** `modelCache.ts` uses **IndexedDB** (not localStorage) as a persistent cache with
+a **24-hour TTL**. The DB names are:
+- US market: `snapai_models` (IDB store)
+- PK market: `snapai_models_pk` (IDB store)
+
+Hard reloads clear in-memory module state (`_memoryCache`) but NOT IndexedDB. The
+`ensureLoaded()` function finds valid IDB data and skips the API fetch.
+
+**When this bites you:** After seeding new models into `pak_brands` or `equipment_models`,
+the change won't appear in the app until the IDB cache expires (24h) or is manually cleared.
+
+**Force-clear pattern (run in Chrome devtools on the target domain):**
+```js
+await Promise.all([
+  indexedDB.deleteDatabase('snapai_models_pk'),
+  indexedDB.deleteDatabase('snapai_models')
+]);
+location.reload(true);
+```
+
+**In-app refresh:** `modelCache.ts` exports `refreshModelCache()` — if you can call it from
+the page context it will clear the cache and re-fetch immediately.
+
+**Note:** `/api/models/all` is a **public endpoint** (no Clerk JWT required). The fetch will
+succeed without authentication.
+
+**DEC reference:** DEC-057
+
+---
+
+## WA-27 — React-controlled inputs and buttons require __reactProps to trigger state (2026-05-21)
+
+**Discovery:** Throughout this QA session, native DOM events (`element.click()`,
+`element.dispatchEvent(new Event('change'))`) consistently failed to update React state for
+controlled inputs and buttons in the SnapAI app.
+
+**Root cause:** React uses its own synthetic event system. Controlled components read from
+React state, not DOM value. Native events bypass React's reconciler entirely.
+
+**Correct pattern for Claude's Chrome javascript_tool:**
+
+```js
+// For <input> / <select> — trigger onChange:
+const rk = Object.keys(element).find(k => k.startsWith('__reactProps'));
+element[rk].onChange({ target: { value: 'new value' } });
+
+// For <button> — trigger onClick:
+const rk = Object.keys(element).find(k => k.startsWith('__reactProps'));
+element[rk].onClick({ preventDefault: () => {}, stopPropagation: () => {} });
+
+// WRONG — these do NOT work for React controlled components:
+element.click();                                          // ❌
+element.dispatchEvent(new Event('change', {bubbles:true})); // ❌
+element.value = 'new value';                              // ❌
+```
+
+**Finding the React props key:**
+```js
+const rk = Object.keys(element).find(k => k.startsWith('__reactProps'));
+// rk will be something like '__reactProps$abc123xyz'
+```
+
+**Also important:** `await` at the top level of `javascript_tool` causes a SyntaxError.
+Always wrap async code in an IIFE:
+```js
+(async () => {
+  // your await calls here
+})()
+```
+
+**DEC reference:** DEC-048 (tab group resets), WA-13 (Vercel client-rendered pages)
