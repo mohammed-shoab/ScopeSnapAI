@@ -340,10 +340,10 @@ async def _generate_service_estimate(
         text(
             "INSERT INTO estimates"
             "  (id, assessment_id, company_id, report_token, report_short_id,"
-            "   options, markup_percent, status, created_at, updated_at)"
+            "   options, markup_percent, status, created_at)"
             " VALUES"
             "  (:id, :aid, :cid, :token, :short_id,"
-            "   :options::jsonb, :markup, 'draft', :now, :now)"
+            "   :options::jsonb, :markup, 'draft', :now)"
         ),
         {
             "id":       assessment_id,   # id == assessment_id → frontend URL routing
