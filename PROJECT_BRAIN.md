@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-22 (Track H Group C complete. HEAD: 65f0b00. Alembic: 032. All known bugs resolved.)
+> Last updated: 2026-05-22 (Track H Group C + D: C.1-C.3 + D.1-D.3 shipped. HEAD: e5506c9. /tech + /homeowner live.)
 
 ---
 
@@ -43,6 +43,8 @@
 |--------|----------|--------|
 | Houston (US) | https://snapai.mainnov.tech | ✅ Live |
 | Pakistan (PK) | https://pk.snapai.mainnov.tech | ✅ Live |
+| /tech (contractor landing) | https://snapai.mainnov.tech/tech | ✅ Live (D.1, commit a000a23) |
+| /homeowner (homeowner landing) | https://snapai.mainnov.tech/homeowner | ✅ Live (D.2, commit a000a23) |
 
 **Backend (Railway):** https://scopesnap-api-production.up.railway.app
 **Health endpoint:** `GET /health` → `{"status":"ok","db":"connected","environment":"production","version":"0.1.0"}`
