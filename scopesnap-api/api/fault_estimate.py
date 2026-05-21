@@ -230,16 +230,33 @@ async def generate_fault_card_estimate(
     labels = _get_labels(unit_age)
 
     # 1. Load fault card (includes better_option_estimate)
-    fc_row = await db.execute(
-        text(f"""
-            SELECT card_id, card_name, phase, difficulty, tech_notes,
-                   price_list_min, price_list_typical, price_list_max,
-                   better_option_estimate
-            FROM {tables.fault_cards}
-            WHERE card_id = :card_id
-        """),
-        {"card_id": body.card_id},
-    )
+    # BUG-030: pak_fault_cards has different schema (pkr_est_* columns, no phase/difficulty).
+    if tables.market == "PK":
+        fc_row = await db.execute(
+            text(f"""
+                SELECT card_id, card_name,
+                       NULL::text AS phase, NULL::text AS difficulty,
+                       tech_notes,
+                       pkr_est_min   AS price_list_min,
+                       pkr_est_typical AS price_list_typical,
+                       pkr_est_max   AS price_list_max,
+                       better_option_estimate
+                FROM {tables.fault_cards}
+                WHERE card_id = :card_id
+            """),
+            {"card_id": body.card_id},
+        )
+    else:
+        fc_row = await db.execute(
+            text(f"""
+                SELECT card_id, card_name, phase, difficulty, tech_notes,
+                       price_list_min, price_list_typical, price_list_max,
+                       better_option_estimate
+                FROM {tables.fault_cards}
+                WHERE card_id = :card_id
+            """),
+            {"card_id": body.card_id},
+        )
     fc = fc_row.fetchone()
     if not fc:
         raise HTTPException(status_code=404, detail=f"Fault card {body.card_id} not found.")
@@ -310,18 +327,23 @@ async def generate_fault_card_estimate(
     seasonal_pct_frac = seasonal_pct_int / 100.0  # fraction for _apply_surcharges
 
     # 5. Load replacement cost
+    # BUG-030: pak_replacement_costs has pkr_* columns, not price_* columns.
+    if tables.market == "PK":
+        _repl_cols = "pkr_min AS price_min, pkr_max AS price_max, pkr_typical AS price_typical"
+    else:
+        _repl_cols = "price_min, price_max, price_typical"
     repl_row = await db.execute(
         text(f"""
-            SELECT price_min, price_max, price_typical
-            FROM {tables.replacement_costs}
+            SELECT {_repl_cols}
+            FROM {{tables.replacement_costs}}
             WHERE tonnage = :t ORDER BY id LIMIT 1
-        """),
+        """.format(tables=tables)),
         {"t": body.tonnage or 0},
     )
     repl = repl_row.fetchone()
     if not repl:
         repl_row2 = await db.execute(
-            text(f"SELECT price_min, price_max, price_typical FROM {tables.replacement_costs} WHERE tonnage = 0 LIMIT 1"),
+            text(f"SELECT {_repl_cols} FROM {{tables.replacement_costs}} WHERE tonnage = 0 LIMIT 1".format(tables=tables)),
         )
         repl = repl_row2.fetchone()
     repl_typical = repl.price_typical if repl else 5500
