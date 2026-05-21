@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-21 (QA PASS — Track F C.1–C.4 + BUG-032 all verified live. HEAD: 4743a40. Alembic head: 032. Both markets (Houston + PK) fully QA'd. BUG-031 open (staging banner on prod PK — Vercel env var fix needed).)
+> Last updated: 2026-05-22 (Track H Group C complete. HEAD: 65f0b00. Alembic: 032. All known bugs resolved.)
 
 ---
 
@@ -28,6 +28,10 @@
 | Claude tab group resets | New conversation = new tab group = no cookies. User must re-login in Claude's Chrome window. | DEC-048 |
 | Estimate tiers are A/B/C | `fault_estimate.py` stores tier as "A"/"B"/"C". `reports.py` approve accepts both. `pak_pricing_tiers.tier` uses good/better/best. These are DIFFERENT naming schemes — never conflate them. | DEC-049 |
 | NEVER set NEXT_PUBLIC_ENV=staging on production Vercel | StagingBanner shows on prod (BUG-031). Fix via Vercel dashboard — no code change. | DEC-023 |
+| ServiceChecklist ≠ DiagnosticFlow | Service/Tune-Up renders ServiceChecklist.tsx. UI features in DiagnosticFlow are silently absent for service flows. Duplicate any skip/override UI in both components. | WA-25, DEC-056 |
+| PK models live in pak_brands JSONB, not equipment_models | pak_equipment_models does not exist. PK models = pak_brands.series[] JSONB array. `type: "inverter"` drives the inverter badge. After seeding, clear IndexedDB cache. | DEC-057, WA-26 |
+| IndexedDB model cache = 24h TTL | After updating pak_brands, browser shows stale models for 24h. Force-clear: `indexedDB.deleteDatabase('snapai_models_pk')` + reload. localStorage has no model cache. | WA-26 |
+| React controlled components ignore native events | `element.click()` and `dispatchEvent` do NOT update React state. Must call `element[__reactPropsKey].onChange/onClick()` directly. | WA-27 |
 
 
 ---
@@ -87,8 +91,8 @@
 ### Production
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both prod domains) | `4743a40` | ✅ Live | 2026-05-21 |
-| Railway backend (prod) | `4743a40` | ✅ Live — health OK, BUG-032 fixed | 2026-05-21 |
+| Vercel (both prod domains) | `65f0b00` | ✅ Live | 2026-05-22 |
+| Railway backend (prod) | `4743a40` | ✅ Live — health OK | 2026-05-21 |
 | Alembic migration (prod) | `032` | ✅ Applied (031 photo_skipped applied directly via Supabase MCP) | 2026-05-21 |
 | diagnostic_sessions.photo_skipped | BOOLEAN NOT NULL DEFAULT false | ✅ Applied directly (031 was skipped by Railway during outage) | 2026-05-21 |
 | card_tco_data (US) | 57 rows | ✅ Seeded | 2026-05-21 |
@@ -109,9 +113,14 @@
 **Staging git HEAD:** `980698b` — "chore(staging): migrations 020-025 + dual keepalive A/B + promote-to-prod.sh"
 **Promote staging → prod:** `scripts/promote-to-prod.sh <file1> [file2 ...]` (run from a local main checkout)
 
-**Current git HEAD (main):** `4743a40` -- "fix(BUG-032): approve endpoint accepts tier A/B/C from stored estimates"
+**Current git HEAD (main):** `65f0b00` -- "fix(C.2+C.3): diagnostic visit fee above TCO section; peak-season notice gray"
 
 **Recent commits (newest first -- main):**
+- `65f0b00` -- fix(C.2+C.3): diagnostic visit fee above TCO section; peak-season notice gray (2026-05-22)
+- `addc57f` -- feat(C.1): TCO cards add polarity arrows + color cues + clarifying labels (2026-05-22)
+- `a000a23` -- feat(D.1+D.2): /tech and /homeowner landing pages (2026-05-22)
+- `23e3019` -- fix(BUG-033): add photo skip UI to ServiceChecklist (2026-05-21)
+- `8872cf9` -- docs(qa-post-track-f-c+bug032): QA sign-off + DEC-049/050/051 + WA-23/24 + BUG-032 retrospective (2026-05-21)
 - `4743a40` -- fix(BUG-032): approve endpoint accepts tier A/B/C from stored estimates (2026-05-21)
 - `66a772c` -- feat(track-f-c.1/c.3/c.4) (2026-05-21)
 - `a6d4a15` -- fix(BUG-027): restore approve endpoint tail in reports.py (2026-05-21)
@@ -147,12 +156,18 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 
 | Date | Markets | Outcome | Bugs Fixed | HEAD |
 |------|---------|---------|------------|------|
+| 2026-05-22 | Houston + PK | PASS ✅ | Track H Group C: C.1 TCO polarity arrows + labels, C.2 fee placement above TCO, C.3 peak-season notice gray | 65f0b00 |
+| 2026-05-21 | Houston + PK | PASS ✅ | BUG-033 resolved (photo skip UI in ServiceChecklist) | 23e3019 |
+| 2026-05-21 | Houston + PK | CONDITIONAL PASS ✅ | BUG-031 resolved; BUG-033 open (skip buttons) | 4743a40 (no deploy) |
 | 2026-05-21 | Houston + PK | PASS ✅ | BUG-030 (NUMERIC decimal), BUG-032 (tier naming), BUG-027 (reports.py truncation) | 4743a40 |
 | 2026-05-21 | Houston + PK | PASS ✅ | BUG-025 (ORM col missing), BUG-026 (wrong nav ID), Track F B.1-B.6 | 66a772c |
 | 2026-05-20 | Houston + PK | PASS ✅ | BUG-D.AUTH (4 files), D.6 backfill, R.7+S.7 | 85c5755 |
 
-**Open known issues:**
-- BUG-031: Staging banner visible on `pk.snapai.mainnov.tech` — Vercel production env has `NEXT_PUBLIC_ENV=staging` set. Fix: Vercel dashboard → project settings → Environment Variables → remove `NEXT_PUBLIC_ENV` from Production environment (or set to `production`). No code change needed.
+**Open known issues:** None.
+
+**Resolved issues:**
+- BUG-033: ~~Service/Tune-Up skip buttons not in DOM~~ — RESOLVED 2026-05-21. Root cause: ServiceChecklist.tsx (not DiagnosticFlow.tsx) renders the service flow; PHOTO_SKIP_CONFIG was never reached. Fix: SVC_PHOTO_SKIP_CONFIG + skip UI added to ServiceChecklist.tsx. Commit 23e3019.
+- BUG-031: ~~Staging banner on `pk.snapai.mainnov.tech`~~ — RESOLVED 2026-05-21 via Vercel dashboard env var correction.
 
 ---
 
