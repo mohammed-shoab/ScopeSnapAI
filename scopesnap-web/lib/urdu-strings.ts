@@ -184,14 +184,11 @@ export const URDU_STRINGS: Record<string, string> = {
   "Avg Ticket":                      "اوسط ٹکٹ",
   "Customer":                        "گاہک",
   "Take your first assessment":      "پہلی تشخیص شروع کریں",
-  "New Assessment":                  "نئی تشخیص",
   "Assessment":                      "تشخیص",
-  "Assessments":                     "تشخیصات",
 
   // ── Homeowner report (ReportClient) ──────────────────────────────────────────────
   "Equipment Health Report":         "آلات کی صحت کی رپورٹ",
   "System Overview":                 "سسٹم کا جائزہ",
-  "Brand":                           "برانڈ",
   "Installed":                       "نصب شدہ",
   "Est. Life Remaining":             "متوقع بقیہ عمر",
   "fair":                            "معمولی",
@@ -200,7 +197,6 @@ export const URDU_STRINGS: Record<string, string> = {
   "excellent":                       "بہترین",
   "Fair":                            "معمولی",
   "Poor":                            "خراب",
-  "Good":                            "اچھا",
   "Excellent":                       "بہترین",
   "Selected":                        "منتخب",
   "Thank you!":                      "شکریہ!",
