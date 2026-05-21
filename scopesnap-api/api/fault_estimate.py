@@ -272,17 +272,25 @@ async def generate_fault_card_estimate(
     base_C = pricing.get("C", fc.price_list_max or 0)
 
     # 3. Load surcharge config
-    lr_row = await db.execute(
-        text(f"""
-            SELECT attic_premium_min, attic_premium_max,
-                   r22_surcharge_min, r22_surcharge_max
-            FROM {tables.labor_rates} LIMIT 1
-        """),
-    )
-    lr = lr_row.fetchone()
-    attic_premium   = int((lr.attic_premium_min + lr.attic_premium_max) / 2) if lr else 37
-    after_hours_pct = 0.375
-    r22_surcharge   = int((lr.r22_surcharge_min + lr.r22_surcharge_max) / 2) if lr else 112
+    # BUG-030: pak_labor_rates has different schema (PKR-only, no attic/r22 columns).
+    # Use market-conditional query so PK estimates don't crash with UndefinedColumnError.
+    if tables.market == "PK":
+        # PK: no attic premium concept; R-22 surcharge not applicable via pak_labor_rates
+        attic_premium   = 0
+        after_hours_pct = 0.375
+        r22_surcharge   = 0
+    else:
+        lr_row = await db.execute(
+            text(f"""
+                SELECT attic_premium_min, attic_premium_max,
+                       r22_surcharge_min, r22_surcharge_max
+                FROM {tables.labor_rates} LIMIT 1
+            """),
+        )
+        lr = lr_row.fetchone()
+        attic_premium   = int((lr.attic_premium_min + lr.attic_premium_max) / 2) if lr else 37
+        after_hours_pct = 0.375
+        r22_surcharge   = int((lr.r22_surcharge_min + lr.r22_surcharge_max) / 2) if lr else 112
     is_r22          = (body.refrigerant or "").upper().startswith("R-22")
 
     # 4. Get company markup + seasonal override (R.9)
