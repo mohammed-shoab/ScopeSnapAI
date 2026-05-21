@@ -244,14 +244,20 @@ function AssessPageInner() {
     try {
       const headers = await getAuthHeaders();
       setResolvedHeaders(headers);
-      const fd = new FormData();
-      fd.append("complaint_type", complaintId);
-      if (address) fd.append("property_address", address);
-      if (customerName) fd.append("homeowner_name", customerName);
-      if (customerPhone) fd.append("homeowner_phone", customerPhone);
-      if (customerEmail) fd.append("homeowner_email", customerEmail);
-      if (ocrResult) fd.append("ocr_nameplate_json", JSON.stringify(ocrResult));
-      const r = await fetch(`${API_URL}/api/assessments/`, { method: "POST", headers, body: fd });
+      // BUG-029: Railway proxy hangs on multipart/form-data for the form endpoint.
+      // Use the /json endpoint which accepts application/json and avoids the issue.
+      const payload: Record<string, string | undefined> = {
+        complaint_type: complaintId,
+        ...(address ? { property_address: address } : {}),
+        ...(customerName ? { homeowner_name: customerName } : {}),
+        ...(customerPhone ? { homeowner_phone: customerPhone } : {}),
+        ...(customerEmail ? { homeowner_email: customerEmail } : {}),
+      };
+      const r = await fetch(`${API_URL}/api/assessments/json`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       if (!r.ok) {
         const detail = await r.json().then((d: { detail?: unknown }) => {
           if (typeof d.detail === "string") return d.detail;

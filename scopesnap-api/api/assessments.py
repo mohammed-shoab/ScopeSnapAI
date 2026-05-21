@@ -303,6 +303,94 @@ async def create_assessment(
     }
 
 
+
+
+# ── POST /api/assessments/json ────────────────────────────────────────────────
+# JSON-body alternative to POST / for no-photo complaint creation.
+# Fixes BUG-029: Railway proxy hangs on multipart/form-data for the form endpoint.
+
+class AssessmentCreateBody(BaseModel):
+    complaint_type: Optional[str] = None
+    property_address: Optional[str] = None
+    homeowner_name: Optional[str] = None
+    homeowner_email: Optional[str] = None
+    homeowner_phone: Optional[str] = None
+
+
+@router.post("/json", status_code=status.HTTP_201_CREATED)
+async def create_assessment_json(
+    body: AssessmentCreateBody,
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """JSON-body assessment creation (no photos). Avoids multipart/form-data
+    which has a Railway proxy issue (BUG-029). Used by the frontend complaint
+    selection flow where no photos are uploaded."""
+    address = body.property_address
+    customer_name = body.homeowner_name
+    customer_email = body.homeowner_email
+    customer_phone = body.homeowner_phone
+    complaint_type = body.complaint_type
+
+    # Find or create property
+    prop = None
+    if address:
+        result = await db.execute(
+            select(Property).where(
+                Property.company_id == auth.company_id,
+                Property.address_line1 == address,
+            )
+        )
+        prop = result.scalar_one_or_none()
+        if prop:
+            prop.visit_count = (prop.visit_count or 1) + 1
+            prop.last_visit_at = datetime.now(timezone.utc)
+            if customer_name and not prop.customer_name:
+                prop.customer_name = customer_name
+            if customer_phone and not prop.customer_phone:
+                prop.customer_phone = customer_phone
+            if customer_email and not prop.customer_email:
+                prop.customer_email = customer_email
+        else:
+            prop = Property(
+                id=str(uuid.uuid4()),
+                company_id=auth.company_id,
+                address_line1=address,
+                customer_name=customer_name,
+                customer_phone=customer_phone,
+                customer_email=customer_email,
+                visit_count=1,
+                last_visit_at=datetime.now(timezone.utc),
+            )
+            db.add(prop)
+            await db.flush()
+
+    assessment_id = str(uuid.uuid4())
+    overrides: dict = {}
+    if complaint_type:
+        overrides["complaint_type"] = complaint_type
+
+    assessment = Assessment(
+        id=assessment_id,
+        company_id=auth.company_id,
+        user_id=auth.user_id,
+        property_id=prop.id if prop else None,
+        photo_urls=[],
+        status="no_photos",
+        tech_overrides=overrides,
+    )
+    db.add(assessment)
+    await db.commit()
+
+    return {
+        "id": assessment_id,
+        "status": "no_photos",
+        "photo_count": 0,
+        "photo_urls": [],
+        "property_id": prop.id if prop else None,
+        "message": f"Assessment created. Call /api/assessments/{assessment_id}/analyze to start AI analysis.",
+    }
+
 # ── POST /api/assessments/{id}/analyze ────────────────────────────────────────
 
 @router.post("/{assessment_id}/analyze")
