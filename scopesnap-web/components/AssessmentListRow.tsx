@@ -16,6 +16,7 @@ export interface AssessmentItem {
   customer_address: string | null;
   brand: string | null;
   model: string | null;
+  fault_name: string | null;   // B.1: resolved fault card name from diagnostic_sessions
   complaint_type: string | null;
   created_at: string | null;
 }
@@ -120,9 +121,11 @@ export default function AssessmentListRow({ item }: { item: AssessmentItem }) {
             <div style={{ fontSize: 13, color: "#64748b" }}>{unitDesc}</div>
           )}
 
-          {/* Complaint type */}
-          {complaint && (
-            <div style={{ fontSize: 13, color: "#334155" }}>{complaint}</div>
+          {/* Fault name (resolved) or complaint type (symptom) */}
+          {(item.fault_name || complaint) && (
+            <div style={{ fontSize: 13, color: "#334155" }}>
+              {item.fault_name ?? complaint}
+            </div>
           )}
 
           {/* Status badge + time */}

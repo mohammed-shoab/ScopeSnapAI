@@ -13,7 +13,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, Form, Body
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, text
 from pydantic import BaseModel
 
 from fastapi import Request
@@ -23,6 +23,7 @@ from api.auth import get_current_user, AuthContext
 from services.storage import get_storage
 from services.vision import get_vision_service, VisionAnalysisError
 from prompts.equipment_analysis import EQUIPMENT_ANALYSIS_PROMPT
+from api.dependencies import get_tables, MarketTables
 from config import get_settings
 from rate_limit import limiter
 
@@ -910,38 +911,74 @@ async def list_assessments(
     offset: int = 0,
     filter_status: Optional[str] = None,
     auth: AuthContext = Depends(get_current_user),
+    tables: MarketTables = Depends(get_tables),
     db: AsyncSession = Depends(get_db),
 ):
-    """Lists all assessments for the current company."""
-    query = select(Assessment).where(Assessment.company_id == auth.company_id)
+    """Lists all assessments for the current company with enriched customer + fault data.
 
+    BUG-B1: previous ORM query had no JOINs so customer_name/address/fault were always None,
+    and a.status returned photo-processing status (no_photos/analyzed) not estimate status.
+    Rewritten as raw SQL with LEFT JOINs per Track H Group B spec.
+    """
+    fc_table = "pak_fault_cards" if tables.market == "PK" else tables.fault_cards
+
+    params: dict = {"cid": auth.company_id, "limit": limit, "offset": offset}
+    status_filter_clause = ""
     if filter_status:
-        query = query.where(Assessment.status == filter_status)
+        status_filter_clause = (
+            " AND COALESCE((SELECT e2.status FROM estimates e2"
+            "               WHERE e2.assessment_id = a.id"
+            "               ORDER BY e2.created_at DESC LIMIT 1), 'draft') = :filter_status"
+        )
+        params["filter_status"] = filter_status
 
-    query = query.order_by(Assessment.created_at.desc()).limit(limit).offset(offset)
+    sql = text(
+        "SELECT a.id, a.created_at, a.complaint_type,"
+        "       a.ai_equipment_id, a.photo_urls,"
+        "       p.customer_name,"
+        "       p.address_line1 AS customer_address,"
+        "       (SELECT e.status FROM estimates e"
+        "        WHERE e.assessment_id = a.id"
+        "        ORDER BY e.created_at DESC LIMIT 1) AS estimate_status,"
+        "       (SELECT fc.card_name"
+        "        FROM diagnostic_sessions ds2"
+        "        JOIN " + fc_table + " fc ON fc.card_id = ds2.resolved_card_id"
+        "        WHERE ds2.assessment_id = a.id AND ds2.status = 'resolved'"
+        "          AND ds2.deleted_at IS NULL"
+        "        ORDER BY ds2.created_at DESC LIMIT 1) AS fault_name"
+        " FROM assessments a"
+        " LEFT JOIN properties p ON p.id = a.property_id"
+        " WHERE a.company_id = :cid"
+        + status_filter_clause +
+        " ORDER BY a.created_at DESC"
+        " LIMIT :limit OFFSET :offset"
+    )
 
-    result = await db.execute(query)
-    assessments = result.scalars().all()
+    result = await db.execute(sql, params)
+    rows = result.fetchall()
+
+    def _first_photo(photo_urls) -> Optional[str]:
+        if not photo_urls:
+            return None
+        return photo_urls[0] if isinstance(photo_urls, list) else None
 
     return {
         "items": [
             {
-                "id": a.id,
-                "status": a.status,
-                "photo_count": len(a.photo_urls) if a.photo_urls else 0,
-                "nameplate_photo_url": (a.photo_urls[0] if a.photo_urls else None),
-                "property_id": a.property_id,
-                "customer_name": getattr(a, "customer_name", None),
-                "customer_address": getattr(a, "customer_address", None),
-                "brand": a.ai_equipment_id.get("brand") if a.ai_equipment_id else None,
-                "model": a.ai_equipment_id.get("model") if a.ai_equipment_id else None,
-                "condition": a.ai_condition.get("overall") if a.ai_condition else None,
-                "complaint_type": a.complaint_type,
-                "created_at": a.created_at.isoformat() if a.created_at else None,
+                "id": str(r.id),
+                "status": r.estimate_status or "draft",
+                "nameplate_photo_url": _first_photo(r.photo_urls),
+                "customer_name": r.customer_name,
+                "customer_address": r.customer_address,
+                "brand": r.ai_equipment_id.get("brand") if r.ai_equipment_id else None,
+                "model": r.ai_equipment_id.get("model") if r.ai_equipment_id else None,
+                "fault_name": r.fault_name,
+                "complaint_type": r.complaint_type,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
             }
-            for a in assessments
+            for r in rows
         ],
-        "total": len(assessments),
+        "total": len(rows),
         "limit": limit,
         "offset": offset,
     }

@@ -1378,10 +1378,12 @@ async def list_diagnoses(
             "       ds.confidence_level, ds.customer_label, ds.assessment_id,"
             "       ds.share_token,"
             "       fc.card_name,"
-            "       a.photo_urls[1] AS nameplate_photo_url"
+            "       a.photo_urls[1] AS nameplate_photo_url,"
+            "       p.address_line1 AS customer_address"
             " FROM diagnostic_sessions ds"
             " JOIN " + fc_table + " fc ON fc.card_id = ds.resolved_card_id"
             " JOIN assessments a ON a.id = ds.assessment_id"
+            " LEFT JOIN properties p ON p.id = a.property_id"
             " WHERE ds.company_id = :cid"
             "   AND ds.status = 'resolved'"
             "   AND ds.deleted_at IS NULL"
@@ -1410,6 +1412,7 @@ async def list_diagnoses(
                 "customer_label": r.customer_label,
                 "nameplate_photo_url": r.nameplate_photo_url,
                 "share_token": getattr(r, "share_token", None),
+                "customer_address": getattr(r, "customer_address", None),
                 "created_at": r.created_at.isoformat(),
             }
             for r in items

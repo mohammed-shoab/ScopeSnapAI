@@ -10,8 +10,9 @@
 interface DiagnosisListItem {
   session_id: string;
   fault_name: string;
-  confidence: "high" | "medium" | "low";
+  confidence?: string | null;  // B.3: always "high"/null in production — not shown in list view
   customer_label: string | null;
+  customer_address: string | null;  // B.2
   created_at: string;         // ISO 8601
   nameplate_photo_url: string | null;
   share_token: string | null;
@@ -21,12 +22,6 @@ interface Props {
   item: DiagnosisListItem;
   onClick: (sessionId: string) => void;
 }
-
-const CONF_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  high:   { bg: "rgba(22,163,74,.12)",  text: "#16a34a", label: "High" },
-  medium: { bg: "rgba(217,119,6,.12)",  text: "#d97706", label: "Medium" },
-  low:    { bg: "rgba(220,38,38,.12)",  text: "#dc2626", label: "Low" },
-};
 
 function relativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -41,8 +36,6 @@ function relativeTime(iso: string): string {
 }
 
 export default function DiagnosisListRow({ item, onClick }: Props) {
-  const conf = CONF_COLORS[item.confidence] ?? CONF_COLORS.low;
-
   return (
     <button
       onClick={() => onClick(item.session_id)}
@@ -76,20 +69,17 @@ export default function DiagnosisListRow({ item, onClick }: Props) {
 
       {/* Text content */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", lineHeight: 1.3 }}>
-            {item.fault_name}
-          </span>
-          <span style={{
-            padding: "2px 8px", borderRadius: 99, fontSize: 11,
-            fontWeight: 600, background: conf.bg, color: conf.text, whiteSpace: "nowrap",
-          }}>
-            {conf.label}
-          </span>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", lineHeight: 1.3 }}>
+          {item.fault_name}
         </div>
         {item.customer_label && (
-          <div style={{ fontSize: 13, color: "#64748b", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: 13, color: "#0f172a", marginTop: 3, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {item.customer_label}
+          </div>
+        )}
+        {item.customer_address && (
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {item.customer_address}
           </div>
         )}
         <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
