@@ -25,6 +25,7 @@ import { API_URL } from "@/lib/api";
 import { formatCurrency } from "@/lib/market";
 import { supabase } from "@/lib/supabaseClient";
 import posthog from "posthog-js";
+import { useLang } from "@/lib/language-context";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 
@@ -103,6 +104,7 @@ export default function DashboardPage() {
   const channelRef                      = useRef<ReturnType<NonNullable<typeof supabase>["channel"]> | null>(null);
   // A.3 (track-f): canonical sent count from estimates-summary (DEC-032)
   const [sentTotal, setSentTotal]       = useState<number | null>(null);
+  const { t } = useLang();
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (IS_DEV) return DEV_HEADER;
@@ -281,7 +283,7 @@ export default function DashboardPage() {
               <circle cx="12" cy="13" r="4"/>
             </svg>
           </div>
-          <h2 className="text-white font-bold text-xl mb-2">Take your first assessment</h2>
+          <h2 className="text-white font-bold text-xl mb-2">{t("Take your first assessment")}</h2>
           <p className="text-white/70 text-sm mb-6 max-w-xs mx-auto">
             Photograph any HVAC unit. AI identifies the equipment and generates Good / Better / Best pricing in seconds.
           </p>
@@ -293,7 +295,7 @@ export default function DashboardPage() {
               <circle cx="8" cy="8" r="7.25" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.6"/>
               <path d="M8 5v6M5 8h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
-            New Assessment
+            {t("New Assessment")}
           </Link>
         </div>
       ) : (
@@ -303,9 +305,9 @@ export default function DashboardPage() {
           style={{ background: "linear-gradient(135deg, #0f5c38 0%, #0d4a2e 100%)" }}
         >
           <div className="min-w-0">
-            <p className="text-white/70 text-xs font-semibold uppercase tracking-wider mb-1">Ready for your next job?</p>
-            <p className="text-white font-bold text-lg leading-snug">Start a new assessment</p>
-            <p className="text-white/60 text-xs mt-0.5">90 seconds · AI-powered · Good / Better / Best</p>
+            <p className="text-white/70 text-xs font-semibold uppercase tracking-wider mb-1">{t("Ready for your next job?")}</p>
+            <p className="text-white font-bold text-lg leading-snug">{t("Start a new assessment")}</p>
+            <p className="text-white/60 text-xs mt-0.5">{t("90 seconds · AI-powered · Good / Better / Best")}</p>
           </div>
           <Link
             href="/assess"
@@ -315,7 +317,7 @@ export default function DashboardPage() {
               <circle cx="8" cy="8" r="7.25" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.6"/>
               <path d="M8 5v6M5 8h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
-            Assess
+            {t("Assess")}
           </Link>
         </div>
       )}
@@ -325,10 +327,10 @@ export default function DashboardPage() {
       ══════════════════════════════════════════════════════════════════════ */}
       <div className="bg-white border border-surface-border rounded-2xl overflow-hidden mb-4">
         <div className="px-5 py-4 border-b border-surface-border flex items-center justify-between">
-          <h2 className="font-bold text-base">Recent Assessments</h2>
+          <h2 className="font-bold text-base">{t("Recent Assessments")}</h2>
           {hasEstimates && (
             <Link href="/assessments" className="text-xs text-brand-green font-semibold hover:underline">
-              View all →
+              {t("View all →")}
             </Link>
           )}
         </div>
@@ -337,7 +339,7 @@ export default function DashboardPage() {
         {loading && (
           <div className="px-5 py-8 flex items-center justify-center gap-3 text-text-secondary text-sm">
             <div className="w-5 h-5 border-2 border-brand-green border-t-transparent rounded-full animate-spin" />
-            Loading assessments…
+            {t("Loading assessments…")}
           </div>
         )}
 
@@ -418,11 +420,11 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="font-mono font-bold text-sm">{est.report_short_id}</span>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.bg} ${badge.text}`}>
-                        {capitalize(est.status)}
+                        {t(capitalize(est.status))}
                       </span>
                     </div>
                     <p className="text-xs text-text-secondary truncate">
-                      {est.customer_name || "Customer"}{est.customer_address ? ` · ${est.customer_address}` : ""}
+                      {est.customer_name || t("Customer")}{est.customer_address ? ` · ${est.customer_address}` : ""}
                     </p>
                   </div>
 
@@ -453,14 +455,14 @@ export default function DashboardPage() {
             {/* Total sent — A.3 (track-f): canonical sent count (DEC-032) */}
             <div className="flex-1 text-center pr-4">
               <p className="font-bold text-xl font-mono">{sentCount}</p>
-              <p className="text-[10px] text-text-secondary mt-0.5">Sent</p>
+              <p className="text-[10px] text-text-secondary mt-0.5">{t("Sent")}</p>
             </div>
 
             {/* Close rate */}
             {closeRate !== null && (
               <div className="flex-1 text-center px-4">
                 <p className="font-bold text-xl font-mono text-brand-green">{closeRate}%</p>
-                <p className="text-[10px] text-text-secondary mt-0.5">Close Rate</p>
+                <p className="text-[10px] text-text-secondary mt-0.5">{t("Close Rate")}</p>
               </div>
             )}
 
@@ -468,7 +470,7 @@ export default function DashboardPage() {
             {avgTicket !== null && avgTicket > 0 && (
               <div className="flex-1 text-center pl-4">
                 <p className="font-bold text-xl font-mono">{fmt(avgTicket)}</p>
-                <p className="text-[10px] text-text-secondary mt-0.5">Avg Ticket</p>
+                <p className="text-[10px] text-text-secondary mt-0.5">{t("Avg Ticket")}</p>
               </div>
             )}
           </div>

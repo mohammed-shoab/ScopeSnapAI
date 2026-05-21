@@ -483,7 +483,7 @@ export default function ReportClient({ report }: { report: Report }) {
             style={{ fontSize: 11, fontWeight: 600, color: "#7a7770", background: "#f7f6f2", border: "1px solid #e5e2da", borderRadius: 8, padding: "5px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-            Print
+            {t("Print")}
           </button>
           {company.custom_branding && company.phone && (
             <a
@@ -510,7 +510,7 @@ export default function ReportClient({ report }: { report: Report }) {
               marginBottom: 4,
             }}
           >
-            Equipment Health Report
+            {t("Equipment Health Report")}
           </p>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px", letterSpacing: -0.5 }}>
             {property?.customer_name ? `${property.customer_name}'s Home` : property?.address_line1 || ""}
@@ -546,7 +546,7 @@ export default function ReportClient({ report }: { report: Report }) {
               color: "#1a8754",
             }}
           >
-            System Overview
+            {t("System Overview")}
           </div>
           <div style={{ padding: "12px 16px 16px" }}>
             {/* Health Gauge + Text */}
@@ -558,7 +558,7 @@ export default function ReportClient({ report }: { report: Report }) {
                     ? `Your ${equipLabel(equipment.equipment_type)}:`
                     : "Your System:"}{" "}
                   <span style={{ color: conditionColor }}>
-                    {condition.charAt(0).toUpperCase() + condition.slice(1)} Condition
+                    {t(condition.charAt(0).toUpperCase() + condition.slice(1))} Condition
                   </span>
                 </h4>
                 <p style={{ fontSize: 11, color: "#7a7770", margin: "3px 0 0" }}>
@@ -579,21 +579,21 @@ export default function ReportClient({ report }: { report: Report }) {
                 <div style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 16, fontWeight: 700 }}>
                   {equipment?.brand || "—"}
                 </div>
-                <div style={{ fontSize: 9, color: "#a8a49c" }}>Brand</div>
+                <div style={{ fontSize: 9, color: "#a8a49c" }}>{t("Brand")}</div>
               </div>
               <div style={{ background: "#f7f6f2", borderRadius: 8, padding: 8, textAlign: "center" }}>
                 <div style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 16, fontWeight: 700 }}>
                   {equipment?.install_year || "—"}
                 </div>
                 <div style={{ fontSize: 9, color: "#a8a49c" }}>
-                  Installed{equipment?.install_year ? ` (${new Date().getFullYear() - equipment.install_year} yrs ago)` : ""}
+                  {t("Installed")}{equipment?.install_year ? ` (${new Date().getFullYear() - equipment.install_year} yrs ago)` : ""}
                 </div>
               </div>
               <div style={{ background: "#f7f6f2", borderRadius: 8, padding: 8, textAlign: "center" }}>
                 <div style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 16, fontWeight: 700, color: "#e6a817" }}>
                   {remainingLife ? `${remainingLife.remaining_years} yr${remainingLife.remaining_years !== 1 ? "s" : ""}` : "—"}
                 </div>
-                <div style={{ fontSize: 9, color: "#a8a49c" }}>Est. Life Remaining</div>
+                <div style={{ fontSize: 9, color: "#a8a49c" }}>{t("Est. Life Remaining")}</div>
               </div>
               <div style={{ background: "#f7f6f2", borderRadius: 8, padding: 8, textAlign: "center" }}>
                 <div style={{ fontFamily: "IBM Plex Mono, monospace", fontSize: 16, fontWeight: 700 }}>
@@ -828,7 +828,7 @@ export default function ReportClient({ report }: { report: Report }) {
                     {isSelected && !approved && (
                       <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 4 }}>
                         <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#1a8754" }} />
-                        <span style={{ fontSize: 11, color: "#1a8754", fontWeight: 600 }}>Selected</span>
+                        <span style={{ fontSize: 11, color: "#1a8754", fontWeight: 600 }}>{t("Selected")}</span>
                       </div>
                     )}
                   </div>
@@ -849,13 +849,13 @@ export default function ReportClient({ report }: { report: Report }) {
                 >
                   <div style={{ fontSize: 36, marginBottom: 10 }}>{"✅"}</div>
                   <h3 style={{ fontSize: 18, fontWeight: 800, color: "#1a8754", margin: "0 0 6px" }}>
-                    {report.property?.customer_name ? `Thank you, ${report.property.customer_name}!` : "Thank you!"}
+                    {report.property?.customer_name ? `Thank you, ${report.property.customer_name}!` : t("Thank you!")}
                   </h3>
                   {company.name && (
                     <p style={{ fontSize: 13, fontWeight: 700, color: "#0f5c38", margin: "0 0 4px" }}>{company.name}</p>
                   )}
                   <p style={{ fontSize: 12, color: "#3a7059", margin: "0 0 8px" }}>
-                    {"You selected "}
+                    {t("You selected ")}
                     <strong>{report.options.find((o) => o.tier === approvedTier)?.name || approvedTier}</strong>{"."}
                   </p>
                   {company.phone && (
@@ -879,7 +879,7 @@ export default function ReportClient({ report }: { report: Report }) {
                     </a>
                   )}
                   <p style={{ fontSize: 11, color: "#7a7770", margin: "8px 0 6px", lineHeight: 1.5 }}>
-                    We typically respond within 2 hours during business hours.
+                    {t("We typically respond within 2 hours during business hours.")}
                   </p>
                   <p style={{ fontSize: 10, color: "#a8a49c", margin: 0, fontFamily: "IBM Plex Mono, monospace" }}>
                     {`REF: RPT-${report.report_short_id}`}
@@ -970,7 +970,7 @@ export default function ReportClient({ report }: { report: Report }) {
           }}
         >
           <div style={{ padding: "20px 16px", textAlign: "center" }}>
-            <p style={{ fontSize: 13, fontWeight: 600, margin: "0 0 4px" }}>Questions? We're here to help.</p>
+            <p style={{ fontSize: 13, fontWeight: 600, margin: "0 0 4px" }}>{t("Questions? We're here to help.")}</p>
             <p style={{ fontSize: 12, color: "#7a7770", margin: 0 }}>
               {company.custom_branding ? (company.name || "Your HVAC Contractor") : "SnapAI"}
             </p>
@@ -995,7 +995,7 @@ export default function ReportClient({ report }: { report: Report }) {
                   }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 11 19.79 19.79 0 0 0 .21 2.36 2 2 0 012.22 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.66-.66a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg>
-                  Call
+                  {t("Call")}
                 </a>
               )}
               {company.custom_branding && company.phone && (
@@ -1019,7 +1019,7 @@ export default function ReportClient({ report }: { report: Report }) {
                   }}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-                  Text
+                  {t("Text")}
                 </a>
               )}
             </div>
@@ -1031,7 +1031,7 @@ export default function ReportClient({ report }: { report: Report }) {
         {report.seasonal_note && (
           <div style={{ margin: "0 10px 4px", padding: "8px 14px", background: "#f3f4f6", borderRadius: 10, border: "1px solid #e5e7eb", textAlign: "center" }}>
             <p style={{ fontSize: 10, color: "#6b7280", margin: 0, lineHeight: 1.5 }}>
-              ℹ️ Peak season service rate applied. {report.seasonal_note}
+              ℹ️ {t("Peak season service rate applied.")} {report.seasonal_note}
             </p>
           </div>
         )}

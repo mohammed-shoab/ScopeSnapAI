@@ -15,6 +15,7 @@ import { API_URL } from "@/lib/api";
 import { checkImageQuality, type ImageQualityResult } from "@/lib/imageQuality";
 import { getBrands, searchModels, type EquipmentModelRecord } from "@/lib/modelCache";
 import { detectMarket } from "@/lib/market";
+import { useLang } from "@/lib/language-context";
 import { isOffline, subscribeToQueueCount, saveToOfflineQueue } from "@/lib/offlineQueue";
 import { runTesseractOcr, terminateTesseractWorker } from "@/lib/tesseractOcr";
 
@@ -104,6 +105,7 @@ const ELECTRICAL_SPECS_BY_TONNAGE: Record<number, {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onSkip }: Props) {
+  const { t } = useLang();
   const [outdoorFile,  setOutdoorFile]  = useState<File | null>(null);
   const [indoorFile,   setIndoorFile]   = useState<File | null>(null);
   const [outdoorPreview, setOutdoorPreview] = useState<string | null>(null);
@@ -566,12 +568,12 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-black uppercase tracking-widest px-2 py-0.5 rounded-full text-black"
                   style={{ background: "#f39c12" }}>
-              Step Zero
+              {t("Step Zero")}
             </span>
-            <span className="text-xs text-gray-500 font-medium">Every Call</span>
+            <span className="text-xs text-gray-500 font-medium">{t("Every Call")}</span>
           </div>
           <h2 className="text-base font-black text-gray-900 leading-tight">
-            Nameplate Photo — Before Any Complaint
+            {t("Nameplate Photo — Before Any Complaint")}
           </h2>
           <p className="text-xs text-gray-500 mt-0.5">
             AI reads nameplate and pre-loads all system specs automatically
@@ -590,7 +592,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             border: activeTab === "photo" ? "none" : "1.5px solid #a7d9be",
           }}
         >
-          📸 Scan Nameplate
+          📸 {t("Scan Nameplate")}
         </button>
         <button
           onClick={() => setActiveTab("manual")}
@@ -603,7 +605,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             textDecoration: activeTab === "manual" ? "underline" : "none",
           }}
         >
-          ✏️ I&apos;ll enter manually
+          ✏️ {t("I'll enter manually")}
         </button>
       </div>
 
@@ -1022,14 +1024,14 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             <>
               <img src={outdoorPreview} alt="Outdoor nameplate" className="w-full h-full object-cover absolute inset-0" />
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
-                <p className="text-xs font-bold text-white">Outdoor</p>
+                <p className="text-xs font-bold text-white">{t("Outdoor")}</p>
                 <p className="text-[10px] text-white/80">Tap to retake</p>
               </div>
             </>
           ) : (
             <div className="flex flex-col items-center gap-1.5 p-3 text-center">
               <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl">+</div>
-              <p className="text-xs font-bold text-gray-700">Outdoor</p>
+              <p className="text-xs font-bold text-gray-700">{t("Outdoor")}</p>
               <p className="text-[10px] text-gray-400">Required</p>
             </div>
           )}
@@ -1053,14 +1055,14 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             <>
               <img src={indoorPreview} alt="Indoor nameplate" className="w-full h-full object-cover absolute inset-0" />
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1.5">
-                <p className="text-xs font-bold text-white">Indoor</p>
+                <p className="text-xs font-bold text-white">{t("Indoor")}</p>
                 <p className="text-[10px] text-white/80">Tap to retake</p>
               </div>
             </>
           ) : (
             <div className="flex flex-col items-center gap-1.5 p-3 text-center">
               <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl">+</div>
-              <p className="text-xs font-bold text-gray-700">Indoor</p>
+              <p className="text-xs font-bold text-gray-700">{t("Indoor")}</p>
               <p className="text-[10px] text-gray-400">If accessible</p>
             </div>
           )}

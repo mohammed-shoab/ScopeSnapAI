@@ -256,9 +256,7 @@ export default function SidebarNav() {
                     border: "1px solid rgba(26,135,84,.35)",
                     letterSpacing: "0.1em",
                   }}
-                >
-                  EARLY ACCESS
-                </span>
+                >{t("EARLY ACCESS")}</span>
               </div>
             </Link>
           </div>
@@ -291,7 +289,7 @@ export default function SidebarNav() {
                   className="px-3 pt-4 pb-1.5 text-[9px] font-bold uppercase tracking-widest"
                   style={{ color: "rgba(255,255,255,.25)", letterSpacing: "1.2px" }}
                 >
-                  {section.section}
+                  {t(section.section)}
                 </div>
                 <div className="space-y-0.5">
                   {section.items.map((item) => (
