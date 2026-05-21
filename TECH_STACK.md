@@ -1,7 +1,7 @@
 # SnapAI AI — Tech Stack & Architecture
 
-> **Last updated:** May 20, 2026 (Full QA audit complete — Tracks R/R9/REC/D/P/Staging. HEAD: `35f450c`. Alembic head: `029`. D.11 share_token fix, R.7 profile guard, S.7 staging banner, D.6 backfill all shipped. 53/53 audit items resolved.)
-> **Status:** Beta — live on Vercel + Railway. Both markets QA-verified 2026-05-20: Houston + PK (all 6 diagnostic flows PASS, all auth patterns correct, staging env complete). Current git HEAD: `35f450c`. Alembic head: `029`.
+> **Last updated:** May 21, 2026 (Track F Group C + BUG-032 QA PASS. HEAD: `4743a40`. Alembic head: `032`. Both markets verified. BUG-031 OPEN (staging banner on prod PK).
+> **Status:** Beta — live on Vercel + Railway. Both markets QA-verified 2026-05-21: Houston + PK. Build hash: `80f50c7f2d1fe88a`. See DEC-037 through DEC-042 for lessons from this session.
 
 ---
 
@@ -749,7 +749,7 @@ cp /tmp/assess_clean.tsx /tmp/snapai_tmp2/scopesnap-web/app/(app)/assess/page.ts
 
 # 2. Apply changes via Python string replacement (NOT Edit tool)
 python3 -c "
-content = open('/tmp/snapai_tmp2/.../file.tsx', 'rb').read().rstrip(b' ').decode('utf-8')
+content = open('/tmp/snapai_tmp2/.../file.tsx', 'rb').read().rstrip(b'').decode('utf-8')
 content = content.replace(old_str, new_str, 1)
 open('/tmp/snapai_tmp2/.../file.tsx', 'w', encoding='utf-8').write(content)
 "
@@ -921,6 +921,93 @@ Fixed in commit 85c5755. See DEC-037.
 
 ---
 
+
+### WA-20 — pak_pricing_tiers NUMERIC columns return decimal.Decimal — always cast before arithmetic (2026-05-21)
+
+**Problem (BUG-030):** `POST /api/estimates/fault-card` returned 503 on PK market. After adding a debug
+try/except wrapper (DEC-016 technique), the real error was:
+`TypeError: unsupported operand type(s) for *: 'decimal.Decimal' and 'float'`
+in `_apply_surcharges` at `sea = round(base * seasonal_pct)` where `base` came from
+`pak_pricing_tiers.estimate_amount` and `seasonal_pct` was a Python float.
+
+**Root cause:** PostgreSQL `NUMERIC` columns return Python `decimal.Decimal` objects via SQLAlchemy,
+NOT `int` or `float`. The Houston `pricing_tiers.estimate_amount` column is INTEGER so the bug
+never appeared on US market. PK tables use NUMERIC type.
+
+**Fix (fault_estimate.py line 267):**
+```python
+pricing = {row.tier: int(row.estimate_amount) for row in pt_rows.fetchall()}  # BUG-030: NUMERIC -> int
+```
+
+**Rule:** Any read of a NUMERIC/DECIMAL Supabase column via SQLAlchemy MUST be cast to `int()` or `float()`
+before arithmetic. Add a comment citing BUG-030 so future readers understand why the cast is there.
+
+**Detection:** `TypeError: unsupported operand type(s) for *: 'decimal.Decimal' and <type>` ->
+grep for the column being multiplied, check PostgreSQL column type in Supabase schema, cast before use.
+
+**Also see:** DEC-014 in DECISIONS.md for the decision record.
+
+---
+
+### WA-21 — Wrapping handler in try/except reveals 503-masked TypeErrors with CORS headers (2026-05-21)
+
+**Context (BUG-030 diagnosis):** `POST /api/estimates/fault-card` returned HTTP 503 with no CORS headers.
+Browser showed "Failed to fetch" (opaque error). The real error — a `TypeError` — was hidden because
+the exception escaped FastAPI's ASGI middleware stack to Railway's proxy layer.
+
+**Debug technique:** Wrap the ENTIRE handler body in `try/except Exception`:
+```python
+@router.post("/fault-card")
+async def create_fault_estimate(...):
+    try:
+        # ... entire handler body as-is ...
+    except Exception:
+        import traceback
+        raise HTTPException(status_code=500, detail=f"DEBUG: {traceback.format_exc()}")
+```
+HTTP 500 responses from `HTTPException` GO THROUGH FastAPI's middleware and DO include CORS headers.
+The browser can now see the traceback in the response body.
+
+**When to use:** Any endpoint returning 503 with no CORS headers and no response body.
+
+**Remove the wrapper** after identifying the root cause — never ship debug wrappers.
+
+**Symptom distinction:**
+- `500` + JSON body + CORS headers -> caught by FastAPI; real error visible in body
+- `503` + no CORS headers + no body -> escaped Railway proxy; exception bypassed FastAPI entirely
+
+**Also see:** DEC-016 in DECISIONS.md for the decision record.
+
+---
+
+### WA-22 — Never add if tables.market == "PK" column branches in fault_estimate.py (2026-05-21)
+
+**Problem (BUG-030 wrong fixes):** Two successive fix attempts added PK-specific column branches
+inside `fault_estimate.py` querying column names like `pkr_est_min`, `pkr_min/max/typical`,
+`pkr_attic_premium`. Both caused new errors because those column names DON'T EXIST on the views.
+
+**The correct model:** `dependencies.py` `_PK_TABLES` uses DATABASE VIEWS that already translate
+PK column names to US-compatible names:
+- `pak_fault_cards_v` -> exposes `price_list_min/typical/max`, `better_option_estimate`
+- `pak_labor_rates_v` -> exposes `attic_premium_min/max`, `r22_surcharge_min/max`
+- `pak_replacement_costs_v` -> exposes `price_min/max/typical`
+
+The original `fault_estimate.py` code works on BOTH markets without any market check because
+the views handle all schema translation. The code reads `tables.fault_cards` which resolves to
+`pak_fault_cards_v` for PK and `fault_cards` for US — same column names either way.
+
+**Rule:** If PK data needs to appear differently:
+1. Check what the VIEW currently exposes (query it in Supabase)
+2. If the view is missing a column, add the column to the VIEW SQL
+3. NEVER add `if tables.market == "PK"` column-name conditionals in `fault_estimate.py`
+
+**Commits showing the wrong approach (reverted):** `43a1215` (hardcoded PK values), `57a5ae0` (pkr_* columns)
+**Correct fix commit:** `cd2d58f` (int() cast only — no PK branches)
+
+**Also see:** DEC-013 in DECISIONS.md for the decision record.
+
+---
+
 ## PK (Pakistan) Market — Architecture & Data Reference
 
 > PK QA verified: 2026-05-19. All 6 diagnostic flows confirmed live on pk.snapai.mainnov.tech (commits 9024d035, 0adc374, a951a02). Full PK SOW complete.
@@ -940,6 +1027,8 @@ One codebase. One Railway backend. One Vercel deployment. Market is determined a
 **Critical rule:** Every PK-only code change must be gated behind `if (detectMarket() === "PK")` (frontend) or handled via `get_tables()` dependency (backend). A single push changes BOTH markets simultaneously.
 
 ### PK Supabase Tables
+
+> **NUMERIC type hazard:** `pak_pricing_tiers.estimate_amount` is NUMERIC (not INTEGER). SQLAlchemy returns it as Python `decimal.Decimal`. Always cast `int(row.estimate_amount)` before arithmetic. See WA-20 and DEC-014.
 
 | Table | Purpose | Seeded from |
 |-------|---------|-------------|
@@ -1019,3 +1108,144 @@ Confirmed correct as of 2026-05-19:
 Structure: `{ metadata, brands[15], fault_card_estimates, operating_targets, error_codes, legacy_model_prefix_lookup, parts_and_labor }`
 
 15 brands total: Gree (8 series), Haier (4), Orient (7), PEL (4), Kenwood (7), EcoStar (6), Samsung (4), LG (3), Mitsubishi (1+), Dawlance, TCL, Waves, Changhong Ruba, Kenwood, Admiral (remaining)
+
+
+---
+
+## WA-17 — Migration chain gap after Railway platform outage (2026-05-21)
+
+**Symptom:** `alembic_version` in DB shows `032` but a column added by migration `031`
+does not exist. `GET /health` returns 200 but endpoints that read that column fail.
+
+**Cause:** Railway was down during a GCP outage. Builds queued but never deployed.
+A migration was applied via Supabase MCP `apply_migration` directly (skipping the chain).
+
+**Detection:**
+```sql
+SELECT version_num FROM alembic_version;
+-- Then verify the column actually exists:
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'diagnostic_sessions' AND column_name = 'photo_skipped';
+```
+If `alembic_version` shows N but a column from migration N-1 is missing, the chain has a gap.
+
+**Fix:**
+1. Read the missing migration's `upgrade()` function to get the DDL
+2. Apply it via Supabase MCP `apply_migration` with `IF NOT EXISTS`:
+   ```sql
+   ALTER TABLE your_table ADD COLUMN IF NOT EXISTS col_name TYPE NOT NULL DEFAULT val;
+   ```
+3. Do NOT manually update `alembic_version` — it's already correct
+4. Verify column exists after applying
+
+**See:** DEC-037 for full explanation.
+
+---
+
+## WA-18 — Railway platform outage recovery protocol (2026-05-21)
+
+**Symptom:** `GET /health` returns 502 for extended period. Railway dashboard may show
+"Online" (misleading — see DEC-039). Railway status page shows "Builds are slow to progress"
+or "Hobby plans paused".
+
+**What happened (2026-05-21):** GCP outage caused Railway build queue backup. Broken commits
+in the queue crashed the service. Fix commits queued but slow to deploy.
+
+**Protocol:**
+1. Check Railway status: `https://status.railway.com` — confirm platform incident vs app crash
+2. Check current commit: Navigate to Railway dashboard → service → deployments tab
+3. If active deployment has a Python SyntaxError: it will crash on startup — Railway shows
+   "Online" but health returns 502. Fix is waiting for the queue to process the fix commit.
+4. While waiting: apply any missing DB migrations via Supabase MCP directly (WA-17)
+5. Do frontend-only QA in parallel (Vercel deploys are independent of Railway)
+6. Only proceed with backend QA once `GET /health` returns `{"status":"ok"}`
+
+**Vercel is independent:** Vercel deploys succeed even when Railway is down. Frontend-only
+checks (button layouts, input attributes, source code verification) can proceed immediately.
+
+**Clerk auth is independent:** Clerk authentication works even when Railway is down.
+The user can log in to the Claude browser window and navigate authenticated pages on Vercel.
+
+**See:** DEC-039, DEC-040 for related rules.
+
+---
+
+## WA-19 — Verify file i
+---
+
+### WA-23 -- Estimate option tiers in the DB are "A"/"B"/"C" -- not "good"/"better"/"best" (2026-05-21)
+
+**Discovery (BUG-032):** `fault_estimate.py` creates `EstimateTier` objects with `tier="A"`,
+`tier="B"`, `tier="C"`. These are stored in the `estimates` DB table as-is.
+
+The `pak_pricing_tiers` table uses `tier="good"`, `tier="better"`, `tier="best"` — a COMPLETELY
+DIFFERENT naming scheme.
+
+`ReportClient.tsx` reads the recommended option from `estimates`, gets tier "B", and sends
+`{ selected_option: "B" }` to the approve endpoint. The original approve endpoint only accepted
+"good"/"better"/"best" and rejected "B" silently (422 validation error on every homeowner approval).
+
+**Fix applied (commit 4743a40):**
+```python
+# reports.py line 365
+if body.selected_option not in ("good", "better", "best", "A", "B", "C"):
+    raise HTTPException(status_code=422, detail="selected_option must be...")
+```
+
+**Rules for all future code touching estimate option tiers:**
+1. `estimates.options[].tier` in DB = "A" | "B" | "C"
+2. `pak_pricing_tiers.tier` = "good" | "better" | "best" (different table, different scheme)
+3. Always accept both in any validation (approve endpoint, reporting)
+4. `ReportClient.tsx` TIER_LABELS `{ good: "Option A", better: "Option B", best: "Option C" }`
+   is display-only and maps the pak_pricing_tiers keys to human labels -- not the actual tier stored in estimates
+5. Before writing any approve/tier-selection logic, query: which table is this from?
+
+**DEC reference:** DEC-049
+
+---
+
+### WA-24 -- Desktop Commander Python subprocess: reliable git for Windows-side ops (2026-05-21)
+
+**Problem:** When local repo has unstaged changes AND remote is ahead, standard push fails.
+Linux sandbox git on NTFS is banned (DEC-013). PowerShell commands with semicolons via
+Desktop Commander gave no visible output.
+
+**Reliable pattern -- write to C:\Windows\Temp\fix_NNN.py:**
+```python
+import subprocess
+
+repo = r"C:\Users\dell\My Drive\Personal Claude\ScopeSnapAI"
+
+def git(cmd):
+    result = subprocess.run(
+        ["git"] + cmd.split(),
+        cwd=repo, capture_output=True, text=True,
+        encoding="utf-8", errors="replace"
+    )
+    print(f"stdout: {result.stdout.strip()}")
+    if result.stderr.strip(): print(f"stderr: {result.stderr.strip()}")
+    return result
+
+git("stash")
+git("fetch origin")
+git("rebase origin/main")
+git("stash pop")
+git("add -A")
+# For commit message with spaces, pass as list (not split):
+subprocess.run(["git", "commit", "-m", "your message"], cwd=repo)
+git("push origin main")
+```
+
+**Why this works:** Desktop Commander's `start_process` runs in a Windows process context.
+Windows git handles NTFS `.git/index` natively -- no lock issues. The NTFS locking problem
+is specific to Linux sandbox git operations (DEC-013 and DEC-004).
+
+**Key distinction:**
+- Desktop Commander Python subprocess git = SAFE (uses Windows git binary)
+- Linux bash sandbox git on NTFS mount = BANNED (DEC-013)
+- Linux bash git on /tmp clone = SAFE (DEC-004)
+
+**Unstaged changes + rebase:** If `git rebase` fails with "unstaged changes",
+run `git stash` FIRST (before fetch), then `git stash pop` after rebase.
+
+**DEC reference:** DEC-050

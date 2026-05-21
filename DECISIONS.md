@@ -3,7 +3,7 @@
 > This file records decisions made during development that have lasting impact on how the codebase works.
 > Future AI sessions: read this before proposing architecture changes or writing migrations.
 >
-> Last updated: 2026-05-20
+> Last updated: 2026-05-21
 
 ---
 
@@ -691,3 +691,262 @@ boolean (the prop isn't passed through from the estimate builder).
 **Rationale:** `selectedTier` in PresentMode is always the tech's recommended tier at the
 point they enter Present Mode. Using it as `recommendedTier` is functionally equivalent and
 avoids adding a new prop to EstimateData.
+
+
+## DEC-043 -- alembic_version can be ahead of actual schema (2026-05-21)
+
+**Date:** 2026-05-21
+
+**Problem:** After a Railway GCP platform outage, `alembic_version` in the production DB showed
+`032` but the `diagnostic_sessions.photo_skipped` column (from migration 031) did not exist.
+
+**Root cause:** Migration 032 (Track G, `card_tco_data` tables) was applied directly via the
+Supabase MCP `apply_migration` tool during a prior session. This runs the migration's DDL SQL
+and stamps `alembic_version = 032` directly. It does NOT run Alembic's dependency chain —
+so migration 031's `upgrade()` (which adds `photo_skipped`) was never executed.
+
+**Rule:** NEVER assume `alembic_version = N` means all migrations <= N have been applied to the
+schema. Always verify column/table existence independently:
+```sql
+-- Before trusting alembic_version, verify the column exists:
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'your_table' AND column_name = 'your_column';
+```
+
+**Fix used:** Applied 031's DDL directly via Supabase MCP:
+```sql
+ALTER TABLE diagnostic_sessions
+  ADD COLUMN IF NOT EXISTS photo_skipped BOOLEAN NOT NULL DEFAULT false;
+```
+Used `IF NOT EXISTS` to make it idempotent — safe to run again.
+
+**Impact:** After any Railway outage where builds were queued but never deployed, audit ALL
+migrations in the chain between the last known-good Railway deploy and the current
+`alembic_version`. Any that were applied via Supabase direct may have gaps.
+
+---
+
+## DEC-044 -- Python replace() write can silently truncate the end of long files (BUG-027) (2026-05-21)
+
+**Date:** 2026-05-21
+
+**Problem:** A Python patch script used the pattern:
+```python
+with open(path, 'r', encoding='utf-8') as f:
+    content = f.read()
+content = content.replace(old, new, 1)
+with open(path, 'w', encoding='utf-8') as f:
+    f.write(content)
+```
+The write succeeded with no error, but the last 2 lines of `scopesnap-api/api/reports.py`
+(the closing `}` of the approve endpoint's return dict) were silently dropped. The file was
+445 lines instead of the expected 447. This caused a Python SyntaxError at runtime:
+`'{' was never closed` — FastAPI failed to import the reports router, crashing on startup.
+
+**Why it's silent:** The `f.write(content)` call returns the number of bytes written, but
+Python does not raise an error if the write is truncated by the OS (NTFS filesystem quirk).
+The file appears valid and git commits cleanly — the SyntaxError only surfaces at runtime.
+
+**Rules:**
+1. After ANY Python write to a `.py` file, verify syntax immediately:
+   ```bash
+   python3 -c "import ast; ast.parse(open('path/to/file.py').read()); print('SYNTAX OK')"
+   ```
+2. After ANY write, verify line count matches expectation:
+   ```bash
+   wc -l path/to/file.py  # compare to last known good count
+   ```
+3. For `.tsx`/`.ts` files, check the last 10 lines:
+   ```bash
+   tail -10 path/to/file.tsx
+   ```
+4. If truncation is detected: use `git show <remote-sha>:<path>` to recover the clean file,
+   then re-apply the patch.
+
+**Recovery used:** `git show 477314b:scopesnap-api/api/reports.py > /tmp/reports_clean.py`
+to recover the original, identified missing tail, used Edit tool to restore it, pushed as
+`a6d4a15`.
+
+---
+
+## DEC-045 -- Railway "Online" dashboard status does NOT mean the service is healthy (2026-05-21)
+
+**Date:** 2026-05-21
+
+**Problem:** During the Railway GCP outage recovery, the Railway dashboard showed
+`scopesnap-api` as "Online" while `GET /health` consistently returned 502 Bad Gateway.
+
+**Why:** Railway's "Online" status reflects the container lifecycle state (running), not
+whether the process inside is successfully handling requests. When a Python SyntaxError
+prevents FastAPI from importing a router at startup, the process crash-loops. Railway
+marks the container as "Online" during restart attempts, not as "Crashed".
+
+**Rule:** ALWAYS verify health via the actual health endpoint:
+```
+GET https://scopesnap-api-production.up.railway.app/health
+Expected: {"status":"ok","db":"connected","environment":"production","version":"0.1.0"}
+```
+Do NOT trust Railway dashboard status ("Online") as proof the service is healthy.
+Only `{"status":"ok"}` from `/health` confirms the service is serving requests.
+
+**Corollary:** If Railway shows "Online" but `/health` returns 502, the active deployment
+has a startup crash (most likely a Python SyntaxError). Check deploy logs for the crash
+traceback before attempting any other fixes.
+
+---
+
+## DEC-046 -- Cherry-pick fails with add/add conflicts when remote has moved ahead (2026-05-21)
+
+**Date:** 2026-05-21
+
+**Problem:** Tried to cherry-pick a local commit (`a0aae81`) onto `origin/main` after
+remote had moved ahead by 3 commits (`477314b`). Every file had "add/add" conflicts because
+git saw both sides as "adding" the file (different content). Cherry-pick aborted.
+
+**Why:** Cherry-pick computes a 3-way merge using the cherry-pick's parent as the merge base.
+When the remote has diverged significantly (especially if the same files were touched),
+the merge base is a common ancestor that is far behind both sides — causing "both added" conflicts.
+
+**Rule:** Never cherry-pick a local commit onto a remote that has moved ahead by more than
+1-2 commits on the same files. Instead:
+1. Pull the latest remote HEAD
+2. Re-apply the changes fresh using Python `replace()` scripts directly on the remote files
+3. Commit + push as a new commit on top of the latest remote HEAD
+
+This is faster and safer than resolving cherry-pick conflicts.
+
+---
+
+## DEC-047 -- Clerk session is shared across *.mainnov.tech subdomains (2026-05-21)
+
+**Date:** 2026-05-21
+
+**Finding:** A single Clerk login on `snapai.mainnov.tech` automatically authenticates
+the user on `pk.snapai.mainnov.tech` without requiring a second login. Both domains share
+the same Clerk session cookie (scoped to `.mainnov.tech`).
+
+**Impact for QA:** When testing both markets, only ONE login is needed. Navigate to
+`snapai.mainnov.tech/sign-in` → log in once → then navigate to `pk.snapai.mainnov.tech` —
+it will already be authenticated. The JWT tokens from `window.Clerk.session.getToken()` on
+either tab are identical and accepted by the backend on both `X-Market: US` and `X-Market: PK`.
+
+**Impact for Claude Chrome extension:** The Claude-controlled browser tab group shares cookies
+across tabs within the group. Opening a PK market tab while already logged in on Houston
+gives instant access — no re-login needed.
+
+---
+
+## DEC-048 -- Claude Chrome extension tab group resets between sessions (2026-05-21)
+
+**Date:** 2026-05-21
+
+**Problem:** After a context window compaction (new conversation se
+
+---
+
+## DEC-049 -- Estimate option tiers stored as "A"/"B"/"C" -- NOT "good"/"better"/"best" (2026-05-21)
+
+**Date:** 2026-05-21
+
+**Problem (BUG-032):** The homeowner report page sent `{ selected_option: "B" }` to the approve
+endpoint. The approve endpoint rejected it with `422: selected_option must be 'good', 'better', or 'best'`.
+The Approve button appeared to do nothing from the homeowner's perspective.
+
+**Root cause:** Two different naming schemes exist in the codebase and were never in sync:
+
+| Location | Tier naming |
+|----------|-------------|
+| `fault_estimate.py` EstimateTier | "A" / "B" / "C" (A=cheapest fix, C=replacement) |
+| `pak_pricing_tiers.tier` column | "good" / "better" / "best" |
+| `reports.py` approve endpoint (before fix) | "good"/"better"/"best" only -- rejected "A"/"B"/"C" |
+| `ReportClient.tsx` TIER_LABELS | `{ good: "Option A", better: "Option B", best: "Option C" }` |
+
+The `estimates` DB table stores options[].tier as "A"/"B"/"C".
+`ReportClient.tsx` reads the recommended tier ("B"), sends `{ selected_option: "B" }`.
+The old approve endpoint rejected "B" every time -- approval was silently broken.
+
+**Fix:** `scopesnap-api/api/reports.py` line 365:
+```python
+# Before:
+if body.selected_option not in ("good", "better", "best"):
+# After:
+if body.selected_option not in ("good", "better", "best", "A", "B", "C"):
+```
+
+**Rule:** When writing code that handles estimate option tiers:
+1. The `estimates` DB table stores tiers as "A"/"B"/"C"
+2. `pak_pricing_tiers.tier` uses "good"/"better"/"best" -- different system
+3. The approve endpoint now accepts both -- never validate only one scheme
+4. `ReportClient.tsx` TIER_LABELS is a display mapping only -- the payload uses the raw DB value
+
+**Commit:** `4743a40`
+**Verified:** "Thank you! You selected Fix + Prevent Next Failure." shown on report after approval
+
+---
+
+## DEC-050 -- Desktop Commander Python subprocess is the reliable git pattern for Windows (2026-05-21)
+
+**Date:** 2026-05-21
+
+**Problem:** Remote had moved ahead, push rejected (`fetch first`). Local had uncommitted
+doc changes. Linux sandbox git is banned on NTFS (DEC-013). PowerShell semicolon commands
+gave no visible output in Desktop Commander.
+
+**Reliable workflow -- write to C:\Windows\Temp\fix_NNN.py and run via Desktop Commander:**
+```python
+import subprocess
+
+repo = r"C:\Users\dell\My Drive\Personal Claude\ScopeSnapAI"
+
+def git(cmd):
+    result = subprocess.run(
+        ["git"] + cmd.split(),
+        cwd=repo, capture_output=True, text=True,
+        encoding="utf-8", errors="replace"
+    )
+    print(f"git {cmd}: stdout={result.stdout!r} stderr={result.stderr!r}")
+    return result
+
+git("stash")
+git("fetch origin")
+git("rebase origin/main")
+git("stash pop")
+git("add -A")
+# Note: commit message must be passed as a list element, not split
+result = subprocess.run(
+    ["git", "commit", "-m", "your message here"],
+    cwd=repo, capture_output=True, text=True
+)
+print(result.stdout)
+git("push origin main")
+```
+
+**Why this works:** Desktop Commander runs Python in the Windows process. Windows git can
+manipulate the NTFS `.git/index` without the NTFS locking issue. The sandbox's Linux git
+is what causes `index.lock` failures.
+
+**IMPORTANT distinction from DEC-013:**
+- Windows Desktop Commander Python subprocess git = SAFE (Windows git, native NTFS)
+- Linux sandbox git on NTFS-mounted path = BANNED (DEC-013)
+
+---
+
+## DEC-051 -- BUG-031 OPEN: Staging banner visible on pk.snapai.mainnov.tech (2026-05-21)
+
+**Date:** 2026-05-21
+
+**Problem:** Amber "STAGING" banner appears at top of production `pk.snapai.mainnov.tech`.
+
+**Root cause:** Vercel PRODUCTION project has `NEXT_PUBLIC_ENV=staging` set.
+`StagingBanner.tsx` renders when `process.env.NEXT_PUBLIC_ENV === "staging"`.
+
+**Fix (no code change needed -- Vercel dashboard only):**
+1. Vercel dashboard -> `scope-snap-ai` project -> Settings -> Environment Variables
+2. Find `NEXT_PUBLIC_ENV`
+3. For Production environment: delete it OR set value to `production`
+4. Trigger a new deploy
+
+**Status:** OPEN -- awaiting Vercel dashboard action by Shoab.
+
+**Prevention:** After any staging environment setup, immediately audit the PRODUCTION Vercel
+project's environment variables to confirm `NEXT_PUBLIC_ENV` is absent or set to `production`.

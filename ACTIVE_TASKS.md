@@ -22,6 +22,24 @@
 
 ---
 
+## Completed (2026-05-21 — Track F Group C: Homeowner Conversion + Approval Flow, commits 66a772c + 4743a40)
+
+| Item | Description | Files changed | Status |
+|------|-------------|---------------|--------|
+| C.1 | Homeowner email capture on assessment form | `assess/page.tsx`, `assessments.py` | ✅ SHIPPED |
+| C.2 | Google Maps address autocomplete on PK address field | `assess/page.tsx` | ✅ SHIPPED |
+| C.3 | Post-approval confirmation screen ("Thank you! You selected...") + hides Approve button | `ReportClient.tsx` | ✅ SHIPPED |
+| C.4 | Real-time approval notification to tech dashboard (Supabase Realtime broadcast) | `dashboard/page.tsx`, `reports.py`, `config.py`, `supabaseClient.ts` | ✅ SHIPPED |
+
+**BUG-032 (FIXED — commit 4743a40):** Approve endpoint rejected tier "A"/"B"/"C" from stored estimates.
+Fix: `reports.py` validation expanded to accept both "A"/"B"/"C" and "good"/"better"/"best". See DEC-049.
+
+**BUG-031 (OPEN):** Staging banner visible on `pk.snapai.mainnov.tech` production.
+Root cause: Vercel production env has `NEXT_PUBLIC_ENV=staging`. Fix via Vercel dashboard only.
+
+
+---
+
 ---
 
 ## Lessons Learned — 2026-05-20 QA Session
@@ -42,6 +60,31 @@ These bugs were found during the 2026-05-20 full audit. Full workarounds in TECH
 
 
 ## Last QA Run
+
+**Date:** 2026-05-21 (Track F C.1-C.4 + BUG-032 fix + full 6-flow UI check both markets)
+**Markets tested:** Both Houston US and Pakistan PK
+**Outcome:** PASS COMPLETE
+**Alembic head:** 032
+**Commits this session:** 66a772c (feat track-f-c.1/c.3/c.4), 4743a40 (fix BUG-032 approve endpoint)
+**Vercel:** Both Houston + PK serving 4743a40
+**Railway:** ACTIVE -- health OK on 4743a40
+**QA sign-off:** FULLY COMPLETE
+
+### Bugs Found and Fixed This QA Run
+
+**BUG-032 -- Approve endpoint rejected stored tier values A/B/C (FIXED -- commit 4743a40)**
+- **Problem:** Homeowner clicked Approve on report, got "selected_option must be good/better/best" -- approval silently failed
+- **Root cause:** `fault_estimate.py` stores tiers as "A"/"B"/"C" in DB but `reports.py` validated against ("good","better","best") only
+- **Fix:** `reports.py` line 365 expanded to accept both sets: `("good","better","best","A","B","C")`
+- **Verified:** "Thank you! You selected..." confirmation screen shown live after fix
+
+### Open Issues After This QA Run
+
+**BUG-031 -- Staging banner on production PK (OPEN -- no code fix needed)**
+- Staging banner shows on pk.snapai.mainnov.tech
+- Fix: Vercel dashboard -> production project -> remove NEXT_PUBLIC_ENV=staging from env vars
+
+### Previous QA Run
 
 **Date:** 2026-05-20 (Post-track-F+DX — BUG-025/026 + full 6-flow UI check both markets)
 **Markets tested:** Both Houston US and Pakistan PK

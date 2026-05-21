@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-21 (Track F Group B complete — B.1–B.6 all shipped. HEAD: aa4e65b. Alembic head: 031 (photo_skipped). Vercel + Railway deploying on push.)
+> Last updated: 2026-05-21 (QA PASS — Track F C.1–C.4 + BUG-032 all verified live. HEAD: 4743a40. Alembic head: 032. Both markets (Houston + PK) fully QA'd. BUG-031 open (staging banner on prod PK — Vercel env var fix needed).)
 
 ---
 
@@ -21,6 +21,13 @@
 | estimate/[id] is dead code | Real builder = assessment/[id]/page.tsx | DEC-032 |
 | Vercel = client-rendered | Use javascript_tool + document.querySelector(), not get_page_text. | WA-13 |
 | safe.directory on /tmp clone | `git config --global --add safe.directory /tmp/snapai_tmpN` after every clone. | WA-14 |
+| alembic_version ≠ schema truth | `alembic_version=032` does NOT mean col from 031 exists. Verify with `information_schema.columns`. | DEC-043, WA-17 |
+| Python write can truncate tail | After every `.py` patch: `python3 -c "ast.parse(open(f).read())"` + `wc -l`. Silent truncation = SyntaxError on Railway. | DEC-044, WA-19 |
+| Railway Online ≠ healthy | Service shows Online while crash-looping on SyntaxError. Only `{"status":"ok"}` from `/health` counts. | DEC-045 |
+| Clerk session is cross-domain | Login on `snapai.mainnov.tech` also logs in `pk.snapai.mainnov.tech`. One login covers both markets. | DEC-047 |
+| Claude tab group resets | New conversation = new tab group = no cookies. User must re-login in Claude's Chrome window. | DEC-048 |
+| Estimate tiers are A/B/C | `fault_estimate.py` stores tier as "A"/"B"/"C". `reports.py` approve accepts both. `pak_pricing_tiers.tier` uses good/better/best. These are DIFFERENT naming schemes — never conflate them. | DEC-049 |
+| NEVER set NEXT_PUBLIC_ENV=staging on production Vercel | StagingBanner shows on prod (BUG-031). Fix via Vercel dashboard — no code change. | DEC-023 |
 
 
 ---
@@ -80,9 +87,12 @@
 ### Production
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both prod domains) | `aa4e65b` | Deploying (pushed 2026-05-21) | 2026-05-21 |
-| Railway backend (prod) | `aa4e65b` | Deploying — migration 031 will auto-run on boot | 2026-05-21 |
-| Alembic migration (prod) | `031` | photo_skipped column on diagnostic_sessions (pending Railway boot) | 2026-05-21 |
+| Vercel (both prod domains) | `4743a40` | ✅ Live | 2026-05-21 |
+| Railway backend (prod) | `4743a40` | ✅ Live — health OK, BUG-032 fixed | 2026-05-21 |
+| Alembic migration (prod) | `032` | ✅ Applied (031 photo_skipped applied directly via Supabase MCP) | 2026-05-21 |
+| diagnostic_sessions.photo_skipped | BOOLEAN NOT NULL DEFAULT false | ✅ Applied directly (031 was skipped by Railway during outage) | 2026-05-21 |
+| card_tco_data (US) | 57 rows | ✅ Seeded | 2026-05-21 |
+| pak_card_tco_data (PK) | 45 rows | ✅ Seeded | 2026-05-21 |
 | pak_data_defaults | 1 row (market=PK) | Seeded | 2026-05-19 |
 | pak_operating_targets | PK PSI thresholds + R-32 (5 rows, 30-50C ambient) | Seeded | 2026-05-18 |
 
@@ -99,9 +109,12 @@
 **Staging git HEAD:** `980698b` — "chore(staging): migrations 020-025 + dual keepalive A/B + promote-to-prod.sh"
 **Promote staging → prod:** `scripts/promote-to-prod.sh <file1> [file2 ...]` (run from a local main checkout)
 
-**Current git HEAD (main):** `aa4e65b` -- "feat(track-f-b.1+b.2+b.3+b.5+b.6): UI polish for beta readiness -- all Group B items"
+**Current git HEAD (main):** `4743a40` -- "fix(BUG-032): approve endpoint accepts tier A/B/C from stored estimates"
 
 **Recent commits (newest first -- main):**
+- `4743a40` -- fix(BUG-032): approve endpoint accepts tier A/B/C from stored estimates (2026-05-21)
+- `66a772c` -- feat(track-f-c.1/c.3/c.4) (2026-05-21)
+- `a6d4a15` -- fix(BUG-027): restore approve endpoint tail in reports.py (2026-05-21)
 - `aa4e65b` -- feat(track-f-b.1+b.2+b.3+b.5+b.6): UI polish for beta readiness -- all Group B items (2026-05-21)
 - `477314b` -- docs(qa-post-track-f+dx): QA sign-off + BUG-025/026 retrospective + DEC-036/037 + WA-15/16 (2026-05-20)
 - `85c5755` -- fix(qa): seasonal_modifier_pct ORM column + handleContinue creates estimate before navigating (2026-05-20)
@@ -124,6 +137,22 @@
 **Local working tree state (2026-05-20 post-audit):**
 All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync before editing:
 `git pull --rebase origin main` (use /tmp clone pattern per DEC-004 for any commits).
+
+---
+
+
+---
+
+## QA History
+
+| Date | Markets | Outcome | Bugs Fixed | HEAD |
+|------|---------|---------|------------|------|
+| 2026-05-21 | Houston + PK | PASS ✅ | BUG-030 (NUMERIC decimal), BUG-032 (tier naming), BUG-027 (reports.py truncation) | 4743a40 |
+| 2026-05-21 | Houston + PK | PASS ✅ | BUG-025 (ORM col missing), BUG-026 (wrong nav ID), Track F B.1-B.6 | 66a772c |
+| 2026-05-20 | Houston + PK | PASS ✅ | BUG-D.AUTH (4 files), D.6 backfill, R.7+S.7 | 85c5755 |
+
+**Open known issues:**
+- BUG-031: Staging banner visible on `pk.snapai.mainnov.tech` — Vercel production env has `NEXT_PUBLIC_ENV=staging` set. Fix: Vercel dashboard → project settings → Environment Variables → remove `NEXT_PUBLIC_ENV` from Production environment (or set to `production`). No code change needed.
 
 ---
 
@@ -159,22 +188,4 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 | `scopesnap-api/api/diagnostic.py` | All diagnostic session logic, PSI routing, fault card return |
 | `scopesnap-api/api/dependencies.py` | `get_tables()` — market routing, `_US_TABLES` / `_PK_TABLES` |
 | `scopesnap-api/api/assessments.py` | Assessment CRUD |
-| `scopesnap-api/api/fault_estimate.py` | Primary estimate engine -- `POST /api/estimates/fault-card`. Seasonal modifier, recommendation overlay, tier labels, markup, surcharges. |
-| `scopesnap-api/api/estimates.py` | Estimate generation and retrieval |
-| `scopesnap-api/db/migrations/versions/` | Alembic migrations (current head: `032` — applied via Supabase direct) |
-
----
-
-## PSI Thresholds (from diagnostic_questions / pak_diagnostic_questions)
-
-| Refrige
-
----
-
-## QA History
-
-| Date | Markets | Outcome | Bugs Fixed | Commit |
-|------|---------|---------|------------|--------|
-| 2026-05-21 (Track G) | Houston + PK | PASS ✅ | 5-Year TCO display live (G.1-G.12) | 053d554 |
-| 2026-05-20 (full audit) | Houston + PK | PASS ✅ | 53 items resolved | ba15901 |
-| 2026-05-20 (post-track-F+DX) | Houston + PK | PASS ✅ | BUG-025, BUG-026 | 85c5755 |
+| `scopesnap-api/api/fault_estimate.py` | Primary estimate engine -- `POST /api/estimates/fault-card`. Seasonal modifier, recommendatio
