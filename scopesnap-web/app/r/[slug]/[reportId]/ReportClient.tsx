@@ -14,16 +14,15 @@ import FiveYearComparison, { type TierTCO } from "@/components/FiveYearCompariso
  * react-qr-code v2 TypeScript types conflict; CDN approach is simpler and reliable.
  */
 function ReportQRCode({ reportShortId }: { reportShortId: string }) {
-  const [qrUrl, setQrUrl] = useState("");
-
-  useEffect(() => {
+  // A.5 fix: lazy initializer computes URL synchronously on first render so
+  // QR image is present when the browser print dialog opens (no useEffect delay).
+  const [qrUrl] = useState(() => {
+    if (typeof window === "undefined") return "";
     const reportUrl = window.location.href.split("?")[0];
     const trackingUrl = `${reportUrl}?utm_source=report&utm_medium=qr&utm_campaign=${reportShortId}`;
     const encoded = encodeURIComponent(trackingUrl);
-    setQrUrl(
-      `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encoded}&color=1a8754&bgcolor=ffffff&margin=4`
-    );
-  }, [reportShortId]);
+    return `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encoded}&color=1a8754&bgcolor=ffffff&margin=4`;
+  });
 
   if (!qrUrl) return null;
 
