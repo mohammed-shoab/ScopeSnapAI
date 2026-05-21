@@ -221,6 +221,18 @@ async def generate_fault_card_estimate(
     WS-G v2: Three-option estimate with dynamic labels, better_option_estimate,
     replacement recommendation, and five-year cost comparison.
     """
+    import traceback as _tb
+    try:
+        return await _generate_fault_card_estimate_inner(body, auth, tables, db)
+    except Exception as _exc:
+        raise HTTPException(status_code=500, detail=f"DEBUG BUG-030: {type(_exc).__name__}: {_exc} | {_tb.format_exc()[-800:]}")
+
+async def _generate_fault_card_estimate_inner(
+    body: FaultCardEstimateRequest,
+    auth,
+    tables: MarketTables,
+    db: AsyncSession,
+) -> FaultCardEstimateResponse:
 
     # Resolve unit age
     unit_age = body.unit_age_years
