@@ -111,6 +111,7 @@ def _apply_surcharges(
     is_r22: bool,
     seasonal_pct: float = 0.0,
 ) -> tuple:
+    base = int(base)  # BUG-030: DB may return decimal.Decimal; cast to int
     breakdown: dict = {}
     total = 0
     if attic_access and attic_premium > 0:
@@ -275,7 +276,7 @@ async def _generate_fault_card_estimate_inner(
             text(f"SELECT tier, estimate_amount FROM {tables.pricing_tiers} WHERE card_id = :cid ORDER BY tier"),
             {"cid": body.card_id},
         )
-    pricing = {row.tier: row.estimate_amount for row in pt_rows.fetchall()}
+    pricing = {row.tier: int(row.estimate_amount) for row in pt_rows.fetchall()}  # BUG-030: Decimal -> int
     if not pricing:
         raise HTTPException(status_code=404, detail=f"No pricing tiers for card {body.card_id}.")
 
