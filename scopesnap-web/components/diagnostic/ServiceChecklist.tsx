@@ -76,7 +76,7 @@ export interface ServiceEstimateResult {
 
 interface ServiceChecklistProps {
   assessmentId: string;
-  authHeaders: Record<string, string>;
+  getAuthHeaders: () => Promise<Record<string, string>>;
   ocrNameplate?: Record<string, unknown> | null;
   onComplete: (result: ServiceEstimateResult, sessionId: string) => void;
   onCancel: () => void;
@@ -99,7 +99,7 @@ const STEP_LABELS: Record<string, string> = {
 
 export default function ServiceChecklist({
   assessmentId,
-  authHeaders,
+  getAuthHeaders,
   ocrNameplate,
   onComplete,
   onCancel,
@@ -115,6 +115,7 @@ export default function ServiceChecklist({
   // skip UI state — reset on each new step
   const [skipExpanded, setSkipExpanded] = useState(false);
   const [manualCode, setManualCode] = useState("");
+  const [liveHeaders, setLiveHeaders] = useState<Record<string, string>>({});
 
   // ── Start session ──────────────────────────────────────────────────────
 
@@ -123,9 +124,11 @@ export default function ServiceChecklist({
       setLoading(true);
       setError(null);
       try {
+        const headers = await getAuthHeaders();
+        setLiveHeaders(headers);
         const r = await fetch(`${API_URL}/api/diagnostic/session`, {
           method: "POST",
-          headers: { ...authHeaders, "Content-Type": "application/json" },
+          headers: { ...headers, "Content-Type": "application/json" },
           body: JSON.stringify({ assessment_id: assessmentId, complaint_type: "service" }),
         });
         if (!r.ok) {
@@ -159,9 +162,11 @@ export default function ServiceChecklist({
     setSubmitting(true);
     setError(null);
     try {
+      const headers = await getAuthHeaders();
+      setLiveHeaders(headers);
       const r = await fetch(`${API_URL}/api/diagnostic/session/${sessionId}/answer`, {
         method: "POST",
-        headers: { ...authHeaders, "Content-Type": "application/json" },
+        headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify({ answer }),
       });
       if (!r.ok) {
@@ -203,15 +208,17 @@ export default function ServiceChecklist({
       setSubmitting(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, currentQuestion, authHeaders]);
+  }, [sessionId, currentQuestion, getAuthHeaders]);
 
   const generateServiceEstimate = async (sid: string) => {
     setGeneratingEstimate(true);
     setError(null);
     try {
+      const headers = await getAuthHeaders();
+      setLiveHeaders(headers);
       const r = await fetch(`${API_URL}/api/estimates/service`, {
         method: "POST",
-        headers: { ...authHeaders, "Content-Type": "application/json" },
+        headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify({ assessment_id: assessmentId, session_id: sid }),
       });
       if (!r.ok) {
@@ -374,7 +381,7 @@ export default function ServiceChecklist({
           return (
             <>
               <PhotoSlot spec={spec} assessmentId={assessmentId}
-                authHeaders={authHeaders} onCapture={handlePhoto} disabled={submitting} />
+                authHeaders={liveHeaders} onCapture={handlePhoto} disabled={submitting} />
 
               { /* ── Photo skip UI ── */}
               {skipConfig && (
@@ -423,7 +430,7 @@ export default function ServiceChecklist({
         })()}
         {currentQuestion.input_type === "multi" && multiItems.length > 0 && (
           <MultiInput inputs={multiItems} assessmentId={assessmentId}
-            authHeaders={authHeaders} ocrNameplate={ocrNameplate}
+            authHeaders={liveHeaders} ocrNameplate={ocrNameplate}
             onSubmit={handleMulti} disabled={submitting} />
         )}
       </div>

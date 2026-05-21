@@ -656,7 +656,7 @@ function AssessPageInner() {
       <div className="max-w-lg mx-auto px-4 pb-6 pt-4" style={{ background: "#0f1117", minHeight: "100vh" }}>
         <ServiceChecklist
           assessmentId={assessmentId}
-          authHeaders={resolvedHeaders}
+          getAuthHeaders={getAuthHeaders}
           ocrNameplate={ocrResult}
           onComplete={handleServiceComplete}
           onCancel={() => setPhase("complaint")}
