@@ -362,7 +362,7 @@ async def approve_report(
     - Updates estimate.status to 'approved'
     - Returns the selected option details for confirmation display
     """
-    if body.selected_option not in ("good", "better", "best"):
+    if body.selected_option not in ("good", "better", "best", "A", "B", "C"):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="selected_option must be 'good', 'better', or 'best'",
