@@ -193,8 +193,36 @@ export default function ServiceChecklist({
       }
 
       if (resp.resolved && resp.service_step_complete) {
-        // Terminal step — generate estimate
-        await generateServiceEstimate(sessionId);
+        // Terminal step — backend auto-generates estimate; navigate directly.
+        // BUG-036 fix: POST /api/estimates/service does not exist; handleServiceComplete
+        // ignores the result and redirects to /assessment/{id}, so call onComplete directly.
+        setGeneratingEstimate(true);
+        onComplete(
+          {
+            session_id: sessionId,
+            base_items: findings.filter(f => !f.is_flag).map(f => ({
+              code: f.code || "",
+              description: f.description,
+              amount_min: f.amount_min || 0,
+              amount_max: f.amount_max || 0,
+              amount_typical: Math.round(((f.amount_min || 0) + (f.amount_max || 0)) / 2),
+            })),
+            add_ons: [],
+            flags: findings.filter(f => f.is_flag).map(f => ({
+              code: f.code || "",
+              description: f.description,
+              is_flag: true,
+            })),
+            total_min: findings.filter(f => !f.is_flag).reduce((s, f) => s + (f.amount_min || 0), 0),
+            total_max: findings.filter(f => !f.is_flag).reduce((s, f) => s + (f.amount_max || 0), 0),
+            total_typical: Math.round(
+              findings.filter(f => !f.is_flag).reduce((s, f) => s + ((f.amount_min || 0) + (f.amount_max || 0)) / 2, 0)
+            ),
+            markup_pct: 35,
+            findings_count: findings.length,
+          },
+          sessionId
+        );
         return;
       }
 
@@ -209,29 +237,6 @@ export default function ServiceChecklist({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, currentQuestion, getAuthHeaders]);
-
-  const generateServiceEstimate = async (sid: string) => {
-    setGeneratingEstimate(true);
-    setError(null);
-    try {
-      const headers = await getAuthHeaders();
-      setLiveHeaders(headers);
-      const r = await fetch(`${API_URL}/api/estimates/service`, {
-        method: "POST",
-        headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ assessment_id: assessmentId, session_id: sid }),
-      });
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}));
-        throw new Error(err.detail || "Failed to generate service estimate");
-      }
-      const result: ServiceEstimateResult = await r.json();
-      onComplete(result, sid);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to generate estimate");
-      setGeneratingEstimate(false);
-    }
-  };
 
   // ── Answer handlers ────────────────────────────────────────────────────
 
