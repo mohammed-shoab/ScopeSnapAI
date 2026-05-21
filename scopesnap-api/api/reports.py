@@ -168,8 +168,58 @@ async def get_public_report(
                 "annotations": [],
             })
 
-    # ── Build AI issues in display format ─────────────────────────────────────
+    # ── A.3 fix: Step 1 ─ query diagnostic session first ─────────────
+    # Diagnostic tree result is the primary issue source. Must be queried first
+    # so it can serve as primary issues data rather than a fallback.
+    diagnostic_resolved = False
+    photo_skipped_flag = False
+    ds_row = None
+    if assessment:
+        ds_result = await db.execute(
+            text(
+                "SELECT resolved_card_id, photo_skipped FROM diagnostic_sessions "
+                "WHERE assessment_id = :aid AND resolved_card_id IS NOT NULL "
+                "ORDER BY created_at DESC LIMIT 1"
+            ),
+            {"aid": str(assessment.id)},
+        )
+        ds_row = ds_result.fetchone()
+        diagnostic_resolved = ds_row is not None
+        photo_skipped_flag = bool(ds_row[1]) if ds_row is not None else False
+
+    complaint = (assessment.tech_overrides or {}).get("complaint_type", "") if assessment else ""
+
+    # ── A.3 fix: Step 2 ─ primary issues from fault card ─────────────────
+    # If the diagnostic tree resolved a fault card, that IS the issue the
+    # homeowner called about. Show it first. Service/tune-up visits are
+    # excluded -- they have no fault, they get the fallback below.
     issues_data = []
+    if (diagnostic_resolved and ds_row
+            and complaint not in ("service", "tune_up", "maintenance")):
+        fc_table = "pak_fault_cards" if tables.market == "PK" else tables.fault_cards
+        fc_result = await db.execute(
+            text(f"SELECT card_name FROM {fc_table} WHERE card_id = :cid LIMIT 1"),
+            {"cid": ds_row[0]},
+        )
+        fc_row = fc_result.fetchone()
+        if fc_row:
+            issues_data = [{
+                "component": "system",
+                "issue": fc_row[0],
+                "severity": "high",
+                "color": "red",
+                "description": (
+                    f"Your technician diagnosed: {fc_row[0]}. "
+                    "See the recommended repair options below."
+                ),
+                "description_plain": (
+                    f"Your technician diagnosed: {fc_row[0]}. "
+                    "See the recommended repair options below."
+                ),
+            }]
+
+    # ── Step 3 ─ supplementary: AI photo analysis issues (append) ───────────
+    # Append any AI-detected visual issues after the primary fault card.
     if assessment and assessment.ai_issues:
         raw_issues = assessment.ai_issues
         if isinstance(raw_issues, list):
@@ -185,24 +235,8 @@ async def get_public_report(
                     "description_plain": issue.get("description_plain", issue.get("description", "")),
                 })
 
-    # ── Q.3: complaint_type fallback when issues list is empty ──────────────────
-    # Check if a diagnostic session resolved a fault card for this assessment
-    diagnostic_resolved = False
-    if assessment:
-        ds_result = await db.execute(
-            text(
-                "SELECT resolved_card_id, photo_skipped FROM diagnostic_sessions "
-                "WHERE assessment_id = :aid AND resolved_card_id IS NOT NULL "
-                "ORDER BY created_at DESC LIMIT 1"
-            ),
-            {"aid": str(assessment.id)},
-        )
-        ds_row = ds_result.fetchone()
-        diagnostic_resolved = ds_row is not None
-        photo_skipped_flag = bool(ds_row[1]) if ds_row is not None else False
-
-    if not issues_data and not diagnostic_resolved and assessment:
-        complaint = (assessment.tech_overrides or {}).get("complaint_type", "")
+    # ── Step 4 ─ fallback when no diagnostic resolution and no ai_issues ──────
+    if not issues_data and assessment:
         has_cost = bool(
             estimate.options and
             any(opt.get("total", 0) or 0 > 0 for opt in estimate.options)
@@ -219,7 +253,7 @@ async def get_public_report(
                 "description_plain": "Recommended preventive service to keep your system running well.",
             }]
         elif complaint in ("not_cooling", "water_dripping", "not_turning_on") and has_cost:
-            # Real app gap — diagnostic tree did not resolve a fault card but estimate was generated
+            # Real app gap -- diagnostic tree did not resolve but estimate was generated
             sentry_sdk.capture_message(
                 f"Estimate generated without diagnostic resolution for complaint type: {complaint}",
                 level="warning",
