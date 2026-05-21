@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-22 (Track H Group C + D: C.1-C.3 + D.1-D.3 shipped. HEAD: e5506c9. /tech + /homeowner live.)
+> Last updated: 2026-05-22 (Track H Group B complete. HEAD: 7d164d1. Alembic: 032. All known bugs resolved.)
 
 ---
 
@@ -43,8 +43,8 @@
 |--------|----------|--------|
 | Houston (US) | https://snapai.mainnov.tech | ✅ Live |
 | Pakistan (PK) | https://pk.snapai.mainnov.tech | ✅ Live |
-| /tech (contractor landing) | https://snapai.mainnov.tech/tech | ✅ Live (D.1, commit a000a23) |
-| /homeowner (homeowner landing) | https://snapai.mainnov.tech/homeowner | ✅ Live (D.2, commit a000a23) |
+| /tech landing (contractor) | https://snapai.mainnov.tech/tech | ✅ Live (commit a000a23, Track H D.1) |
+| /homeowner landing | https://snapai.mainnov.tech/homeowner | ✅ Live (commit a000a23, Track H D.2) |
 
 **Backend (Railway):** https://scopesnap-api-production.up.railway.app
 **Health endpoint:** `GET /health` → `{"status":"ok","db":"connected","environment":"production","version":"0.1.0"}`
@@ -93,7 +93,7 @@
 ### Production
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both prod domains) | `65f0b00` | ✅ Live | 2026-05-22 |
+| Vercel (both prod domains) | `7d164d1` | ✅ Live | 2026-05-22 |
 | Railway backend (prod) | `4743a40` | ✅ Live — health OK | 2026-05-21 |
 | Alembic migration (prod) | `032` | ✅ Applied (031 photo_skipped applied directly via Supabase MCP) | 2026-05-21 |
 | diagnostic_sessions.photo_skipped | BOOLEAN NOT NULL DEFAULT false | ✅ Applied directly (031 was skipped by Railway during outage) | 2026-05-21 |
@@ -115,9 +115,11 @@
 **Staging git HEAD:** `980698b` — "chore(staging): migrations 020-025 + dual keepalive A/B + promote-to-prod.sh"
 **Promote staging → prod:** `scripts/promote-to-prod.sh <file1> [file2 ...]` (run from a local main checkout)
 
-**Current git HEAD (main):** `65f0b00` -- "fix(C.2+C.3): diagnostic visit fee above TCO section; peak-season notice gray"
+**Current git HEAD (main):** `7d164d1` -- "fix(B.1/B.2/B.3): enrich assessment+diagnoses list rows; hide confidence pill"
 
 **Recent commits (newest first -- main):**
+- `7d164d1` -- fix(B.1/B.2/B.3): enrich assessment+diagnoses list rows; hide confidence pill (2026-05-22)
+- `31c2b6c` -- docs(D.1+D.2): add /tech + /homeowner landing page URLs to PROJECT_BRAIN (2026-05-22)
 - `65f0b00` -- fix(C.2+C.3): diagnostic visit fee above TCO section; peak-season notice gray (2026-05-22)
 - `addc57f` -- feat(C.1): TCO cards add polarity arrows + color cues + clarifying labels (2026-05-22)
 - `a000a23` -- feat(D.1+D.2): /tech and /homeowner landing pages (2026-05-22)
