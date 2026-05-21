@@ -15,6 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import sentry_sdk
 from sqlalchemy import select, text
 
+from api.dependencies import get_tables, MarketTables
+from api.estimates import _enrich_tco_from_db
 from db.database import get_db
 from db.models import (
     Assessment, AssessmentPhoto, Company, Estimate,
@@ -36,6 +38,7 @@ class ApproveRequest(BaseModel):
 async def get_public_report(
     report_token: str,
     db: AsyncSession = Depends(get_db),
+    tables: MarketTables = Depends(get_tables),
 ):
     """
     Public homeowner report endpoint. No authentication required.
@@ -336,6 +339,9 @@ async def get_public_report(
                 ))
         except Exception as e:
             print(f"[reports] Tech notification failed (non-fatal): {e}")
+
+    # G.4 BUG-029: enrich options[].five_year_comparison from TCO tables
+    response = await _enrich_tco_from_db(response, estimate, db, tables)
 
     return response
 
