@@ -8,6 +8,38 @@ import VisualSelect from "./VisualSelect";
 import MultiInput, { MultiInputItem } from "./MultiInput";
 import YesNoButtons from "./YesNoButtons";
 
+// ── Service photo skip configuration ──────────────────────────────────────────
+
+type SvcSkipType = "simple" | "choice";
+
+interface SvcSkipConfig {
+  type: SvcSkipType;
+  choices?: { label: string; branch_key: string }[];
+}
+
+const SVC_PHOTO_SKIP_CONFIG: Record<string, SvcSkipConfig> = {
+  // S Step 1: filter face photo
+  "svc-1-filter": {
+    type: "choice",
+    choices: [
+      { label: "Dirty – Replace",   branch_key: "replace" },
+      { label: "Dirty – Can Clean", branch_key: "dirty" },
+      { label: "Looks Clean",           branch_key: "clean" },
+    ],
+  },
+  // S Step 3: condenser coil face photo
+  "svc-3-coil": {
+    type: "choice",
+    choices: [
+      { label: "Heavily Blocked", branch_key: "heavily_blocked" },
+      { label: "Dirty",           branch_key: "dirty" },
+      { label: "Clean",           branch_key: "clean" },
+    ],
+  },
+  // S Step 8: run photo — any wildcard → service_complete
+  "svc-8-run": { type: "simple" },
+};
+
 // ── Types ──────────────────────────────────────────────────────────────────
 
 interface QuestionOut {
@@ -80,6 +112,9 @@ export default function ServiceChecklist({
   const [submitting, setSubmitting] = useState(false);
   const [generatingEstimate, setGeneratingEstimate] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // skip UI state — reset on each new step
+  const [skipExpanded, setSkipExpanded] = useState(false);
+  const [manualCode, setManualCode] = useState("");
 
   // ── Start session ──────────────────────────────────────────────────────
 
@@ -110,6 +145,12 @@ export default function ServiceChecklist({
     start();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId]);
+
+  // Reset skip state on each new step
+  useEffect(() => {
+    setSkipExpanded(false);
+    setManualCode("");
+  }, [currentQuestion?.step_id]);
 
   // ── Submit step answer ─────────────────────────────────────────────────
 
@@ -327,10 +368,59 @@ export default function ServiceChecklist({
           <ReadingInput spec={currentQuestion.reading_spec} ocrNameplate={ocrNameplate}
             onSubmit={handleReading} disabled={submitting} />
         )}
-        {currentQuestion.input_type === "photo" && currentQuestion.photo_spec && (
-          <PhotoSlot spec={currentQuestion.photo_spec} assessmentId={assessmentId}
-            authHeaders={authHeaders} onCapture={handlePhoto} disabled={submitting} />
-        )}
+        {currentQuestion.input_type === "photo" && currentQuestion.photo_spec && (() => {
+          const spec = currentQuestion.photo_spec!;
+          const skipConfig = SVC_PHOTO_SKIP_CONFIG[currentQuestion.step_id];
+          return (
+            <>
+              <PhotoSlot spec={spec} assessmentId={assessmentId}
+                authHeaders={authHeaders} onCapture={handlePhoto} disabled={submitting} />
+
+              { /* ── Photo skip UI ── */}
+              {skipConfig && (
+                <div className="flex flex-col gap-2">
+
+                  {/* simple: single skip link */}
+                  {skipConfig.type === "simple" && (
+                    <button
+                      onClick={() => submitStep({ slot_name: spec.slot_name, branch_key: "skipped" })}
+                      disabled={submitting}
+                      className="text-xs font-medium text-center py-1.5"
+                      style={{ color: "#4a5568" }}>
+                      Can&apos;t access right now?
+                    </button>
+                  )}
+
+                  {/* choice: collapse → expand with labeled buttons */}
+                  {skipConfig.type === "choice" && (
+                    skipExpanded ? (
+                      <div className="rounded-xl p-3 flex flex-col gap-2" style={{ background: "#0d1117", border: "1px solid #2a3050" }}>
+                        <p className="text-xs font-semibold" style={{ color: "#a0a8c0" }}>Select condition (skip photo):</p>
+                        <div className="flex flex-wrap gap-2">
+                          {skipConfig.choices!.map(c => (
+                            <button key={c.branch_key}
+                              onClick={() => submitStep({ slot_name: spec.slot_name, branch_key: c.branch_key })}
+                              disabled={submitting}
+                              className="px-4 py-2 rounded-xl font-semibold text-sm"
+                              style={{ background: "#16213e", color: "#f0f0f0", border: "1.5px solid #2a3a5a" }}>
+                              {c.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => setSkipExpanded(true)} disabled={submitting}
+                        className="text-xs font-medium text-center py-1.5" style={{ color: "#4a5568" }}>
+                        Skip photo — select condition manually →
+                      </button>
+                    )
+                  )}
+
+                </div>
+              )}
+            </>
+          );
+        })()}
         {currentQuestion.input_type === "multi" && multiItems.length > 0 && (
           <MultiInput inputs={multiItems} assessmentId={assessmentId}
             authHeaders={authHeaders} ocrNameplate={ocrNameplate}
