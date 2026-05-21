@@ -222,18 +222,6 @@ async def generate_fault_card_estimate(
     WS-G v2: Three-option estimate with dynamic labels, better_option_estimate,
     replacement recommendation, and five-year cost comparison.
     """
-    import traceback as _tb
-    try:
-        return await _generate_fault_card_estimate_inner(body, auth, tables, db)
-    except Exception as _exc:
-        raise HTTPException(status_code=500, detail=f"DEBUG BUG-030: {type(_exc).__name__}: {_exc} | {_tb.format_exc()[-800:]}")
-
-async def _generate_fault_card_estimate_inner(
-    body: FaultCardEstimateRequest,
-    auth,
-    tables: MarketTables,
-    db: AsyncSession,
-) -> FaultCardEstimateResponse:
 
     # Resolve unit age
     unit_age = body.unit_age_years
@@ -515,15 +503,27 @@ async def _generate_fault_card_estimate_inner(
                     }
                     for t in tiers
                 ]
-                report_token    = secrets.token_urlsafe(32)[:32]
-                report_short_id = "rpt-" + "".join(secrets.choice(string.digits) for _ in range(4))
-                new_estimate    = Estimate(
-                    assessment_id=body.assessment_id, company_id=auth.company_id,
-                    report_token=report_token, report_short_id=report_short_id,
-                    options=options_payload, markup_percent=markup_pct, status="draft",
-                    seasonal_modifier_pct=seasonal_pct_int,
-                )
-                db.add(new_estimate)
+                report_token = secrets.token_urlsafe(32)[:32]
+                # BUG-030b: 4-digit short ID (10k combos) causes UniqueViolation as DB grows.
+                # Retry up to 5 times with 6-digit ID (1M combos) to eliminate collision.
+                new_estimate = None
+                for _attempt in range(5):
+                    _sid = "rpt-" + "".join(secrets.choice(string.digits) for _ in range(6))
+                    _chk = await db.execute(
+                        text("SELECT 1 FROM estimates WHERE report_short_id = :sid LIMIT 1"),
+                        {"sid": _sid},
+                    )
+                    if _chk.fetchone() is None:
+                        new_estimate = Estimate(
+                            assessment_id=body.assessment_id, company_id=auth.company_id,
+                            report_token=report_token, report_short_id=_sid,
+                            options=options_payload, markup_percent=markup_pct, status="draft",
+                            seasonal_modifier_pct=seasonal_pct_int,
+                        )
+                        db.add(new_estimate)
+                        break
+                if new_estimate is None:
+                    raise HTTPException(status_code=500, detail="Could not allocate unique report_short_id after 5 attempts")
                 await db.flush()
                 estimate_id = str(new_estimate.id)
                 logger.info("[fault_estimate v2] Saved estimate %s for assessment %s card %d age=%s",
