@@ -152,9 +152,6 @@ const CONDITION_BG: Record<string, string> = {
   failed: "#fce8e8",
 };
 
-function fmt(n: number | undefined | null): string {
-  return formatCurrency(n as number);
-}
 
 /** Convert snake_case slugs to Title Case for display ("evaporator_coil" → "Evaporator Coil") */
 function formatSlug(s: string): string {
@@ -327,9 +324,7 @@ export default function ReportClient({ report }: { report: Report }) {
   // BUG-037: derive market from stored estimate data, not from hostname.
   // Prevents a PK estimate viewed on the Houston domain from formatting in USD.
   const reportMarket = (((report as any).market as "US" | "PK") || "US");
-  console.log("[BUG-037-debug] reportMarket =", reportMarket, "report.market =", (report as any).market);
-  // Shadow the module-level fmt so every call inside this component uses
-  // the correct currency for this specific estimate.
+  // BUG-038: only this arrow fn exists for fmt (module-level was deleted).
   const fmt = (n: number | undefined | null): string =>
     formatCurrency(n as number, reportMarket);
 
