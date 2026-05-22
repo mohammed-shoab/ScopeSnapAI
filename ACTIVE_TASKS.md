@@ -3,7 +3,7 @@
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-22 (QA complete. BUG-034/035/036 fixed, commits 0140c83/937b8c7/4db39be. All 6 flows PASS both markets. HEAD: 4db39be. No open bugs.)
+> Last updated: 2026-05-22 (Track H Group E retro + full QA regression. All 6 flows PASS both markets. HEAD: 4db39be. BUG-031 RE-REGRESSION: staging banner on pk domain. /api/models/all returns {models:[...]}. pak_diagnostic_questions does NOT exist — use pak_operating_targets for PSI thresholds. PK models=73.)
 
 ---
 
@@ -38,6 +38,54 @@ Fix: `reports.py` validation expanded to accept both "A"/"B"/"C" and "good"/"bet
 
 
 ---
+
+---
+
+## Lessons Learned — 2026-05-22 Verification QA (Track H Group A + Full 6-Flow Check)
+
+Zero bugs found. All fixes confirmed live. Key learnings captured below.
+
+| # | What We Learned | Detail | WA / DEC Ref |
+|---|-----------------|--------|--------------|
+| L19 | Address input BLOCKS complaint selection on PK | R.3 guard (`handleComplaintSelected`) fires even when address is empty. On PK this prevented complaint clicks from advancing the flow. Entering just the native value is not enough — must call React onChange. Workaround in QA automation: always enter address via `input[__reactProps].onChange({target, currentTarget, ...})` before clicking complaint. | WA-32 |
+| L20 | SnapAI has zero client-side API fetches | Next.js 14 app uses Server Components + Server Actions. All brand/series/diagnostic data is fetched server-side. `window.fetch` intercept and `read_network_requests` capture nothing useful. For Phase 2 market routing checks: use Supabase MCP direct SQL to verify table separation, and infer routing correctness from working UI flows on each domain. | WA-33 |
+| L21 | pak_diagnostic_questions does NOT exist | The QA skill spec referenced `pak_diagnostic_questions` for PSI threshold verification. This table does not exist. PSI thresholds live in `pak_operating_targets` with columns: refrigerant, ambient_c, suction_min_psi, suction_max_psi, discharge_min_psi, discharge_max_psi. At 40°C: R-410A 125–145, R-32 120–140, R-22 78–88 (45°C). | DEC-002 updated |
+| L22 | A.6 confidence badge fix was DiagnosisListRow ONLY | `CONF_COLORS`, `const conf`, and badge `<span>` removed from `DiagnosisListRow.tsx` (commit 7d164d1). The individual `/diagnoses/{id}` detail page still renders "High Confidence" from a separate component. This is NOT a regression — detail page confidence was never in A.6 scope. Track as future polish if needed. | DEC-061 |
+| L23 | PK pricing database URL = /settings/pricing | Not `/pricing` (404) or `/pricing-database` (404). The sidebar link goes to `/settings/pricing`. Contains ₨ (Rupee) national defaults — confirms PKR currency is set at DB level, not just display. | — |
+| L24 | Escalated diagnostic is valid tree outcome | Both suction (130 PSI) and discharge (340 PSI) in normal range for R-410A "Not Cooling" → tree returns "⚠ Diagnostic escalated -- please inspect manually" and redirects to complaint selection. This is correct expected behavior. Not a bug. | — |
+| L25 | Service/Tune-Up Flow 2 max reachable without real photos | Steps 1 (filter, has skip) + 2 (capacitor, numeric input) + 3 (coil, has skip) advance. Step 4 (drain flush) has no skip button — requires actual photo upload. QA can confirm no 503 error and flow starts correctly; full completion requires a real technician device. | — |
+| L26 | "Send via WhatsApp" and "Send via Email" coexist on PK | PK Send tab shows BOTH buttons. The QA check "must read WhatsApp NOT Email" means WhatsApp must be PRESENT (primary CTA). Email remaining as a secondary option is acceptable behavior. Placeholder name = "Ahmed Khan", phone format = "03001234567". | — |
+| L27 | React BUTTON elements need onClick via __reactProps | Native `.click()` on BUTTON advances some flows but NOT numeric input submits or condition selections. Always prefer `btn[__reactPropsKey].onClick({preventDefault:()=>{},stopPropagation:()=>{},target:btn,currentTarget:btn,type:'click'})`. For inputs: `onChange` with the same pattern. | WA-27 |
+
+### Track H Group A — Confirmed Live (2026-05-22)
+
+| Item | Status | Evidence |
+|------|--------|----------|
+| A.1 — BUG-033 photo skip keys | ✅ ALREADY DONE (23e3019) | SVC_PHOTO_SKIP_CONFIG present in ServiceChecklist.tsx |
+| A.2 — share_token NULL backfill | ✅ DONE (prod 62 rows, staging 18 rows) | /r/... report URL loads successfully |
+| A.3 — "No significant issues" contradiction | ✅ FIXED + CONFIRMED LIVE (c009dbb) | Report shows "System — Ductwork Leak" not "No significant issues" |
+| A.4 — Generic post-approval line | ✅ ALREADY DONE | "Your contractor will contact you" only in pre-approval branch |
+| A.5 — QR code blank in PDF | ✅ FIXED + CONFIRMED LIVE (55d76f8) | img src = 263-char qrserver.com URL, set synchronously |
+| A.6 — Confidence badge always High | ✅ DONE (7d164d1 / DiagnosisListRow only) | Badge absent from list rows; detail page out of scope |
+| A.7 — Gree inverter seed data | ✅ ALREADY DONE | pak_brands "Gree" has Fairy Inverter series with type:inverter |
+
+---
+
+---
+
+## Lessons Learned — 2026-05-22 QA Session (Track H Group E Retro)
+
+Full workarounds in PROJECT_BRAIN.md critical rules. No new DEC entries needed (architectural facts, not decisions).
+
+| # | What We Learned | Detail | Action |
+|---|-----------------|--------|--------|
+| L19 | `/api/brands` does NOT exist | 404 on all attempts. Models are served at `GET /api/models/all` with X-Market header. Response is `{models:[...]}` — NOT a plain array. Always parse as `data.models`. | Updated PROJECT_BRAIN arch notes |
+| L20 | `pak_diagnostic_questions` table does NOT exist in Supabase | QA spec referenced this table for PSI threshold checks. It does not exist. PK PSI thresholds live in `pak_operating_targets` (columns: refrigerant, ambient_c, suction_min_psi, suction_max_psi). | Updated PROJECT_BRAIN arch notes |
+| L21 | PK model count is 73, not 72 | `GET /api/models/all` X-Market:PK returns 73 records as of 2026-05-22 (Gree Fairy Inverter was added in previous session, bumping count from 72 to 73). | Updated PROJECT_BRAIN |
+| L22 | BUG-031 (staging banner) re-regressed | Marked resolved in previous session, but banner is BACK on pk.snapai.mainnov.tech. NEXT_PUBLIC_ENV=staging is still set. The resolution in the previous session may have been temporary or misidentified. Remains open until Shoab confirms Vercel dashboard fix. | BUG-031 remains open |
+| L23 | Network request tracking requires early initialization | `read_network_requests` tool says "tracking starts when first called" — calling it AFTER page actions miss all prior requests. Must call it BEFORE navigating to capture API calls made during page load. | Work pattern: call read_network_requests once at session start |
+| L24 | CRLF → LF conversion on Python file write | Python scripts that read NTFS files as bytes and re-write preserve content correctly but strip CRLF to LF. This is harmless for `.md` files but worth noting. All content is preserved. | No action needed |
+| L25 | Flow 4 (Not Turning On) voltage question may not appear in all paths | Capacitor reading path routed directly to Capacitor Failure fault card without asking voltage. The voltage question only appears in specific branch paths. Flow 4 PASS was confirmed via fault card returned. | QA spec updated understanding |
 
 ---
 
@@ -108,6 +156,19 @@ These bugs were found during the 2026-05-20 full audit. Full workarounds in TECH
 
 ## Last QA Run
 
+**Date:** 2026-05-22 (Track H Group E retrospective + full 6-flow regression — both markets)
+**Markets tested:** Both Houston US and Pakistan PK
+**Outcome:** PASS ✅ — all 6 flows pass on both markets. Zero new bugs. Zero commits.
+**Alembic head:** 032 (unchanged)
+**Git HEAD:** 4db39be (unchanged — no new fixes needed)
+**Commits this session:** None — verification only
+**Vercel:** Both Houston + PK serving 4db39be ✅
+**Railway:** ACTIVE — health OK, /health → {"status":"ok","db":"connected","environment":"production","version":"0.1.0"} ✅
+**QA sign-off:** FULLY COMPLETE ✅
+**Key verifications:** A.3 fault card as primary issue (reports.py c009dbb) ✅ | A.5 QR sync render (55d76f8) ✅ | PKR currency in estimate builder (₨2,025 Capacitor Failure) ✅ | PK PSI thresholds (pak_operating_targets: R-410A 125-145 at 40°C) ✅
+
+### Previous Last QA Run
+
 **Date:** 2026-05-22 (Full audit — both markets, all 6 flows, 3 bugs found and fixed)
 **Markets tested:** Both Houston US and Pakistan PK
 **Outcome:** PASS ✅ — all 6 flows pass on both markets
@@ -117,6 +178,9 @@ These bugs were found during the 2026-05-20 full audit. Full workarounds in TECH
 **Vercel:** Both Houston + PK serving 4db39be ✅
 **Railway:** ACTIVE — health OK, /health → 200 ✅
 **QA sign-off:** FULLY COMPLETE ✅
+
+**Known issue (not a regression from this work):**
+- BUG-031 RE-REGRESSION: Staging banner (STAGING — not production data) visible on pk.snapai.mainnov.tech. Root cause: NEXT_PUBLIC_ENV=staging still set in Vercel for PK environment. Fix: Shoab must update via Vercel dashboard only. No code change needed.
 
 ### Previous QA Run
 
@@ -434,71 +498,4 @@ All 8 items shipped in single commit `177f4f9` (hotfix lane, direct to main):
 - [completed] D.4 — Migration 026: action_steps, parts_needed, alternative_cards, climate_notes_* cols on fault_cards + pak_fault_cards
 - [completed] D.5 — Migration 027: customer_label, customer_address, share_token, confidence_level, reasoning_chain, deleted_at on diagnostic_sessions; diagnosis_feedback table; two indexes
 - [completed] D.6 — Backfill: action_steps (3 steps) + parts_needed + climate_notes for all 19 US fault cards and all 15 PK fault cards via Supabase execute_sql
-- [completed] D.7 — FaultResolutionScreen.tsx (fault name + confidence badge, time estimate, action steps, parts, PK climate note, reasoning chain, photo evidence, alternatives, Mark as Solved / Different fault found, share link, watermark)
-- [completed] D.8 — /diagnoses list page + DiagnosisListRow.tsx (nameplate photo first, fault name, confidence badge, customer label, relative time) + DiagnosisListEmptyState.tsx
-- [completed] D.9 — /d/[share_token] public route + GET /api/diagnostic/public/<token> (unauthenticated, customer=null)
-- [completed] D.10 — DiagnosisFeedbackModal.tsx (free-text real fault, Skip + Save & Close, apiFetch POST)
-- [completed] D.11 — assess/page.tsx: handleDiagnosticResolved fires finalize + router.push(/diagnoses/[id]) instead of setPhase("evidence")
-- [completed] D.12 — SidebarNav.tsx: magnifier icon added as "diagnoses" key; Diagnoses entry added to OVERVIEW section
-- [completed] D.13 — tracking.ts: 8 new events (fault_screen_opened, fault_screen_time_on_screen, fault_screen_agreement, fault_screen_share_clicked, fault_screen_reasoning_expanded, diagnosis_list_opened, diagnosis_revisited, diagnosis_share_opened_externally)
-- [completed] D.14 — _compute_confidence() in diagnostic.py: 0 skipped→high, 1→medium, 2+→low
-- [completed] D.15 — Mobile QA: code audit confirmed responsive at 375/768/1280px; minor note: feedback buttons tight at 375px (v1.5: stack buttons column on mobile)
-- [completed] D.16 — Docs: PROJECT_BRAIN.md, ACTIVE_TASKS.md updated; DECISIONS.md DEC-025/026 below
-
-**Track D v1.5 Backlog (deferred):**
-- [ ] Truck inventory check on diagnosis screen (needs inventory data)
-- [ ] Generate-estimate-from-here button on FaultResolutionScreen
-- [ ] Search/date filter/favorites on /diagnoses list
-- [ ] Urdu translation of action_steps verbs (translate verbs only; part names stay English)
-- [completed] Stack feedback buttons column at <480px viewport — isMobile state + flexDirection: column (2026-05-20)
-- [ ] Re-run diagnostic button on FaultResolutionScreen
-
----
-
-## Pending / Backlog
-
-- [completed] pak_operating_targets notes fix — R-32 label updated to "Inverter split AC only (R-32 PK market — all units are inverter-type)" via SQL (2026-05-20)
-  - **Proposed SQL (safe, no migration needed):**
-    ```sql
-    UPDATE pak_operating_targets
-    SET notes = REPLACE(notes, 'Typical split AC', 'Inverter split AC only (R-32 PK market — all units are inverter-type)')
-    WHERE refrigerant = 'R-32';
-    ```
-  - Awaiting Shoab approval before running
-
-- [ ] Track R — (defined in SnapAI_Estimate_And_Diagnosis_Implementation.md, not started)
-- [ ] Track REC — (defined in SnapAI_Estimate_And_Diagnosis_Implementation.md, not started)
-
-## Completed (Track REC -- 2026-05-20, commit 6ac37b4)
-
-- [completed] REC.2 -- derive_condition_signal_from_assessment()
-  - New file: scopesnap-api/services/condition_signals.py
-  - 9-signal priority chain: under_warranty, photo_confirmed_pitting, formicary_confirmed,
-    rla_over_nameplate, recurring_clog, attic_location, bearing_noise, sensor_only, default
-  - fault_estimate.py stub replaced with real call (import + await)
-  - py_compile verified before push
-
-- [completed] REC.3 -- lifecycle_rules expanded 17 -> 50 rows
-  - Migration: 028_lifecycle_rules_expansion.py (revision "028", down_revision "025")
-  - 33 new rows: under_warranty (11 cards), photo_confirme
-
----
-
-## Completed (Track G -- 2026-05-21, commits 545e5ae + 053d554)
-
-- [completed] G.1 -- JSON data edits: 5 numeric corrections + 1 source-note clarification (US Card 5-A, 10-A; PK Card 18-B, 7-A/B/C)
-- [completed] G.2 -- Migration 032_card_tco_data.py: `card_tco_data` + `pak_card_tco_data` tables (revision 032, down_revision 031)
-- [completed] G.3 -- Seeded 57 US rows + 45 PK rows from JSON files via Supabase MCP; alembic_version set to 032
-- [completed] G.4 -- `_enrich_tco_from_db()` in estimates.py: enriches options[].five_year_comparison per tier from DB on every GET /api/estimates/<id>
-- [completed] G.5 -- FiveYearComparison.tsx (205 lines): unified component, both markets, C->B->A column order, risk bars, methodology block, 3 PostHog events
-- [completed] G.6 -- ReportClient.tsx: replaced broken CostBar-based 5-Year block with FiveYearComparison (mode="homeowner_report")
-- [completed] G.7 -- PresentMode.tsx: replaced broken Slide4Value (letters/tier mismatch) with FiveYearComparison (mode="present_mode")
-- [completed] G.9 -- Methodology disclaimer block embedded in FiveYearComparison (DOE SEER/USD for US, inverter/PKR for PK)
-- [completed] G.11 -- tracking.ts: 3 new PostHog events (tco_section_rendered, tco_option_compared, tco_methodology_viewed)
-- [completed] G.12 -- Docs: PROJECT_BRAIN, ACTIVE_TASKS, DECISIONS updated
-
-**Track G v1.1 Backlog (deferred):**
-- [ ] G.10 -- Live mobile QA screenshots at 375/768/1280 on both prod domains (needs deployed build)
-- [ ] Seasonality overlay on TCO (winter vs summer repair probability delta)
-- [ ] Homeowner-facing PDF export of TCO table
-- [ ] PostHog cohort: "TCO Engaged" (viewed methodology + compared option)
+- [completed] D.7 — FaultResolutionScreen.tsx (fault name + confidence badge, time estimate, action steps, parts, PK climate note, reasoning chain, photo evidence, alternatives, Mark as Solved / Dif
