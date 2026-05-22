@@ -346,6 +346,10 @@ async def get_public_report(
 
         # B.6: on-site photo not captured — triggers disclosure on homeowner report
         "photo_skipped": photo_skipped_flag,
+
+        # BUG-037: market stamp — 'US' | 'PK' — tells the report viewer which
+        # currency to use regardless of which domain serves the page.
+        "market": getattr(estimate, "market", "US") or "US",
     }
 
     # ── Commit viewed_at + tech notification on first view ────────────────────

@@ -1174,6 +1174,7 @@ await indexedDB.deleteDatabase('snapai_models_pk');
 location.reload(true);
 ```
 
+<<<<<<< Updated upstream
 ---
 
 ## DEC-063 — `/api/models/all` response shape is `{models:[...]}`, not a plain array (2026-05-22)
@@ -1250,3 +1251,95 @@ Steps 2, 5, 6, 7 use reading/multi input types — they always have a submit but
 4. If step generates a finding, map the branch_key to the correct line_item_code
 
 **Commit:** `3f09c02`
+=======
+---
+
+## DEC-063 — `/api/models/all` response shape is `{models:[...]}`, not a plain array (2026-05-22)
+
+**Date:** 2026-05-22
+
+**Context:** During Phase 2 backend health checks, code used `Array.isArray(data)` to parse the `/api/models/all` response. This returned `false` (the response is `{"models": [...]}`, an object), causing model counts to show as 0 even though the endpoint returned 200 OK with valid data.
+
+**Correct parse pattern:**
+```javascript
+const resp = await fetch(`${base}/api/models/all`, {headers: {'X-Market': 'PK'}});
+const data = await resp.json();
+const models = data.models || []; // NOT: Array.isArray(data) ? data : data.models
+```
+
+**Also confirmed:** `/api/brands` does NOT exist — returns 404. The only model data endpoint is `/api/models/all`.
+
+**Impact:** Any code, test, or script that fetches brand/model data from Railway must handle the `{models:[...]}` wrapper. The existing `getBrands()` / `searchModels()` functions in `lib/modelCache.ts` handle this correctly.
+
+---
+
+## DEC-064 — PK PSI thresholds are in `pak_operating_targets`, not `pak_diagnostic_questions` (2026-05-22)
+
+**Date:** 2026-05-22
+
+**Context:** QA skill Phase 2d spec said to check `pak_diagnostic_questions` for PSI high_min thresholds. The table `pak_diagnostic_questions` does NOT exist in production Supabase — querying it returns `ERROR: relation does not exist`.
+
+**Actual table:** `pak_operating_targets`
+
+**Schema confirmed:**
+```sql
+SELECT refrigerant, ambient_c, suction_min_psi, suction_max_psi, discharge_min_psi, discharge_max_psi
+FROM pak_operating_targets
+ORDER BY refrigerant, ambient_c;
+```
+
+**Verified values (2026-05-22):**
+- R-410A at 40°C: suction 125–145 PSI, discharge 325–370 PSI ✅
+- R-32 at 40°C: suction 120–140 PSI, discharge 365–410 PSI ✅
+- R-22 at 45°C: suction 78–88 PSI ✅
+
+`suction_max_psi` is the upper normal bound — readings above this trigger a "high pressure" fault. These match QA spec requirements.
+
+**Impact:** Any migration or data patch to PK PSI thresholds must target `pak_operating_targets`. The QA skill Phase 2d check must query `pak_operating_targets`, not `pak_diagnostic_questions`.
+
+---
+
+## DEC-061 -- A.6 confidence badge fix scope: DiagnosisListRow only, not detail page (2026-05-22)
+
+**Date:** 2026-05-22
+
+**Problem:** Track H A.6 required hiding the always-"High Confidence" badge from diagnosis views.
+The fix was applied to `DiagnosisListRow.tsx` (the list view). During verification QA, the
+`/diagnoses/{id}` detail page still showed "High Confidence" via a separate component.
+
+**Decision:** This is NOT a regression and NOT a new bug. The detail page uses an independent component
+that was always out of scope for A.6. The A.6 task was explicitly scoped to the list view only.
+
+**Rule:** When a Track item says "confidence badge," assume it means the list view (`DiagnosisListRow.tsx`)
+unless `/diagnoses/[id]` detail page is explicitly mentioned. The two components are independent.
+
+**Impact:** Future QA must not flag the detail page confidence display as a regression. It is known,
+deferred behavior. A separate Track item would be needed to address it.
+
+---
+
+## DEC-062 -- Address input must be populated via React onChange BEFORE complaint selection on PK (2026-05-22)
+
+**Date:** 2026-05-22
+
+**Problem:** During PK QA browser automation, clicking a complaint button (e.g. "Not Cooling") without
+first entering an address caused `handleComplaintSelected` (R.3 guard) to silently block — the complaint
+was not registered, the diagnostic flow did not advance, and no visible error was thrown.
+
+**Root cause:** The R.3 address guard on PK checks for a non-empty address before allowing complaint
+selection. If empty, it returns early. On PK this is a hard block; on Houston it may only show a warning
+and allow the flow to continue.
+
+**This is NOT cosmetic on PK.** It is a silent blocking guard.
+
+**Workaround (WA-32):** In QA automation, ALWAYS populate address via React internal handler BEFORE
+clicking any complaint button. Native `input.value =` alone is not enough — must call React's onChange:
+```js
+const addrInput = document.querySelector('input[placeholder*="address" i], input[name*="address" i]');
+const rk = Object.keys(addrInput).find(k => k.startsWith('__reactProps'));
+Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(addrInput, '123 Test St');
+addrInput[rk].onChange({ target: addrInput, currentTarget: addrInput, preventDefault: ()=>{}, stopPropagation: ()=>{} });
+```
+
+**Markets affected:** PK (confirmed hard block). Houston: warning appears, flow may still continue.
+>>>>>>> Stashed changes

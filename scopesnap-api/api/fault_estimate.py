@@ -519,6 +519,7 @@ async def generate_fault_card_estimate(
                             report_token=report_token, report_short_id=_sid,
                             options=options_payload, markup_percent=markup_pct, status="draft",
                             seasonal_modifier_pct=seasonal_pct_int,
+                            market=tables.market,  # BUG-037: stamp market at creation
                         )
                         db.add(new_estimate)
                         break

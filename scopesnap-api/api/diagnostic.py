@@ -280,6 +280,7 @@ async def _generate_service_estimate(
     db: AsyncSession,
     assessment_id: str,
     company_id: str,
+    market: str = "US",  # BUG-037: stamp market at creation
 ) -> None:
     """
     BUG-009 fix: create a service/tune-up estimate in the DB so the frontend's
@@ -340,10 +341,10 @@ async def _generate_service_estimate(
         text(
             "INSERT INTO estimates"
             "  (id, assessment_id, company_id, report_token, report_short_id,"
-            "   options, markup_percent, status, created_at)"
+            "   options, markup_percent, status, created_at, market)"
             " VALUES"
             "  (:id, :aid, :cid, :token, :short_id,"
-            "   :options::jsonb, :markup, 'draft', :now)"
+            "   :options::jsonb, :markup, 'draft', :now, :market)"
         ),
         {
             "id":       assessment_id,   # id == assessment_id → frontend URL routing
@@ -354,6 +355,7 @@ async def _generate_service_estimate(
             "options":  _json.dumps(options),
             "markup":   markup_percent,
             "now":      now,
+            "market":   market,
         },
     )
 
@@ -714,7 +716,7 @@ async def _process_branch(
         #   _complete_service_session to throw an unhandled exception → 503.
         if branch.get("generate_estimate") and assessment_id and company_id:
             try:
-                await _generate_service_estimate(db, assessment_id, company_id)
+                await _generate_service_estimate(db, assessment_id, company_id, tables.market)
             except Exception as exc:
                 logger.error(
                     "[diagnostic] service estimate creation failed (non-fatal): %s", exc

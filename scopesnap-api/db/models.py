@@ -497,6 +497,9 @@ class Estimate(Base):
     # R.9 seasonal labour surcharge captured at generation time (migration 029)
     seasonal_modifier_pct: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
+    # BUG-037: market stamp — 'US' or 'PK' — set at estimate creation (migration 031)
+    market: Mapped[str] = mapped_column(String(2), nullable=False, server_default="US")
+
     # Accuracy tracking (filled in after job completion)
     actual_cost: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
     accuracy_score: Mapped[Optional[float]] = mapped_column(Numeric(5, 2), nullable=True)

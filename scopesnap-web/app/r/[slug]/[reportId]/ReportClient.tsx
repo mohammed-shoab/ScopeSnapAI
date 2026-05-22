@@ -324,6 +324,14 @@ function IssueItem({ issue }: { issue: Issue }) {
 
 
 export default function ReportClient({ report }: { report: Report }) {
+  // BUG-037: derive market from stored estimate data, not from hostname.
+  // Prevents a PK estimate viewed on the Houston domain from formatting in USD.
+  const reportMarket = (((report as any).market as "US" | "PK") || "US");
+  // Shadow the module-level fmt so every call inside this component uses
+  // the correct currency for this specific estimate.
+  const fmt = (n: number | undefined | null): string =>
+    formatCurrency(n as number, reportMarket);
+
   // Urdu / RTL support for PK homeowner reports
   const [lang, setLang] = useState<"en" | "ur">("en");
   useEffect(() => {
@@ -952,7 +960,7 @@ export default function ReportClient({ report }: { report: Report }) {
               optionB={report.options.find((o) => o.tier === "B")?.five_year_comparison ?? null}
               optionC={report.options.find((o) => o.tier === "C")?.five_year_comparison ?? null}
               recommendedTier={(initialRecommendedTier as "A" | "B" | "C")}
-              market={detectMarket()}
+              market={reportMarket}
               mode="homeowner_report"
               sessionId={report.report_short_id}
             />
