@@ -3,7 +3,7 @@
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-22 (QA complete. BUG-034/035/036 fixed, commits 0140c83/937b8c7/4db39be. All 6 flows PASS both markets. HEAD: 4db39be. No open bugs.)
+> Last updated: 2026-05-22 (QA complete + post-QA drain fix. BUG-034/035/036 fixed + svc-4-drain skip added (3f09c02). All 6 flows PASS both markets. Service/Tune-Up fully traversable end-to-end. HEAD: 3f09c02. No open bugs.)
 
 ---
 
@@ -51,6 +51,7 @@ Full workarounds in PROJECT_BRAIN.md critical rules (WA-28 through WA-31). DEC e
 | L16 | Service estimate never created — session stuck at service_complete | `_generate_service_estimate()` in diagnostic.py ran an INSERT including `updated_at` column. That column does not exist in the `estimates` table, causing a silent SQL error caught by `except Exception`. Session reached `service_complete` status but no estimate row was ever created. | Removed `updated_at` from INSERT column list and VALUES. Verified by running corrected INSERT via Supabase MCP — succeeded. | WA-28, DEC-059 |
 | L17 | Frontend POSTed to /api/estimates/service — 405 Method Not Allowed | The `generateServiceEstimate()` function in ServiceChecklist.tsx called `POST /api/estimates/service`. This endpoint was never built on the backend. OpenAPI confirms only: /api/estimates/fault-card (POST), /api/estimates/{id}/refresh (POST). The service estimate is auto-generated server-side. | Removed the entire `generateServiceEstimate()` function. After `service_step_complete`, call `onComplete()` directly with findings data — `handleServiceComplete` in assess/page.tsx ignores the result and just calls `router.push(/assessment/{id})`. | WA-29, DEC-060 |
 | L18 | Edit tool truncated diagnostic.py on NTFS (1602 lines, should be 1646) | DEC-027 says never use Edit tool on files with non-ASCII chars. diagnostic.py contains non-ASCII characters (arrow chars in string literals). The edit removed 44 lines from the end of the file. SyntaxError on ast.parse confirmed truncation. | Restored from `git cat-file blob <sha>` (Linux sandbox, read-only operation), then applied the fix via Desktop Commander Python script that used `.replace()` on the raw bytes. Verified with ast.parse + wc -l. | WA-31, DEC-027 |
+| L19 | Step 4 (drain flush photo) blocked all QA and field use when camera unavailable | `SVC_PHOTO_SKIP_CONFIG` in `ServiceChecklist.tsx` had entries for steps 1, 3, 8 but not step 4. A photo step with no skip config shows only the camera upload area — no alternative path. QA resorted to React fiber injection (bypasses `submitStep`, zeros `findings`), leaving Estimate Builder empty. | Added `"svc-4-drain"` to `SVC_PHOTO_SKIP_CONFIG` with choice type: "Drain Flushed" (branch_key=flushed, adds flush_tablet $12-$18) and "Could Not Flush" (branch_key=skipped, no finding). Backend already had both branches. Pure frontend fix, no DB change. | DEC-062 |
 
 ### Bugs Fixed This QA Run
 
@@ -68,6 +69,14 @@ Full workarounds in PROJECT_BRAIN.md critical rules (WA-28 through WA-31). DEC e
 - **Root cause:** `generateServiceEstimate()` in ServiceChecklist.tsx POSTed to a backend endpoint that was never implemented. `handleServiceComplete` in assess/page.tsx ignores the ServiceEstimateResult and immediately redirects anyway.
 - **Fix:** Removed `generateServiceEstimate()` entirely. After `service_step_complete`, call `onComplete()` directly with findings summary. Backend auto-generates estimate; user lands on `/assessment/{id}` which fetches it via GET.
 - **Verified:** Estimate created for assessment 829eea43-..., page renders 3 Good/Better/Best tiers
+
+### Post-QA Fix Applied
+
+**svc-4-drain skip config (FIXED — commit 3f09c02)**
+- **Root cause:** `SVC_PHOTO_SKIP_CONFIG` in `ServiceChecklist.tsx` had entries for steps 1, 3, 8 but NOT step 4 (drain flush). A photo step with no skip config gives no alternative path — QA blocked, field techs blocked if camera broken.
+- **Discovery:** During QA verification of Flow 2, reaching step 4 required a React fiber `onComplete` hack that bypassed `submitStep()`, zeroing `findings` → Estimate Builder showed empty line items.
+- **Fix:** Added `"svc-4-drain": { type: "choice", choices: [{ label: "Drain Flushed", branch_key: "flushed" }, { label: "Could Not Flush", branch_key: "skipped" }] }`. Backend already handled both branches (no DB change needed).
+- **Lesson:** Every photo step in ServiceChecklist needs a SVC_PHOTO_SKIP_CONFIG entry. See DEC-062 for full checklist.
 
 ### Minor Flag (Non-Blocking)
 
@@ -108,14 +117,14 @@ These bugs were found during the 2026-05-20 full audit. Full workarounds in TECH
 
 ## Last QA Run
 
-**Date:** 2026-05-22 (Full audit — both markets, all 6 flows, 3 bugs found and fixed)
+**Date:** 2026-05-22 (Full audit — both markets, all 6 flows, 3 bugs found and fixed + post-QA drain fix)
 **Markets tested:** Both Houston US and Pakistan PK
-**Outcome:** PASS ✅ — all 6 flows pass on both markets
+**Outcome:** PASS ✅ — all 6 flows pass on both markets + svc-4-drain step 4 skip resolved
 **Alembic head:** 032 (unchanged)
-**Git HEAD:** 4db39be — "fix(BUG-036): remove dead POST /api/estimates/service call"
-**Commits this session:** 0140c83 (BUG-034), 937b8c7 (BUG-035), 4db39be (BUG-036)
-**Vercel:** Both Houston + PK serving 4db39be ✅
-**Railway:** ACTIVE — health OK, /health → 200 ✅
+**Git HEAD:** 3f09c02 — "fix(service-checklist): add skip config for svc-4-drain"
+**Commits this session:** 0140c83 (BUG-034), 937b8c7 (BUG-035), 4db39be (BUG-036), 3f09c02 (svc-4-drain skip)
+**Vercel:** Both Houston + PK serving 3f09c02 ✅ (Current — Ready)
+**Railway:** ACTIVE — health OK, /health → {"status":"ok","db":"connected","environment":"production","version":"0.1.0"} ✅
 **QA sign-off:** FULLY COMPLETE ✅
 
 ### Previous QA Run

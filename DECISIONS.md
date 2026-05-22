@@ -1301,3 +1301,42 @@ ast.parse(fixed.decode("utf-8"))  # must not raise
 
 **Note:** `git checkout HEAD -- <file>` fails on NTFS mount (Operation not permitted). The cat-file → Python write approach is the only reliable restore path from the Linux sandbox.
 
+
+---
+
+## DEC-062 — Every photo step in ServiceChecklist needs a SVC_PHOTO_SKIP_CONFIG entry (2026-05-22)
+
+**Date:** 2026-05-22
+
+**Problem:** `svc-4-drain` (Step 4 — Drain flush confirmation photo) had no entry in `SVC_PHOTO_SKIP_CONFIG` in `ServiceChecklist.tsx`. A photo input step with no skip config renders only the camera upload area. There is no alternative path — no skip link, no manual condition buttons. Result: QA testers and field technicians with a broken camera are completely blocked at step 4. The only escape was a React fiber hack that bypassed `submitStep()`, which zeroed out `findings` and left the Estimate Builder empty.
+
+**Root cause discovery:** During QA, step 4 had to be advanced using a React fiber `onComplete` injection. This bypassed the entire `findings` accumulation in `ServiceChecklist`. The Estimate Builder showed no line items. The real fix is to add proper skip options so the normal code path runs.
+
+**Backend already correct:** `svc-4-drain` in `diagnostic_questions.branch_logic_jsonb` already had three working branches:
+- `"flushed"`: routes to svc-5-terminals + adds `flush_tablet` finding ($12–$18)
+- `"skipped"`: routes to svc-5-terminals, no finding (drain flush not possible)
+- `"any"`: wildcard, routes to svc-5-terminals + adds flush_tablet finding
+
+**Frontend fix:** Added `"svc-4-drain"` to `SVC_PHOTO_SKIP_CONFIG` with `type: "choice"`:
+
+
+**Rule:** Every photo step in ServiceChecklist MUST have an entry in SVC_PHOTO_SKIP_CONFIG. The current coverage (post-fix):
+| Step | Step ID | Skip Type | Branches |
+|------|---------|-----------|---------|
+| 1 | svc-1-filter | choice | replace / dirty / clean |
+| 3 | svc-3-coil | choice | heavily_blocked / dirty / clean |
+| 4 | svc-4-drain | choice | flushed / skipped |
+| 8 | svc-8-run | simple | skipped |
+
+Steps 2, 5, 6, 7 are not photo steps — they use `reading` or `multi` input types, which always have explicit submit buttons.
+
+**Checklist for adding any new service photo step:**
+1. Add row to `diagnostic_questions` with `input_type = 'photo'`
+2. Add branch_logic_jsonb with `"skipped"` and `"any"` entries routing to the next step
+3. Add entry to `SVC_PHOTO_SKIP_CONFIG` in `ServiceChecklist.tsx` with appropriate choices
+4. If step adds a service finding, map the correct `branch_key` to the `line_item_code`
+
+**Why the drain flush photo is always completable:** Unlike diagnostic photos (filter/coil condition — tech visually assesses), the drain flush is a task the tech always performs (or decides not to). The photo is documentation only. "Drain Flushed" / "Could Not Flush" are always valid answers.
+
+**Commit:** `3f09c02` — fix(service-checklist): add skip config for svc-4-drain
+
