@@ -1,4 +1,10 @@
 /** @type {import('next').NextConfig} */
+
+// Dynamic API URL — set via NEXT_PUBLIC_API_URL env var (staging vs production).
+// Used both as the JS bundle constant AND in the CSP connect-src header so that
+// the browser Security Policy allows fetches to whichever backend is active.
+const API_URL_FOR_CSP = process.env.NEXT_PUBLIC_API_URL || 'https://scopesnap-api-production.up.railway.app';
+
 const nextConfig = {
   // Redirect the raw Vercel deployment URL to the canonical production domain.
   // Clerk production keys are domain-locked to snapai.mainnov.tech — anyone
@@ -93,6 +99,8 @@ const nextConfig = {
             // 'unsafe-inline' required for Clerk's embedded components + Tailwind
             // challenges.cloudflare.com required for Clerk's Turnstile CAPTCHA
             // www.gstatic.com required for Google OAuth icon (some Clerk versions)
+            // API_URL_FOR_CSP is dynamic — resolves to staging or production backend
+            // depending on NEXT_PUBLIC_API_URL env var set in Vercel project settings.
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
@@ -100,7 +108,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://*.r2.dev https://img.clerk.com https://images.clerk.dev https://www.gstatic.com https://*.gstatic.com https://clerk.snapai.mainnov.tech https://lh3.googleusercontent.com",
-              "connect-src 'self' https://scopesnap-api-production.up.railway.app https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://us.i.posthog.com https://us-assets.i.posthog.com https://challenges.cloudflare.com",
+              `connect-src 'self' ${API_URL_FOR_CSP} https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://us.i.posthog.com https://us-assets.i.posthog.com https://challenges.cloudflare.com`,
               "frame-src 'self' https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://challenges.cloudflare.com",
               "worker-src 'self' blob:",
             ].join("; "),
