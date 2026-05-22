@@ -327,6 +327,7 @@ export default function ReportClient({ report }: { report: Report }) {
   // BUG-037: derive market from stored estimate data, not from hostname.
   // Prevents a PK estimate viewed on the Houston domain from formatting in USD.
   const reportMarket = (((report as any).market as "US" | "PK") || "US");
+  console.log("[BUG-037-debug] reportMarket =", reportMarket, "report.market =", (report as any).market);
   // Shadow the module-level fmt so every call inside this component uses
   // the correct currency for this specific estimate.
   const fmt = (n: number | undefined | null): string =>
