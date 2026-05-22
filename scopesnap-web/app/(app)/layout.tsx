@@ -17,7 +17,7 @@ const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development" ||
   process.env.NODE_ENV === "development";
 const IS_STAGING = process.env.NEXT_PUBLIC_ENV === "staging";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://scopesnap-api-production.up.railway.app";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default async function AppLayout({
   children,
