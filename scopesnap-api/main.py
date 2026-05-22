@@ -1,6 +1,6 @@
 import os
 """
-SnapAI API — FastAPI Application Entry Point
+SnapAI API â FastAPI Application Entry Point
 
 Run locally: uvicorn main:app --reload --port 8000
 API docs:    http://localhost:8000/docs
@@ -43,7 +43,7 @@ from api.uploads import router as uploads_router   # Diagnostic photo upload
 from api.models import router as models_router     # Section 5A: model lookup
 
 
-# ── Sentry Error Tracking ─────────────────────────────────────────────────────
+# ââ Sentry Error Tracking âââââââââââââââââââââââââââââââââââââââââââââââââââââ
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
@@ -60,13 +60,13 @@ if _sentry_dsn:
 
 settings = get_settings()
 
-# ── Rate Limiter ──────────────────────────────────────────────────────────────
+# ââ Rate Limiter ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 # The limiter is defined in rate_limit.py so individual API modules can
 # import it without circular-importing main.py. Imported here to wire it
 # into FastAPI state / middleware below.
 from rate_limit import limiter
 
-# ── App Setup ─────────────────────────────────────────────────────────────────
+# ââ App Setup âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 app = FastAPI(
     title="SnapAI API",
     description="AI-powered HVAC estimation platform for contractors",
@@ -76,11 +76,11 @@ app = FastAPI(
     redirect_slashes=False,
 )
 
-# ── Rate Limit Middleware + Handler ──────────────────────────────────────────
+# ââ Rate Limit Middleware + Handler ââââââââââââââââââââââââââââââââââââââââââ
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# ── Global fallback: raw exceptions → CORS-aware JSON 500 ─────────────────────
+# ââ Global fallback: raw exceptions â CORS-aware JSON 500 âââââââââââââââââââââ
 # FastAPI's ServerErrorMiddleware returns 500 WITHOUT CORS headers when a raw
 # Python exception (e.g. asyncpg.InvalidCachedStatementError) is raised.
 # This handler sits inside ExceptionMiddleware (inside CORSMiddleware) so the
@@ -99,13 +99,15 @@ async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSON
     )
 app.add_middleware(SlowAPIMiddleware)
 
-# ── CORS ──────────────────────────────────────────────────────────────────────
+# ââ CORS ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         settings.frontend_url,
         "https://snapai.mainnov.tech",
         "https://pk.snapai.mainnov.tech",
+        "https://staging.snapai.mainnov.tech",      # staging US market
+        "https://pk-staging.snapai.mainnov.tech",   # staging PK market
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
@@ -114,7 +116,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Local File Serving ─────────────────────────────────────────────────────────
+# ââ Local File Serving âââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 # Serve /files from local disk when R2 is not configured (dev or staging).
 # When R2 credentials are set, the frontend will reference R2 URLs directly and
 # this mount is a harmless no-op fallback.
@@ -122,7 +124,7 @@ uploads_dir = Path(settings.upload_dir)
 uploads_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/files", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
-# ── API Routers ───────────────────────────────────────────────────────────────
+# ââ API Routers âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 app.include_router(assessments.router)
 app.include_router(recommend_router)        # WS-H: registered FIRST to prevent /{estimate_id} catch-all conflict
 app.include_router(estimates.router)
@@ -151,12 +153,12 @@ app.include_router(uploads_router)           # POST /api/uploads (diagnostic pho
 app.include_router(models_router)            # GET /api/models/* (Section 5A model lookup)
 
 
-# ── Health Check ──────────────────────────────────────────────────────────────
+# ââ Health Check ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 @app.get("/health", tags=["system"])
 async def health_check():
     """
     Health check endpoint.
-    Returns DB connection status — used by WP-01 acceptance criteria.
+    Returns DB connection status â used by WP-01 acceptance criteria.
 
     Expected response: {"status": "ok", "db": "connected"}
     """
@@ -169,7 +171,7 @@ async def health_check():
     }
 
 
-# ── Root ──────────────────────────────────────────────────────────────────────
+# ââ Root ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 @app.get("/", tags=["system"])
 async def root():
     return {
@@ -180,7 +182,7 @@ async def root():
     }
 
 
-# ── Startup ───────────────────────────────────────────────────────────────────
+# ââ Startup âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 @app.on_event("startup")
 async def on_startup():
     print(f"\n{'='*50}")
@@ -188,7 +190,7 @@ async def on_startup():
     print(f"  Environment: {settings.environment}")
     print(f"  Database: {settings.database_url[:50]}...")
     if settings.is_development:
-        print(f"  Storage: LocalStorage → {settings.upload_dir}")
+        print(f"  Storage: LocalStorage â {settings.upload_dir}")
         print(f"  Email: ConsoleSender (emails printed to terminal)")
         print(f"  API Docs: http://localhost:8000/docs")
     print(f"{'='*50}\n")
@@ -196,9 +198,9 @@ async def on_startup():
     # Verify DB connection on startup
     db_ok = await check_db_connection()
     if db_ok:
-        print("✅ Database connection: OK")
+        print("â Database connection: OK")
     else:
-        print("❌ Database connection: FAILED")
+        print("â Database connection: FAILED")
         print("   Make sure PostgreSQL is running and DATABASE_URL is correct.")
         print("   For Windows, run: docker start scopesnap-db")
 
@@ -214,14 +216,14 @@ async def on_startup():
             result = await db.execute(select(sql_func.count()).select_from(PricingRule))
             rule_count = result.scalar_one()
         if rule_count == 0:
-            print("📋 Pricing rules table is empty — seeding national defaults...")
+            print("ð Pricing rules table is empty â seeding national defaults...")
             from scripts.seed_pricing import seed_pricing
             await seed_pricing()
-            print("✅ Pricing rules seeded successfully")
+            print("â Pricing rules seeded successfully")
         else:
-            print(f"✅ Pricing rules: {rule_count} rules loaded")
+            print(f"â Pricing rules: {rule_count} rules loaded")
     except Exception as _seed_err:
-        print(f"⚠️  Pricing rules seed failed (non-fatal): {_seed_err}")
+        print(f"â ï¸  Pricing rules seed failed (non-fatal): {_seed_err}")
 
     # Auto-seed equipment models if the table is empty
     try:
@@ -230,11 +232,11 @@ async def on_startup():
             result = await db.execute(select(sql_func.count()).select_from(EquipmentModel))
             model_count = result.scalar_one()
         if model_count == 0:
-            print("🔧 Equipment models table is empty — seeding 50 HVAC models...")
+            print("ð§ Equipment models table is empty â seeding 50 HVAC models...")
             from scripts.seed_equipment_db import seed_equipment_db
             await seed_equipment_db()
-            print("✅ Equipment models seeded successfully")
+            print("â Equipment models seeded successfully")
         else:
-            print(f"✅ Equipment models: {model_count} models loaded")
+            print(f"â Equipment models: {model_count} models loaded")
     except Exception as _equip_err:
-        print(f"⚠️  Equipment models seed failed (non-fatal): {_equip_err}")
+        print(f"â ï¸  Equipment models seed failed (non-fatal): {_equip_err}")
