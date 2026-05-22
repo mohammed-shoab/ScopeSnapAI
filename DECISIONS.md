@@ -3,7 +3,7 @@
 > This file records decisions made during development that have lasting impact on how the codebase works.
 > Future AI sessions: read this before proposing architecture changes or writing migrations.
 >
-> Last updated: 2026-05-22 (DEC-058, DEC-059, DEC-060 added — ServiceChecklist auth, estimates INSERT, missing endpoint)
+> Last updated: 2026-05-22 (DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
 
 ---
 
@@ -1174,133 +1174,50 @@ await indexedDB.deleteDatabase('snapai_models_pk');
 location.reload(true);
 ```
 
-**Cross-reference:** WA-26 (IndexedDB cache), `models.py` PK market branch, `StepZeroPanel.tsx`
-
 ---
 
-## DEC-058 — ServiceChecklist must receive a getAuthHeaders callback, not pre-baked headers (2026-05-22)
+## DEC-063 — `/api/models/all` response shape is `{models:[...]}`, not a plain array (2026-05-22)
 
 **Date:** 2026-05-22
 
-**Problem (BUG-034):** `ServiceChecklist.tsx` originally received `authHeaders: Record<string,string>` as a prop. This token was captured once when the technician selected the complaint type. Clerk JWTs expire in 60 seconds. Any service checklist session lasting longer than 60 seconds caused every subsequent step submission to return 401 "Invalid or expired session token".
+**Context:** During Phase 2 backend health checks, code used `Array.isArray(data)` to parse the `/api/models/all` response. This returned `false` (the response is `{"models": [...]}`, an object), causing model counts to show as 0 even though the endpoint returned 200 OK with valid data.
 
-**Fix:** Changed prop to `getAuthHeaders: () => Promise<Record<string,string>>`. Each fetch call inside ServiceChecklist now calls `const headers = await getAuthHeaders()` immediately before the request.
-
-**Rule:** Any component that makes multiple authenticated API calls over a potentially long user session MUST receive a `getAuthHeaders` callback, NOT a pre-baked headers object. This applies specifically to:
-- `ServiceChecklist.tsx` (service flow, 8 steps, can take 5+ minutes)
-- Any future multi-step flow with long dwell time
-
-**Pattern:**
-```typescript
-// assess/page.tsx — correct
-const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
-  const market = detectMarket();
-  if (IS_DEV) return { ...DEV_HEADER, "X-Market": market };
-  const token = await getToken();
-  return token ? { Authorization: `Bearer ${token}`, "X-Market": market } : { "X-Market": market };
-}, [getToken]);
-
-<ServiceChecklist getAuthHeaders={getAuthHeaders} ... />
-
-// ServiceChecklist.tsx — correct
-const headers = await getAuthHeaders();  // called fresh per API call
-const r = await fetch(`${API_URL}/api/...`, { headers: { ...headers, "Content-Type": "application/json" } });
+**Correct parse pattern:**
+```javascript
+const resp = await fetch(`${base}/api/models/all`, {headers: {'X-Market': 'PK'}});
+const data = await resp.json();
+const models = data.models || []; // NOT: Array.isArray(data) ? data : data.models
 ```
 
-**Commit:** `0140c83`
+**Also confirmed:** `/api/brands` does NOT exist — returns 404. The only model data endpoint is `/api/models/all`.
+
+**Impact:** Any code, test, or script that fetches brand/model data from Railway must handle the `{models:[...]}` wrapper. The existing `getBrands()` / `searchModels()` functions in `lib/modelCache.ts` handle this correctly.
 
 ---
 
-## DEC-059 — estimates table has NO updated_at column — omit from all INSERTs (2026-05-22)
+## DEC-064 — PK PSI thresholds are in `pak_operating_targets`, not `pak_diagnostic_questions` (2026-05-22)
 
 **Date:** 2026-05-22
 
-**Problem (BUG-035):** `_generate_service_estimate()` in `api/diagnostic.py` included `updated_at` in its INSERT INTO estimates statement. The `estimates` table does not have an `updated_at` column. The SQL error was caught by a `try/except Exception` block and logged, but the session was still marked `service_complete`. No estimate row was created.
+**Context:** QA skill Phase 2d spec said to check `pak_diagnostic_questions` for PSI high_min thresholds. The table `pak_diagnostic_questions` does NOT exist in production Supabase — querying it returns `ERROR: relation does not exist`.
 
-**Fix:** Removed `updated_at` from both the column list and VALUES in the INSERT.
+**Actual table:** `pak_operating_targets`
 
-**Confirmed estimates table columns (verified 2026-05-22 via information_schema):**
-```
-id, assessment_id, company_id, report_token, report_short_id, options, selected_option,
-total_amount, deposit_amount, markup_percent, status, viewed_at, approved_at,
-stripe_payment_intent_id, contractor_pdf_url, homeowner_report_url, sent_via, sent_at,
-actual_cost, accuracy_score, created_at, seasonal_modifier_pct
-```
-**No `updated_at`. No `updated_at`. No `updated_at`.** If you need to update a row, use `SET created_at` is wrong — just omit timestamps from UPDATE clauses entirely or add the column via migration first.
-
-**Rule:** Before inserting into `estimates`, verify the column list against `information_schema.columns` if any doubt. Never assume `updated_at` exists.
-
-**Commit:** `937b8c7`
-
----
-
-## DEC-060 — POST /api/estimates/service does NOT exist — call onComplete directly after service_step_complete (2026-05-22)
-
-**Date:** 2026-05-22
-
-**Problem (BUG-036):** `ServiceChecklist.tsx` had a `generateServiceEstimate()` function that POSTed to `POST /api/estimates/service`. This endpoint was never implemented on the Railway backend. The OpenAPI spec at `/openapi.json` confirms it does not exist. The 405 Method Not Allowed response caused the service checklist to show an error and never navigate away.
-
-**How service estimates actually work:**
-1. Tech submits step 8 answer (svc-8-run) via `POST /api/diagnostic/session/{id}/answer`
-2. Backend `_resolve_branch()` sees `generate_estimate: true` in svc-8-run branch_logic
-3. Backend calls `_generate_service_estimate(db, assessment_id, company_id)` — creates estimate row in DB
-4. Backend returns `{resolved: true, service_step_complete: true}` to frontend
-5. Frontend should call `onComplete()` directly — no additional API call needed
-6. `handleServiceComplete` in `assess/page.tsx` ignores the result and calls `router.push(/assessment/{assessmentId})`
-7. `/assessment/{id}` page fetches `GET /api/estimates/{assessment_id}` to show the estimate
-
-**Fix:** Removed `generateServiceEstimate()` entirely. After `service_step_complete`, build a summary from `findings` state and call `onComplete()` immediately.
-
-**Rule:** There is no POST endpoint for service estimates. The estimate is auto-generated server-side. Frontend only needs to navigate. Do not add a POST /api/estimates/service endpoint unless the service estimate response format is redesigned.
-
-**Available estimate-related POST endpoints (as of 2026-05-22):**
-- `POST /api/estimates/fault-card` — generates fault card estimate from assessment
-- `POST /api/estimates/{id}/refresh` — refreshes a draft estimate
-- `POST /api/estimates/{id}/documents` — generates PDF documents
-- `POST /api/estimates/{id}/send` — sends estimate to homeowner
-
-**Commit:** `4db39be`
-
----
-
-## DEC-061 — Restoring NTFS files truncated by Edit tool: use git cat-file blob (2026-05-22)
-
-**Date:** 2026-05-22
-
-**Problem:** The Edit tool (DEC-027) truncated `api/diagnostic.py` from 1646 to 1602 lines when removing `updated_at` from an INSERT. The truncation happened even though the target string had no non-ASCII chars — the file itself does, elsewhere. SyntaxError at line 1594 confirmed the tail was missing.
-
-**Recovery procedure:**
-```bash
-# Step 1 (Linux sandbox — read-only, OK on NTFS mount):
-cd '/sessions/.../mnt/Personal Claude/ScopeSnapAI/scopesnap-api'
-git ls-tree HEAD api/diagnostic.py
-# → outputs: 100644 blob <sha>  api/diagnostic.py
-
-git cat-file blob <sha> | wc -l
-# → confirms correct line count
-
-# Step 2: Write a Python script to the outputs dir (not NTFS):
-# Script reads blob bytes from git cat-file, applies the fix via .replace(), writes to NTFS target.
-# Run it via Desktop Commander (Windows Python subprocess).
+**Schema confirmed:**
+```sql
+SELECT refrigerant, ambient_c, suction_min_psi, suction_max_psi, discharge_min_psi, discharge_max_psi
+FROM pak_operating_targets
+ORDER BY refrigerant, ambient_c;
 ```
 
-**Recovery script pattern:**
-```python
-import subprocess
-r = subprocess.run(["git", "cat-file", "blob", sha], cwd=repo_dir, capture_output=True)
-content = r.stdout  # raw bytes from HEAD
-fixed = content.replace(old_bytes, new_bytes, 1)
-with open(target_path, "wb") as f:
-    f.write(fixed)
-# Verify:
-import ast
-ast.parse(fixed.decode("utf-8"))  # must not raise
-```
+**Verified values (2026-05-22):**
+- R-410A at 40°C: suction 125–145 PSI, discharge 325–370 PSI ✅
+- R-32 at 40°C: suction 120–140 PSI, discharge 365–410 PSI ✅
+- R-22 at 45°C: suction 78–88 PSI ✅
 
-**Rule:** If `ast.parse` or `wc -l` after a Python-script edit shows truncation: `git ls-tree HEAD <file>` → `git cat-file blob <sha>` → restore + patch in one Python script run from Desktop Commander.
+`suction_max_psi` is the upper normal bound — readings above this trigger a "high pressure" fault. These match QA spec requirements.
 
-**Note:** `git checkout HEAD -- <file>` fails on NTFS mount (Operation not permitted). The cat-file → Python write approach is the only reliable restore path from the Linux sandbox.
-
+**Impact:** Any migration or data patch to PK PSI thresholds must target `pak_operating_targets`. The QA skill Phase 2d check must query `pak_operating_targets`, not `pak_diagnostic_questions`.
 
 ---
 
@@ -1308,35 +1225,28 @@ ast.parse(fixed.decode("utf-8"))  # must not raise
 
 **Date:** 2026-05-22
 
-**Problem:** `svc-4-drain` (Step 4 — Drain flush confirmation photo) had no entry in `SVC_PHOTO_SKIP_CONFIG` in `ServiceChecklist.tsx`. A photo input step with no skip config renders only the camera upload area. There is no alternative path — no skip link, no manual condition buttons. Result: QA testers and field technicians with a broken camera are completely blocked at step 4. The only escape was a React fiber hack that bypassed `submitStep()`, which zeroed out `findings` and left the Estimate Builder empty.
+**Problem:** `svc-4-drain` (Step 4 — Drain flush confirmation photo) had no entry in `SVC_PHOTO_SKIP_CONFIG`. A photo step with no skip config shows only the camera upload area — no skip link, no manual condition buttons. QA testers and field techs with a broken camera are completely blocked. During QA, step 4 was bypassed via a React fiber `onComplete` injection, which skipped `submitStep()` entirely and zeroed `findings`, leaving the Estimate Builder empty.
 
-**Root cause discovery:** During QA, step 4 had to be advanced using a React fiber `onComplete` injection. This bypassed the entire `findings` accumulation in `ServiceChecklist`. The Estimate Builder showed no line items. The real fix is to add proper skip options so the normal code path runs.
+**Root cause:** SVC_PHOTO_SKIP_CONFIG in ServiceChecklist.tsx had entries for steps 1, 3, 8 but not step 4. The backend already handled `flushed`, `skipped`, and `any` branches for svc-4-drain — the fix was frontend-only.
 
-**Backend already correct:** `svc-4-drain` in `diagnostic_questions.branch_logic_jsonb` already had three working branches:
-- `"flushed"`: routes to svc-5-terminals + adds `flush_tablet` finding ($12–$18)
-- `"skipped"`: routes to svc-5-terminals, no finding (drain flush not possible)
-- `"any"`: wildcard, routes to svc-5-terminals + adds flush_tablet finding
+**Fix (commit 3f09c02):** Added choice-type skip config for svc-4-drain:
+- "Drain Flushed" → branch_key: flushed → adds flush_tablet finding ($12–$18) → routes to svc-5-terminals
+- "Could Not Flush" → branch_key: skipped → no finding → routes to svc-5-terminals
 
-**Frontend fix:** Added `"svc-4-drain"` to `SVC_PHOTO_SKIP_CONFIG` with `type: "choice"`:
-
-
-**Rule:** Every photo step in ServiceChecklist MUST have an entry in SVC_PHOTO_SKIP_CONFIG. The current coverage (post-fix):
-| Step | Step ID | Skip Type | Branches |
+**Rule — SVC_PHOTO_SKIP_CONFIG coverage (post 3f09c02):**
+| Step | Step ID | Skip Type | Choices |
 |------|---------|-----------|---------|
-| 1 | svc-1-filter | choice | replace / dirty / clean |
-| 3 | svc-3-coil | choice | heavily_blocked / dirty / clean |
-| 4 | svc-4-drain | choice | flushed / skipped |
+| 1 | svc-1-filter | choice | Dirty-Replace / Dirty-Can Clean / Looks Clean |
+| 3 | svc-3-coil | choice | Heavily Blocked / Dirty / Clean |
+| 4 | svc-4-drain | choice | Drain Flushed / Could Not Flush |
 | 8 | svc-8-run | simple | skipped |
 
-Steps 2, 5, 6, 7 are not photo steps — they use `reading` or `multi` input types, which always have explicit submit buttons.
+Steps 2, 5, 6, 7 use reading/multi input types — they always have a submit button; no skip needed.
 
-**Checklist for adding any new service photo step:**
-1. Add row to `diagnostic_questions` with `input_type = 'photo'`
-2. Add branch_logic_jsonb with `"skipped"` and `"any"` entries routing to the next step
-3. Add entry to `SVC_PHOTO_SKIP_CONFIG` in `ServiceChecklist.tsx` with appropriate choices
-4. If step adds a service finding, map the correct `branch_key` to the `line_item_code`
+**Checklist for any new service photo step:**
+1. Add `diagnostic_questions` row with `input_type = 'photo'`
+2. Add `branch_logic_jsonb` with `"skipped"` and `"any"` entries routing to next step
+3. Add entry to `SVC_PHOTO_SKIP_CONFIG` in ServiceChecklist.tsx with appropriate choices
+4. If step generates a finding, map the branch_key to the correct line_item_code
 
-**Why the drain flush photo is always completable:** Unlike diagnostic photos (filter/coil condition — tech visually assesses), the drain flush is a task the tech always performs (or decides not to). The photo is documentation only. "Drain Flushed" / "Could Not Flush" are always valid answers.
-
-**Commit:** `3f09c02` — fix(service-checklist): add skip config for svc-4-drain
-
+**Commit:** `3f09c02`

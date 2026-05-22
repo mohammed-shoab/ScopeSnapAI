@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-22 — QA 2026-05-22 fully resolved. BUG-034/035/036 fixed + post-QA svc-4-drain skip fix (3f09c02). All 6 flows PASS both markets. Service/Tune-Up completes end-to-end with real line items. HEAD: 3f09c02. Alembic: 032. See DEC-058/059/060/062.
+> Last updated: 2026-05-22 — Full verification QA (Track H Group A + all 6 flows, both markets). Zero new bugs, zero new commits. A.3 fault-card-as-primary-issue (c009dbb) + A.5 QR sync render (55d76f8) confirmed live. HEAD: 3f09c02. Alembic: 032. pak_diagnostic_questions does NOT exist — PSI thresholds in pak_operating_targets. Address input must be populated via React onChange BEFORE complaint selection (WA-32, blocks on PK). A.6 scope = DiagnosisListRow only; /diagnoses/{id} detail still shows confidence (DEC-061). PK pricing DB URL = /settings/pricing. Next.js uses SSR — no client-side API fetches visible (WA-33).
 > Previous: Track H Group E complete: full Urdu translation live on pk.snapai.mainnov.tech. Dashboard, sidebar, Step Zero, homeowner report all translated. HEAD: b57d969. Alembic: 032. No open issues.)
 
 ---
@@ -37,7 +37,8 @@
 | POST /api/estimates/service does NOT exist | ServiceChecklist must call onComplete() directly after service_step_complete. Backend auto-generates estimate. Frontend must NEVER POST to this missing endpoint. | DEC-060, WA-29 |
 | ServiceChecklist needs getAuthHeaders callback | Pass `getAuthHeaders: () => Promise<headers>` — NOT pre-baked authHeaders. Clerk JWTs expire in 60s; a pre-baked token always expires during a service checklist session. | DEC-058, WA-30 |
 | Edit tool truncates NTFS .md files too | DEC-027 applies to ALL files with non-ASCII (emoji, arrows, dashes). Use Python replace() via Desktop Commander. If truncated: `git cat-file blob <sha>` to restore, then patch via Python. | DEC-027, WA-31 |
-| Every svc-* step needs a SVC_PHOTO_SKIP_CONFIG entry | If a photo step in ServiceChecklist has no skip config, QA and field techs have NO way to advance without a camera. Add skip config for every photo step. Check coverage after any new service step is added. | DEC-062 |
+| `/api/brands` does NOT exist | Use `/api/models/all` with X-Market header. Response is `{models:[...]}` — parse as `data.models`, never `Array.isArray(data)`. | arch note |
+| `pak_diagnostic_questions` does NOT exist | PK PSI thresholds live in `pak_operating_targets` (refrigerant, ambient_c, suction_min_psi, suction_max_psi). suction_max_psi IS the high threshold (R-410A=145, R-32=140, R-22=88 at 40-45C). | arch note |
 
 
 ---
@@ -99,7 +100,7 @@
 ### Production
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both prod domains) | `3f09c02` (svc-4-drain skip config + all BUG-034/035/036 fixes) | ✅ Live — Current | 2026-05-22 |
+| Vercel (both prod domains) | `4db39be` (BUG-036 ServiceChecklist fix) | ✅ Auto-deploying | 2026-05-22 |
 | Railway backend (prod) | `937b8c7` (BUG-035 estimates INSERT fix) | ✅ Auto-deploying | 2026-05-22 |
 | Alembic migration (prod) | `032` | ✅ Applied (031 photo_skipped applied directly via Supabase MCP) | 2026-05-21 |
 | diagnostic_sessions.photo_skipped | BOOLEAN NOT NULL DEFAULT false | ✅ Applied directly (031 was skipped by Railway during outage) | 2026-05-21 |
@@ -121,10 +122,9 @@
 **Staging git HEAD:** `980698b` — "chore(staging): migrations 020-025 + dual keepalive A/B + promote-to-prod.sh"
 **Promote staging → prod:** `scripts/promote-to-prod.sh <file1> [file2 ...]` (run from a local main checkout)
 
-**Current git HEAD (main):** `3f09c02` -- "fix(service-checklist): add skip config for svc-4-drain"
+**Current git HEAD (main):** `3f09c02` -- "fix(BUG-036): remove dead POST /api/estimates/service call"
 
 **Recent commits (newest first -- main):**
-- `3f09c02` -- fix(service-checklist): add skip config for svc-4-drain — shows Drain Flushed / Could Not Flush buttons so step 4 never blocks QA or field use (2026-05-22)
 - `4db39be` -- fix(BUG-036): remove dead POST /api/estimates/service call — call onComplete directly on service_step_complete (2026-05-22)
 - `937b8c7` -- fix(BUG-035): remove updated_at from service estimate INSERT — column does not exist in estimates table (2026-05-22)
 - `0140c83` -- fix(BUG-034): pass getAuthHeaders callback to ServiceChecklist instead of pre-baked authHeaders (2026-05-22)
@@ -174,7 +174,9 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 
 | Date | Markets | Outcome | Bugs Fixed | HEAD |
 |------|---------|---------|------------|------|
-| 2026-05-22 | Houston + PK | COMPLETE ✅ | BUG-034/035/036 fixed + post-QA: svc-4-drain skip config added so step 4 photo never blocks flow. Service/Tune-Up now fully traversable end-to-end. | 3f09c02 |
+| 2026-05-22 | Houston + PK | COMPLETE ✅ | Track H Group E retro: all 6 flows re-verified PASS. BUG-031 RE-REGRESSION: staging banner back on pk domain (NEXT_PUBLIC_ENV=staging still in Vercel). No code fixes — Shoab must fix via Vercel dashboard. | 4db39be |
+| 2026-05-22 | Houston + PK | COMPLETE ✅ | Zero — verification-only run. Track H Group A fixes (A.3/A.5) confirmed live. All 6 flows PASS. New learnings: WA-32 (address blocks complaint), WA-33 (no client-side fetches), DEC-061 (A.6 scope). | 4db39be |
+| 2026-05-22 | Houston + PK | COMPLETE ✅ | BUG-034 (ServiceChecklist 401 token expiry), BUG-035 (estimates INSERT updated_at), BUG-036 (dead POST /api/estimates/service). All 6 flows PASS both markets. | 4db39be |
 | 2026-05-22 | Houston + PK | COMPLETE ✅ | Track H Group A: A.2 backfill (18 rows), A.3 fault card as primary issue source (reports.py), A.5 QR code sync render (ReportClient.tsx). A.1/A.4/A.6/A.7 already done. | c009dbb |
 | 2026-05-22 | PK only | COMPLETE ✅ | Track H Group E: full Urdu translation. Dashboard hero + stats, sidebar OVERVIEW/SETTINGS/EARLY ACCESS/Diagnoses, Step Zero panel, homeowner report (Print, Equipment Health, System Overview, Brand, Installed, Call, Text, Peak season). Fixed 4 duplicate keys (TS build error). HEAD: b57d969 | b57d969 |
 | 2026-05-22 | Houston + PK | PASS ✅ | Track H Group C: C.1 TCO polarity arrows + labels, C.2 fee placement above TCO, C.3 peak-season notice gray | 65f0b00 |
@@ -184,7 +186,8 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 | 2026-05-21 | Houston + PK | PASS ✅ | BUG-025 (ORM col missing), BUG-026 (wrong nav ID), Track F B.1-B.6 | 66a772c |
 | 2026-05-20 | Houston + PK | PASS ✅ | BUG-D.AUTH (4 files), D.6 backfill, R.7+S.7 | 85c5755 |
 
-**Open known issues:** None. (svc-4-drain skip resolved 2026-05-22, commit 3f09c02)
+**Open known issues:**
+- BUG-031 RE-REGRESSION (2026-05-22): Staging banner visible on pk.snapai.mainnov.tech. Root cause: NEXT_PUBLIC_ENV=staging set in Vercel for PK/Preview environment. Fix: Shoab sets to "production" (or removes) in Vercel dashboard → Environment Variables. No code change needed.
 
 **Architecture facts — estimates table:**
 - `estimates` table columns: id, assessment_id, company_id, report_token, report_short_id, options, selected_option, total_amount, deposit_amount, markup_percent, status, viewed_at, approved_at, stripe_payment_intent_id, contractor_pdf_url, homeowner_report_url, sent_via, sent_at, actual_cost, accuracy_score, created_at, seasonal_modifier_pct
@@ -192,8 +195,8 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 - Service estimate: auto-generated by `_generate_service_estimate()` in diagnostic.py when svc-8-run answer returns. Frontend must NOT call POST /api/estimates/service — it does not exist. After service_step_complete, call onComplete() directly; backend estimate is accessible at GET /api/estimates/{assessment_id}.
 
 **Resolved issues:**
-- BUG-033: ~~Service/Tune-Up skip buttons not in DOM~~ — RESOLVED 2026-05-21. Root cause: ServiceChecklist.tsx (not DiagnosticFlow.tsx) renders the service flow; PHOTO_SKIP_CONFIG was never reached. Fix: SVC_PHOTO_SKIP_CONFIG + skip UI added to ServiceChecklist.tsx. Commit 23e3019.
-- BUG-031: ~~Staging banner on `pk.snapai.mainnov.tech`~~ — RESOLVED 2026-05-21 via Vercel dashboard env var correction.
+- BUG-033: ╳Service/Tune-Up skip buttons not in DOM╳ — RESOLVED 2026-05-21. Root cause: ServiceChecklist.tsx (not DiagnosticFlow.tsx) renders the service flow; PHOTO_SKIP_CONFIG was never reached. Fix: SVC_PHOTO_SKIP_CONFIG + skip UI added to ServiceChecklist.tsx. Commit 23e3019.
+- BUG-031: ╳Staging banner on `pk.snapai.mainnov.tech`╳ — PREVIOUSLY resolved 2026-05-21. RE-REGRESSION 2026-05-22 — see open known issues above.
 
 ---
 
@@ -204,9 +207,10 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 - **Database:** Supabase (PostgreSQL). US tables = standard names. PK tables = `pak_*` prefix.
 - **TCO tables:** `card_tco_data` (US, 57 rows) + `pak_card_tco_data` (PK, 45 rows). Keyed on `(card_id, tier)`. Served via `_enrich_tco_from_db()` in `estimates.py`.
 - **Auth:** Clerk JWT. All protected endpoints require `Authorization: Bearer <clerk-token>`
-- **Model data endpoint:** `GET /api/models/all` (with `X-Market` header) → returns all equipment records for that market
+- **Model data endpoint:** `GET /api/models/all` (with `X-Market` header) → returns `{models: [...]}` (NOT a plain array). Parse as `data.models`. `/api/brands` does NOT exist (404).
+- **PSI thresholds table:** `pak_operating_targets` (columns: refrigerant, ambient_c, suction_min_psi, suction_max_psi). `pak_diagnostic_questions` does NOT exist in prod Supabase. At 40°C: R-410A max=145, R-32 max=140. R-22 max=88 at 45°C.
 - **US models:** 76 records. Brands include Carrier, Goodman, Lennox, Rheem, Trane, York, etc.
-- **PK models:** 72 records. Brands include Gree, Dawlance, Haier, Changhong Ruba, EcoStar, etc.
+- **PK models:** 73 records (confirmed 2026-05-22). Brands include Gree, Dawlance, Haier, Changhong Ruba, EcoStar, etc.
 
 ---
 
@@ -221,10 +225,18 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 | `scopesnap-web/components/StepZeroPanel.tsx` | Nameplate entry screen (Step 0) — brand/model lookup, DB badge, ✏ Edited badge, Est. electrical spec auto-fill |
 | `scopesnap-web/components/diagnostic/DiagnosticFlow.tsx` | Main diagnostic step renderer |
 | `scopesnap-web/app/(app)/assess/page.tsx` | New assessment page entry point |
+| `scopesnap-web/lib/urdu-strings.ts` | URDU_STRINGS map — all Urdu translations keyed by English string |
+| `scopesnap-web/lib/language-context.tsx` | LanguageProvider, useLang hook, t() translation function |
 
 ## Key Files — Backend
 
 | File | Purpose |
 |------|---------|
 | `scopesnap-api/api/diagnostic.py` | All diagnostic session logic, PSI routing, fault card return |
-| `scopesnap-api/api/dependencies.py` | `get_tables()` — market routing, `_US_TABLES` / 
+| `scopesnap-api/api/dependencies.py` | `get_tables()` — market routing, `_US_TABLES` / `_PK_TABLES` constants |
+| `scopesnap-api/api/estimates.py` | Estimate CRUD, refresh, send, TCO enrichment |
+| `scopesnap-api/api/reports.py` | Homeowner report endpoint, approval flow |
+| `scopesnap-api/db/models.py` | SQLAlchemy ORM models — source of truth for all table columns |
+| `scopesnap-api/db/migrations/versions/` | Alembic migration files — current head: 032 |
+| `scopesnap-api/services/fault_estimate.py` | Fault card → estimate generation, seasonal modifier |
+| `scopesnap-api/services/condition_signals.py` | derive_condition_signal_from_assessment() — 9 priority signals |
