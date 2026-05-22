@@ -36,6 +36,14 @@ const SVC_PHOTO_SKIP_CONFIG: Record<string, SvcSkipConfig> = {
       { label: "Clean",           branch_key: "clean" },
     ],
   },
+  // S Step 4: drain flush photo — tech already flushed; just needs to confirm
+  "svc-4-drain": {
+    type: "choice",
+    choices: [
+      { label: "Drain Flushed",    branch_key: "flushed" },
+      { label: "Could Not Flush",  branch_key: "skipped" },
+    ],
+  },
   // S Step 8: run photo — any wildcard → service_complete
   "svc-8-run": { type: "simple" },
 };
