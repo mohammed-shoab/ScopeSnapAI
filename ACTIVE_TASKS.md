@@ -73,6 +73,16 @@ Zero bugs found. All fixes confirmed live. Key learnings captured below.
 
 ---
 
+
+## Lessons Learned -- 2026-05-22 Session (BUG-037 Live Verify + BUG-038-build)
+
+| # | What We Learned | Detail | Action |
+|---|-----------------|--------|--------|
+| L28 | package-lock.json must NEVER be committed to this repo | Repo intentionally has no lockfile since c2eac8d (force Node 18, March 2026). 78d0fff accidentally re-added it (7954 lines), breaking every Vercel npm ci in ~8s. Fix: `git rm scopesnap-web/package-lock.json`. | Added DEC-065. |
+| L29 | Vercel build failures hiding as 8-9 second Error | A broken package-lock.json causes npm ci to fail very fast. All 7 builds between 78d0fff and a908eac failed in 8-9s. Minified chunks were from pre-fix build -- no code change was live despite 6 pushes. | Always check deployment duration. Under 20s = npm ci failed. Check lockfile. |
+| L30 | Module-level fmt() vs component-level const fmt | minified bundle: module-level function fmt compiled as function g(e) with no market arg. Component-level const fmt using reportMarket was absent from bundle because Vercel never rebuilt. Source code was correct all along (7736a7d). | No code action. Understanding for future debugging. |
+| L31 | git show sha:path fails if file did not exist in that commit | git show 2d227ee:scopesnap-web/package-lock.json fails with 'exists on disk but not in commit'. Use git log --oneline -- path to find which commits touched the file, then restore from the right ancestor. | Use git log -- path first. |
+
 ## Lessons Learned — 2026-05-22 QA Session (Track H Group E Retro)
 
 Full workarounds in PROJECT_BRAIN.md critical rules. No new DEC entries needed (architectural facts, not decisions).
@@ -156,7 +166,17 @@ These bugs were found during the 2026-05-20 full audit. Full workarounds in TECH
 
 ## Last QA Run
 
-**Date:** 2026-05-22 (Track H Group E retrospective + full 6-flow regression — both markets)
+**Date:** 2026-05-22 -- BUG-037 live verify + BUG-038-build fix
+**Markets tested:** Houston (confirmed PKR on PK report rpt-701093)
+**Outcome:** PASS OK -- BUG-037 confirmed live. BUG-038-build resolved.
+**Alembic head:** 034 (unchanged)
+**Git HEAD:** 19db2d1 -- chore: remove [MKT:] debug marker from REF line
+**Commits this session:** 78d0fff (feat BUG-037+mig-033/034), 8ed9a8b (debug), 7736a7d (fix fmt), 56fb12f (debug REF), a908eac (fix build: rm lockfile), 19db2d1 (chore: rm debug)
+**Key fix:** package-lock.json removed (a908eac) -- 78d0fff had added 7954-line lockfile breaking every Vercel build in ~8s. Repo has no lockfile by design (since c2eac8d). DEC-065.
+**Live verification:** snapai.mainnov.tech/r/rpt-701093/rpt-701093 shows Rs.5,906 / Rs.10,969 / Rs.14,808 (PKR) -- not USD OK
+**Vercel:** Both domains serving 19db2d1 OK (build time 1m 27s)
+**Railway:** ACTIVE -- health OK
+**QA sign-off:** FULLY COMPLETE OK
 **Markets tested:** Both Houston US and Pakistan PK
 **Outcome:** PASS ✅ — all 6 flows pass on both markets. Zero new bugs. Zero commits.
 **Alembic head:** 032 (unchanged)
@@ -165,7 +185,6 @@ These bugs were found during the 2026-05-20 full audit. Full workarounds in TECH
 **Vercel:** Both Houston + PK serving 4db39be ✅
 **Railway:** ACTIVE — health OK, /health → {"status":"ok","db":"connected","environment":"production","version":"0.1.0"} ✅
 **QA sign-off:** FULLY COMPLETE ✅
->>>>>>> Stashed changes
 **Key verifications:** A.3 fault card as primary issue (reports.py c009dbb) ✅ | A.5 QR sync render (55d76f8) ✅ | PKR currency in estimate builder (₨2,025 Capacitor Failure) ✅ | PK PSI thresholds (pak_operating_targets: R-410A 125-145 at 40°C) ✅
 
 ### Previous Last QA Run
