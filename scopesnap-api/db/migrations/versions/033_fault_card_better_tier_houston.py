@@ -1,8 +1,8 @@
 # coding: utf-8
 """Add Better-tier description + why_recommended to all 19 Houston fault_cards.
 
-Revision ID: 030
-Revises: 029
+Revision ID: 033
+Revises: 032
 Create Date: 2026-05-22
 
 Fills the only gap in Houston fault_cards.better_option_estimate:
@@ -14,12 +14,15 @@ Fills the only gap in Houston fault_cards.better_option_estimate:
 Copy source: SnapAI Houston Better-Tier Copy v1 (2026-05-22)
 Character limit: 180 per field (verified).
 Market: US / Houston.  No Pakistan-specific language.
+
+NOTE: Data was pre-applied directly via Supabase SQL (jsonb_build_object).
+upgrade() is idempotent — safe to re-run on Railway deploy.
 """
 import json
 from alembic import op
 
-revision = "030"
-down_revision = "029"
+revision = "033"
+down_revision = "032"
 branch_labels = None
 depends_on = None
 
