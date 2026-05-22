@@ -3,11 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-<<<<<<< Updated upstream
-> Last updated: 2026-05-22 — Full verification QA (Track H Group A + all 6 flows, both markets). Zero new bugs, zero new commits. A.3 fault-card-as-primary-issue (c009dbb) + A.5 QR sync render (55d76f8) confirmed live. HEAD: 3f09c02. Alembic: 032. pak_diagnostic_questions does NOT exist — PSI thresholds in pak_operating_targets. Address input must be populated via React onChange BEFORE complaint selection (WA-32, blocks on PK). A.6 scope = DiagnosisListRow only; /diagnoses/{id} detail still shows confidence (DEC-061). PK pricing DB URL = /settings/pricing. Next.js uses SSR — no client-side API fetches visible (WA-33).
-=======
 > Last updated: 2026-05-22 — Full verification QA (Track H Group A + all 6 flows, both markets). Zero new bugs, zero new commits. A.3 fault-card-as-primary-issue (c009dbb) + A.5 QR sync render (55d76f8) confirmed live. HEAD: 4db39be. Alembic: 032. pak_diagnostic_questions does NOT exist — PSI thresholds in pak_operating_targets. Address input must be populated via React onChange BEFORE complaint selection (WA-32, blocks on PK). A.6 scope = DiagnosisListRow only; /diagnoses/{id} detail still shows confidence (DEC-061). PK pricing DB URL = /settings/pricing. Next.js uses SSR — no client-side API fetches visible (WA-33).
->>>>>>> Stashed changes
 > Previous: Track H Group E complete: full Urdu translation live on pk.snapai.mainnov.tech. Dashboard, sidebar, Step Zero, homeowner report all translated. HEAD: b57d969. Alembic: 032. No open issues.)
 
 ---
@@ -178,11 +174,7 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 
 | Date | Markets | Outcome | Bugs Fixed | HEAD |
 |------|---------|---------|------------|------|
-<<<<<<< Updated upstream
-| 2026-05-22 | Houston + PK | COMPLETE ✅ | Track H Group E retro: all 6 flows re-verified PASS. BUG-031 RE-REGRESSION: staging banner back on pk domain (NEXT_PUBLIC_ENV=staging still in Vercel). No code fixes — Shoab must fix via Vercel dashboard. | 4db39be |
-=======
 | 2026-05-22 | Houston + PK | COMPLETE ✅ | Track H Group E retro: all 6 flows re-verified PASS. BUG-031 RE-REGRESSION resolved: NEXT_PUBLIC_ENV confirmed as "production" in Vercel (All Environments). pk.snapai.mainnov.tech staging banner gone. | 4db39be |
->>>>>>> Stashed changes
 | 2026-05-22 | Houston + PK | COMPLETE ✅ | Zero — verification-only run. Track H Group A fixes (A.3/A.5) confirmed live. All 6 flows PASS. New learnings: WA-32 (address blocks complaint), WA-33 (no client-side fetches), DEC-061 (A.6 scope). | 4db39be |
 | 2026-05-22 | Houston + PK | COMPLETE ✅ | BUG-034 (ServiceChecklist 401 token expiry), BUG-035 (estimates INSERT updated_at), BUG-036 (dead POST /api/estimates/service). All 6 flows PASS both markets. | 4db39be |
 | 2026-05-22 | Houston + PK | COMPLETE ✅ | Track H Group A: A.2 backfill (18 rows), A.3 fault card as primary issue source (reports.py), A.5 QR code sync render (ReportClient.tsx). A.1/A.4/A.6/A.7 already done. | c009dbb |
@@ -195,11 +187,7 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 | 2026-05-20 | Houston + PK | PASS ✅ | BUG-D.AUTH (4 files), D.6 backfill, R.7+S.7 | 85c5755 |
 
 **Open known issues:**
-<<<<<<< Updated upstream
-- BUG-031 RE-REGRESSION (2026-05-22): Staging banner visible on pk.snapai.mainnov.tech. Root cause: NEXT_PUBLIC_ENV=staging set in Vercel for PK/Preview environment. Fix: Shoab sets to "production" (or removes) in Vercel dashboard → Environment Variables. No code change needed.
-=======
 - None currently.
->>>>>>> Stashed changes
 
 **Architecture facts — estimates table:**
 - `estimates` table columns: id, assessment_id, company_id, report_token, report_short_id, options, selected_option, total_amount, deposit_amount, markup_percent, status, viewed_at, approved_at, stripe_payment_intent_id, contractor_pdf_url, homeowner_report_url, sent_via, sent_at, actual_cost, accuracy_score, created_at, seasonal_modifier_pct
@@ -208,11 +196,7 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 
 **Resolved issues:**
 - BUG-033: ╳Service/Tune-Up skip buttons not in DOM╳ — RESOLVED 2026-05-21. Root cause: ServiceChecklist.tsx (not DiagnosticFlow.tsx) renders the service flow; PHOTO_SKIP_CONFIG was never reached. Fix: SVC_PHOTO_SKIP_CONFIG + skip UI added to ServiceChecklist.tsx. Commit 23e3019.
-<<<<<<< Updated upstream
-- BUG-031: ╳Staging banner on `pk.snapai.mainnov.tech`╳ — PREVIOUSLY resolved 2026-05-21. RE-REGRESSION 2026-05-22 — see open known issues above.
-=======
 - BUG-031: ╳Staging banner on `pk.snapai.mainnov.tech`╳ — RESOLVED 2026-05-21. Re-regression 2026-05-22 confirmed false alarm — NEXT_PUBLIC_ENV already set to "production" (All Environments) in Vercel. pk.snapai.mainnov.tech verified clean 2026-05-22.
->>>>>>> Stashed changes
 
 ---
 
@@ -234,25 +218,4 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 
 | File | Purpose |
 |------|---------|
-| `scopesnap-web/lib/market.ts` | `detectMarket()`, `MARKET_CONFIG`, `formatCurrency()` |
-| `scopesnap-web/components/FiveYearComparison.tsx` | Unified 5-Year TCO display — prob bars, repair cost, savings, methodology block. Both markets. C->B->A column order. |
-| `scopesnap-web/lib/api.ts` | All typed API fetch wrappers, X-Market header injection |
-| `scopesnap-web/lib/modelCache.ts` | Client-side model cache (`/api/models/all`), `getBrands()`, `searchModels()` |
-| `scopesnap-web/components/StepZeroPanel.tsx` | Nameplate entry screen (Step 0) — brand/model lookup, DB badge, ✏ Edited badge, Est. electrical spec auto-fill |
-| `scopesnap-web/components/diagnostic/DiagnosticFlow.tsx` | Main diagnostic step renderer |
-| `scopesnap-web/app/(app)/assess/page.tsx` | New assessment page entry point |
-| `scopesnap-web/lib/urdu-strings.ts` | URDU_STRINGS map — all Urdu translations keyed by English string |
-| `scopesnap-web/lib/language-context.tsx` | LanguageProvider, useLang hook, t() translation function |
-
-## Key Files — Backend
-
-| File | Purpose |
-|------|---------|
-| `scopesnap-api/api/diagnostic.py` | All diagnostic session logic, PSI routing, fault card return |
-| `scopesnap-api/api/dependencies.py` | `get_tables()` — market routing, `_US_TABLES` / `_PK_TABLES` constants |
-| `scopesnap-api/api/estimates.py` | Estimate CRUD, refresh, send, TCO enrichment |
-| `scopesnap-api/api/reports.py` | Homeowner report endpoint, approval flow |
-| `scopesnap-api/db/models.py` | SQLAlchemy ORM models — source of truth for all table columns |
-| `scopesnap-api/db/migrations/versions/` | Alembic migration files — current head: 032 |
-| `scopesnap-api/services/fault_estimate.py` | Fault card → estimate generation, seasonal modifier |
-| `scopesnap-api/services/condition_signals.py` | derive_condition_signal_from_assessment() — 9 priority signals |
+| `scopesnap-web/lib/market.ts` | `detectMarket()`, `MARKET_CONFIG`, `formatCurren
