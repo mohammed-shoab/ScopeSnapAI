@@ -886,7 +886,7 @@ export default function ReportClient({ report }: { report: Report }) {
                     {t("We typically respond within 2 hours during business hours.")}
                   </p>
                   <p style={{ fontSize: 10, color: "#a8a49c", margin: 0, fontFamily: "IBM Plex Mono, monospace" }}>
-                    {`REF: RPT-${report.report_short_id}`}
+                    {`REF: RPT-${report.report_short_id} [MKT:${reportMarket}]`}
                   </p>
                 </div>
               ) : (
