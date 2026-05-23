@@ -1,34 +1,72 @@
 /**
  * HoustonAddressAutocomplete
- *
  * Google Places API autocomplete for US (Houston) market address entry.
  * Gates: only renders autocomplete when NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is set.
  * Falls back to a plain <input> on load error or missing key.
- *
- * Stage 3 — Track F C.2  |  DEC-074
+ * Stage 3 — Track F C.2 | DEC-074
  * Market gate: detectMarket() === "US" enforced by the caller (assess/page.tsx).
+ *
+ * Note: Uses direct <script> injection instead of @react-google-maps/api useLoadScript
+ * to avoid the `loading=async` + `callback=initMap` 503 conflict (DEC-075).
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 "use client";
+import { useEffect, useRef, useState } from "react";
 
-import { useRef } from "react";
-import { useLoadScript, Autocomplete } from "@react-google-maps/api";
+const MAPS_SCRIPT_ID = "google-maps-places-loader";
 
-const LIBRARIES: ("places")[] = ["places"];
+/** Inject the Maps JS script once and resolve when places library is ready. */
+function ensureMapsScript(apiKey: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // Already available
+    if (
+      typeof google !== "undefined" &&
+      google?.maps?.places
+    ) {
+      resolve();
+      return;
+    }
+    // Script tag already in DOM — attach listeners
+    const existing = document.getElementById(
+      MAPS_SCRIPT_ID
+    ) as HTMLScriptElement | null;
+    if (existing) {
+      if (existing.dataset.loaded === "1") {
+        resolve();
+        return;
+      }
+      existing.addEventListener("load", () => {
+        existing.dataset.loaded = "1";
+        resolve();
+      });
+      existing.addEventListener("error", reject);
+      return;
+    }
+    // Inject fresh script — plain URL, no loading=async, no callback param
+    const script = document.createElement("script");
+    script.id = MAPS_SCRIPT_ID;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
+      apiKey
+    )}&libraries=places`;
+    script.async = true;
+    script.onload = () => {
+      script.dataset.loaded = "1";
+      resolve();
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
 
 export interface HoustonAddressAutocompleteProps {
   value: string;
   onChange: (val: string) => void;
-  /** Called when the input gains focus (e.g. to show existing-property suggestions) */
   onFocus?: () => void;
-  /** Called when a Google Places result is selected (e.g. to hide existing-property suggestions) */
   onPlaceSelected?: () => void;
   placeholder?: string;
   className?: string;
   required?: boolean;
 }
 
-// ─── Plain fallback ───────────────────────────────────────────────────────────
 function PlainInput({
   value,
   onChange,
@@ -41,7 +79,7 @@ function PlainInput({
     <input
       type="text"
       value={value}
-      onChange={e => onChange(e.target.value)}
+      onChange={(e) => onChange(e.target.value)}
       onFocus={onFocus}
       placeholder={placeholder}
       className={className}
@@ -50,72 +88,74 @@ function PlainInput({
   );
 }
 
-// ─── Inner component that owns the useLoadScript hook ────────────────────────
-// Rendered only when apiKey is present (avoids conditional hook call).
-function AutocompleteInput(props: HoustonAddressAutocompleteProps) {
-  const { value, onChange, onFocus, onPlaceSelected, placeholder, className, required } = props;
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!;
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+export default function HoustonAddressAutocomplete(
+  props: HoustonAddressAutocompleteProps
+) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const inputRef = useRef<HTMLInputElement>(null);
+  const acRef = useRef<google.maps.places.Autocomplete | null>(null);
+  // Keep a ref to latest props so the place_changed listener never stales
+  const propsRef = useRef(props);
+  propsRef.current = props;
 
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: apiKey,
-    libraries: LIBRARIES,
-  });
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
-  if (loadError) {
-    console.warn("[HoustonAddressAutocomplete] Google Maps failed to load:", loadError);
-    return <PlainInput {...props} />;
-  }
+  // Load script on mount (only when key is present)
+  useEffect(() => {
+    if (!apiKey) return;
+    ensureMapsScript(apiKey)
+      .then(() => setIsLoaded(true))
+      .catch((e) => {
+        console.warn("[HoustonAddressAutocomplete] Google Maps failed to load:", e);
+        setLoadError(true);
+      });
+  }, [apiKey]);
 
-  // While script loads, show a responsive plain input (still functional for typing)
-  if (!isLoaded) {
-    return <PlainInput {...props} placeholder={placeholder ?? "Loading address suggestions…"} />;
-  }
-
-  const onPlaceChanged = () => {
-    const place = autocompleteRef.current?.getPlace();
-    if (place?.formatted_address) {
-      onChange(place.formatted_address);
-      onPlaceSelected?.();
-    }
-  };
-
-  return (
-    <Autocomplete
-      onLoad={a => { autocompleteRef.current = a; }}
-      onPlaceChanged={onPlaceChanged}
-      options={{
+  // Attach native Autocomplete once script is ready
+  useEffect(() => {
+    if (!isLoaded || !inputRef.current || acRef.current) return;
+    try {
+      const ac = new google.maps.places.Autocomplete(inputRef.current, {
         componentRestrictions: { country: "us" },
         fields: ["formatted_address"],
         types: ["address"],
-      }}
-    >
-      <input
-        type="text"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        onFocus={onFocus}
-        placeholder={placeholder}
-        className={className}
-        required={required}
-      />
-    </Autocomplete>
-  );
-}
+      });
+      ac.addListener("place_changed", () => {
+        const place = ac.getPlace();
+        if (place?.formatted_address) {
+          propsRef.current.onChange(place.formatted_address);
+          propsRef.current.onPlaceSelected?.();
+        }
+      });
+      acRef.current = ac;
+    } catch (e) {
+      console.warn(
+        "[HoustonAddressAutocomplete] Failed to initialize Autocomplete:",
+        e
+      );
+      setLoadError(true);
+    }
+  }, [isLoaded]);
 
-// ─── Public export ─────────────────────────────────────────────────────────
-/**
- * Renders Google Places autocomplete for US Houston address entry.
- * Falls back to a plain <input> if NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set,
- * allowing the dev/staging environment to work without the key configured.
- */
-export default function HoustonAddressAutocomplete(props: HoustonAddressAutocompleteProps) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-  // No key → plain input (dev, staging without key, or env var missing)
-  if (!apiKey) {
+  if (!apiKey || loadError) {
     return <PlainInput {...props} />;
   }
 
-  return <AutocompleteInput {...props} />;
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      value={props.value}
+      onChange={(e) => props.onChange(e.target.value)}
+      onFocus={props.onFocus}
+      placeholder={
+        isLoaded
+          ? props.placeholder
+          : props.placeholder ?? "Loading address suggestions…"
+      }
+      className={props.className}
+      required={props.required}
+    />
+  );
 }
