@@ -105,19 +105,12 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://us-assets.i.posthog.com https://challenges.cloudflare.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://us-assets.i.posthog.com https://challenges.cloudflare.com https://maps.googleapis.com https://maps.gstatic.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://*.r2.dev https://img.clerk.com https://images.clerk.dev https://www.gstatic.com https://*.gstatic.com https://clerk.snapai.mainnov.tech https://lh3.googleusercontent.com",
-              `connect-src 'self' ${API_URL_FOR_CSP} https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://us.i.posthog.com https://us-assets.i.posthog.com https://challenges.cloudflare.com`,
+              `connect-src 'self' ${API_URL_FOR_CSP} https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://us.i.posthog.com https://us-assets.i.posthog.com https://challenges.cloudflare.com https://maps.googleapis.com`,
               "frame-src 'self' https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://challenges.cloudflare.com",
               "worker-src 'self' blob:",
             ].join("; "),
-          },
-        ],
-      },
-    ];
-  },
-};
-
-module.exports = nextConfig;
+     
