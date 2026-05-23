@@ -1,6 +1,6 @@
 # SnapAI AI — Tech Stack & Architecture
 
-> **Last updated:** May 24, 2026 (Stage 6 Vercel Staging Branch Rewire COMPLETE. All 3 staging domains wired to `staging` branch via domain-level gitBranch. DEC-067 SUPERSEDED by DEC-080. | Previously: Stage 4 Staging Isolation Audit COMPLETE. Clerk key prefix convention confirmed for all 4 domains. Vercel staging custom domains = Preview branch deployments (DEC-074). DEC-074/075/076/077 added. | Stage 2 Free-Tier Cost Audit complete. Stripe confirmed in Railway env vars -- likely test mode, no charges. DEC-071 added. | Full QA pass both markets. WA-28 through WA-37 added. DEC-065/066 added. | Previously: May 21, 2026 (Track F Group C + BUG-032 QA PASS. HEAD: `4743a40`. Alembic head: `032`. Both markets verified. BUG-031 OPEN (staging banner on prod PK). | **2026-05-23 patch:** Change workflow `WORKFLOW.md` + DEC-070 added.
+> **Last updated:** May 24, 2026 (Stage 7 E2E QA COMPLETE. DEC-070 ACTIVE. | Stage 8 Closeout doc written. | Stage 6 Vercel Staging Branch Rewire COMPLETE. All 3 staging domains wired to `staging` branch via domain-level gitBranch. DEC-067 SUPERSEDED by DEC-080. | Previously: Stage 4 Staging Isolation Audit COMPLETE. Clerk key prefix convention confirmed for all 4 domains. Vercel staging custom domains = Preview branch deployments (DEC-074). DEC-074/075/076/077 added. | Stage 2 Free-Tier Cost Audit complete. Stripe confirmed in Railway env vars -- likely test mode, no charges. DEC-071 added. | Full QA pass both markets. WA-28 through WA-37 added. DEC-065/066 added. | Previously: May 21, 2026 (Track F Group C + BUG-032 QA PASS. HEAD: `4743a40`. Alembic head: `032`. Both markets verified. BUG-031 OPEN (staging banner on prod PK). | **2026-05-23 patch:** Change workflow `WORKFLOW.md` + DEC-070 added.
 > **Status:** Beta — live on Vercel + Railway. Both markets QA-verified 2026-05-21: Houston + PK. Build hash: `80f50c7f2d1fe88a`. See DEC-037 through DEC-042 for lessons from this session.
 
 ---
@@ -19,7 +19,7 @@ The 7-step loop: branch off `staging` → make change in `/tmp` clone → push a
 
 **Hotfix path (production-only push):** reserved for genuine emergencies (prod outage, auth completely broken, payment generating wrong amounts). Mandatory follow-up: sync staging to match main within 24 hours, write retrospective DEC entry. Full protocol in `WORKFLOW.md` Section 9.
 
-**Activation:** mandatory after Stage 7 sign-off. Until then, transition rules in `WORKFLOW.md` Section 1 apply.
+**Activation:** ACTIVE (Stage 7 signed off 2026-05-24). Mandatory for all changes. See WORKFLOW.md.
 
 ---
 
