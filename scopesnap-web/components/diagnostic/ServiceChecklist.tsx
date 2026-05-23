@@ -200,7 +200,7 @@ export default function ServiceChecklist({
         }]);
       }
 
-      if (resp.resolved && resp.service_step_complete) {
+      if (resp.service_step_complete) {
         // Terminal step — backend auto-generates estimate; navigate directly.
         // BUG-036 fix: POST /api/estimates/service does not exist; handleServiceComplete
         // ignores the result and redirects to /assessment/{id}, so call onComplete directly.

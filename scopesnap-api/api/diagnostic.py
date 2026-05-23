@@ -359,14 +359,8 @@ async def _generate_service_estimate(
         },
     )
 
-    # Mark assessment as having an estimate (non-critical; ignore errors)
-    try:
-        await db.execute(
-            text("UPDATE assessments SET est_status = 'estimated', updated_at = :now WHERE id = :aid"),
-            {"now": now, "aid": assessment_id},
-        )
-    except Exception as exc:
-        logger.warning("[diagnostic] could not update assessment est_status: %s", exc)
+    # NOTE: est_status column was removed from assessments table (BUG-039 fix).
+    # Do not update assessments here — would abort the transaction on missing column.
 
     logger.info(
         "[diagnostic] service estimate created: assessment=%s short_id=%s markup=%.0f%%",
