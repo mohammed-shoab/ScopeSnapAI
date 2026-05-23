@@ -1500,3 +1500,47 @@ switches contexts.
 - R2: prod bucket `scopesnap-uploads`, staging bucket `scopesnap-uploads-staging` -- isolated
 - DNS: staging CNAME `e08b930de4517e81.vercel-dns-017.com`, prod CNAME `e9353dffc8a96116.vercel-dns-017.com` -- different endpoints
 - Sentry: `production` environment filter (8+ issues, SNAPAI-API-P/F/S/Y/X/W/V/T) vs `staging` filter (1 issue, SNAPAI-API-Z) -- isolated, no cross-contamination
+
+
+---
+
+## DEC-078 -- CSP must include maps.googleapis.com and maps.gstatic.com in script-src and connect-src (Stage 3 Google Maps Integration -- 2026-05-23)
+
+**Date:** 2026-05-23 (Stage 3 Google Maps Integration)
+
+**Context:** `HoustonAddressAutocomplete` injects a `<script src="https://maps.googleapis.com/maps/api/js?...">` tag at runtime. Without explicit CSP allowances the browser blocks the script before it executes.
+
+**Decision:** `next.config.js` CSP headers must include:
+- `script-src`: `https://maps.googleapis.com https://maps.gstatic.com`
+- `connect-src`: `https://maps.googleapis.com`
+
+**Commit:** `42e692b` (next.config.js)
+
+**Note:** Code comment in `next.config.js` mistakenly labels this DEC-076 (that number was taken by the Stage 4 staging isolation audit). Canonical reference is DEC-078.
+
+---
+
+## DEC-079 -- Service Worker must passthrough maps.googleapis.com and maps.gstatic.com to avoid opaque-response blocking (Stage 3 Google Maps Integration -- 2026-05-23)
+
+**Date:** 2026-05-23 (Stage 3 Google Maps Integration)
+
+**Context:** The SnapAI PWA Service Worker (`public/sw.js`) intercepts all fetch requests. For cross-origin `<script>` requests that fall through to the navigation handler, the SW calls `fetch(event.request)` which returns an **opaque response**. Browsers cannot execute scripts from opaque responses -- `script.onerror` fires despite an HTTP 200 from the server.
+
+**Root cause chain:**
+1. `HoustonAddressAutocomplete` injects `<script src="https://maps.googleapis.com/...">`
+2. SW intercepts the script fetch (not matched by API or static-asset rules)
+3. Navigation fallback calls `fetch(event.request)` -- opaque response returned
+4. Browser: opaque response cannot be executed as a script -- `script.onerror` fires
+5. Component: `loadError = true` -- renders `PlainInput` fallback (no autocomplete)
+
+**Fix:** Add `maps.googleapis.com` and `maps.gstatic.com` to the third-party passthrough block in `sw.js` (alongside posthog, clerk, railway). These hostnames now get `event.respondWith(fetch(event.request)); return;` -- bypassing the opaque-response path entirely.
+
+**Commit:** `a88c93a` (public/sw.js)
+
+**Diagnostic proof:** Unregistering the SW via `navigator.serviceWorker.getRegistrations().then(...)` caused `google.maps.places` to load successfully (googleDefined: true, placesLoaded: true). Re-registering with the passthrough fix confirmed the same result with SW active.
+
+**Note:** Code comment in `sw.js` mistakenly labels this DEC-077 (that number was taken by the Stage 4 staging isolation audit). Canonical reference is DEC-079.
+
+**Future work:** `google.maps.places.Autocomplete` is deprecated for new customers as of March 1, 2025 (not discontinued -- Google shows a console warning on every load). Future migration to `google.maps.places.PlaceAutocompleteElement` required before Google discontinues the old API. No timeline announced.
+
+**Side issue found (BUG-042):** Address field placeholder shows wrong text. Root cause: the `t()` i18n translation function is returning an error string for that key. Non-blocking -- autocomplete works correctly; placeholder only shows when field is empty.

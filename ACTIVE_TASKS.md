@@ -3,7 +3,7 @@
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-23 (Stage 4 Staging Isolation Audit COMPLETE. All 8 dimensions PASS. 2 critical contaminations fixed. DEC-074/075/076/077 added. | Stage 1 Production Verification COMPLETE. BUG-040 + BUG-041 fixed. All 6 flows PASS. L36-L39 added.) | Previously: (Stage 2 Free-Tier Cost Audit COMPLETE. Total spend $5.00/mo. All 15 services verified. Supabase spend cap enabled. DEC-071 added.) | Previously: 2026-05-23 (Full QA pass both markets -- all 6 flows PASS. Lessons L32-L35 added. DEC-065/066 added. WA-28 through WA-37 added to TECH_STACK.) | Previous: 2026-05-22 (Staging Fix Plan COMPLETE — all phases 1-10 done. NEXT_PUBLIC_ENV=staging fixed+redeployed. DNS updated in Hostinger. scopesnap-web-staging.vercel.app VALID. Custom domains pending DNS propagation. Production: HEAD 19db2d1, Alembic 034. No open production bugs.) | **2026-05-23 patch:** `WORKFLOW.md` + DEC-070 added (staging-first workflow).
+> Last updated: 2026-05-23 (Stage 3 Google Maps Integration COMPLETE. HoustonAddressAutocomplete live on snapai.mainnov.tech. DEC-078/DEC-079 added. BUG-042 logged. | Stage 4 Staging Isolation Audit COMPLETE. All 8 dimensions PASS. 2 critical contaminations fixed. DEC-074/075/076/077 added. | Stage 1 Production Verification COMPLETE. BUG-040 + BUG-041 fixed. All 6 flows PASS. L36-L39 added.) | Previously: (Stage 2 Free-Tier Cost Audit COMPLETE. Total spend $5.00/mo. All 15 services verified. Supabase spend cap enabled. DEC-071 added.) | Previously: 2026-05-23 (Full QA pass both markets -- all 6 flows PASS. Lessons L32-L35 added. DEC-065/066 added. WA-28 through WA-37 added to TECH_STACK.) | Previous: 2026-05-22 (Staging Fix Plan COMPLETE — all phases 1-10 done. NEXT_PUBLIC_ENV=staging fixed+redeployed. DNS updated in Hostinger. scopesnap-web-staging.vercel.app VALID. Custom domains pending DNS propagation. Production: HEAD 19db2d1, Alembic 034. No open production bugs.) | **2026-05-23 patch:** `WORKFLOW.md` + DEC-070 added (staging-first workflow).
 
 ---
 
@@ -21,6 +21,22 @@ Workflow becomes mandatory after Stage 7 sign-off (staging full QA matches prod 
 ---
 
 ---
+
+## Completed -- Stage 3 Google Maps Integration (2026-05-23)
+
+| Item | Description | Files changed | Commit | Status |
+|------|-------------|---------------|--------|--------|
+| Maps.1 | Add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to production + staging Vercel env vars | Vercel dashboard | -- | DONE |
+| Maps.2 | Implement HoustonAddressAutocomplete component (US market only, Places API + fallback to PlainInput) | components/HoustonAddressAutocomplete.tsx | -- | DONE |
+| Maps.3 | Integrate component into assess page (US market gate via detectMarket()) | app/(app)/assess/page.tsx | -- | DONE |
+| Maps.4 | CSP fix -- add maps.googleapis.com + maps.gstatic.com to script-src and connect-src | next.config.js | 42e692b | DONE |
+| Maps.5 | SW passthrough fix -- add googleapis/gstatic to third-party passthrough block in sw.js | public/sw.js | a88c93a | DONE |
+
+**Verification:** google.maps.places loaded, HoustonAddressAutocomplete state: isLoaded=true, loadError=false. .pac-container present in DOM (confirms new google.maps.places.Autocomplete() succeeded). Both Vercel deployments (production + staging) at commit a88c93a.
+
+**BUG-042 (non-blocking):** Address field placeholder shows wrong text -- t() i18n function returning error string for the placeholder key. Autocomplete works correctly. Fix deferred.
+
+**GCP:** Project snapai-maps (ID: root-matrix-497207-j4). API key restrictions currently set to None (HTTP referrer restrictions removed during debugging). TODO: restore restrictions to http://localhost:3000/*, https://snapai.mainnov.tech/*, https://staging.snapai.mainnov.tech/* after Stage 3 sign-off.
 
 ## Completed — Stage 4 Staging Isolation Audit (2026-05-23)
 
