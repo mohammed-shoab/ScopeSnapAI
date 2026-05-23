@@ -3,7 +3,7 @@
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-23 (Full QA pass both markets — all 6 flows PASS. Lessons L32-L35 added. DEC-065/066 added. WA-28 through WA-37 added to TECH_STACK.) | Previous: 2026-05-22 (Staging Fix Plan COMPLETE — all phases 1-10 done. NEXT_PUBLIC_ENV=staging fixed+redeployed. DNS updated in Hostinger. scopesnap-web-staging.vercel.app VALID. Custom domains pending DNS propagation. Production: HEAD 19db2d1, Alembic 034. No open production bugs.) | **2026-05-23 patch:** `WORKFLOW.md` + DEC-070 added (staging-first workflow).
+> Last updated: 2026-05-23 (Stage 2 Free-Tier Cost Audit COMPLETE. Total spend $5.00/mo. All 15 services verified. Supabase spend cap enabled. DEC-071 added.) | Previously: 2026-05-23 (Full QA pass both markets -- all 6 flows PASS. Lessons L32-L35 added. DEC-065/066 added. WA-28 through WA-37 added to TECH_STACK.) | Previous: 2026-05-22 (Staging Fix Plan COMPLETE — all phases 1-10 done. NEXT_PUBLIC_ENV=staging fixed+redeployed. DNS updated in Hostinger. scopesnap-web-staging.vercel.app VALID. Custom domains pending DNS propagation. Production: HEAD 19db2d1, Alembic 034. No open production bugs.) | **2026-05-23 patch:** `WORKFLOW.md` + DEC-070 added (staging-first workflow).
 
 ---
 

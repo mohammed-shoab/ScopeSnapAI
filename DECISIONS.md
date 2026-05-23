@@ -3,7 +3,7 @@
 > This file records decisions made during development that have lasting impact on how the codebase works.
 > Future AI sessions: read this before proposing architecture changes or writing migrations.
 >
-> Last updated: 2026-05-23 (DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
+> Last updated: 2026-05-23 (DEC-071 added -- Stripe test-mode GAP from Stage 2 cost audit. | DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
 
 ---
 
@@ -1383,3 +1383,23 @@ switches contexts.
 
 **File created:** `C:\Users\dell\My Drive\Personal Claude\ScopeSnapAI\WORKFLOW.md` (2026-05-23)
 
+
+---
+
+## DEC-071 -- Stripe is confirmed in Railway prod env vars; treat as test mode pending manual verify (2026-05-23)
+
+**Date:** 2026-05-23
+
+**Context:** Stage 2 Free-Tier Cost Audit found STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET present in the Railway production service environment (22 vars total). The Stripe dashboard (stripe.com) is blocked by Cowork safety tooling and could not be inspected automatically. No TWILIO_*, WHATSAPP_*, or META_* vars exist -- WhatsApp integration is not yet implemented.
+
+**Decision:** Stripe is treated as $0/mo cost for the audit. No paying customers have been onboarded to SnapAI. The key type (sk_test_ vs sk_live_) is assumed to be test-mode based on the project stage. A manual verification step is required.
+
+**Rule:** Before enabling any live payment flows:
+1. Confirm Stripe key prefix is sk_test_ on staging and sk_live_ on production (check dashboard.stripe.com)
+2. Ensure staging uses a separate Stripe test account (never test against prod Stripe account)
+3. Log all Stripe events in Railway logs + Sentry before going live
+4. Stripe webhook secret (STRIPE_WEBHOOK_SECRET) must be rotated when switching from test to live
+
+**Manual action required:** Shoab to verify at https://dashboard.stripe.com -- confirm test mode active, no live charges, no active subscriptions.
+
+**Cross-references:** Stage 2 Free-Tier Cost Audit (2026-05-23), PROJECT_BRAIN.md cost audit ledger, TECH_STACK.md Third-Party Services Status.

@@ -1,6 +1,6 @@
 # SnapAI AI — Tech Stack & Architecture
 
-> **Last updated:** May 23, 2026 (Full QA pass both markets. WA-28 through WA-37 added. DEC-065/066 added. | Previously: May 21, 2026 (Track F Group C + BUG-032 QA PASS. HEAD: `4743a40`. Alembic head: `032`. Both markets verified. BUG-031 OPEN (staging banner on prod PK). | **2026-05-23 patch:** Change workflow `WORKFLOW.md` + DEC-070 added.
+> **Last updated:** May 23, 2026 (Stage 2 Free-Tier Cost Audit complete. Stripe confirmed in Railway env vars -- likely test mode, no charges. DEC-071 added. | Full QA pass both markets. WA-28 through WA-37 added. DEC-065/066 added. | Previously: May 21, 2026 (Track F Group C + BUG-032 QA PASS. HEAD: `4743a40`. Alembic head: `032`. Both markets verified. BUG-031 OPEN (staging banner on prod PK). | **2026-05-23 patch:** Change workflow `WORKFLOW.md` + DEC-070 added.
 > **Status:** Beta — live on Vercel + Railway. Both markets QA-verified 2026-05-21: Houston + PK. Build hash: `80f50c7f2d1fe88a`. See DEC-037 through DEC-042 for lessons from this session.
 
 ---
@@ -570,7 +570,7 @@ See DEC-028 for full pattern. `git fast-import` is immune to index corruption an
 | **Sentry** | Free developer plan | ✅ OK | Business trial ended Apr 28 2026; usage near-zero (93 spans, 0 errors) — free plan sufficient |
 | **UptimeRobot** | Free | ✅ Confirmed | Monitoring confirmed active Apr 30 2026. 50% uptime Apr 19–25 was pre-deploy downtime — not an ongoing issue. |
 | **Google Gemini** | Pay-per-use | ✅ Active | AI vision: equipment ID + condition analysis |
-| **Stripe** | Test mode | 🔲 Not wired | Integrated but Checkout not active for beta |
+| **Stripe** | Test mode (likely) | ⚠️ GAP | STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET in Railway prod env. Dashboard blocked by safety tooling. No paying customers. Manual verify: dashboard.stripe.com to confirm sk_test_ prefix. |
 
 ### Railway Cost Controls (updated Apr 30 2026)
 
