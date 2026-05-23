@@ -3,7 +3,7 @@
 > This file records decisions made during development that have lasting impact on how the codebase works.
 > Future AI sessions: read this before proposing architecture changes or writing migrations.
 >
-> Last updated: 2026-05-23 (DEC-071 added -- Stripe test-mode GAP from Stage 2 cost audit. | DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
+> Last updated: 2026-05-24 (DEC-080 added — Stage 6 Vercel staging domain-level gitBranch rewire; DEC-067 marked SUPERSEDED. | Previously: DEC-071 added -- Stripe test-mode GAP from Stage 2 cost audit. | DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
 
 ---
 
@@ -1250,15 +1250,15 @@ Steps 2, 5, 6, 7 use reading/multi input types — they always have a submit but
 4. If step generates a finding, map the branch_key to the correct line_item_code
 
 **Commit:** `3f09c02`
-## DEC-067 — Vercel staging project deploys `main` branch, not `staging` branch (2026-05-22)
+## DEC-067 — Vercel staging project deploys `main` branch, not `staging` branch (2026-05-22) — **SUPERSEDED 2026-05-24 by DEC-080**
 
-**Date:** 2026-05-22
+**Date:** 2026-05-22 | **Status:** SUPERSEDED 2026-05-24 — see DEC-080
 
-**Context:** During the staging fix session, it was discovered that the `scopesnap-web-staging` Vercel project is configured with `main` as its Production branch. The `staging` git branch is NOT linked to the Vercel staging project. All staging Vercel deployments show source branch = `main`.
+**Context:** During the staging fix session, it was discovered that the `scopesnap-web-staging` Vercel project is configured with `main` as its Production branch. The `staging` git branch was NOT linked to the Vercel staging project. All staging Vercel deployments showed source branch = `main`.
 
-**Rule:** When checking "what code is staging Vercel running?", look at the `main` branch HEAD — not the `staging` branch. The `staging` git branch is used only for Railway staging backend deployments (if wired up) or as a reference branch.
+**SUPERSEDED:** Stage 6 (2026-05-24) fixed this by setting `gitBranch: "staging"` at the domain level for all 3 staging domains via the Vercel domain PATCH API (`PATCH /api/v9/projects/{id}/domains/{domain}`). All staging domains now serve the `staging` git branch. See DEC-080 for full details.
 
-**Impact:** This means the staging frontend always runs the latest `main` code. Any frontend feature merged to `main` immediately appears in staging. This is acceptable for SnapAI's current team size and velocity.
+**Historical note:** Vercel's project-level `link.productionBranch` cannot be changed via the API (schema whitelist rejects it). The domain-level `gitBranch` override achieves the same practical outcome: pushing to `staging` branch triggers new deployments that all 3 staging domains serve.
 
 ---
 
@@ -1377,7 +1377,7 @@ switches contexts.
 - DEC-015 — dual keepalive crons (Sun + Wed)
 - DEC-023 / DEC-051 — never set NEXT_PUBLIC_ENV=staging on prod
 - DEC-066 — DNS in Hostinger, not Cloudflare
-- DEC-067 — Vercel staging deploys main (to be superseded by Stage 6 rewire)
+- DEC-067 — Vercel staging deployed main (SUPERSEDED 2026-05-24 by DEC-080)
 - DEC-068 — DNS for mainnov.tech in Hostinger (account `mshoabarabi@gmail.com`)
 - DEC-069 — StagingBanner is RSC, auth-only
 
@@ -1544,3 +1544,45 @@ switches contexts.
 **Future work:** `google.maps.places.Autocomplete` is deprecated for new customers as of March 1, 2025 (not discontinued -- Google shows a console warning on every load). Future migration to `google.maps.places.PlaceAutocompleteElement` required before Google discontinues the old API. No timeline announced.
 
 **Side issue found (BUG-042):** Address field placeholder shows wrong text. Root cause: the `t()` i18n translation function is returning an error string for that key. Non-blocking -- autocomplete works correctly; placeholder only shows when field is empty.
+
+
+---
+
+## DEC-080 — Stage 6: Vercel staging domains rewired to `staging` branch via domain-level gitBranch (2026-05-24) — SUPERSEDES DEC-067
+
+**Date:** 2026-05-24 (Stage 6 Vercel Staging Branch Rewire)
+
+**Problem (DEC-067):** `scopesnap-web-staging` Vercel project had `main` as its Production branch. All staging Vercel deployments were sourced from `main`, not from the `staging` git branch.
+
+**Root cause of difficulty:** Vercel's API does not expose `link.productionBranch` as a patchable field. `PATCH /api/v9/projects/{id}` with `productionBranch`, `link`, or `gitBranch` in the body returns `"should NOT have additional property"`. This applies to all API versions (v1, v7, v8, v9, v10). The Vercel UI Git settings page also does not expose a Production Branch input field in the current UI version. POST to `/link` returns 200 but does not change the branch.
+
+**Solution:** Set `gitBranch: "staging"` at the **domain level** for all 3 staging domains via:
+```
+PATCH /api/v9/projects/{projectId}/domains/{domainName}
+Body: { "gitBranch": "staging" }
+```
+Used browser-session-authenticated calls (relative URL from within vercel.com tab, `credentials: 'include'` automatic).
+
+**Domains updated:**
+| Domain | gitBranch set to |
+|--------|-----------------|
+| `staging.snapai.mainnov.tech` | `staging` |
+| `pk-staging.snapai.mainnov.tech` | `staging` |
+| `scopesnap-web-staging.vercel.app` | `staging` |
+
+**Verification:**
+- Push to `staging` branch (commit `71bc7fea`) → Vercel deployment `dpl_Gm5CkDDoFbA8CHCsM9ksETynCuFo` fired, `state=READY`, `branch=staging` ✅
+- Push to `main` branch (commit `ebe82f6c`) → Production project `prj_SQgShjdRuT2cmhjgL45QMVGP8CNs` got production deploy (correct — does NOT touch staging domains) ✅
+- Staging backend: `{"status":"ok","db":"connected","environment":"staging"}` ✅
+- Production backend: `{"status":"ok","db":"connected","environment":"production"}` ✅
+
+**Known limitation (acceptable):** The `scopesnap-web-staging` Vercel project STILL builds a `target: "production"` deployment from `main` pushes (because `link.productionBranch` cannot be changed). However, since all 3 domains have `gitBranch: "staging"`, those `main`-sourced builds are NOT served on any domain. They sit as orphaned Production builds. The domain-level override fully controls what each staging domain serves.
+
+**Rule for future work:** When pushing to `staging` branch, Vercel automatically builds and deploys to all 3 staging domains. This is the intended behavior. Do NOT change the domain `gitBranch` settings back to `main` or remove them.
+
+**Git state at Stage 6 sign-off (2026-05-24):**
+- `main` HEAD: `ebe82f6cb9e7727f99ea765088d65515f6d6da93` (empty Stage 6 verification commit)
+- `staging` HEAD: `71bc7fea166fa9a7526215c9475ab97b9abd8fc4` (empty Stage 6 verification commit)
+- Both have one empty `--allow-empty` verification commit; no functional code changes
+
+**Cross-references:** DEC-067 (superseded), DEC-074 (Vercel staging = Preview deployments), DEC-070 (staging-first workflow)
