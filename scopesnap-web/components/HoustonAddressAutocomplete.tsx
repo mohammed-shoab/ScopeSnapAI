@@ -8,6 +8,7 @@
  * Stage 3 — Track F C.2  |  DEC-074
  * Market gate: detectMarket() === "US" enforced by the caller (assess/page.tsx).
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 "use client";
 
 import { useRef } from "react";
