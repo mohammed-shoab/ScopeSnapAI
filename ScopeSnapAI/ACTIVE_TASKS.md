@@ -1,5 +1,31 @@
 # SnapAI — Active Tasks
 
+## Stage 8 Sign-Off -- Final Documentation + Meta-Retrospective + Project Closing -- 2026-05-24
+
+| Check | Result |
+|-------|--------|
+| STAGING_MIRROR_CLOSEOUT.md created | OK -- all 10 sections written |
+| DEC-002 revision note updated to 034 | OK |
+| TECH_STACK.md activation status updated | OK -- DEC-070 ACTIVE |
+| PROJECT_BRAIN.md closing summary added | OK |
+| DEC-070 Activation updated in DECISIONS.md | OK -- ACTIVE as of Stage 7 |
+| WORKFLOW.md Activation section updated | OK -- ACTIVE |
+| Brain file consistency audit | OK -- see STAGING_MIRROR_CLOSEOUT.md Appendix |
+| All 8 stages signed off | OK |
+| Commit via staging-first workflow | OK -- staging SHA: d9bad2c, main SHA: 540e795 (Stage 7) |
+
+All 8 stages complete. DEC-070 is the operational workflow from this point forward.
+
+### Future Work Backlog
+
+- Create a test user in firm-chamois-61 (Clerk staging) for future PK staging auth-gated QA
+- Migrate google.maps.places.Autocomplete to PlaceAutocompleteElement before Google deprecates
+- PostHog dashboard buildout (deferred to Phase 2)
+- ONBOARDING.md for new contributors (not yet written)
+- Stage 8 lesson: always document the hotfix path the first time it is exercised (DEC-070 Section 9)
+
+---
+
 ## Stage 7 Sign-Off — Staging E2E QA — DEC-070 ACTIVE — 2026-05-24
 
 | Check | Result |
@@ -64,7 +90,7 @@ Stage 5 complete. Ready for Stage 6 (Vercel Staging Branch Rewire — DEC-067 fi
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-24 (Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. | Stage 3 Google Maps Integration COMPLETE. HoustonAddressAutocomplete live on snapai.mainnov.tech. DEC-078/DEC-079 added. BUG-042 logged. | Stage 4 Staging Isolation Audit COMPLETE. All 8 dimensions PASS. 2 critical contaminations fixed. DEC-074/075/076/077 added. | Stage 1 Production Verification COMPLETE. BUG-040 + BUG-041 fixed. All 6 flows PASS. L36-L39 added.) | Previously: (Stage 2 Free-Tier Cost Audit COMPLETE. Total spend $5.00/mo. All 15 services verified. Supabase spend cap enabled. DEC-071 added.) | Previously: 2026-05-23 (Full QA pass both markets -- all 6 flows PASS. Lessons L32-L35 added. DEC-065/066 added. WA-28 through WA-37 added to TECH_STACK.) | Previous: 2026-05-22 (Staging Fix Plan COMPLETE — all phases 1-10 done. NEXT_PUBLIC_ENV=staging fixed+redeployed. DNS updated in Hostinger. scopesnap-web-staging.vercel.app VALID. Custom domains pending DNS propagation. Production: HEAD 19db2d1, Alembic 034. No open production bugs.) | **2026-05-23 patch:** `WORKFLOW.md` + DEC-070 added (staging-first workflow).
+> Last updated: 2026-05-24 (Stage 8 COMPLETE. All 8 stages signed off. STAGING_MIRROR_CLOSEOUT.md written. | Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. | Stage 3 Google Maps Integration COMPLETE. HoustonAddressAutocomplete live on snapai.mainnov.tech. DEC-078/DEC-079 added. BUG-042 logged. | Stage 4 Staging Isolation Audit COMPLETE. All 8 dimensions PASS. 2 critical contaminations fixed. DEC-074/075/076/077 added. | Stage 1 Production Verification COMPLETE. BUG-040 + BUG-041 fixed. All 6 flows PASS. L36-L39 added.) | Previously: (Stage 2 Free-Tier Cost Audit COMPLETE. Total spend $5.00/mo. All 15 services verified. Supabase spend cap enabled. DEC-071 added.) | Previously: 2026-05-23 (Full QA pass both markets -- all 6 flows PASS. Lessons L32-L35 added. DEC-065/066 added. WA-28 through WA-37 added to TECH_STACK.) | Previous: 2026-05-22 (Staging Fix Plan COMPLETE — all phases 1-10 done. NEXT_PUBLIC_ENV=staging fixed+redeployed. DNS updated in Hostinger. scopesnap-web-staging.vercel.app VALID. Custom domains pending DNS propagation. Production: HEAD 19db2d1, Alembic 034. No open production bugs.) | **2026-05-23 patch:** `WORKFLOW.md` + DEC-070 added (staging-first workflow).
 
 ---
 
