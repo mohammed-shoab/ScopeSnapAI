@@ -1,6 +1,6 @@
 # SnapAI AI — Tech Stack & Architecture
 
-> **Last updated:** May 23, 2026 (Stage 2 Free-Tier Cost Audit complete. Stripe confirmed in Railway env vars -- likely test mode, no charges. DEC-071 added. | Full QA pass both markets. WA-28 through WA-37 added. DEC-065/066 added. | Previously: May 21, 2026 (Track F Group C + BUG-032 QA PASS. HEAD: `4743a40`. Alembic head: `032`. Both markets verified. BUG-031 OPEN (staging banner on prod PK). | **2026-05-23 patch:** Change workflow `WORKFLOW.md` + DEC-070 added.
+> **Last updated:** May 23, 2026 (Stage 4 Staging Isolation Audit COMPLETE. Clerk key prefix convention confirmed for all 4 domains. Vercel staging custom domains = Preview branch deployments (DEC-074). DEC-074/075/076/077 added. | Stage 2 Free-Tier Cost Audit complete. Stripe confirmed in Railway env vars -- likely test mode, no charges. DEC-071 added. | Full QA pass both markets. WA-28 through WA-37 added. DEC-065/066 added. | Previously: May 21, 2026 (Track F Group C + BUG-032 QA PASS. HEAD: `4743a40`. Alembic head: `032`. Both markets verified. BUG-031 OPEN (staging banner on prod PK). | **2026-05-23 patch:** Change workflow `WORKFLOW.md` + DEC-070 added.
 > **Status:** Beta — live on Vercel + Railway. Both markets QA-verified 2026-05-21: Houston + PK. Build hash: `80f50c7f2d1fe88a`. See DEC-037 through DEC-042 for lessons from this session.
 
 ---
@@ -22,6 +22,20 @@ The 7-step loop: branch off `staging` → make change in `/tmp` clone → push a
 **Activation:** mandatory after Stage 7 sign-off. Until then, transition rules in `WORKFLOW.md` Section 1 apply.
 
 ---
+
+
+---
+
+## Clerk Key Convention (confirmed Stage 4 audit, 2026-05-23 — DEC-077)
+
+| Prefix | Environment | Vercel project | Railway service | Clerk app |
+|--------|-------------|----------------|-----------------|-----------|
+| pk_live_ / sk_live_ | Production | scope-snap-ai | scopesnap-api-production | Production app |
+| pk_test_ / sk_test_ | Staging | scopesnap-web-staging | scopesnap-api-staging | firm-chamois-61 (Development) |
+
+**The prefix in the HTML `data-clerk-publishable-key` attribute is the authoritative environment signal.**
+
+**Vercel staging custom domain redeploy pattern (DEC-074):** After any env var change on `scopesnap-web-staging`, always trigger a staging branch Preview redeploy (not a Production environment build) to update `staging.snapai.mainnov.tech` and `pk-staging.snapai.mainnov.tech`.
 
 ## CRITICAL: Emoji Files & Blob Truncation — MUST READ BEFORE ANY GIT OPERATION
 
@@ -1372,3 +1386,22 @@ Always wrap async code in an IIFE:
 ```
 
 **DEC reference:** DEC-048 (tab group resets), WA-13 (Vercel client-rendered pages)
+
+
+---
+
+## WA-28 -- estimates table has NO updated_at column — INSERT must omit it (2026-05-22)
+
+**Discovery (BUG-035):** `_generate_service_estimate()` was including `updated_at` in the INSERT column list for the `estimates` table. The column does not exist in the schema. This caused a silent INSERT failure — no exception raised, no row created.
+
+**Rule:** The `estimates` table schema is: `id, assessment_id, company_id, report_token, report_short_id, options, selected_option, total_amount, deposit_amount, markup_percent, status, viewed_at, approved_at, stripe_payment_intent_id, contractor_pdf_url, homeowner_report_url, sent_via, sent_at, actual_cost, accuracy_score, created_at, seasonal_modifier_pct, market`. There is NO `updated_at`. Any INSERT or UPDATE must never reference it.
+
+**Detection:** If an estimate INSERT appears to succeed (no exception) but no row appears in `SELECT * FROM estimates`, check the column list for `updated_at` or any other non-existent column.
+
+**DEC reference:** DEC-059
+
+---
+
+## WA-29 -- POST /api/estimates/service does NOT exist — use onComplete() (2026-05-22)
+
+**Discovery (BUG-036):** `ServiceChecklist.tsx` was calling `generateServiceEstimate()` which POSTed to `/api/estimates/service`. This endpoint was never implemented on the backend. The POST returned a 404, the error was swallowed, and the flow appeared to hang

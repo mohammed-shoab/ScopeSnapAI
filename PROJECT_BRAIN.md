@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-23 — Stage 2 Free-Tier Cost Audit COMPLETE. All 15 services verified. Total: $5.00/mo (Railway flat fee only). Supabase spend cap enabled, Railway $10 limit set. DEC-071 added. | Previously: 2026-05-23 — Full QA pass (both markets, all 6 flows, zero bugs). Brain files updated with lessons L28-L35, DEC-065/066, WA-28 through WA-37. | Previously: 2026-05-22 — STAGING FIX PLAN phases 1-10 complete. BUG-037 CONFIRMED LIVE. BUG-038-build FIXED. HEAD: 19db2d1. Alembic: 034. Staging: NEXT_PUBLIC_ENV=staging fixed+redeployed; DNS updated in Hostinger (mshoabarabi@gmail.com — NOT Cloudflare); custom domains pending propagation; scopesnap-web-staging.vercel.app VALID. StagingBanner = RSC in app/(app)/layout.tsx (auth-only routes). pak_diagnostic_questions does NOT exist — PSI thresholds in pak_operating_targets. Address input must be populated via React onChange BEFORE complaint selection (WA-32). A.6 scope = DiagnosisListRow only (DEC-061). PK pricing DB URL = /settings/pricing. Next.js uses SSR — no client-side API fetches visible (WA-33).
+> Last updated: 2026-05-23 — Stage 4 Staging Isolation Audit COMPLETE. All 8 dimensions PASS. 2 critical cross-contaminations found and fixed (Railway sk_live_ on staging → sk_test_; pk.snapai.mainnov.tech ISR cache → fresh redeploy CwjgWfNBi). Staging branch Preview redeploy pattern confirmed (DEC-074). DEC-074/075/076/077 added. | Previously: Stage 1 Production Verification COMPLETE. BUG-040 (CAST(:options AS jsonb) fix in diagnostic.py), BUG-041 (NEXT_PUBLIC_ENV=production on Vercel prod, redeployed 8WLih2SBr). All 6 flows PASS both markets. L36-L39 added, DEC-072/073, WA-38/39. | Previously: Stage 2 Free-Tier Cost Audit COMPLETE. All 15 services verified. Total: $5.00/mo (Railway flat fee only). Supabase spend cap enabled, Railway $10 limit set. DEC-071 added. | Previously: 2026-05-23 — Full QA pass (both markets, all 6 flows, zero bugs). Brain files updated with lessons L28-L35, DEC-065/066, WA-28 through WA-37. | Previously: 2026-05-22 — STAGING FIX PLAN phases 1-10 complete. BUG-037 CONFIRMED LIVE. BUG-038-build FIXED. HEAD: 19db2d1. Alembic: 034. Staging: NEXT_PUBLIC_ENV=staging fixed+redeployed; DNS updated in Hostinger (mshoabarabi@gmail.com — NOT Cloudflare); custom domains pending propagation; scopesnap-web-staging.vercel.app VALID. StagingBanner = RSC in app/(app)/layout.tsx (auth-only routes). pak_diagnostic_questions does NOT exist — PSI thresholds in pak_operating_targets. Address input must be populated via React onChange BEFORE complaint selection (WA-32). A.6 scope = DiagnosisListRow only (DEC-061). PK pricing DB URL = /settings/pricing. Next.js uses SSR — no client-side API fetches visible (WA-33).
 > Previous: Track H Group E complete: full Urdu translation live on pk.snapai.mainnov.tech. Dashboard, sidebar, Step Zero, homeowner report all translated. HEAD: b57d969. Alembic: 032. No open issues.)
 > **2026-05-23 patch:** change workflow `WORKFLOW.md` + DEC-070 added — staging-first 7-step loop becomes mandatory after Stage 7 sign-off.
 
@@ -59,9 +59,47 @@ For full protocol — migration handling, env var handling, hotfix path, rollbac
 | DNS for mainnov.tech is in Hostinger, NOT Cloudflare | Account: `mshoabarabi@gmail.com` at hpanel.hostinger.com. staging_secrets.txt comment says Cloudflare — WRONG. CNAME names must be `staging.snapai` and `pk-staging.snapai` (NOT `staging`/`pk-staging` which resolves to wrong subdomain). Target: `e08b930de4517e81.vercel-dns-017.com`. Fixed and verified live 2026-05-23. | DEC-068 |
 | Vercel staging deploys main, not staging branch | scopesnap-web-staging Vercel project uses `main` branch for Production. The `staging` git branch is NOT linked to the Vercel staging project. | DEC-067 |
 | StagingBanner is RSC in (app)/layout.tsx, auth-only | Banner only shows on authenticated routes. Public pages (homepage, sign-in) do NOT show it. Correct behavior — do not add to root layout. | DEC-069 |
+| 2.5T commercial warning = MANUAL TONNAGE text input | Commercial warning triggers when user types "2.5" into the TONNAGE text field. NOT triggered by tonnage buttons (which only show 1.0T/1.5T/2.0T for all current PK brands). Test via manual text entry. | WA-40 |
+| CAST(:options AS jsonb) required for JSONB INSERT | SQLAlchemy raw SQL INSERT into JSONB column silently fails without explicit CAST. Use `CAST(:options AS jsonb)`. No exception raised on failure. | DEC-072 |
+| diagnostic_questions uses step_id, no market col | Column is `step_id` (NOT `step_key`). No `market` column. Table is shared US+PK. PSI thresholds stored here. | — |
+| NEXT_PUBLIC_ENV=staging on prod = recurring bug | BUG-031 (2026-05-21) and BUG-041 (2026-05-23) both caused by this. After ANY Vercel env var changes, verify production NEXT_PUBLIC_ENV is absent or "production". | DEC-023, DEC-073 |
 
 
 ---
+
+---
+
+## Stage 4 Staging Isolation Audit — COMPLETE (2026-05-23)
+
+**Audit scope:** 8 dimensions audited (Vercel, Railway, Supabase, Clerk, R2, Visual/Domain, Sentry, DNS)
+**Result:** ALL PASS. 2 critical cross-contaminations found and fixed.
+**Lead:** Claude (autonomous) — Shoab approved all fixes
+
+### Findings & Fixes
+
+| # | Dimension | Finding | Action | Status |
+|---|-----------|---------|--------|--------|
+| 4.1 | Vercel env vars | Staging project had pk_live_ in NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY | Corrected to pk_test_; staged branch Preview redeploy 5HJ2piG8A | FIXED |
+| 4.1 | Vercel project structure | 2 projects confirmed: scope-snap-ai (prod) + scopesnap-web-staging (staging) | No action | PASS |
+| 4.2 | Railway services | Staging service had sk_live_ CLERK_SECRET_KEY (production key) | Replaced with sk_test_ from firm-chamois-61 | FIXED |
+| 4.3 | Supabase | prod=quqrvnoguofbjacrxcim, staging=pqmgveqkuckbvyygsilk; no data overlap | No action | PASS |
+| 4.4 | Clerk apps | prod=pk_live_ app, staging=firm-chamois-61 (pk_test_) — separate apps | No action | PASS |
+| 4.5 | R2 buckets | prod=scopesnap-uploads, staging=scopesnap-uploads-staging — separate buckets | No action | PASS |
+| 4.6 | Visual/domain | pk.snapai.mainnov.tech was serving pk_test_ (ISR cache) | No-cache prod redeploy CwjgWfNBi; confirmed pk_live_ | FIXED |
+| 4.6 | Visual/domain | staging.snapai.mainnov.tech was serving pk_live_ after initial fix | Staging branch Preview redeploy 5HJ2piG8A; confirmed pk_test_ | FIXED |
+| 4.7 | Sentry | production filter: 8+ issues (SNAPAI-API-P/F/S/Y/X/W/V/T); staging filter: 1 issue (SNAPAI-API-Z) | No action | PASS |
+| 4.8 | DNS | staging CNAME e08b930de4517e81.vercel-dns-017.com; prod e9353dffc8a96116 — different endpoints | No action | PASS |
+
+### Key Deployment IDs
+
+| Deployment | Project | Purpose | Result |
+|------------|---------|---------|--------|
+| `5HJ2piG8A` | scopesnap-web-staging | Staging branch Preview redeploy (no cache) — fixes pk_live_ on staging custom domains | pk_test_ confirmed on both staging domains |
+| `CwjgWfNBi` | scope-snap-ai | Production no-cache redeploy — fixes ISR cache serving pk_test_ on pk.snapai.mainnov.tech | pk_live_ confirmed on pk.snapai.mainnov.tech |
+
+### Critical Pattern Discovered (DEC-074)
+
+Staging custom domains (staging.snapai.mainnov.tech, pk-staging.snapai.mainnov.tech) are served by **Preview branch deployments** of the `staging` git branch — NOT by Production environment builds. To update staging custom domains after an env var change: Deployments → filter "staging" branch → latest Preview → Redeploy (no cache).
 
 ## Live URLs
 
@@ -135,7 +173,7 @@ For full protocol — migration handling, env var handling, hotfix path, rollbac
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
 | Vercel staging (vercel.app URL) | `80df2e4` (redeploy BphSPPVbC) | ✅ Ready — Valid Configuration | 2026-05-22 |
-| Vercel staging (custom domains) | Both custom domains live | ✅ DNS fixed 2026-05-23 — CNAME names corrected to staging.snapai + pk-staging.snapai | 2026-05-23 |
+| Vercel staging (custom domains) | Both custom domains live | ✅ DNS fixed 2026-05-23; Clerk key fixed 2026-05-23 — Preview redeploy 5HJ2piG8A | 2026-05-23 |
 | NEXT_PUBLIC_ENV | `staging` | ✅ Set+saved (direct typing), redeployed | 2026-05-22 |
 | Railway staging backend | `980698b` | ✅ Health OK, alembic=025 | 2026-05-19 |
 | Supabase staging DB | All tables seeded (US + pak_*) | ✅ Full mirror of prod schema | 2026-05-19 |
@@ -204,6 +242,7 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 
 | Date | Markets | Outcome | Bugs Fixed | HEAD |
 |------|---------|---------|------------|------|
+| 2026-05-23 | Houston + PK | COMPLETE ✅ | BUG-040 (CAST jsonb fix in _generate_service_estimate), BUG-041 (NEXT_PUBLIC_ENV=production on Vercel, redeployed 8WLih2SBr). All 6 flows PASS. PSI thresholds verified. 2.5T warning confirmed. | 19db2d1 |
 | 2026-05-23 | Houston + PK | COMPLETE ✅ | Zero — full verification QA + brain file updates. All 6 flows PASS both markets. Lessons L32-L35 documented. DEC-065/066 added. WA-28 through WA-37 added to TECH_STACK. | 19db2d1 |
 | 2026-05-22 | Houston | COMPLETE OK | BUG-037 LIVE VERIFIED (Rs.5,906 PKR confirmed on Houston domain rpt-701093). BUG-038-build FIXED (removed 7954-line package-lock.json added by 78d0fff -- was breaking every Vercel build in ~8s). fmt() module-level removed. Debug markers cleaned. | 19db2d1 |
 | 2026-05-22 | Houston + PK | COMPLETE ✅ | BUG-037 (estimates.market), BUG-033b (Houston Better-tier copy all 19 cards). Migrations 033+034 deployed. Report currency fixed. | 1b86b77 |
@@ -222,6 +261,10 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 **Open known issues:**
 - None currently.
 
+**Recently resolved:**
+- BUG-040 (2026-05-23): CAST(:options AS jsonb) fix — `_generate_service_estimate()` in `api/diagnostic.py`. Service flow now creates estimate correctly.
+- BUG-041 (2026-05-23): NEXT_PUBLIC_ENV=production set in Vercel prod ALL environments. Staging banner no longer appears on pk.snapai.mainnov.tech.
+
 **Architecture facts — estimates table:**
 - `estimates` table columns: id, assessment_id, company_id, report_token, report_short_id, options, selected_option, total_amount, deposit_amount, markup_percent, status, viewed_at, approved_at, stripe_payment_intent_id, contractor_pdf_url, homeowner_report_url, sent_via, sent_at, actual_cost, accuracy_score, created_at, seasonal_modifier_pct, market
 - NO `updated_at` column — any INSERT must omit it
@@ -233,36 +276,4 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 
 ---
 
-## Free-Tier Cost Audit -- Stage 2 (2026-05-23)
-
-**Audit date:** 2026-05-23 | Verified by: Cowork AI session (automated browser + MCP)
-**Scope:** All 15 billing surfaces audited. Budget alerts configured.
-
-| Service | Plan | Mo Spend | Notes |
-|---------|------|----------|-------|
-| Railway (prod+staging) | Hobby $5/mo flat | **$5.00** | +$5 compute credit. Staging Serverless sleep enabled. Prior month: $8.67 (compute overage -- now controlled). |
-| Vercel (prod+staging) | Hobby | $0 | No payment method on file -- cannot incur charges. |
-| Supabase prod | Free | $0 | ACTIVE_HEALTHY. Invoices: $0.00 May 2026 + $0.00 Apr 2026 (PAID). |
-| Supabase staging | Free | $0 | ACTIVE_HEALTHY. Keepalive A/B crons (Sun+Wed) prevent 7-day pause. |
-| Clerk | Free | $0 | Under 1000 MAU. Dev mode keys (staging) + separate prod app. |
-| Cloudflare R2 | Free tier | $0 | scopesnap-uploads + scopesnap-uploads-staging. No public egress charges. |
-| GitHub Actions | Free (public repo) | $0 | Unlimited minutes on public repos. |
-| Hostinger | Annual billing | $0/mo current | mainnov.com WordPress Starter $131.88/yr (unrelated to SnapAI). mainnov.tech renewal $191.97/yr (~130 days away). DNS managed here (NOT Cloudflare). |
-| Sentry | Developer (free) | $0 | Near-zero usage (93 spans, 0 errors as of last check). |
-| PostHog | Free | $0 | Under 1M events/mo free tier. |
-| Gemini API | Free (no billing) | $0 | GCP project gen-lang-client-0809557545 has NO billing account -- cannot charge. |
-| Resend | Free tier | $0 | Under 3K emails/mo. |
-| Healthchecks.io | Hobbyist (free) | $0 | 2 checks (SnapAI Keepalive A + B). Account: ds.shoab@gmail.com. |
-| Stripe | GAP (likely test mode) | $0 est | STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET in Railway prod env. dashboard.stripe.com blocked by safety tooling. No paying customers onboarded. Manual verify required. |
-| WhatsApp | Not implemented | N/A | Zero TWILIO_*, WHATSAPP_*, META_* env vars found across all Railway environments. |
-| **TOTAL** | | **~$5.00/mo** | Railway flat fee only. All other services $0. |
-
-**Budget alerts configured (2026-05-23):**
-- Railway: $10/mo compute hard limit set (alerts email at threshold) -- confirmed in workspace billing ✅
-- Vercel: No CC on file -- no overage billing possible, no alert needed ✅
-- Supabase: Spend cap ENABLED (org jjjbqfgmrzfsesmuuyaq) -- no extra charges possible ✅
-- Gemini: No billing account -- cannot charge ✅
-
-**Open manual items:**
-- Stripe: Log into dashboard.stripe.com to confirm test mode (sk_test_...) and zero live charges
-- Railway: Review the "Apply 5 changes" pending banner on prod service variables before deploying
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           

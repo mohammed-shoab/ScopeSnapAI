@@ -1384,22 +1384,119 @@ switches contexts.
 **File created:** `C:\Users\dell\My Drive\Personal Claude\ScopeSnapAI\WORKFLOW.md` (2026-05-23)
 
 
+
 ---
 
-## DEC-071 -- Stripe is confirmed in Railway prod env vars; treat as test mode pending manual verify (2026-05-23)
+## DEC-072 -- BUG-040: CAST(:options AS jsonb) required for JSONB column INSERT in raw SQLAlchemy (2026-05-23)
 
 **Date:** 2026-05-23
 
-**Context:** Stage 2 Free-Tier Cost Audit found STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET present in the Railway production service environment (22 vars total). The Stripe dashboard (stripe.com) is blocked by Cowork safety tooling and could not be inspected automatically. No TWILIO_*, WHATSAPP_*, or META_* vars exist -- WhatsApp integration is not yet implemented.
+**Problem:** Service/Tune-Up flow completed (`service_complete` status) but never created an estimate row. Contractor opened the assessment page and saw an empty estimate.
 
-**Decision:** Stripe is treated as $0/mo cost for the audit. No paying customers have been onboarded to SnapAI. The key type (sk_test_ vs sk_live_) is assumed to be test-mode based on the project stage. A manual verification step is required.
+**Root cause:** `_generate_service_estimate()` in `api/diagnostic.py` ran a raw SQL INSERT with `:options` parameter bound to a Python list, targeting a JSONB column. SQLAlchemy with PostgreSQL requires an explicit `CAST(:options AS jsonb)` in the raw SQL string for JSONB columns. Without it, the INSERT executes and appears to succeed but the JSONB binding fails silently — no Python exception, no rollback, no row created.
 
-**Rule:** Before enabling any live payment flows:
-1. Confirm Stripe key prefix is sk_test_ on staging and sk_live_ on production (check dashboard.stripe.com)
-2. Ensure staging uses a separate Stripe test account (never test against prod Stripe account)
-3. Log all Stripe events in Railway logs + Sentry before going live
-4. Stripe webhook secret (STRIPE_WEBHOOK_SECRET) must be rotated when switching from test to live
+**Fix:** Changed the INSERT to use `CAST(:options AS jsonb)` for the options parameter.
 
-**Manual action required:** Shoab to verify at https://dashboard.stripe.com -- confirm test mode active, no live charges, no active subscriptions.
+**Rule:** Whenever writing raw SQLAlchemy INSERT or UPDATE with parameters bound to JSONB columns, ALWAYS include `CAST(:param AS jsonb)` in the SQL string. Never rely on SQLAlchemy type inference for JSONB. Pass the value as `json.dumps(obj)` in the params dict.
 
-**Cross-references:** Stage 2 Free-Tier Cost Audit (2026-05-23), PROJECT_BRAIN.md cost audit ledger, TECH_STACK.md Third-Party Services Status.
+**File:** `api/diagnostic.py` — `_generate_service_estimate()` function
+
+**Detection pattern:** If an INSERT appears to run without error but no row appears, check for JSONB columns in the target table and verify CAST usage.
+
+---
+
+## DEC-073 -- BUG-041: NEXT_PUBLIC_ENV=staging on production Vercel is a recurring trap (2026-05-23)
+
+**Date:** 2026-05-23
+
+**Problem:** Amber "STAGING" banner visible on pk.snapai.mainnov.tech (BUG-041). This is a re-occurrence of BUG-031 (first found 2026-05-21, fixed 2026-05-21, re-occurred 2026-05-23).
+
+**Root cause:** When staging environment was configured/reconfigured, `NEXT_PUBLIC_ENV=staging` was set in the production Vercel project's environment variables under "All Environments". `StagingBanner.tsx` reads `process.env.NEXT_PUBLIC_ENV === "staging"` — baked into the bundle at build time. Even a correct source tree will show the banner if this env var is wrong.
+
+**Fix:** Set `NEXT_PUBLIC_ENV=production` in Vercel production project → Settings → Environment Variables → All Environments. Trigger a new deployment. Verify the new deployment ID appears on both domains.
+
+**Prevention rules (CRITICAL — this bug has occurred twice):**
+1. After ANY Vercel environment variable changes on ANY project, immediately open pk.snapai.mainnov.tech and check for the amber STAGING banner
+2. Before triggering any new Vercel deployment, verify NEXT_PUBLIC_ENV in the PRODUCTION project is either absent or set to "production" — NEVER "staging"
+3. When configuring staging project env vars, use "Preview" environment scope only — never "All Environments" which can bleed into production
+
+**Cross-references:** DEC-051 (BUG-031 original), DEC-023 (rule: NEVER set NEXT_PUBLIC_ENV=staging on production Vercel)
+
+---
+
+## DEC-074 -- Stage 4 audit: Vercel staging custom domains are Preview branch deployments, not Production env builds (2026-05-23)
+
+**Date:** 2026-05-23 (Stage 4 Staging Isolation Audit)
+
+**Finding:** `staging.snapai.mainnov.tech` and `pk-staging.snapai.mainnov.tech` are configured as "git branch" custom domains in the `scopesnap-web-staging` Vercel project, pointing to the `staging` git branch. They are served by the **Preview** deployment of that branch -- NOT by the Production environment deployment.
+
+**Consequence:** When NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY was corrected from pk_live_ to pk_test_ on the staging Vercel project and a "Production environment" redeploy (deployment CXM5WEJMt) was triggered, `staging.snapai.mainnov.tech` still served the old pk_live_ key. The Production redeploy built a new Production environment deployment -- which is not what staging custom domains serve.
+
+**Fix pattern:** Deployments page → filter by branch "staging" → find latest Preview deployment → three-dot menu → Redeploy (no cache). New Preview deployment `5HJ2piG8A` was picked up by both staging custom domains. Confirmed pk_test_ on both.
+
+**Rule:** Any env var change on `scopesnap-web-staging` that needs to reach `staging.snapai.mainnov.tech` / `pk-staging.snapai.mainnov.tech` MUST be followed by a staging branch Preview redeploy, not a Production environment redeploy.
+
+**DNS confirmation:** Staging custom domains CNAME target: `e08b930de4517e81.vercel-dns-017.com` (different from production `e9353dffc8a96116.vercel-dns-017.com` -- isolated at DNS level).
+
+---
+
+## DEC-075 -- Stage 4 audit: Railway staging had sk_live_ CLERK_SECRET_KEY (production Clerk secret key) (2026-05-23)
+
+**Date:** 2026-05-23 (Stage 4 Staging Isolation Audit)
+
+**Finding:** Railway staging service (`scopesnap-api-staging.up.railway.app`) had `CLERK_SECRET_KEY` set to `sk_live_...` -- the production Clerk secret key. Critical cross-contamination: staging backend was validating tokens against the production Clerk app.
+
+**Impact:** With sk_live_ on staging, any Clerk JWT issued by the staging app (pk_test_ key) would fail validation on the staging backend. Conversely, any pk_live_ token from production would pass validation on staging -- a security boundary violation allowing production user sessions to authenticate on the staging backend.
+
+**Fix:** Replaced with `sk_test_...` from staging Clerk app (firm-chamois-61, Development mode).
+
+**Prevention:** After any new Railway staging service creation or cloning from production, audit ALL environment variables against the key prefix convention: sk_live_ = production only, sk_test_ = staging only. Never copy Railway env vars from production to staging without replacing all sk_live_ keys with sk_test_ equivalents.
+
+---
+
+## DEC-076 -- Stage 4 audit: pk.snapai.mainnov.tech served pk_test_ due to stale ISR edge cache (2026-05-23)
+
+**Date:** 2026-05-23 (Stage 4 Staging Isolation Audit)
+
+**Finding:** `pk.snapai.mainnov.tech` was returning `pk_test_...` as the Clerk publishable key in its HTML, despite the `scope-snap-ai` production Vercel project having `pk_live_...` in `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` for All Environments.
+
+**Investigation (ruled out):**
+- Browser cache: fresh tab showed same pk_test_ (transferSize 20,986 bytes = no cache)
+- Separate Vercel project: pk.snapai.mainnov.tech is registered only in scope-snap-ai Production environment
+- Code-level market detection: layout.tsx has no host-header switching, ClerkProvider has no explicit publishableKey prop
+- Multiple env var values: Vercel shows single pk_live_ entry for All Environments
+- PK-specific env var override: none found
+
+**Root cause (best explanation):** Stale ISR / edge cache specific to pk.snapai.mainnov.tech's CNAME endpoint (`e9353dffc8a96116.vercel-dns-017.com`). The sibling domain `snapai.mainnov.tech` was correctly serving pk_live_ from the same Vercel project, suggesting the stale value was cached at the edge node serving that specific domain.
+
+**Fix:** Fresh production redeploy WITHOUT build cache -- new deployment `CwjgWfNBi` (2m 54s, Production, Ready Latest, domains: snapai.mainnov.tech +3). After build, pk.snapai.mainnov.tech confirmed pk_live_.
+
+**Lesson:** After any Vercel env var change, verify BOTH production domains independently. ISR edge cache can serve stale values on one CNAME endpoint while the other is fresh.
+
+---
+
+## DEC-077 -- Clerk key prefix is the authoritative environment signal for all four SnapAI domains (2026-05-23)
+
+**Date:** 2026-05-23 (Stage 4 Staging Isolation Audit)
+
+**Convention confirmed:**
+- `pk_live_` / `sk_live_` = production Clerk app (scope-snap-ai Vercel project, Railway production service)
+- `pk_test_` / `sk_test_` = staging Clerk app (firm-chamois-61, Development mode; scopesnap-web-staging Vercel project, Railway staging service)
+
+**Note on NEXT_PUBLIC_* and render time:** `data-clerk-publishable-key` in the HTML is set by the Next.js server at request time (reflecting the NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY env var from the Vercel environment). This means it can reflect stale ISR cache values (see DEC-076) even when the Vercel project shows the correct env var. A no-cache redeploy flushes this.
+
+**Final verified state post-Stage-4-audit (2026-05-23):**
+
+| Domain | Clerk key prefix | Status |
+|--------|-----------------|--------|
+| snapai.mainnov.tech | pk_live_ | PASS |
+| pk.snapai.mainnov.tech | pk_live_ | PASS (was pk_test_ pre-fix; fixed by redeploy CwjgWfNBi) |
+| staging.snapai.mainnov.tech | pk_test_ | PASS (was pk_live_ pre-fix; fixed by Preview redeploy 5HJ2piG8A) |
+| pk-staging.snapai.mainnov.tech | pk_test_ | PASS |
+
+**All other Stage 4 dimensions:**
+- Supabase: prod project `quqrvnoguofbjacrxcim`, staging `pqmgveqkuckbvyygsilk` -- isolated, no data overlap
+- Clerk: prod app (pk_live_) vs staging app firm-chamois-61 (pk_test_) -- isolated
+- R2: prod bucket `scopesnap-uploads`, staging bucket `scopesnap-uploads-staging` -- isolated
+- DNS: staging CNAME `e08b930de4517e81.vercel-dns-017.com`, prod CNAME `e9353dffc8a96116.vercel-dns-017.com` -- different endpoints
+- Sentry: `production` environment filter (8+ issues, SNAPAI-API-P/F/S/Y/X/W/V/T) vs `staging` filter (1 issue, SNAPAI-API-Z) -- isolated, no cross-contamination
