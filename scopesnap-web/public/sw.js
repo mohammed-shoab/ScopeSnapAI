@@ -55,12 +55,17 @@ self.addEventListener("fetch", (event) => {
   // Third-party analytics & auth: always passthrough, never cache or intercept.
   // Without this, cross-origin fetches (e.g. PostHog ingestion) fall into the
   // navigation catch-all below and may get served cached app HTML instead.
+  // maps.googleapis.com + maps.gstatic.com: SW navigation fallback returns an
+  // opaque response for cross-origin <script> requests, which prevents the
+  // browser from executing them (script.onerror fires). Pass through directly. (DEC-077)
   if (
     url.hostname.includes("posthog.com") ||
     url.hostname.includes("i.posthog") ||
     url.hostname.includes("clerk.") ||
     url.hostname.includes("clerk.dev") ||
-    url.hostname.includes("railway.app")
+    url.hostname.includes("railway.app") ||
+    url.hostname.includes("maps.googleapis.com") ||
+    url.hostname.includes("maps.gstatic.com")
   ) {
     event.respondWith(fetch(event.request));
     return;
