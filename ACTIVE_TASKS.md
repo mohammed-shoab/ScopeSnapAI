@@ -1,5 +1,28 @@
 # SnapAI — Active Tasks
 
+## Stage 5 Sign-Off — Staging DB & Branch Parity — 2026-05-24
+
+| Check | Result |
+|-------|--------|
+| Code parity (git main = staging) | ✅ both 92034b3b |
+| Schema parity (alembic_version) | ✅ 034 on both prod and staging |
+| Reference data parity (15 tables) | ✅ all row counts match prod |
+| Health endpoint | ✅ `{"status":"ok","db":"connected","environment":"staging","version":"0.1.0"}` |
+| App-level smoke test | ⚠ Manual — requires Shoab login to staging.snapai.mainnov.tech |
+
+**Reference table row counts (prod = staging):**
+brands=15, data_defaults=1, fault_cards=19, labor_rates_houston=1, lifecycle_rules=44,
+pak_brands=15, pak_data_defaults=1, pak_fault_cards=16, pak_labor_rates=1,
+pak_lifecycle_rules=5, pak_operating_targets=12, pak_pricing_tiers=45,
+pak_replacement_costs=4, pricing_tiers=57, replacement_cost_estimates=8
+
+**Issues encountered:** `operating_targets` (US) table does not exist on either env — not in scope.
+`pak_fault_card_descriptions` / `pak_fault_card_urdu_descriptions` tables do not exist — descriptions
+are embedded in pak_fault_cards JSONB columns. pak_fault_cards synced via psycopg2 direct-connect
+(16 rows) due to RLS blocking anon REST reads on production.
+
+Stage 5 complete. Ready for Stage 6 (Vercel Staging Branch Rewire — DEC-067 fix).
+
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
@@ -34,9 +57,9 @@ Workflow becomes mandatory after Stage 7 sign-off (staging full QA matches prod 
 
 **Verification:** google.maps.places loaded, HoustonAddressAutocomplete state: isLoaded=true, loadError=false. .pac-container present in DOM (confirms new google.maps.places.Autocomplete() succeeded). Both Vercel deployments (production + staging) at commit a88c93a.
 
-**BUG-042 (non-blocking):** Address field placeholder shows wrong text -- t() i18n function returning error string for the placeholder key. Autocomplete works correctly. Fix deferred.
+**BUG-042 (resolved):** Address field placeholder showed wrong text during debugging (stale DOM artifact from pre-SW-fix loadError=true state). Confirmed self-resolved on fresh page load — placeholder correctly shows "Property address (search existing...)". No code change required.
 
-**GCP:** Project snapai-maps (ID: root-matrix-497207-j4). API key restrictions currently set to None (HTTP referrer restrictions removed during debugging). TODO: restore restrictions to http://localhost:3000/*, https://snapai.mainnov.tech/*, https://staging.snapai.mainnov.tech/* after Stage 3 sign-off.
+**GCP:** Project snapai-maps (ID: root-matrix-497207-j4). HTTP referrer restrictions restored (2026-05-23) to: http://localhost:3000/*, https://snapai.mainnov.tech/*, https://staging.snapai.mainnov.tech/*. Restrictions column shows "HTTP referrers, 4 APIs". ✅ DONE
 
 ## Completed — Stage 4 Staging Isolation Audit (2026-05-23)
 

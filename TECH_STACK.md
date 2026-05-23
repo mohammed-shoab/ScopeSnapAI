@@ -141,7 +141,7 @@ The 7-step loop: branch off `staging` → make change in `/tmp` clone → push a
 |---|---|
 | `NEXT_PUBLIC_API_URL` | Points to Railway API URL |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk public key (dev mode) |
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | GCP project `snapai-maps` (root-matrix-497207-j4) | US address autocomplete via Google Places JS API | Set in Vercel prod + staging env vars at build time. Key restrictions: TODO restore HTTP referrer restrictions. Never echo in assistant responses. See DEC-078, DEC-079. |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | GCP project `snapai-maps` (root-matrix-497207-j4) | US address autocomplete via Google Places JS API | Set in Vercel prod + staging env vars at build time. Key restrictions: HTTP referrer restrictions restored 2026-05-23 — localhost:3000/*, snapai.mainnov.tech/*, staging.snapai.mainnov.tech/*. Never echo in assistant responses. See DEC-078, DEC-079. |
 | `CLERK_SECRET_KEY` | Clerk secret key (dev mode) |
 | `NEXT_PUBLIC_ENV` | Set to `production` in prod — enables Clerk middleware. Set to `staging` on Vercel staging env to show StagingBanner. Set to `development` to use X-Dev-Clerk-User-Id bypass. |
 | `NEXT_TELEMETRY_DISABLED` | `1` — disables Next.js telemetry |
