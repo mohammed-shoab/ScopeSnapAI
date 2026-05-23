@@ -41,12 +41,12 @@ function ensureMapsScript(apiKey: string): Promise<void> {
       existing.addEventListener("error", reject);
       return;
     }
-    // Inject fresh script — plain URL, no loading=async, no callback param
+    // Inject fresh script — v=weekly required; no loading=async, no callback param
     const script = document.createElement("script");
     script.id = MAPS_SCRIPT_ID;
     script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
       apiKey
-    )}&libraries=places`;
+    )}&v=weekly&libraries=places`;
     script.async = true;
     script.onload = () => {
       script.dataset.loaded = "1";
