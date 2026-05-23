@@ -344,7 +344,7 @@ async def _generate_service_estimate(
             "   options, markup_percent, status, created_at, market)"
             " VALUES"
             "  (:id, :aid, :cid, :token, :short_id,"
-            "   :options::jsonb, :markup, 'draft', :now, :market)"
+            "   CAST(:options AS jsonb), :markup, 'draft', :now, :market)"
         ),
         {
             "id":       assessment_id,   # id == assessment_id → frontend URL routing
