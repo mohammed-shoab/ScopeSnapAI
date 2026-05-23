@@ -1,7 +1,25 @@
 # SnapAI AI — Tech Stack & Architecture
 
-> **Last updated:** May 21, 2026 (Track F Group C + BUG-032 QA PASS. HEAD: `4743a40`. Alembic head: `032`. Both markets verified. BUG-031 OPEN (staging banner on prod PK).
+> **Last updated:** May 23, 2026 (Full QA pass both markets. WA-28 through WA-37 added. DEC-065/066 added. | Previously: May 21, 2026 (Track F Group C + BUG-032 QA PASS. HEAD: `4743a40`. Alembic head: `032`. Both markets verified. BUG-031 OPEN (staging banner on prod PK). | **2026-05-23 patch:** Change workflow `WORKFLOW.md` + DEC-070 added.
 > **Status:** Beta — live on Vercel + Railway. Both markets QA-verified 2026-05-21: Houston + PK. Build hash: `80f50c7f2d1fe88a`. See DEC-037 through DEC-042 for lessons from this session.
+
+---
+
+## Change Workflow (added 2026-05-23 — DEC-070)
+
+**Canonical change workflow lives in `WORKFLOW.md`.** Read it before any change.
+
+The 7-step loop: branch off `staging` → make change in `/tmp` clone → push and PR to `staging` → merge → Vercel/Railway staging auto-deploy → verify on staging.snapai.mainnov.tech + pk-staging.snapai.mainnov.tech → promote to main with `scripts/promote-to-prod.sh <files>` → Vercel/Railway production auto-deploy → verify on snapai.mainnov.tech + pk.snapai.mainnov.tech.
+
+**The four absolute rules:**
+1. Never edit code directly on `main` without going through `staging` first
+2. Never push migrations to prod that haven't run on staging first
+3. Never add env vars to prod without mirroring them on staging
+4. Never test on production — testing happens on staging
+
+**Hotfix path (production-only push):** reserved for genuine emergencies (prod outage, auth completely broken, payment generating wrong amounts). Mandatory follow-up: sync staging to match main within 24 hours, write retrospective DEC entry. Full protocol in `WORKFLOW.md` Section 9.
+
+**Activation:** mandatory after Stage 7 sign-off. Until then, transition rules in `WORKFLOW.md` Section 1 apply.
 
 ---
 

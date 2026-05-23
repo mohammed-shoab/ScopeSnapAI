@@ -3,7 +3,7 @@
 > This file records decisions made during development that have lasting impact on how the codebase works.
 > Future AI sessions: read this before proposing architecture changes or writing migrations.
 >
-> Last updated: 2026-05-22 (DEC-065 added — never commit package-lock.json; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
+> Last updated: 2026-05-23 (DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
 
 ---
 
@@ -1174,7 +1174,6 @@ await indexedDB.deleteDatabase('snapai_models_pk');
 location.reload(true);
 ```
 
-<<<<<<< Updated upstream
 ---
 
 ## DEC-063 — `/api/models/all` response shape is `{models:[...]}`, not a plain array (2026-05-22)
@@ -1251,28 +1250,6 @@ Steps 2, 5, 6, 7 use reading/multi input types — they always have a submit but
 4. If step generates a finding, map the branch_key to the correct line_item_code
 
 **Commit:** `3f09c02`
-=======
----
-
-## DEC-063 — `/api/models/all` response shape is `{models:[...]}`, not a plain array (2026-05-22)
-
-**Date:** 2026-05-22
-
-**Context:** During Phase 2 backend health checks, code used `Array.isArray(data)` to parse the `/api/models/all` response. This returned `false` (the response is `{"models": [...]}`, an object), causing model counts to show as 0 even though the endpoint returned 200 OK with valid data.
-
-**Correct parse pattern:**
-```javascript
-const resp = await fetch(`${base}/api/models/all`, {headers: {'X-Market': 'PK'}});
-const data = await resp.json();
-const models = data.models || []; // NOT: Array.isArray(data) ? data : data.models
-```
-
-**Also confirmed:** `/api/brands` does NOT exist — returns 404. The only model data endpoint is `/api/models/all`.
-
-**Impact:** Any code, test, or script that fetches brand/model data from Railway must handle the `{models:[...]}` wrapper. The existing `getBrands()` / `searchModels()`
-
----
-
 ## DEC-067 — Vercel staging project deploys `main` branch, not `staging` branch (2026-05-22)
 
 **Date:** 2026-05-22
@@ -1318,4 +1295,91 @@ const models = data.models || []; // NOT: Array.isArray(data) ? data : data.mode
 **Verification:** Navigating to `scopesnap-web-staging.vercel.app/assess` redirects to `/sign-in` (auth guard working). The banner appears after sign-in on any `(app)` route.
 
 **env var reading:** Because `StagingBanner` is RSC, `process.env.NEXT_PUBLIC_ENV` is read at server runtime — NOT baked into the client JS bundle. This is why the string "staging" does NOT appear in the downloaded JS chunks (expected, not a bug).
+
+---
+
+## DEC-065 — Never commit `scopesnap-web/package-lock.json` (2026-05-22)
+
+**Date:** 2026-05-22
+
+**Problem:** Commit `78d0fff` accidentally included `scopesnap-web/package-lock.json` (7,954 lines).
+This broke every Vercel build immediately — `npm ci` failed in ~8 seconds because the lockfile
+was present but did not match the installed `node_modules`. Vercel showed "Error" with no detail.
+Seven consecutive builds failed between `78d0fff` and `a908eac`.
+
+**Root cause:** `package-lock.json` was generated locally and accidentally staged with `git add -A`.
+The repo intentionally has NO lockfile since commit `c2eac8d` (force Node 18, March 2026).
+
+**Fix:** `git rm scopesnap-web/package-lock.json` in commit `a908eac`. Builds resumed immediately.
+
+**Detection signal:** Vercel build duration under 20 seconds = `npm ci` failed. Normal build = 1–2 minutes.
+Check for a spurious `package-lock.json` addition in the diff whenever a build fails fast.
+
+**Rule:** `scopesnap-web/package-lock.json` must NEVER be committed. Add it to `.gitignore` if needed.
+Confirm with `git status --short | grep package-lock` before every commit. If it appears, `git rm` it.
+
+**Impact:** DEC-065 is also in `.gitignore` — verify the .gitignore rule is present after any repo reset.
+
+---
+
+## DEC-066 — Stamp `estimates.market` at creation — never derive from viewer's hostname (2026-05-22)
+
+**Date:** 2026-05-22
+
+**Problem (BUG-037):** Pakistan estimates viewed on the Houston domain (`snapai.mainnov.tech`)
+displayed USD amounts instead of PKR. Root cause: `ReportClient.tsx` had a module-level
+`function fmt(n)` that called `formatCurrency(n)` with no `market` argument. `formatCurrency`
+defaulted to the caller's hostname (Houston = US), so PK estimates always showed USD when
+opened from any Houston URL.
+
+**Decision:** Stamp `estimates.market` (VARCHAR(2) NOT NULL DEFAULT 'US') at the moment the
+estimate is created — not at the moment it is viewed. The stored market value is the source
+of truth for currency formatting in reports. The viewer's hostname is irrelevant.
+
+**Implementation:**
+- Migration 034: `ALTER TABLE estimates ADD COLUMN market VARCHAR(2) NOT NULL DEFAULT 'US'`
+- `fault_estimate.py` and `diagnostic.py` both write `market = tables.market` at INSERT time
+- `reports.py` returns `report.market` to the frontend
+- `ReportClient.tsx`: `reportMarket = (report as any).market` (from DB, not hostname)
+- `const fmt = (n: number) => formatCurrency(n, reportMarket)` — component-level, not module-level
+
+**Rule:** ANY code that formats currency in a report or estimate display MUST read from
+`report.market` (or `estimate.market`), never from `detectMarket()` at display time.
+The market of an estimate is fixed at creation — it does not change when a contractor
+switches contexts.
+
+**Cross-reference:** BUG-037, migration 034, DEC-065, TECH_STACK WA-34.
+
+---
+
+## DEC-070 — Staging-first change workflow becomes canonical after Stage 7 sign-off (2026-05-23)
+
+**Date:** 2026-05-23
+
+**Context:** Through 2026-05-19 to 2026-05-22 the staging environment was set up (DEC-014) but operated as a partial mirror of production — Vercel staging tracks `main` instead of `staging` (DEC-067), the staging Supabase DB drifted from production (Alembic 025 vs prod 034), and changes have been pushed directly to `main` with verification on production. This is the opposite of what staging is for. Going forward, every change must pass through staging first, with staging maintained as a true mirror of production at all times.
+
+**Decision:** Adopt the staging-first 7-step workflow defined in `WORKFLOW.md` as the canonical change process. The four absolute rules:
+
+1. **Never edit code directly on `main`** without going through `staging` first
+2. **Never push migrations to prod** that haven't run on staging first
+3. **Never add env vars to prod** without mirroring them on staging
+4. **Never test on production** — testing happens on staging; production is for real users
+
+**Rationale:** Production is now beta-facing (5 testers incoming via LinkedIn). Every prod bug is a tester churn risk. Staging exists to absorb that risk by catching bugs against an environment that is byte-for-byte identical to production except for data isolation, test keys, and a visible amber banner. The additional cost is sleeping-mode-only on Railway (free if staging stays under $5/mo combined) and a separate Supabase project (within the 2-project free tier cap).
+
+**Rule:** All future changes follow the 7-step workflow in `WORKFLOW.md` Section 4. Exception: emergency hotfix path (`WORKFLOW.md` Section 9) bypasses staging only for genuine production emergencies, with mandatory 24-hour follow-up sync to bring staging in line with main, plus a retrospective DEC entry explaining what slipped through normal QA.
+
+**Activation:** This workflow becomes mandatory the moment Stage 7 (Staging End-to-End QA) signs off — at which point staging is verified to be a true mirror of production, the Vercel staging project deploys the `staging` branch, and a full QA pass on staging matches a full QA pass on production. Until that moment, transitional rules apply (DEC-004 `/tmp` clone pattern continues for git ops, DEC-013 no git stash from sandbox, DEC-022 Desktop Commander for git ops).
+
+**Cross-references:**
+- `C:\Users\dell\My Drive\Personal Claude\ScopeSnapAI\WORKFLOW.md` — full protocol with worked examples
+- DEC-014 — staging environment architecture
+- DEC-015 — dual keepalive crons (Sun + Wed)
+- DEC-023 / DEC-051 — never set NEXT_PUBLIC_ENV=staging on prod
+- DEC-066 — DNS in Hostinger, not Cloudflare
+- DEC-067 — Vercel staging deploys main (to be superseded by Stage 6 rewire)
+- DEC-068 — DNS for mainnov.tech in Hostinger (account `mshoabarabi@gmail.com`)
+- DEC-069 — StagingBanner is RSC, auth-only
+
+**File created:** `C:\Users\dell\My Drive\Personal Claude\ScopeSnapAI\WORKFLOW.md` (2026-05-23)
 

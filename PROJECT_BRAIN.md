@@ -3,8 +3,25 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-22 — STAGING FIX PLAN phases 1-10 complete. BUG-037 CONFIRMED LIVE. BUG-038-build FIXED. HEAD: 19db2d1. Alembic: 034. Staging: NEXT_PUBLIC_ENV=staging fixed+redeployed; DNS updated in Hostinger (mshoabarabi@gmail.com — NOT Cloudflare); custom domains pending propagation; scopesnap-web-staging.vercel.app VALID. StagingBanner = RSC in app/(app)/layout.tsx (auth-only routes). pak_diagnostic_questions does NOT exist — PSI thresholds in pak_operating_targets. Address input must be populated via React onChange BEFORE complaint selection (WA-32). A.6 scope = DiagnosisListRow only (DEC-061). PK pricing DB URL = /settings/pricing. Next.js uses SSR — no client-side API fetches visible (WA-33).
+> Last updated: 2026-05-23 — Full QA pass (both markets, all 6 flows, zero bugs). Brain files updated with lessons L28-L35, DEC-065/066, WA-28 through WA-37. | Previously: 2026-05-22 — STAGING FIX PLAN phases 1-10 complete. BUG-037 CONFIRMED LIVE. BUG-038-build FIXED. HEAD: 19db2d1. Alembic: 034. Staging: NEXT_PUBLIC_ENV=staging fixed+redeployed; DNS updated in Hostinger (mshoabarabi@gmail.com — NOT Cloudflare); custom domains pending propagation; scopesnap-web-staging.vercel.app VALID. StagingBanner = RSC in app/(app)/layout.tsx (auth-only routes). pak_diagnostic_questions does NOT exist — PSI thresholds in pak_operating_targets. Address input must be populated via React onChange BEFORE complaint selection (WA-32). A.6 scope = DiagnosisListRow only (DEC-061). PK pricing DB URL = /settings/pricing. Next.js uses SSR — no client-side API fetches visible (WA-33).
 > Previous: Track H Group E complete: full Urdu translation live on pk.snapai.mainnov.tech. Dashboard, sidebar, Step Zero, homeowner report all translated. HEAD: b57d969. Alembic: 032. No open issues.)
+> **2026-05-23 patch:** change workflow `WORKFLOW.md` + DEC-070 added — staging-first 7-step loop becomes mandatory after Stage 7 sign-off.
+
+---
+
+## Change Workflow (added 2026-05-23 — DEC-070)
+
+**Every code, schema, env-var, or infra change uses the staging-first workflow defined in `WORKFLOW.md`.** The flow is: branch off `staging` → merge to `staging` → auto-deploys to staging.snapai.mainnov.tech + pk-staging.snapai.mainnov.tech → verify → run `scripts/promote-to-prod.sh <files>` → main updates → prod auto-deploys → verify on real domain.
+
+**The four absolute rules (codified in DEC-070):**
+1. Never edit code directly on `main` without going through `staging` first
+2. Never push migrations to prod that haven't run on staging first
+3. Never add env vars to prod without mirroring them on staging
+4. Never test on production — testing happens on staging
+
+**Activation status:** workflow becomes canonical and mandatory after Stage 7 sign-off (staging full QA matches a full prod QA pass). Until then, transition rules in `WORKFLOW.md` Section 1 apply. Current gaps: staging DB lags production (Alembic 025 vs 034), Vercel staging deploys `main` not `staging` (DEC-067 — to be corrected in Stage 6).
+
+For full protocol — migration handling, env var handling, hotfix path, rollback procedure, AI session bootstrap, worked examples — read `C:\Users\dell\My Drive\Personal Claude\ScopeSnapAI\WORKFLOW.md` in full before any change work.
 
 ---
 
@@ -187,6 +204,7 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 
 | Date | Markets | Outcome | Bugs Fixed | HEAD |
 |------|---------|---------|------------|------|
+| 2026-05-23 | Houston + PK | COMPLETE ✅ | Zero — full verification QA + brain file updates. All 6 flows PASS both markets. Lessons L32-L35 documented. DEC-065/066 added. WA-28 through WA-37 added to TECH_STACK. | 19db2d1 |
 | 2026-05-22 | Houston | COMPLETE OK | BUG-037 LIVE VERIFIED (Rs.5,906 PKR confirmed on Houston domain rpt-701093). BUG-038-build FIXED (removed 7954-line package-lock.json added by 78d0fff -- was breaking every Vercel build in ~8s). fmt() module-level removed. Debug markers cleaned. | 19db2d1 |
 | 2026-05-22 | Houston + PK | COMPLETE ✅ | BUG-037 (estimates.market), BUG-033b (Houston Better-tier copy all 19 cards). Migrations 033+034 deployed. Report currency fixed. | 1b86b77 |
 | 2026-05-22 | Houston + PK | COMPLETE ✅ | Track H Group E retro: all 6 flows re-verified PASS. BUG-031 RE-REGRESSION resolved: NEXT_PUBLIC_ENV confirmed as "production" in Vercel (All Environments). pk.snapai.mainnov.tech staging banner gone. | 4db39be |
