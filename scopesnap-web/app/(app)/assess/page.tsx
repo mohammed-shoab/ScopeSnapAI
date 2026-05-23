@@ -22,6 +22,7 @@ import { PhotoSlotSpec, PhotoResult } from "@/components/diagnostic/PhotoSlot";
 import ServiceChecklist, { ServiceEstimateResult } from "@/components/diagnostic/ServiceChecklist";
 import SendMomentModal, { needsSendMoment, markSendMomentDone } from "@/components/SendMomentModal";
 import { detectMarket } from "@/lib/market";
+import HoustonAddressAutocomplete from "@/components/HoustonAddressAutocomplete";
 import { useLang } from "@/lib/language-context";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
@@ -501,14 +502,25 @@ function AssessPageInner() {
         <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
           <p className="text-xs font-mono text-gray-600 uppercase tracking-widest font-bold">{t("Job Info (optional)")}</p>
           <div className="relative">
-            <input
-              type="text"
-              placeholder={t("Property address (search existing...)")}
-              value={address}
-              onChange={e => { setAddress(e.target.value); setShowSuggestions(true); }}
-              onFocus={() => setShowSuggestions(true)}
-              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500 transition-colors"
-            />
+            {detectMarket() === "US" ? (
+              <HoustonAddressAutocomplete
+                value={address}
+                onChange={(val) => { setAddress(val); setShowSuggestions(true); }}
+                onFocus={() => setShowSuggestions(true)}
+                onPlaceSelected={() => setShowSuggestions(false)}
+                placeholder={t("Property address (search existing...)")}
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500 transition-colors"
+              />
+            ) : (
+              <input
+                type="text"
+                placeholder={t("Property address (search existing...)")}
+                value={address}
+                onChange={e => { setAddress(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => setShowSuggestions(true)}
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-green-600 focus:ring-1 focus:ring-green-500 transition-colors"
+              />
+            )}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-xl mt-1 shadow-lg">
                 {suggestions.map(s => (
