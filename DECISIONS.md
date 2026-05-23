@@ -1270,3 +1270,52 @@ const models = data.models || []; // NOT: Array.isArray(data) ? data : data.mode
 **Also confirmed:** `/api/brands` does NOT exist — returns 404. The only model data endpoint is `/api/models/all`.
 
 **Impact:** Any code, test, or script that fetches brand/model data from Railway must handle the `{models:[...]}` wrapper. The existing `getBrands()` / `searchModels()`
+
+---
+
+## DEC-067 — Vercel staging project deploys `main` branch, not `staging` branch (2026-05-22)
+
+**Date:** 2026-05-22
+
+**Context:** During the staging fix session, it was discovered that the `scopesnap-web-staging` Vercel project is configured with `main` as its Production branch. The `staging` git branch is NOT linked to the Vercel staging project. All staging Vercel deployments show source branch = `main`.
+
+**Rule:** When checking "what code is staging Vercel running?", look at the `main` branch HEAD — not the `staging` branch. The `staging` git branch is used only for Railway staging backend deployments (if wired up) or as a reference branch.
+
+**Impact:** This means the staging frontend always runs the latest `main` code. Any frontend feature merged to `main` immediately appears in staging. This is acceptable for SnapAI's current team size and velocity.
+
+---
+
+## DEC-068 — DNS for mainnov.tech is in Hostinger, NOT Cloudflare (2026-05-22)
+
+**Date:** 2026-05-22
+
+**Context:** The `.staging_secrets.txt` file contains a comment saying to add DNS records in Cloudflare (dash.cloudflare.com) for the `mainnov.tech` zone. This is WRONG. The actual DNS for `mainnov.tech` is managed in Hostinger under account `mshoabarabi@gmail.com` at `hpanel.hostinger.com`.
+
+**Evidence:** Hostinger nameservers (`ns1.dns-parking.com` / `ns2.dns-parking.com`) are on the domain. No Cloudflare account for `ds.shoab@gmail.com` has this domain.
+
+**CNAME records updated (2026-05-22):**
+- `staging.snapai.mainnov.tech` CNAME → `e08b930de4517e81.vercel-dns-017.com` (TTL 14400)
+- `pk-staging.snapai.mainnov.tech` CNAME → `e08b930de4517e81.vercel-dns-017.com` (TTL 14400)
+
+**Old target:** `cname.vercel-dns.com` (Vercel still accepts this but recommends the new one)
+**New target:** `e08b930de4517e81.vercel-dns-017.com`
+
+**Rule:** Any future DNS changes for mainnov.tech go to Hostinger hpanel under `mshoabarabi@gmail.com`.
+
+---
+
+## DEC-069 — StagingBanner is RSC in app/(app)/layout.tsx — visible on authenticated routes only (2026-05-22)
+
+**Date:** 2026-05-22
+
+**Context:** The `StagingBanner` component is a React Server Component (no `"use client"` directive) placed in `app/(app)/layout.tsx` — the layout for authenticated/app routes. It is NOT in the root `app/layout.tsx`.
+
+**Consequence:**
+- Public pages (homepage `/`, `/sign-in`, etc.) do NOT show the staging banner
+- Authenticated pages (`/assess`, `/reports`, `/settings`, etc.) DO show the banner when `NEXT_PUBLIC_ENV === "staging"`
+- This is correct by design — the banner's purpose is to prevent confusion when using the app in staging mode
+
+**Verification:** Navigating to `scopesnap-web-staging.vercel.app/assess` redirects to `/sign-in` (auth guard working). The banner appears after sign-in on any `(app)` route.
+
+**env var reading:** Because `StagingBanner` is RSC, `process.env.NEXT_PUBLIC_ENV` is read at server runtime — NOT baked into the client JS bundle. This is why the string "staging" does NOT appear in the downloaded JS chunks (expected, not a bug).
+

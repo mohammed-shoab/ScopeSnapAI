@@ -48,6 +48,7 @@ export const MARKET_CONFIG: Record<Market, MarketConfig> = {
 const PK_HOSTNAMES: string[] = [
   "pk.snapai.mainnov.tech",
   "pk.snapai.app",
+  "pk-staging.snapai.mainnov.tech",   // BUG-035: staging PK hostname uses hyphen, not dot
 ];
 
 /**

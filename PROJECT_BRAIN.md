@@ -3,7 +3,7 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-22 — BUG-037 CONFIRMED LIVE: PKR prices render correctly on Houston domain (rpt-701093: Rs.5,906/Rs.10,969/Rs.14,808). BUG-038-build FIXED: package-lock.json removed (78d0fff had added 7954-line lockfile breaking every Vercel build in ~8s; repo intentionally has no lockfile since c2eac8d). HEAD: 19db2d1. Alembic: 034. Alembic: 034. pak_diagnostic_questions does NOT exist — PSI thresholds in pak_operating_targets. Address input must be populated via React onChange BEFORE complaint selection (WA-32, blocks on PK). A.6 scope = DiagnosisListRow only; /diagnoses/{id} detail still shows confidence (DEC-061). PK pricing DB URL = /settings/pricing. Next.js uses SSR — no client-side API fetches visible (WA-33).
+> Last updated: 2026-05-22 — STAGING FIX PLAN phases 1-10 complete. BUG-037 CONFIRMED LIVE. BUG-038-build FIXED. HEAD: 19db2d1. Alembic: 034. Staging: NEXT_PUBLIC_ENV=staging fixed+redeployed; DNS updated in Hostinger (mshoabarabi@gmail.com — NOT Cloudflare); custom domains pending propagation; scopesnap-web-staging.vercel.app VALID. StagingBanner = RSC in app/(app)/layout.tsx (auth-only routes). pak_diagnostic_questions does NOT exist — PSI thresholds in pak_operating_targets. Address input must be populated via React onChange BEFORE complaint selection (WA-32). A.6 scope = DiagnosisListRow only (DEC-061). PK pricing DB URL = /settings/pricing. Next.js uses SSR — no client-side API fetches visible (WA-33).
 > Previous: Track H Group E complete: full Urdu translation live on pk.snapai.mainnov.tech. Dashboard, sidebar, Step Zero, homeowner report all translated. HEAD: b57d969. Alembic: 032. No open issues.)
 
 ---
@@ -39,6 +39,9 @@
 | Edit tool truncates NTFS .md files too | DEC-027 applies to ALL files with non-ASCII (emoji, arrows, dashes). Use Python replace() via Desktop Commander. If truncated: `git cat-file blob <sha>` to restore, then patch via Python. | DEC-027, WA-31 |
 | `/api/brands` does NOT exist | Use `/api/models/all` with X-Market header. Response is `{models:[...]}` — parse as `data.models`, never `Array.isArray(data)`. | arch note |
 | `pak_diagnostic_questions` does NOT exist | PK PSI thresholds live in `pak_operating_targets` (refrigerant, ambient_c, suction_min_psi, suction_max_psi). suction_max_psi IS the high threshold (R-410A=145, R-32=140, R-22=88 at 40-45C). | arch note |
+| DNS for mainnov.tech is in Hostinger, NOT Cloudflare | Account: `mshoabarabi@gmail.com` at hpanel.hostinger.com. staging_secrets.txt comment says Cloudflare — WRONG. CNAME names must be `staging.snapai` and `pk-staging.snapai` (NOT `staging`/`pk-staging` which resolves to wrong subdomain). Target: `e08b930de4517e81.vercel-dns-017.com`. Fixed and verified live 2026-05-23. | DEC-068 |
+| Vercel staging deploys main, not staging branch | scopesnap-web-staging Vercel project uses `main` branch for Production. The `staging` git branch is NOT linked to the Vercel staging project. | DEC-067 |
+| StagingBanner is RSC in (app)/layout.tsx, auth-only | Banner only shows on authenticated routes. Public pages (homepage, sign-in) do NOT show it. Correct behavior — do not add to root layout. | DEC-069 |
 
 
 ---
@@ -59,13 +62,15 @@
 ### Staging
 | Market | Frontend | Status |
 |--------|----------|--------|
-| US Staging | https://staging.snapai.mainnov.tech | ✅ Live |
-| PK Staging | https://pk-staging.snapai.mainnov.tech | ✅ Live |
-| Vercel default | https://scopesnap-web-staging.vercel.app | ✅ Live |
+| US Staging | https://staging.snapai.mainnov.tech | ✅ Live (custom domain verified 2026-05-23) |
+| PK Staging | https://pk-staging.snapai.mainnov.tech | ✅ Live (custom domain verified 2026-05-23) |
+| Vercel default | https://scopesnap-web-staging.vercel.app | ✅ Valid+Live |
 
 **Backend (Railway staging):** https://scopesnap-api-staging.up.railway.app
 **Health endpoint:** `GET /health` → `{"status":"ok","db":"connected","environment":"staging","version":"0.1.0"}`
-**Staging banner:** amber bar "⚠ STAGING — not production data" visible on all pages
+**Staging banner:** amber bar "⚠ STAGING — not production data" — RSC in `app/(app)/layout.tsx`, visible only on authenticated routes
+**DNS managed:** Hostinger account `mshoabarabi@gmail.com` (mainnov.tech zone) — NOT Cloudflare as staging_secrets.txt comment says
+**Vercel staging deploys:** `main` branch as Production (not `staging` branch Preview)
 
 ---
 
@@ -112,12 +117,14 @@
 ### Staging
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel staging (both staging domains) | `980698b` | Staging Live | 2026-05-19 |
-| Railway staging backend | `980698b` | Health OK, alembic=025 | 2026-05-19 |
-| Supabase staging DB | All tables seeded (US + pak_*) | Full mirror of prod schema | 2026-05-19 |
-| Alembic migration (staging) | `025` (pak_fault_card_urdu_descriptions) | Applied | 2026-05-19 |
-| pak_pricing_tiers (staging) | 45 rows (15 cards × 3 tiers) | Seeded | 2026-05-19 |
-| pak_labor_rates (staging) | full_system_1ton/1_5ton_pkr backfilled | Updated | 2026-05-19 |
+| Vercel staging (vercel.app URL) | `80df2e4` (redeploy BphSPPVbC) | ✅ Ready — Valid Configuration | 2026-05-22 |
+| Vercel staging (custom domains) | Both custom domains live | ✅ DNS fixed 2026-05-23 — CNAME names corrected to staging.snapai + pk-staging.snapai | 2026-05-23 |
+| NEXT_PUBLIC_ENV | `staging` | ✅ Set+saved (direct typing), redeployed | 2026-05-22 |
+| Railway staging backend | `980698b` | ✅ Health OK, alembic=025 | 2026-05-19 |
+| Supabase staging DB | All tables seeded (US + pak_*) | ✅ Full mirror of prod schema | 2026-05-19 |
+| Alembic migration (staging) | `025` (pak_fault_card_urdu_descriptions) | ✅ Applied | 2026-05-19 |
+| pak_pricing_tiers (staging) | 45 rows (15 cards × 3 tiers) | ✅ Seeded | 2026-05-19 |
+| pak_labor_rates (staging) | full_system_1ton/1_5ton_pkr backfilled | ✅ Updated | 2026-05-19 |
 
 **Staging git HEAD:** `980698b` — "chore(staging): migrations 020-025 + dual keepalive A/B + promote-to-prod.sh"
 **Promote staging → prod:** `scripts/promote-to-prod.sh <file1> [file2 ...]` (run from a local main checkout)
@@ -204,30 +211,4 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 - Service estimate: auto-generated by `_generate_service_estimate()` in diagnostic.py when svc-8-run answer returns. Frontend must NOT call POST /api/estimates/service — it does not exist. After service_step_complete, call onComplete() directly; backend estimate is accessible at GET /api/estimates/{assessment_id}.
 
 **Resolved issues:**
-- BUG-038-build: RESOLVED 2026-05-22. Root cause: commit 78d0fff accidentally included scopesnap-web/package-lock.json (7954 lines) -- repo intentionally has no lockfile since c2eac8d (force Node 18 fix, March 2026). Vercel npm ci failed in ~8s on every subsequent build. 7 consecutive builds all failed. Fix: `git rm scopesnap-web/package-lock.json` -- commit a908eac. RULE: never commit package-lock.json to this repo. See DEC-065.
-- BUG-037: ✕estimates table missing market column✕ — RESOLVED 2026-05-22. Root cause: estimates table had no market stamp; PK estimates viewed on Houston domain displayed PKR amounts formatted as USD. Fix: migration 034 adds market VARCHAR(2) DEFAULT 'US'; fault_estimate.py + diagnostic.py stamp market at creation; reports.py returns market in response; ReportClient.tsx derives currency from report.market not detectMarket(). Commit 1b86b77.
-- BUG-033b: ✕Houston fault_cards missing Better-tier (middle) copy for all 19 cards✕ — RESOLVED 2026-05-22. Root cause: migration 021 added Good+Best tiers but skipped Better tier entirely. The 'Why recommended?' collapsible in ReportClient.tsx requires non-null why_recommended to render. Fix: migration 033 populates description+why_recommended for all 19 cards. Applied directly via Supabase SQL + migration for Alembic record. Commit 1b86b77.
-- BUG-033: ╳Service/Tune-Up skip buttons not in DOM╳ — RESOLVED 2026-05-21. Root cause: ServiceChecklist.tsx (not DiagnosticFlow.tsx) renders the service flow; PHOTO_SKIP_CONFIG was never reached. Fix: SVC_PHOTO_SKIP_CONFIG + skip UI added to ServiceChecklist.tsx. Commit 23e3019.
-- BUG-031: ╳Staging banner on `pk.snapai.mainnov.tech`╳ — RESOLVED 2026-05-21. Re-regression 2026-05-22 confirmed false alarm — NEXT_PUBLIC_ENV already set to "production" (All Environments) in Vercel. pk.snapai.mainnov.tech verified clean 2026-05-22.
-
----
-
-## Architecture Quick Reference
-
-- **Frontend:** Next.js (Vercel). Two domains, one deployment. Market detected via hostname → `detectMarket()` in `lib/market.ts`
-- **Backend:** FastAPI (Railway). Single service. Market routed via `X-Market` header → `get_tables()` in `api/dependencies.py`
-- **Database:** Supabase (PostgreSQL). US tables = standard names. PK tables = `pak_*` prefix.
-- **TCO tables:** `card_tco_data` (US, 57 rows) + `pak_card_tco_data` (PK, 45 rows). Keyed on `(card_id, tier)`. Served via `_enrich_tco_from_db()` in `estimates.py`.
-- **Auth:** Clerk JWT. All protected endpoints require `Authorization: Bearer <clerk-token>`
-- **Model data endpoint:** `GET /api/models/all` (with `X-Market` header) → returns `{models: [...]}` (NOT a plain array). Parse as `data.models`. `/api/brands` does NOT exist (404).
-- **PSI thresholds table:** `pak_operating_targets` (columns: refrigerant, ambient_c, suction_min_psi, suction_max_psi). `pak_diagnostic_questions` does NOT exist in prod Supabase. At 40°C: R-410A max=145, R-32 max=140. R-22 max=88 at 45°C.
-- **US models:** 76 records. Brands include Carrier, Goodman, Lennox, Rheem, Trane, York, etc.
-- **PK models:** 73 records (confirmed 2026-05-22). Brands include Gree, Dawlance, Haier, Changhong Ruba, EcoStar, etc.
-
----
-
-## Key Files — Frontend
-
-| File | Purpose |
-|------|---------|
-| `scopesnap-web/lib/market.ts` | `detectMarket()`, `MARKET_CONFIG`, `formatCurren
+- BUG-038-build: RESOLVED 2026-05-22. Root cause: commit 78d0fff accidentally included scopesnap-web/package-lock.json (7954 lines) -- repo intentionally has no lockfile since c2eac8d (force Node 18 fix, March 2026). Vercel npm ci failed in ~8s on every subsequent build. 7 consecutive builds all failed. Fix: `git rm scopesnap-

@@ -1,6 +1,6 @@
 # SnapAI — Continuation Prompt
 
-Last updated: 2026-05-20 (All tracks complete — Q/R/R.9/REC/D/P/Staging. Full QA audit PASS. BUG-D.AUTH all 4 files fixed. D.6 share_token backfilled 62/62. R.7 profile guard live. S.7 staging banner live. Git HEAD: 02ad667. Alembic: 029.)
+Last updated: 2026-05-22 (Staging Fix Plan phases 1-10 complete. NEXT_PUBLIC_ENV=staging fixed+redeployed. DNS updated in Hostinger. scopesnap-web-staging.vercel.app VALID. Custom domains pending DNS propagation. Production: HEAD 19db2d1, Alembic 034. BUG-037+038 FIXED.)
 
 ---
 
@@ -65,28 +65,32 @@ git config --global --add safe.directory /tmp/snapai_tmpN
 - **Monitoring**: UptimeRobot
 - **Repo**: mohammed-shoab/ScopeSnapAI (monorepo: scopesnap-web/ + scopesnap-api/)
 
-## Staging Environment (fully operational — 2026-05-19)
+## Staging Environment (2026-05-22 — Staging Fix Plan phases 1-10 complete)
 
-- **US Staging URL**: https://staging.snapai.mainnov.tech
-- **PK Staging URL**: https://pk-staging.snapai.mainnov.tech
-- **Staging Backend**: https://scopesnap-api-staging.up.railway.app
+- **US Staging URL**: https://staging.snapai.mainnov.tech — ✅ Live (DNS fixed 2026-05-23, CNAME name corrected to staging.snapai)
+- **PK Staging URL**: https://pk-staging.snapai.mainnov.tech — ✅ Live (DNS fixed 2026-05-23, CNAME name corrected to pk-staging.snapai)
+- **Vercel default URL**: https://scopesnap-web-staging.vercel.app — ✅ Valid+Live (use this URL until DNS propagates)
+- **Staging Backend**: https://scopesnap-api-staging.up.railway.app — ✅ Health OK
 - **Staging DB**: Supabase `pqmgveqkuckbvyygsilk` (ap-northeast-1) — full schema + seed data, Alembic `025`
 - **Staging Auth**: Clerk staging app `firm-chamois-61` (test-mode keys)
-- **Staging branch**: `staging` (off `main`; staging-specific HEAD: `980698b`)
-- **Staging UI**: Amber "⚠ STAGING — not production data" banner on all pages (StagingBanner.tsx)
+- **Staging branch**: `staging` (off `main`; staging-specific HEAD: `980698b`) — NOTE: Vercel staging project deploys `main` branch as Production, not this branch
+- **NEXT_PUBLIC_ENV**: `staging` — ✅ Fixed 2026-05-22 (was blank/wrong; re-set with direct typing, redeployed build `BphSPPVbC`)
+- **Staging UI**: Amber "⚠ STAGING — not production data" banner — RSC in `app/(app)/layout.tsx`, shows on **authenticated routes only** (not homepage/sign-in)
 - **Staging secrets**: `C:\Users\dell\My Drive\Personal Claude\.staging_secrets.txt` (**never commit**)
+- **DNS account**: Hostinger `mshoabarabi@gmail.com` at hpanel.hostinger.com — mainnov.tech zone (NOT Cloudflare as staging_secrets.txt comment incorrectly says)
+- **DNS CNAME target**: `e08b930de4517e81.vercel-dns-017.com` (updated from old `cname.vercel-dns.com`)
 - **Promote staging → prod**: `scripts/promote-to-prod.sh <file1> [file2 ...]` (on a local main checkout)
 - **Keepalive**: `keepalive-supabase-A.yml` (Sun 02:00 UTC) + `keepalive-supabase-B.yml` (Wed 14:00 UTC), both on main, ping prod + staging
 - **Healthchecks.io**: Account ds.shoab@gmail.com | Check A `https://hc-ping.com/1afa0f64-27f2-4906-97b1-b85f7abb738e` | Check B `https://hc-ping.com/2d8d3312-1a82-4223-84ba-9e021ee7f14e`
 
 ## Current Git State
 
-- **Production HEAD**: `02ad667` — docs(TECH_STACK+BRAIN): full post-audit update (2026-05-20)
+- **Production HEAD**: `19db2d1` — chore: remove [MKT:] debug marker from REF line (2026-05-22)
 - **Staging HEAD**: `980698b` — chore(staging): migrations 020-025 + dual keepalive A/B + promote-to-prod.sh
-- **Alembic revision (production)**: `029` (peak_season_surcharge_percent + seasonal_modifier_pct)
+- **Alembic revision (production)**: `034`
 - **Alembic revision (staging)**: `025` (pak_fault_card_urdu_descriptions)
-- **Active branches**: `main` (production), `staging` (staging environment)
-- **Local working tree**: Clean. Use `/tmp/snapai_tmp2` (or fresh clone) for all git ops — do NOT git commit from NTFS workspace.
+- **Active branches**: `main` (production + staging Vercel), `staging` (Railway staging)
+- **Local working tree**: Clean. Use fresh `/tmp` clone for all git ops — do NOT git commit from NTFS workspace.
 
 ### Recent commit history — main (newest first)
 ```

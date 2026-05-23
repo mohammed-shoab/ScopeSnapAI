@@ -3,9 +3,33 @@
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-22 (Track H Group E retro + full QA regression. All 6 flows PASS both markets. HEAD: 4db39be. BUG-031 RE-REGRESSION confirmed resolved — NEXT_PUBLIC_ENV="production" in Vercel (All Environments), pk.snapai.mainnov.tech verified clean. /api/models/all returns {models:[...]}. pak_diagnostic_questions does NOT exist — use pak_operating_targets for PSI thresholds. PK models=73.)
+> Last updated: 2026-05-22 (Staging Fix Plan COMPLETE — all phases 1-10 done. NEXT_PUBLIC_ENV=staging fixed+redeployed. DNS updated in Hostinger. scopesnap-web-staging.vercel.app VALID. Custom domains pending DNS propagation. Production: HEAD 19db2d1, Alembic 034. No open production bugs.)
 
 ---
+
+---
+
+## Completed — Staging Fix Plan (2026-05-22)
+
+All 10 phases of the STAGING_FIX_PLAN.md executed and complete:
+
+| Phase | Description | Status | Notes |
+|-------|-------------|--------|-------|
+| 1 | Pre-flight audit | ✅ | All staging infra confirmed present |
+| 2 | Fix BUG-031 (staging banner on prod PK) | ✅ | NEXT_PUBLIC_ENV=production set on prod Vercel |
+| 3 | Fix Vercel staging branch wiring | ✅ | scopesnap-web-staging deploys main branch |
+| 4 | Fix npm build failure on staging Vercel | ✅ | package-lock.json removed, builds pass |
+| 5 | Fix Railway staging backend (502) | ✅ | Health OK, alembic=025 |
+| 6 | Restore custom staging domains | ✅ | CNAME records updated in Hostinger to e08b930de4517e81.vercel-dns-017.com |
+| 7-9 | Env var audit + labeling + smoke test | ✅ | NEXT_PUBLIC_ENV=staging saved (direct type), redeployed |
+| 10 | Update all project docs | ✅ | PROJECT_BRAIN, CONTINUATION_PROMPT, ACTIVE_TASKS, STAGING_FIX_PLAN updated |
+
+**Key discoveries from staging fix session:**
+- DNS for mainnov.tech is in **Hostinger** (`mshoabarabi@gmail.com`), NOT Cloudflare (staging_secrets.txt comment was wrong) — DEC-066
+- Vercel staging project (`scopesnap-web-staging`) deploys **`main` branch** as Production (not `staging` branch) — DEC-067
+- `StagingBanner` is an RSC in `app/(app)/layout.tsx` — only visible on **authenticated routes** (not homepage/sign-in) — DEC-068
+- Custom domains still showing "Invalid Configuration" — TTL 14400s, propagation expected within 4h of 2026-05-22 session
+
 
 ## Completed (2026-05-21 — Track F Group B: Beta Readiness UI Polish, commit aa4e65b)
 
@@ -439,53 +463,4 @@ All 8 items shipped in single commit `177f4f9` (hotfix lane, direct to main):
   - companies.peak_season_surcharge_percent (nullable INT -- NULL=market default, 0=off, 1-100=custom)
   - estimates.seasonal_modifier_pct (INT NOT NULL default 0 -- generation-time freeze)
   - seasonal_modifier_pct + seasonal_note added to FaultCardEstimateResponse
-  - Missing import for derive_condition_signal_from_assessment fixed (was NameError, caught by try/except)
-  - breakdown key renamed pk_seasonal -> seasonal
-  - Alembic 029 applied via Supabase direct (WA-7); Railway deploy had infra issue
-  - Commit: e2683dd
-
----
-
-## Completed (2026-05-20 — Track D build hotfixes, direct to main)
-
-- [completed] HOT-1 — Export `apiFetch` from `lib/api.ts`
-  - Changed `async function apiFetch<T>` → `export async function apiFetch<T>`
-  - Required by: `FaultResolutionScreen.tsx`, `DiagnosisFeedbackModal.tsx`, `diagnoses/page.tsx`, `diagnoses/[session_id]/page.tsx`, `d/[share_token]/page.tsx`
-  - Commit: `380b486`
-
-- [completed] HOT-2 — Fix DiagnosticResult type param in `diagnoses/[session_id]/page.tsx`
-  - Changed untyped `apiFetch(url).then((res: DiagnosticResult) =>` → `apiFetch<DiagnosticResult>(url).then((res) =>`
-  - Root cause: TypeScript infers `T=unknown` when no type param given; callback annotation from `unknown` to `DiagnosticResult` is rejected
-  - Commit: `43c4dab`
-  - Vercel: ✅ Ready (1m 23s) — deployment 2bPAP3ZKX — **current production**
-
----
-
-## Completed (this session — 2026-05-19 Track Q Houston Estimate Engine)
-
-- [completed] Q.1 — Kill legacy estimate engine
-  - Deleted `scopesnap-api/services/estimate_engine.py` (dead code, zero non-self references)
-  - Removed `/api/estimates/generate` route and its `GenerateEstimateRequest` import from `estimates.py`
-  - Removed `generateEstimate()` from `scopesnap-web/lib/api.ts`
-  - Added DEC-016 to DECISIONS.md documenting the deletion
-  - Commit: `f0f13f5`
-
-- [completed] Q.2 — Quarantine legacy pricing_rules rows
-  - Added `deprecated BOOLEAN NOT NULL DEFAULT false` column to `pricing_rules`
-  - Set all rows `deprecated = true` (Alembic migration 020)
-  - Added COMMENT on table marking it as DEPRECATED
-  - Commit: `64e1a17` (includes migration file `020_quarantine_legacy_pricing_rules.py`)
-
-- [completed] Q.3 — complaint_type fallback + Sentry alert on unresolved Not-Cooling estimates
-  - Added `diagnostic_resolved` check (raw SQL on `diagnostic_sessions`) in `reports.py`
-  - Injected graceful fallback issues_data for `service/tune_up/maintenance` (green "Preventive service")
-  - Added Sentry warning for `not_cooling/water_dripping/not_turning_on` with no diagnostic resolution + cost > 0
-  - Commit: `68299eb`
-
-- [completed] Q.4 — Remove PAID_PLANS gate on contractor branding
-  - Deleted `PAID_PLANS` dict and conditional logic in `reports.py`
-  - Contractor name/phone/email/logo/license now always returned regardless of plan tier
-  - Commit: `68299eb` (same as Q.3)
-
-- [completed] Q.5 — Apply 19 fault card descriptions (migration 021)
-  - Migration `021_fault_card_descriptions.py`: 19 UPDATE statements, 6 n
+  - Missing import for derive_condition_signal_from_assessment fixed 
