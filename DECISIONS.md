@@ -844,7 +844,8 @@ gives instant access — no re-login needed.
 
 ---
 
-## DEC-049 -- Estimate option tiers stored as "A"/"B"/"C" -- NOT "good"/"better"/"best" (2026-05-21) — ✅ RESOLVED 2026-05-24: unified to Good/Better/Best across all surfaces; isRec → opt.recommended
+## DEC-049 -- Estimate option tiers stored as "A"/"B"/"C" -- NOT "good"/"better"/"best" (2026-05-21)
+ — ✅ RESOLVED 2026-05-24: unified to Good/Better/Best across all surfaces; isRec → opt.recommended
 
 **Date:** 2026-05-21
 
@@ -1695,3 +1696,43 @@ const isRec = isMiddleTier;  // backward-compat alias for existing headerBg/badg
 **Impact:** Any future change to recommendation logic must update `opt.recommended` in the DB (or the estimate generation logic), NOT the `isMiddleTier` variable. The two concerns are permanently separated.
 
 **See also:** WA-47 (TS cascading failures), DEC-083 (error tracing)
+
+
+---
+
+## DEC-085 -- Phase 2 architectural rewrite: ambient-aware PSI routing via unified operating_targets (2026-05-24)
+
+**Date:** 2026-05-24
+
+**Context:** Phase 1 (DEC-081) corrected the static R-410A US thresholds to 115-140 PSI suction at 95°F ambient. The static-threshold approach (a single fixed pair regardless of outdoor conditions) remained a structural risk: a tech diagnosing a system at 110°F outdoor would be evaluated against 95°F thresholds. PK already had correct ambient-aware dynamic lookup via `pak_operating_targets`. Houston had static dicts.
+
+**Decision:** Rename `pak_operating_targets` → `operating_targets`. Add `market VARCHAR(2) NOT NULL` column. Insert US rows for R-410A and R-22 across four ambient buckets (25/30/35/40°C). Refactor `_pk_evaluate_pressure` → `_evaluate_pressure_for_market(market=...)`. Remove PK-only gate so both markets use the unified lookup. Add 3-button ambient selector (Mild/Hot/Extreme) to Step Zero UI; pass `ambient_c` to backend on every PSI answer.
+
+**Rationale:** PK code path was the proven template. The heavy lifting was the schema migration + UI ambient capture. No new infrastructure, no new env vars. Static fallback dicts `_FALLBACK_SUCTION`/_FALLBACK_DISCHARGE keyed by (market, refrigerant) preserved as belt-and-suspenders in case `operating_targets` lookup fails.
+
+**Rule:** Both US and PK PSI routing must go through `_evaluate_pressure_for_market`. Never add market-gated static dicts for a new refrigerant — add rows to `operating_targets` instead.
+
+**Cross-references:** DEC-081 (Phase 1 emergency patch), DEC-070 (staging-first workflow), WA-41 (Phase 1 threshold correction)
+
+---
+
+## DEC-086 -- Duplicate step-2b block in migration 036 hotfix: staging fresh seed masks copy-paste bug (2026-05-24)
+
+**Date:** 2026-05-24
+
+**Context:** The hotfix commit `83f8329` was written to fix the production UNIQUE-constraint crash (migration 036 trying to INSERT US rows that violated `UNIQUE(refrigerant, ambient_c)` from original seeding). The hotfix added step-2b to drop the old constraint before the INSERT. However, due to a copy-paste error, the entire step-2b block was duplicated in the migration file's `upgrade()` function:
+
+- First occurrence: DROP legacy constraint IF EXISTS → ADD new `UNIQUE(market, refrigerant, ambient_c)` ← correct
+- Second occurrence (duplicate): DROP again (no-op) → ADD same constraint again → **PostgreSQL ERROR: constraint already exists** → Alembic rollback → `operating_targets` never created → uvicorn crash (service CRASHED)
+
+**Why staging didn't catch it:** Staging DB had already run migration 036 successfully (from an earlier, pre-hotfix commit). When `83f8329` was pushed to staging, Railway ran `alembic upgrade head` → saw DB is already at 036 → skipped the migration entirely. The duplicate block was never executed on staging.
+
+**Root cause:** Two structural issues compounded:
+1. Copy-paste when writing the hotfix (duplicate block)  
+2. Staging DB pre-migration masked the bug (migration didn't re-run because DB was already at 036)
+
+**Fix applied:** `84fedcf` removes the duplicate block (single correct step-2b remains). Production DB was manually migrated to 036 via Supabase MCP `execute_sql` (WA-17 pattern — 7 steps + alembic_version UPDATE). Railway then rebuilt from `84fedcf`, saw version=036, skipped migration, started cleanly. Boundary tests: 24/24 PASS.
+
+**Rule added:** When writing a migration hotfix that adds steps before an existing step, run a diff to confirm the final upgrade() contains no duplicate op.execute blocks. Any ADD CONSTRAINT call must appear exactly once. Grep `ADD CONSTRAINT` count before committing.
+
+**Cross-references:** DEC-085 (Phase 2 rewrite), DEC-050 (WA-17 pattern), migration 036 `84fedcf`
