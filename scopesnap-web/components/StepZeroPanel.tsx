@@ -965,6 +965,42 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             </div>
           </div>
 
+          {/* Outdoor temperature — ambient selector (Phase 2: drives PSI threshold lookup) */}
+          {/* Show when user picked a series from DB lookup */}
+          {(editedUnit || manualUnit.series_id) && (
+            <div className="space-y-2 mt-2">
+              <label className="text-sm font-bold" style={{ color: "#c9d1d9" }}>
+                Outdoor temperature
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["mild", "hot", "extreme"] as const).map((bucket) => {
+                  const labels: Record<typeof bucket, { title: string; sub: string }> = {
+                    mild:    { title: "Mild",    sub: "< 86°F (30°C)" },
+                    hot:     { title: "Hot",     sub: "86–100°F (30–38°C)" },
+                    extreme: { title: "Extreme", sub: "> 100°F (38°C+)" },
+                  };
+                  const selected = ambientBucket === bucket;
+                  return (
+                    <button
+                      key={bucket}
+                      onClick={() => setAmbientBucket(bucket)}
+                      className="py-2 px-1 rounded-lg text-xs font-semibold transition-all text-center leading-tight"
+                      style={{
+                        background: selected ? "#1a8754" : "#1e2330",
+                        color: selected ? "#ffffff" : "#7a8299",
+                        border: selected ? "1.5px solid #1a8754" : "1.5px solid #2d3547",
+                      }}
+                    >
+                      {labels[bucket].title}
+                      <br />
+                      <span style={{ fontWeight: 400, opacity: 0.8 }}>{labels[bucket].sub}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-3">
             <button
               onClick={handleManualConfirm}
