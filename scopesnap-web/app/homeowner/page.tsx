@@ -31,10 +31,6 @@ export default function HomeownerLandingPage() {
     });
   }, [posthog]);
 
-  // Video 2 placeholder -- replace LOOM_HOMEOWNER_ID with real ID from Azhan
-  const VIDEO_ID = "LOOM_HOMEOWNER_ID_PLACEHOLDER";
-  const isPlaceholder = VIDEO_ID === "LOOM_HOMEOWNER_ID_PLACEHOLDER";
-
   const pageUrl = typeof window !== "undefined" ? window.location.href : "https://snapai.mainnov.tech/homeowner";
   const shareText = "Ask your HVAC contractor if they use SnapAI — it shows you three repair options with real prices before they leave.";
 
@@ -122,30 +118,7 @@ export default function HomeownerLandingPage() {
       {/* ── Video Embed ────────────────────────────────────────────────────── */}
       <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-16">
         <div className="relative bg-surface-card rounded-ss shadow-ss-lg overflow-hidden border border-surface-border aspect-video">
-          {isPlaceholder ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-secondary">
-              <div className="w-16 h-16 rounded-full bg-brand-green flex items-center justify-center mb-4 shadow-green">
-                <svg viewBox="0 0 24 24" fill="white" className="w-7 h-7 ml-1">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </div>
-              <p className="text-text-secondary text-sm font-medium">Video coming soon</p>
-              <p className="text-text-tertiary text-xs mt-1">Homeowner walkthrough — final cut in production</p>
-            </div>
-          ) : (
-            <iframe
-              src={`https://www.loom.com/embed/${VIDEO_ID}`}
-              allowFullScreen
-              className="absolute inset-0 w-full h-full"
-              title="SnapAI -- what homeowners see when their contractor uses SnapAI"
-            />
-          )}
-        </div>
-        <p className="text-center text-xs text-text-tertiary mt-3">
-          See exactly what you receive when your contractor uses SnapAI
-        </p>
-      </section>
-
+          {
       {/* ── What to Expect ─────────────────────────────────────────────────── */}
       <section className="bg-surface-card border-y border-surface-border py-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
