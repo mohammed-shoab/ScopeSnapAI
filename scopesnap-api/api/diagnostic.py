@@ -585,53 +585,64 @@ async def _call_error_code_lookup(
 # ── PK pressure evaluation ────────────────────────────────────────────────────
 
 
-async def _pk_evaluate_pressure(
+async def _evaluate_pressure_for_market(
     db: AsyncSession,
     value: float,
     subtype: str,           # "suction" | "discharge"
     refrigerant: str,       # "R-32" | "R-410A" | "R-22" | "not_sure"
-    ambient_c: int = 40,    # default mid-summer Pakistan
+    ambient_c: int = 35,    # default "Hot" bucket (35°C ≈ 95°F) for US; 40°C for PK
+    market: str = "US",     # "US" | "PK"
 ) -> str:
     """
-    Look up pak_operating_targets and return "low" | "ok" | "high".
-    "not_sure" defaults to R-410A.
-    Falls back to US thresholds (R-410A 115-140 PSI suction at 95°F ambient) if table lookup fails.
+    Look up operating_targets (unified table — both US and PK) and return "low" | "ok" | "high".
+    "not_sure" refrigerant defaults to R-410A.
+
+    Phase 2 (2026-05-24): renamed from _pk_evaluate_pressure. Both markets now use this path.
+    PK behavior unchanged — PK rows remain in operating_targets with market='PK'.
+    Falls back to _FALLBACK_SUCTION/_FALLBACK_DISCHARGE keyed by (market, refrigerant) if DB fails.
     """
     ref = refrigerant if refrigerant != "not_sure" else "R-410A"
+
+    # ── Belt-and-suspenders fallback dicts (used only when operating_targets lookup fails) ───
+    # Values match the "Hot" default-ambient row in operating_targets for each market.
+    _FALLBACK_SUCTION = {
+        ("US", "R-410A"): (115, 140),
+        ("US", "R-22"):   (55, 78),
+        ("US", "R-32"):   (110, 145),
+        ("PK", "R-410A"): (125, 144),
+        ("PK", "R-22"):   (78, 88),
+        ("PK", "R-32"):   (120, 140),
+    }
+    _FALLBACK_DISCHARGE = {
+        ("US", "R-410A"): (225, 275),
+        ("US", "R-22"):   (150, 275),
+        ("US", "R-32"):   (225, 290),
+        ("PK", "R-410A"): (325, 370),
+        ("PK", "R-22"):   (200, 320),
+        ("PK", "R-32"):   (365, 410),
+    }
 
     # Find the nearest ambient row (floor to nearest available step)
     try:
         row = await db.execute(
             text(
                 "SELECT suction_min_psi, suction_max_psi, discharge_min_psi, discharge_max_psi "
-                "FROM pak_operating_targets "
-                "WHERE refrigerant = :ref AND ambient_c <= :amb "
+                "FROM operating_targets "
+                "WHERE market = :mkt AND refrigerant = :ref AND ambient_c <= :amb "
                 "ORDER BY ambient_c DESC LIMIT 1"
             ),
-            {"ref": ref, "amb": ambient_c},
+            {"mkt": market, "ref": ref, "amb": ambient_c},
         )
         targets = row.fetchone()
     except Exception as e:
-        logger.warning("[diagnostic] pak_operating_targets lookup failed: %s", e)
+        logger.warning("[diagnostic] operating_targets lookup failed (market=%s): %s", market, e)
         targets = None
 
     if not targets:
-        # Fallback: US thresholds — refrigerant-aware for correct hot-ambient routing
-        # R-410A at 35-40°C ambient (Houston summer): suction 65-145 PSI, discharge 200-400 PSI
-        _us_suction = {
-            "R-410A": (115, 140),
-            "R-22":   (55, 78),
-            "R-32":   (110, 145),  # mostly PK-only deployment
-        }
-        _us_discharge = {
-            "R-410A": (225, 275),
-            "R-22":   (150, 275),
-            "R-32":   (225, 290),
-        }
         if subtype == "suction":
-            lo, hi = _us_suction.get(ref, (65, 145))
+            lo, hi = _FALLBACK_SUCTION.get((market, ref), (65, 145))
         else:
-            lo, hi = _us_discharge.get(ref, (200, 400))
+            lo, hi = _FALLBACK_DISCHARGE.get((market, ref), (200, 400))
     elif subtype == "suction":
         lo, hi = float(targets.suction_min_psi), float(targets.suction_max_psi)
     else:
@@ -980,10 +991,12 @@ async def submit_answer(
     # ── Compute branch_key (BUG-003 fix) ─────────────────────────────────
     branch_key = _compute_branch_key(body.answer, q_row.input_type)
 
-    # ── PK pressure override: server-side evaluation against pak_operating_targets ─
+    # ── Ambient-aware pressure evaluation: both US and PK use operating_targets ──
+    # Phase 2 (2026-05-24): PK-only gate removed. Both markets use _evaluate_pressure_for_market.
+    # US routing is now dynamic per ambient bucket selected in Step Zero UI.
+    # PK behavior unchanged — PK rows in operating_targets, ambient_c from request or market default.
     if (
-        tables.market == "PK"
-        and q_row.input_type == "reading"
+        q_row.input_type == "reading"
         and isinstance(q_row.reading_spec, dict)
         and q_row.reading_spec.get("type") == "psi"
         and isinstance(body.answer, dict)
@@ -992,11 +1005,15 @@ async def submit_answer(
         subtype = q_row.reading_spec.get("subtype", "suction")
         raw_psi = float(body.answer["value"])
         refrigerant = body.refrigerant_type or "not_sure"
-        ambient = body.ambient_c or 40
-        branch_key = await _pk_evaluate_pressure(db, raw_psi, subtype, refrigerant, ambient)
+        # US default: 35°C ("Hot" bucket ≈ 95°F Houston summer). PK default: 40°C mid-summer.
+        default_ambient = 40 if tables.market == "PK" else 35
+        ambient = body.ambient_c or default_ambient
+        branch_key = await _evaluate_pressure_for_market(
+            db, raw_psi, subtype, refrigerant, ambient, market=tables.market
+        )
         logger.info(
-            "[diagnostic] PK pressure override: %.1f PSI %s → %s (ref=%s, amb=%d°C)",
-            raw_psi, subtype, branch_key, refrigerant, ambient,
+            "[diagnostic] pressure eval: %.1f PSI %s → %s (market=%s, ref=%s, amb=%d°C)",
+            raw_psi, subtype, branch_key, tables.market, refrigerant, ambient,
         )
 
     # ── BUG-016: PK ok suction → discharge PSI step (not US Card 13) ─────────
@@ -1070,8 +1087,8 @@ async def pk_pressure_targets(
     row = await db.execute(
         text(
             "SELECT suction_min_psi, suction_max_psi, discharge_min_psi, discharge_max_psi, ambient_c "
-            "FROM pak_operating_targets "
-            "WHERE refrigerant = :ref AND ambient_c <= :amb "
+            "FROM operating_targets "
+            "WHERE market = 'PK' AND refrigerant = :ref AND ambient_c <= :amb "
             "ORDER BY ambient_c DESC LIMIT 1"
         ),
         {"ref": ref, "amb": ambient_c},

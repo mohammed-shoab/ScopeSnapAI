@@ -127,6 +127,8 @@ function AssessPageInner() {
 
   // ── Core state ─────────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("step-zero");
+  // Ambient temperature bucket captured at Step Zero (Phase 2: ambient-aware PSI routing)
+  const [ambientC, setAmbientC] = useState<number>(35); // default "Hot" = 35°C ≈ 95°F
   const [ocrResult, setOcrResult] = useState<Record<string, unknown> | null>(null);
   const [complaintType, setComplaintType] = useState<ComplaintId | null>(null);
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
@@ -423,8 +425,9 @@ function AssessPageInner() {
     return (
       <StepZeroPanel
         clerkToken={null}
-        onConfirm={(result) => {
+        onConfirm={(result, ambientCValue) => {
           setOcrResult(result as unknown as Record<string, unknown>);
+          setAmbientC(ambientCValue);
           // PK inverter pricing: capture series_type from DB model selection
           const st = (result.outdoor as { series_type?: string | null })?.series_type;
           setMeteringType(st === "inverter" ? "inverter" : "any");
@@ -693,6 +696,7 @@ function AssessPageInner() {
           complaintType={complaintType}
           getAuthHeaders={getAuthHeaders}
           ocrNameplate={ocrResult}
+          ambientC={ambientC}
           onResolved={handleDiagnosticResolved}
           onPhase2Gate={handlePhase2Gate}
           onEscalated={() => {
