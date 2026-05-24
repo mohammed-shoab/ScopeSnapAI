@@ -60,7 +60,7 @@ interface OcrResult {
 interface Props {
   assessmentId?: string;  // set once assessment is created (for persisting)
   clerkToken: string | null;
-  onConfirm: (result: OcrResult) => void;
+  onConfirm: (result: OcrResult, ambientC: number) => void;
   onSkip: () => void;
 }
 
@@ -113,6 +113,10 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState<string | null>(null);
   const [ocrResult,    setOcrResult]    = useState<OcrResult | null>(null);
+  // Ambient temperature bucket — drives PSI threshold lookup in operating_targets
+  // "mild" = 25°C (<86°F), "hot" = 35°C (86-100°F, default Houston summer), "extreme" = 40°C (>100°F)
+  const [ambientBucket, setAmbientBucket] = useState<"mild" | "hot" | "extreme">("hot");
+  const AMBIENT_C_MAP: Record<"mild" | "hot" | "extreme", number> = { mild: 25, hot: 35, extreme: 40 };
   const [editedUnit,   setEditedUnit]   = useState<NameplateUnit | null>(null);
 
   const outdoorInputRef = useRef<HTMLInputElement>(null);
@@ -345,8 +349,8 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       d7_brand_detected: false,
       d7_brand_name: null,
     };
-    onConfirm(result);
-  }, [manualUnit, pkRefrigerant, isPK, onConfirm]);
+    onConfirm(result, AMBIENT_C_MAP[ambientBucket]);
+  }, [manualUnit, pkRefrigerant, isPK, onConfirm, ambientBucket]);
 
   // ── Photo selection ─────────────────────────────────────────────────────
 
@@ -514,7 +518,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       }
     }
 
-    onConfirm(finalResult);
+    onConfirm(finalResult, AMBIENT_C_MAP[ambientBucket]);
   }, [ocrResult, editedUnit, assessmentId, clerkToken, onConfirm]);
 
   // ── Edit field helper ───────────────────────────────────────────────────
@@ -1272,6 +1276,41 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Outdoor temperature — ambient selector (Phase 2: drives PSI threshold lookup) */}
+      {editedUnit && (
+        <div className="space-y-2 mt-2">
+          <label className="text-sm font-bold" style={{ color: "#c9d1d9" }}>
+            Outdoor temperature
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {(["mild", "hot", "extreme"] as const).map((bucket) => {
+              const labels: Record<typeof bucket, { title: string; sub: string }> = {
+                mild:    { title: "Mild",    sub: "< 86°F (30°C)" },
+                hot:     { title: "Hot",     sub: "86–100°F (30–38°C)" },
+                extreme: { title: "Extreme", sub: "> 100°F (38°C+)" },
+              };
+              const selected = ambientBucket === bucket;
+              return (
+                <button
+                  key={bucket}
+                  onClick={() => setAmbientBucket(bucket)}
+                  className="py-2 px-1 rounded-lg text-xs font-semibold transition-all text-center leading-tight"
+                  style={{
+                    background: selected ? "#1a8754" : "#1e2330",
+                    color: selected ? "#ffffff" : "#7a8299",
+                    border: selected ? "1.5px solid #1a8754" : "1.5px solid #2d3547",
+                  }}
+                >
+                  {labels[bucket].title}
+                  <br />
+                  <span style={{ fontWeight: 400, opacity: 0.8 }}>{labels[bucket].sub}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
