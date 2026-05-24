@@ -116,16 +116,18 @@ export default function LandingPage() {
             Early Access
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight mb-5">
-            HVAC estimates in{" "}
-            <span className="text-brand-green">90 seconds.</span>
-            <br />
-            No guessing. No spreadsheets.
+            HVAC estimates without{" "}
+            <span className="text-brand-green">guessing.</span>
           </h1>
+          <p className="text-base font-medium text-text-secondary mb-2">
+            Built by a software team that took HVAC seriously enough to do the deep research.
+          </p>
           <p className="text-lg text-text-secondary leading-relaxed mb-10 max-w-xl mx-auto">
             Photograph any HVAC unit. SnapAI identifies the equipment,
             generates a Good / Better / Best estimate, and sends the homeowner a
             beautiful report — all before you leave the driveway.
           </p>
+          <p className="text-xs text-text-tertiary mb-4">Free during beta. Pricing announced before launch.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link
               href="/dashboard"
@@ -146,19 +148,19 @@ export default function LandingPage() {
         <section id="how-it-works" className="bg-surface-card border-y border-surface-border py-20">
           <div className="max-w-4xl mx-auto px-6">
             <h2 className="text-2xl font-bold text-center mb-12">
-              Three taps. Professional estimate.
+              How it works
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
               {[
                 {
                   step: "01",
                   title: "Photograph the equipment",
-                  desc: "Open the app, tap Assess, and take 1–5 photos of the HVAC unit. Works indoors and outdoors.",
+                  desc: "Open the app, tap Assess, and photograph the nameplate. The diagnostic engine reads make, model, age, and refrigerant type.",
                 },
                 {
                   step: "02",
                   title: "AI identifies everything",
-                  desc: "Gemini Vision reads make, model, age, and condition. Generates Good / Better / Best pricing in seconds.",
+                  desc: "Answer guided questions about symptoms. The system routes your answers through a fault tree built from manufacturer documentation and Houston field patterns.",
                 },
                 {
                   step: "03",
@@ -208,7 +210,7 @@ export default function LandingPage() {
                     <path d="M4.5 13A2.5 2.5 0 017 15.5v4a2.5 2.5 0 01-5 0v-4A2.5 2.5 0 014.5 13z"/>
                   </svg>
                 ),
-                title: "Gemini builds the estimate",
+                title: "Estimate built from the fault tree",
                 desc: "Good / Better / Best pricing generated with your markup — parts, labor, and R-22 surcharges included.",
                 color: "#6a1b9a",
                 bg: "rgba(106,27,154,.08)",
