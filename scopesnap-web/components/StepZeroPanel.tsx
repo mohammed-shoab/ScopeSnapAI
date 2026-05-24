@@ -1280,7 +1280,8 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       )}
 
       {/* Outdoor temperature — ambient selector (Phase 2: drives PSI threshold lookup) */}
-      {editedUnit && (
+      {/* Show when: (a) OCR returned a unit, or (b) user picked a series from DB lookup */}
+      {(editedUnit || manualUnit.series_id) && (
         <div className="space-y-2 mt-2">
           <label className="text-sm font-bold" style={{ color: "#c9d1d9" }}>
             Outdoor temperature
