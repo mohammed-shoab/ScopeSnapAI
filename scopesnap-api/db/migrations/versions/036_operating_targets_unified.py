@@ -61,24 +61,6 @@ def upgrade() -> None:
         "UNIQUE (market, refrigerant, ambient_c);"
     ))
 
-    # ── 2b. Drop production legacy unique constraint on (refrigerant, ambient_c) ─
-    # Production DB has UNIQUE (refrigerant, ambient_c) from original seeding.
-    # Staging (fresh seed) does NOT have it — IF EXISTS is required for portability.
-    # After adding market column, correct uniqueness is (market, refrigerant, ambient_c).
-    op.execute(text(
-        "ALTER TABLE operating_targets "
-        "DROP CONSTRAINT IF EXISTS pak_operating_targets_refrigerant_ambient_c_key;"
-    ))
-    op.execute(text(
-        "ALTER TABLE operating_targets "
-        "DROP CONSTRAINT IF EXISTS operating_targets_refrigerant_ambient_c_key;"
-    ))
-    op.execute(text(
-        "ALTER TABLE operating_targets "
-        "ADD CONSTRAINT operating_targets_market_ref_amb_key "
-        "UNIQUE (market, refrigerant, ambient_c);"
-    ))
-
     # ── 3. Insert US rows ─────────────────────────────────────────────────────
     # Authoritative values from Phase 1 Canonical PSI Threshold Table (PROJECT_BRAIN.md)
     # and board-reviewed ambient-aware targets for 4 ambient buckets (25/30/35/40°C).
