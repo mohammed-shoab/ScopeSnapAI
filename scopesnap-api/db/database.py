@@ -74,11 +74,22 @@ class Base(DeclarativeBase):
     pass
 
 # -- Dependency ----------------------------------------------------------------
+import asyncio as _asyncio
+import logging as _db_log
+_dep_logger = _db_log.getLogger("db.get_db")
+
 async def get_db() -> AsyncSession:
     async with AsyncSessionLocal() as session:
         try:
             yield session
-            await session.commit()
+            try:
+                await _asyncio.wait_for(session.commit(), timeout=15.0)
+            except _asyncio.TimeoutError:
+                _dep_logger.error("get_db post-yield commit timed out (15s) -- rolling back")
+                await session.rollback()
+            except Exception as _e:
+                _dep_logger.error("get_db post-yield commit error: %s: %s", type(_e).__name__, _e)
+                await session.rollback()
         except Exception:
             await session.rollback()
             raise
