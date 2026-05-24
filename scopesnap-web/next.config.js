@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-// build: 2026-05-24 -- Phase 2 ambient-aware PSI (cache-bust: force frontend rebuild)
+// build: 2026-05-24b -- Phase 2 ambient-aware PSI + ambient selector gate fix (cache-bust: WA-49)
 
 const API_URL_FOR_CSP = process.env.NEXT_PUBLIC_API_URL || 'https://scopesnap-api-production.up.railway.app';
 
