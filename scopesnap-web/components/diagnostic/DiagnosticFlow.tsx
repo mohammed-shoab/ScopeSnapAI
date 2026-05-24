@@ -133,6 +133,9 @@ interface DiagnosticFlowProps {
   complaintType: string;
   getAuthHeaders: () => Promise<Record<string, string>>;
   ocrNameplate?: Record<string, unknown> | null;
+  /** Outdoor ambient temperature in °C from Step Zero selector (Phase 2 ambient-aware PSI routing).
+   *  Mild=25, Hot=35 (default), Extreme=40. Passed to backend on every PSI answer. */
+  ambientC?: number;
   onResolved: (cardId: number, cardName: string, sessionId: string, photoSlots: PhotoSlotSpec[], history: AnswerRecord[]) => void;
   onPhase2Gate: (continuation: GateContinuation) => void;
   onEscalated: (reason: string) => void;
@@ -146,6 +149,7 @@ export default function DiagnosticFlow({
   complaintType,
   getAuthHeaders,
   ocrNameplate,
+  ambientC = 35,   // default "Hot" bucket (35°C ≈ 95°F Houston summer)
   onResolved,
   onPhase2Gate,
   onEscalated,
@@ -236,10 +240,10 @@ export default function DiagnosticFlow({
     try {
       const h = await getAuthHeaders();
       setLiveHeaders(h);
-      // PK: include refrigerant_type for server-side pressure evaluation
-      const isPK = detectMarket() === "PK";
+      // Phase 2: send ambient_c + refrigerant_type for ALL markets on PSI readings.
+      // ambient_c comes from the Step Zero ambient selector (Mild=25/Hot=35/Extreme=40).
+      // Backend _evaluate_pressure_for_market uses operating_targets for both US and PK.
       const isPsiReading =
-        isPK &&
         currentQuestion.input_type === "reading" &&
         currentQuestion.reading_spec?.type === "psi";
       // ocrNameplate is the full OcrResult: {outdoor: {...}, indoor: null, ...}
@@ -250,9 +254,11 @@ export default function DiagnosticFlow({
         : undefined;
 
       const requestBody: Record<string, unknown> = { answer };
-      if (refrigerantType) {
-        requestBody.refrigerant_type = refrigerantType;
-        requestBody.ambient_c = 40; // default mid-summer; future: tech-entered ambient
+      if (isPsiReading) {
+        requestBody.ambient_c = ambientC;          // from Step Zero selector (Phase 2)
+        if (refrigerantType) {
+          requestBody.refrigerant_type = refrigerantType;
+        }
       }
 
       const r = await fetch(`${API_URL}/api/diagnostic/session/${sessionId}/answer`, {
