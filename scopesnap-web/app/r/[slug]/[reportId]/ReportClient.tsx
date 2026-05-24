@@ -129,9 +129,9 @@ interface Report {
 }
 
 const TIER_LABELS: Record<string, string> = {
-  good: "Option A",
-  better: "Option B",
-  best: "Option C",
+  good: "Good",
+  better: "Better",
+  best: "Best",
 };
 
 const CONDITION_COLORS: Record<string, string> = {
@@ -952,9 +952,9 @@ export default function ReportClient({ report }: { report: Report }) {
         {report.options.length > 0 && (
           <div style={{ margin: "10px 0" }}>
             <FiveYearComparison
-              optionA={report.options.find((o) => o.tier === "A")?.five_year_comparison ?? null}
-              optionB={report.options.find((o) => o.tier === "B")?.five_year_comparison ?? null}
-              optionC={report.options.find((o) => o.tier === "C")?.five_year_comparison ?? null}
+              optionA={report.options.find((o) => o.tier === "good" || o.tier === "A")?.five_year_comparison ?? null}
+              optionB={report.options.find((o) => o.tier === "better" || o.tier === "B")?.five_year_comparison ?? null}
+              optionC={report.options.find((o) => o.tier === "best" || o.tier === "C")?.five_year_comparison ?? null}
               recommendedTier={(initialRecommendedTier as "A" | "B" | "C")}
               market={reportMarket}
               mode="homeowner_report"

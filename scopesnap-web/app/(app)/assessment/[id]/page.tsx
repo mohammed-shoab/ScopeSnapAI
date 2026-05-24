@@ -811,8 +811,8 @@ export default function EstimatePage() {
                         {/* Badge + Repair/Replace toggle */}
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                           <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${badgeBg}`}>
-                            Option {opt.tier === "good" ? "A" : opt.tier === "better" ? "B" : "C"}
-                            {isRec && " — ★ REC"}
+                            {opt.tier.charAt(0).toUpperCase() + opt.tier.slice(1)}
+                            {isRecommended && " — ★ REC"}
                           </span>
                           {/* Repair / Replace segmented control */}
                           <div

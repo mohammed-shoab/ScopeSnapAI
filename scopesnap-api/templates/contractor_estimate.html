@@ -489,8 +489,8 @@
 <div class="option-card {% if option.tier == 'better' %}recommended{% endif %}">
   <div class="option-header">
     <span class="option-tier-badge">
-      {% if option.tier == 'good' %}Option A — Good{% elif option.tier == 'better' %}Option B — Better{% elif option.tier == 'best' %}Option C — Best{% else %}{{ option.tier | title }}{% endif %}
-      {% if option.tier == 'better' %}★ Recommended{% endif %}
+      {{ option.tier | capitalize }}
+      {% if option.recommended %}★ Recommended{% endif %}
     </span>
     <span class="option-name">
       {{ option.name }}
