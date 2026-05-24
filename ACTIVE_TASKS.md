@@ -1,5 +1,50 @@
 # SnapAI — Active Tasks
 
+## Stage 8 Sign-Off -- Final Documentation + Meta-Retrospective + Project Closing -- 2026-05-24
+
+| Check | Result |
+|-------|--------|
+| STAGING_MIRROR_CLOSEOUT.md created | OK -- all 10 sections written |
+| DEC-002 revision note updated to 034 | OK |
+| TECH_STACK.md activation status updated | OK -- DEC-070 ACTIVE |
+| PROJECT_BRAIN.md closing summary added | OK |
+| DEC-070 Activation updated in DECISIONS.md | OK -- ACTIVE as of Stage 7 |
+| WORKFLOW.md Activation section updated | OK -- ACTIVE |
+| Brain file consistency audit | OK -- see STAGING_MIRROR_CLOSEOUT.md Appendix |
+| All 8 stages signed off | OK |
+| Commit via staging-first workflow | OK -- staging SHA: d9bad2c, main SHA: 540e795 (Stage 7) |
+
+All 8 stages complete. DEC-070 is the operational workflow from this point forward.
+
+### Future Work Backlog
+
+- Create a test user in firm-chamois-61 (Clerk staging) for future PK staging auth-gated QA
+- Migrate google.maps.places.Autocomplete to PlaceAutocompleteElement before Google deprecates
+- PostHog dashboard buildout (deferred to Phase 2)
+- ONBOARDING.md for new contributors (not yet written)
+- Stage 8 lesson: always document the hotfix path the first time it is exercised (DEC-070 Section 9)
+
+---
+
+## Stage 7 Sign-Off — Staging E2E QA — DEC-070 ACTIVE — 2026-05-24
+
+| Check | Result |
+|-------|--------|
+| Houston staging full diagnostic flow | ✅ Not Cooling -> 45 PSI low -> Refrigerant Leak High Confidence -> Estimate Builder A=$608/B=$1013/C=$1368 USD (assessment e198935c) |
+| Google Maps autocomplete on staging | ✅ window.google.maps.places loaded, .pac-container instantiated |
+| Clerk keys on staging | ✅ pk_test_ confirmed (Development mode, "ScopeSnapAI Staging" on sign-in) (DEC-077) |
+| Staging banner (StagingBanner RSC) | ✅ Auth-only (DEC-069) — sign-in page shows "ScopeSnapAI Staging" |
+| PK staging domain resolves | ✅ pk-staging.snapai.mainnov.tech live |
+| PK staging Clerk | ✅ pk_test_ + "Development mode" confirmed |
+| PK staging backend health | ✅ environment:staging, db:connected |
+| PK staging pk endpoint | ✅ /api/diagnostic/pk/pressure-targets -> R-410A (suction 125-145 PSI, discharge 325-370 PSI) |
+| Staging backend API | ✅ 74 endpoints live, environment:staging |
+| DEC-070 activation | ✅ ACTIVE — workflow is now mandatory for all changes |
+
+**DEC-070 ACTIVE as of 2026-05-24.** All future changes: branch off staging -> commit -> push staging -> verify -> promote-to-prod.sh -> push main.
+
+---
+
 ## Stage 6 Sign-Off — Vercel Staging Branch Rewire (DEC-067 fix) — 2026-05-24
 
 | Check | Result |
@@ -45,7 +90,7 @@ Stage 5 complete. Ready for Stage 6 (Vercel Staging Branch Rewire — DEC-067 fi
 > Tracks in-flight work, recent completions, and backlog.
 > Updated by QA/dev sessions. Read this before starting any new work.
 >
-> Last updated: 2026-05-23 (Stage 3 Google Maps Integration COMPLETE. HoustonAddressAutocomplete live on snapai.mainnov.tech. DEC-078/DEC-079 added. BUG-042 logged. | Stage 4 Staging Isolation Audit COMPLETE. All 8 dimensions PASS. 2 critical contaminations fixed. DEC-074/075/076/077 added. | Stage 1 Production Verification COMPLETE. BUG-040 + BUG-041 fixed. All 6 flows PASS. L36-L39 added.) | Previously: (Stage 2 Free-Tier Cost Audit COMPLETE. Total spend $5.00/mo. All 15 services verified. Supabase spend cap enabled. DEC-071 added.) | Previously: 2026-05-23 (Full QA pass both markets -- all 6 flows PASS. Lessons L32-L35 added. DEC-065/066 added. WA-28 through WA-37 added to TECH_STACK.) | Previous: 2026-05-22 (Staging Fix Plan COMPLETE — all phases 1-10 done. NEXT_PUBLIC_ENV=staging fixed+redeployed. DNS updated in Hostinger. scopesnap-web-staging.vercel.app VALID. Custom domains pending DNS propagation. Production: HEAD 19db2d1, Alembic 034. No open production bugs.) | **2026-05-23 patch:** `WORKFLOW.md` + DEC-070 added (staging-first workflow).
+> Last updated: 2026-05-24 (Stage 8 COMPLETE. All 8 stages signed off. STAGING_MIRROR_CLOSEOUT.md written. | Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. | Stage 3 Google Maps Integration COMPLETE. HoustonAddressAutocomplete live on snapai.mainnov.tech. DEC-078/DEC-079 added. BUG-042 logged. | Stage 4 Staging Isolation Audit COMPLETE. All 8 dimensions PASS. 2 critical contaminations fixed. DEC-074/075/076/077 added. | Stage 1 Production Verification COMPLETE. BUG-040 + BUG-041 fixed. All 6 flows PASS. L36-L39 added.) | Previously: (Stage 2 Free-Tier Cost Audit COMPLETE. Total spend $5.00/mo. All 15 services verified. Supabase spend cap enabled. DEC-071 added.) | Previously: 2026-05-23 (Full QA pass both markets -- all 6 flows PASS. Lessons L32-L35 added. DEC-065/066 added. WA-28 through WA-37 added to TECH_STACK.) | Previous: 2026-05-22 (Staging Fix Plan COMPLETE — all phases 1-10 done. NEXT_PUBLIC_ENV=staging fixed+redeployed. DNS updated in Hostinger. scopesnap-web-staging.vercel.app VALID. Custom domains pending DNS propagation. Production: HEAD 19db2d1, Alembic 034. No open production bugs.) | **2026-05-23 patch:** `WORKFLOW.md` + DEC-070 added (staging-first workflow).
 
 ---
 
@@ -58,7 +103,7 @@ All change work follows the staging-first workflow defined in `WORKFLOW.md`. The
 3. Never add env vars to prod without mirroring them on staging
 4. Never test on production — testing happens on staging
 
-Workflow becomes mandatory after Stage 7 sign-off (staging full QA matches prod full QA). Hotfix path defined in `WORKFLOW.md` Section 9.
+DEC-070 is now ACTIVE (Stage 7 signed off 2026-05-24). Hotfix path defined in `WORKFLOW.md` Section 9.
 
 ---
 
@@ -165,6 +210,8 @@ Zero bugs found. All fixes confirmed live. Key learnings captured below.
 
 | # | What We Learned | Detail | WA / DEC Ref |
 |---|-----------------|--------|--------------|
+| L40 | Frontend gates with 'market-required' comments must implement the market check, not block universally | WA-32 address gate was guarded with // R.3: Address required for US market but fired for ALL markets. Removed gate entirely — backend supports optional address. | 2026-05-24 Issue #2 fix |
+
 | L19 | Address input BLOCKS complaint selection on PK | R.3 guard (`handleComplaintSelected`) fires even when address is empty. On PK this prevented complaint clicks from advancing the flow. Entering just the native value is not enough — must call React onChange. Workaround in QA automation: always enter address via `input[__reactProps].onChange({target, currentTarget, ...})` before clicking complaint. | WA-32 |
 | L20 | SnapAI has zero client-side API fetches | Next.js 14 app uses Server Components + Server Actions. All brand/series/diagnostic data is fetched server-side. `window.fetch` intercept and `read_network_requests` capture nothing useful. For Phase 2 market routing checks: use Supabase MCP direct SQL to verify table separation, and infer routing correctness from working UI flows on each domain. | WA-33 |
 | L21 | pak_diagnostic_questions does NOT exist | The QA skill spec referenced `pak_diagnostic_questions` for PSI threshold verification. This table does not exist. PSI thresholds live in `pak_operating_targets` with columns: refrigerant, ambient_c, suction_min_psi, suction_max_psi, discharge_min_psi, discharge_max_psi. At 40°C: R-410A 125–145, R-32 120–140, R-22 78–88 (45°C). | DEC-002 updated |
