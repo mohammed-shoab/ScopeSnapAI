@@ -134,6 +134,7 @@ export default function DashboardPage() {
           const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
           setEstimates(list);
           setLoading(false);
+          try { posthog.capture("dashboard_viewed", { assessments_count: list.length }); } catch (_) {}
         })
         .catch((e) => {
           setError("Could not reach the API");
@@ -188,6 +189,18 @@ export default function DashboardPage() {
       }
     };
   }, [company?.id]);
+
+  // ── Loading-stuck timeout (5s) ─────────────────────────────────────
+  useEffect(() => {
+    if (!loading) return;
+    const t = setTimeout(() => {
+      if (loading && !error) {
+        setLoading(false);
+        setError("Couldn't load recent assessments — try refreshing.");
+      }
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [loading, error]);
 
   // ── Derived stats (only from real data, no hardcoding) ────────────────────
   const safe = Array.isArray(estimates) ? estimates : [];
@@ -290,6 +303,7 @@ export default function DashboardPage() {
           <Link
             href="/assess"
             className="inline-flex items-center gap-2 bg-white text-brand-green font-bold px-6 py-3 rounded-xl text-sm hover:bg-white/90 transition-colors"
+            onClick={() => { try { posthog.capture("first_assessment_started", { source: "empty_state_dashboard", ts: new Date().toISOString() }); } catch (_) {} }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <circle cx="8" cy="8" r="7.25" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.6"/>
