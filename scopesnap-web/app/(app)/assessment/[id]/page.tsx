@@ -763,7 +763,9 @@ export default function EstimatePage() {
           <div className="space-y-4">
             {options.map((opt) => {
               const isSelected = selectedTier === opt.tier;
-              const isRec = opt.tier === "better";
+              const isMiddleTier = opt.tier === "better"; // drives card styling only
+              const isRecommended = !!(opt as { recommended?: boolean }).recommended; // drives badge
+              const isRec = isMiddleTier; // kept for card headerBg/badgeBg/priceColor below
               const jobType = jobTypes[opt.tier] || "replace";
               const items = localItems[opt.tier] || [];
               const groups = groupItems(items);
