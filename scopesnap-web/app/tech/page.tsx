@@ -30,10 +30,6 @@ export default function TechLandingPage() {
     });
   }, [posthog]);
 
-  // Loom video placeholder -- replace LOOM_VIDEO_ID with real ID from Shoab
-  const LOOM_VIDEO_ID = "LOOM_VIDEO_ID_PLACEHOLDER";
-  const loomEmbedUrl = `https://www.loom.com/embed/${LOOM_VIDEO_ID}`;
-
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -120,35 +116,8 @@ export default function TechLandingPage() {
         </div>
       </section>
 
-      {/* ── Video Embed ────────────────────────────────────────────────────── */}
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-16">
-        <div className="relative bg-surface-card rounded-ss shadow-ss-lg overflow-hidden border border-surface-border aspect-video">
-          {LOOM_VIDEO_ID === "LOOM_VIDEO_ID_PLACEHOLDER" ? (
-            /* Placeholder shown until Shoab provides real Loom ID */
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-secondary">
-              <div className="w-16 h-16 rounded-full bg-brand-green flex items-center justify-center mb-4 shadow-green">
-                <svg viewBox="0 0 24 24" fill="white" className="w-7 h-7 ml-1">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              </div>
-              <p className="text-text-secondary text-sm font-medium">Video coming soon</p>
-              <p className="text-text-tertiary text-xs mt-1">Contractor walkthrough — Azhan finishing final cut</p>
-            </div>
-          ) : (
-            <iframe
-              src={loomEmbedUrl}
-              allowFullScreen
-              className="absolute inset-0 w-full h-full"
-              title="SnapAI — contractor walkthrough video"
-            />
-          )}
-        </div>
-        <p className="text-center text-xs text-text-tertiary mt-3">
-          90-second walkthrough: nameplate scan to homeowner-approved estimate
-        </p>
-      </section>
 
-      {/* ── How It Works ───────────────────────────────────────────────────── */}
+            {/* ── How It Works ───────────────────────────────────────────────────── */}
       <section className="bg-surface-card border-y border-surface-border py-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12">
@@ -173,39 +142,26 @@ export default function TechLandingPage() {
         </div>
       </section>
 
-      {/* ── Social Proof / Built For Houston ───────────────────────────────── */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {[
-            {
-              stat: "1 in 4",
-              label: "Houston HVAC techs is senior-level",
-              sub: "The other 3 are guessing in driveways without a close.",
-            },
-            {
-              stat: "90 sec",
-              label: "from nameplate scan to signed estimate",
-              sub: "Before competitors finish writing their quote on a napkin.",
-            },
-            {
-              stat: "Free",
-              label: "for the first 10 beta testers",
-              sub: "You keep access after beta. No card required to start.",
-            },
-          ].map((item) => (
-            <div
-              key={item.stat}
-              className="bg-surface-card border border-surface-border rounded-ss p-6 shadow-ss"
-            >
-              <div className="text-2xl font-bold text-brand-green mb-1">{item.stat}</div>
-              <div className="text-sm font-semibold text-text-primary mb-1">{item.label}</div>
-              <div className="text-xs text-text-secondary leading-relaxed">{item.sub}</div>
-            </div>
-          ))}
+      {/* ── Builder Positioning (“honest voice” section) ───────── */}
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
+        <div className="bg-surface-card border border-surface-border rounded-ss p-8 shadow-ss">
+          <p className="text-sm text-text-secondary leading-relaxed mb-4">
+            We built SnapAI by deeply researching how HVAC diagnostic actually works —
+            manufacturer documentation, training references, and the fault patterns that show up
+            most often on Houston residential systems. The diagnostic engine, fault card database,
+            and pricing tiers reflect months of that research.
+          </p>
+          <p className="text-sm text-text-secondary leading-relaxed mb-4">
+            Beta program now open — first 10 Houston HVAC techs get founding access.
+            Your input shapes every release.
+          </p>
+          <p className="text-xs font-semibold text-brand-green">
+            Free during beta. Pricing announced before launch.
+          </p>
         </div>
       </section>
 
-      {/* ── Beta CTA (bottom) ──────────────────────────────────────────────── */}
+            {/* ── Beta CTA (bottom) ──────────────────────────────────────────────── */}
       <section className="bg-brand-green py-16">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">

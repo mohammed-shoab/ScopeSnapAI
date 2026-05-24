@@ -41,7 +41,7 @@ type Phase =
 const COMPLAINT_OPTIONS = [
   { id: "service",               icon: "\u{1F527}", label: "Service / Tune-Up",      sub: "Routine maintenance visit" },
   { id: "not_cooling",           icon: "\u{1F975}", label: "Not Cooling",            sub: "Weak or no cooling" },
-  { id: "not_heating",           icon: "\u{1F525}", label: "Not Heating",            sub: "No heat / cold air" },
+  { id: "not_heating",           icon: "\u{2744}", label: "Not Heating",            sub: "No heat / cold air" },
   { id: "intermittent_shutdown", icon: "⚡",    label: "Intermittent Shutdown",  sub: "Short cycling / random shutoffs" },
   { id: "water_dripping",        icon: "\u{1F4A7}", label: "Water Dripping",         sub: "Dripping or pooling" },
   { id: "not_turning_on",        icon: "\u{1F50C}", label: "Not Turning On",         sub: "No response at all" },
@@ -235,11 +235,6 @@ function AssessPageInner() {
   // ── Create assessment + enter diagnostic ───────────────────────────────────
   const handleComplaintSelected = async (complaintId: ComplaintId) => {
     setComplaintType(complaintId);
-    // R.3: Address required for US market before creating a job
-    if (!address.trim()) {
-      setError("Please enter the property address before selecting a complaint type.");
-      return;
-    }
     setCreatingAssessment(true);
     setError(null);
     try {

@@ -1,6 +1,6 @@
 # SnapAI AI — Tech Stack & Architecture
 
-> **Last updated:** May 24, 2026 (Stage 6 Vercel Staging Branch Rewire COMPLETE. All 3 staging domains wired to `staging` branch via domain-level gitBranch. DEC-067 SUPERSEDED by DEC-080. | Previously: Stage 4 Staging Isolation Audit COMPLETE. Clerk key prefix convention confirmed for all 4 domains. Vercel staging custom domains = Preview branch deployments (DEC-074). DEC-074/075/076/077 added. | Stage 2 Free-Tier Cost Audit complete. Stripe confirmed in Railway env vars -- likely test mode, no charges. DEC-071 added. | Full QA pass both markets. WA-28 through WA-37 added. DEC-065/066 added. | Previously: May 21, 2026 (Track F Group C + BUG-032 QA PASS. HEAD: `4743a40`. Alembic head: `032`. Both markets verified. BUG-031 OPEN (staging banner on prod PK). | **2026-05-23 patch:** Change workflow `WORKFLOW.md` + DEC-070 added.
+> **Last updated:** May 24, 2026 (Stage 7 E2E QA COMPLETE. DEC-070 ACTIVE. | Stage 8 Closeout doc written. | Stage 6 Vercel Staging Branch Rewire COMPLETE. All 3 staging domains wired to `staging` branch via domain-level gitBranch. DEC-067 SUPERSEDED by DEC-080. | Previously: Stage 4 Staging Isolation Audit COMPLETE. Clerk key prefix convention confirmed for all 4 domains. Vercel staging custom domains = Preview branch deployments (DEC-074). DEC-074/075/076/077 added. | Stage 2 Free-Tier Cost Audit complete. Stripe confirmed in Railway env vars -- likely test mode, no charges. DEC-071 added. | Full QA pass both markets. WA-28 through WA-37 added. DEC-065/066 added. | Previously: May 21, 2026 (Track F Group C + BUG-032 QA PASS. HEAD: `4743a40`. Alembic head: `032`. Both markets verified. BUG-031 OPEN (staging banner on prod PK). | **2026-05-23 patch:** Change workflow `WORKFLOW.md` + DEC-070 added.
 > **Status:** Beta — live on Vercel + Railway. Both markets QA-verified 2026-05-21: Houston + PK. Build hash: `80f50c7f2d1fe88a`. See DEC-037 through DEC-042 for lessons from this session.
 
 ---
@@ -19,7 +19,7 @@ The 7-step loop: branch off `staging` → make change in `/tmp` clone → push a
 
 **Hotfix path (production-only push):** reserved for genuine emergencies (prod outage, auth completely broken, payment generating wrong amounts). Mandatory follow-up: sync staging to match main within 24 hours, write retrospective DEC entry. Full protocol in `WORKFLOW.md` Section 9.
 
-**Activation:** mandatory after Stage 7 sign-off. Until then, transition rules in `WORKFLOW.md` Section 1 apply.
+**Activation:** ACTIVE (Stage 7 signed off 2026-05-24). Mandatory for all changes. See WORKFLOW.md.
 
 ---
 
@@ -36,6 +36,33 @@ The 7-step loop: branch off `staging` → make change in `/tmp` clone → push a
 **The prefix in the HTML `data-clerk-publishable-key` attribute is the authoritative environment signal.**
 
 **Vercel staging custom domain redeploy pattern (DEC-074):** After any env var change on `scopesnap-web-staging`, always trigger a staging branch Preview redeploy (not a Production environment build) to update `staging.snapai.mainnov.tech` and `pk-staging.snapai.mainnov.tech`.
+
+---
+
+## Front-End Content QA — Separate Gate from Backend Routing QA (added 2026-05-24)
+
+**WA-41 — backend "PASS" does not validate displayed content.** A Stage 7-style end-to-end QA proves that the diagnostic tree routes correctly given inputs. It does NOT prove that the displayed hints, question text, tier labels, or marketing copy on the way through that flow are accurate. The two need separate QA passes:
+
+1. **Backend routing QA** — given inputs, does the engine return the right card? (Stage 7 ran this; PASS.)
+2. **Front-end content QA** — does every displayed string match the brain-file ground truth? PSI thresholds, refrigerant names, tier labels, brand voice.
+
+**Issues surfaced by 2026-05-24 walkthrough — ALL RESOLVED:**
+- DONE: Step 2 R-410A PSI hint corrected: Alembic 035 sets hint to "R-410A normal: 115-140 PSI at 95 deg F outdoor ambient." (DEC-081)
+- DONE: Not Heating emoji fixed: fire to snowflake (Issue #5)
+- DONE: /homeowner Best tier description corrected: "most thorough - addresses root cause" (Issue #3)
+- DONE: Tier naming unified: Good/Better/Best across all surfaces (Issue #3, DEC-049 resolved)
+- DONE: Homepage brand voice rewritten: honest builder positioning, Gemini/banned words removed (Issue #4)
+- DONE: Dashboard indefinite loading fixed: 5s timeout + empty-state coaching (Issue #6)
+- DONE: Address gate removed: complaint selection works without address (Issue #2, WA-32 resolved)
+
+**Boundary-value testing gate (PSI - post-035 required):**
+  - Suction: 80 PSI low alert | 125 PSI normal | 160 PSI high alert
+  - Discharge: 210 PSI low/escalate | 250 PSI normal (Card 14) | 310 PSI high (Card 17)
+
+**Before declaring a release ready, run both gates:** the snapai-qa skill covers backend routing; a manual click-through walkthrough is needed for front-end accuracy. This separation is permanent.
+
+
+---
 
 ## CRITICAL: Emoji Files & Blob Truncation — MUST READ BEFORE ANY GIT OPERATION
 
