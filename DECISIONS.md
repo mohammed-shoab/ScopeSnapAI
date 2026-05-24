@@ -3,7 +3,7 @@
 > This file records decisions made during development that have lasting impact on how the codebase works.
 > Future AI sessions: read this before proposing architecture changes or writing migrations.
 >
-> Last updated: 2026-05-24 (DEC-081 added -- R-410A PSI emergency patch thresholds. Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. Houston full flow PASS (rpt-e198935c USD estimate), PK staging backend PASS (environment:staging, R-410A pressure-targets). | DEC-080 added — Stage 6 Vercel staging domain-level gitBranch rewire; DEC-067 marked SUPERSEDED. | Previously: DEC-071 added -- Stripe test-mode GAP from Stage 2 cost audit. | DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
+> Last updated: 2026-05-24 (DEC-084 added -- TypeScript build failure cascade. DEC-082/083 added -- React fiber QA bypass + Vercel error tracing. DEC-081 added -- R-410A PSI emergency patch thresholds. Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. Houston full flow PASS (rpt-e198935c USD estimate), PK staging backend PASS (environment:staging, R-410A pressure-targets). | DEC-080 added — Stage 6 Vercel staging domain-level gitBranch rewire; DEC-067 marked SUPERSEDED. | Previously: DEC-071 added -- Stripe test-mode GAP from Stage 2 cost audit. | DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
 
 ---
 
@@ -1616,3 +1616,82 @@ Used browser-session-authenticated calls (relative URL from within vercel.com ta
 **Staging-first workflow:** Merged to `staging` branch → Railway auto-ran `alembic upgrade head` → verified 035 as head → boundary tests on staging.snapai.mainnov.tech → then promote-to-prod.sh to `main`.
 
 **Rule for future work:** The canonical threshold table lives in PROJECT_BRAIN.md Section 'Canonical PSI Threshold Table'. Any future PSI changes must update that table, `diagnostic.py` dicts, AND the `diagnostic_questions` hint text in lockstep. Never use the Stage 7 QA test value (45 PSI) as a reference threshold — it was a deliberately low test input.
+
+---
+
+## DEC-082 -- React fiber state injection for QA bypass of StepZeroPanel (2026-05-24)
+
+**Date:** 2026-05-24 (QA Session -- pre-beta walkthrough full flow verification)
+
+**Problem:** `StepZeroPanel` receives an `onSkip` prop from `assess/page.tsx` but never calls it internally. There is no skip button in the UI. During automated QA (using Claude in Chrome), there is no clickable element that advances the assess page past the step-zero phase without filling in brand/series/tonnage from the DB.
+
+**Solution:** Walk the React fiber tree in Chrome DevTools to find the `memoizedState` node whose value is `'step-zero'`, then call `s.queue.dispatch('complaint')` to trigger the state transition directly.
+
+**Pattern:**
+```js
+// Run in Chrome DevTools console on the assess page (https://snapai.mainnov.tech/assess)
+(function walkFiber(fiber) {
+  if (!fiber) return;
+  let s = fiber.memoizedState;
+  while (s) {
+    if (s.memoizedState === 'step-zero' && s.queue && s.queue.dispatch) {
+      s.queue.dispatch('complaint');
+      return;
+    }
+    s = s.next;
+  }
+  walkFiber(fiber.child);
+  walkFiber(fiber.sibling);
+})(document.body[Object.keys(document.body).find(k => k.startsWith('__reactFiber'))]);
+```
+
+**Rationale:** The phase state is managed by `useState` in `assess/page.tsx`. Dispatching directly to the queue bypasses all UI gating without modifying production code. ONLY use in QA sessions -- never inject state in production debugging.
+
+**Impact:** Enables full QA flow automation without needing DB-seeded brand/model data in the browser session. Used to verify complaint selection, diagnostic flow, PK-specific flows, and 2.5T commercial warning (WA-45).
+
+---
+
+## DEC-083 -- Vercel build error tracing: always identify the FIRST failing commit (2026-05-24)
+
+**Date:** 2026-05-24 (BUG-043/044 root-cause investigation)
+
+**Problem:** When multiple consecutive Vercel deployments show ERROR, it is tempting to inspect the most recent commit's diff. This is wrong -- subsequent commits inherit the broken state and also fail. Inspecting the wrong commit's diff wastes time and leads to incorrect fixes.
+
+**Solution:** Use `git log --oneline` to find the exact commit where deployments transitioned from READY to ERROR. Then `git diff <last-READY>..<first-ERROR> -- <path>` to isolate the breaking change.
+
+**Tracing steps:**
+1. In Vercel dashboard, note the SHA of the last READY deployment.
+2. Note the SHA of the first ERROR deployment.
+3. `git diff <READY-sha>..<ERROR-sha>` -- the bug is in this diff.
+4. Fix the bug in the file named in the error, NOT in the most recent file touched.
+
+**BUG-043 example:** `homeowner/page.tsx` orphaned `{` introduced at commit `a50f94a2`. Commits `a50f94a2` through `03c5caa` all showed ERROR. The fix was to remove 4 orphaned lines from `homeowner/page.tsx` -- a file that none of the "ERROR" commits after `a50f94a2` had touched.
+
+**BUG-044 example:** TypeScript `Cannot find name 'isRecommended'` introduced at same commit `a50f94a2` in `assessment/[id]/page.tsx`. All builds after errored with the same TS message even when that file was not modified.
+
+**Rationale:** Build systems (webpack, tsc) operate on the full codebase state, not just the diff. A broken file in state N causes state N+1...N+K to all fail until fixed.
+
+**See also:** WA-46 (Vercel error tracing), WA-47 (TS cascading failures)
+
+---
+
+## DEC-084 -- isRecommended vs isRec: two separate variables for two separate concerns (2026-05-24)
+
+**Date:** 2026-05-24 (Issue #3 -- BUG-044 fix in assessment/[id]/page.tsx)
+
+**Problem:** Issue #3 (Good/Better/Best unification) required wiring the star/REC badge to `opt.recommended` (a DB field) rather than the old `opt.tier === "better"` check. The PR introduced `isRecommended` in the JSX badge at line 815 but did not declare the variable -- only `isRec` existed (declared at line 766 as `opt.tier === "better"`). This caused TypeScript build failure on all subsequent deploys (BUG-044).
+
+**Solution:** Declare both variables explicitly with distinct semantics:
+```typescript
+const isMiddleTier = opt.tier === "better";   // true for middle tier card -- drives styling
+const isRecommended = !!(opt as { recommended?: boolean }).recommended; // drives star REC badge
+const isRec = isMiddleTier;  // backward-compat alias for existing headerBg/badgeBg/priceColor refs
+```
+
+**Rationale:**
+- `isMiddleTier` / `isRec`: purely a styling signal -- the middle tier card gets a highlighted header, a badge background, and a coloured price. Always true for tier="better", regardless of what the DB says.
+- `isRecommended`: a data signal -- the star badge ("REC") is shown only when the estimate option has `recommended: true` in the DB. This allows the contractor to mark any tier as recommended independently of which tier is "better".
+
+**Impact:** Any future change to recommendation logic must update `opt.recommended` in the DB (or the estimate generation logic), NOT the `isMiddleTier` variable. The two concerns are permanently separated.
+
+**See also:** WA-47 (TS cascading failures), DEC-083 (error tracing)
