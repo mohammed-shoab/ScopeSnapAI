@@ -115,10 +115,6 @@ export default function HomeownerLandingPage() {
         </p>
       </section>
 
-      {/* ── Video Embed ────────────────────────────────────────────────────── */}
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 pb-16">
-        <div className="relative bg-surface-card rounded-ss shadow-ss-lg overflow-hidden border border-surface-border aspect-video">
-          {
       {/* ── What to Expect ─────────────────────────────────────────────────── */}
       <section className="bg-surface-card border-y border-surface-border py-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
