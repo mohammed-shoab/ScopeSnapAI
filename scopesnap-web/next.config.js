@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-// build: 2026-05-23
+// build: 2026-05-24 -- Phase 2 ambient-aware PSI (cache-bust: force frontend rebuild)
 
 const API_URL_FOR_CSP = process.env.NEXT_PUBLIC_API_URL || 'https://scopesnap-api-production.up.railway.app';
 
