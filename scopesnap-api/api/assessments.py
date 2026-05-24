@@ -371,17 +371,27 @@ async def create_assessment_json(
     if complaint_type:
         overrides["complaint_type"] = complaint_type
 
-    assessment = Assessment(
-        id=assessment_id,
-        company_id=auth.company_id,
-        user_id=auth.user_id,
-        property_id=prop.id if prop else None,
-        photo_urls=[],
-        status="no_photos",
-        tech_overrides=overrides,
-    )
-    db.add(assessment)
-    await db.commit()
+    import asyncio as _asyncio, logging as _log
+    _jlog = _log.getLogger("assessments.json")
+    try:
+        assessment = Assessment(
+            id=assessment_id,
+            company_id=auth.company_id,
+            user_id=auth.user_id,
+            property_id=prop.id if prop else None,
+            photo_urls=[],
+            status="no_photos",
+            tech_overrides=overrides,
+        )
+        db.add(assessment)
+        await _asyncio.wait_for(db.commit(), timeout=15.0)
+    except _asyncio.TimeoutError:
+        await db.rollback()
+        raise HTTPException(status_code=503, detail="DB write timed out (15s) — pool exhausted or DB unreachable")
+    except Exception as _exc:
+        await db.rollback()
+        _jlog.error("create_assessment_json DB error %s: %s", type(_exc).__name__, _exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"DB write failed: {type(_exc).__name__}: {_exc}")
 
     return {
         "id": assessment_id,
