@@ -3,7 +3,7 @@
 > This file records decisions made during development that have lasting impact on how the codebase works.
 > Future AI sessions: read this before proposing architecture changes or writing migrations.
 >
-> Last updated: 2026-05-24 (Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. Houston full flow PASS (rpt-e198935c USD estimate), PK staging backend PASS (environment:staging, R-410A pressure-targets). | DEC-080 added — Stage 6 Vercel staging domain-level gitBranch rewire; DEC-067 marked SUPERSEDED. | Previously: DEC-071 added -- Stripe test-mode GAP from Stage 2 cost audit. | DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
+> Last updated: 2026-05-24 (DEC-081 added -- R-410A PSI emergency patch thresholds. Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. Houston full flow PASS (rpt-e198935c USD estimate), PK staging backend PASS (environment:staging, R-410A pressure-targets). | DEC-080 added — Stage 6 Vercel staging domain-level gitBranch rewire; DEC-067 marked SUPERSEDED. | Previously: DEC-071 added -- Stripe test-mode GAP from Stage 2 cost audit. | DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
 
 ---
 
@@ -1586,3 +1586,33 @@ Used browser-session-authenticated calls (relative URL from within vercel.com ta
 - Both have one empty `--allow-empty` verification commit; no functional code changes
 
 **Cross-references:** DEC-067 (superseded), DEC-074 (Vercel staging = Preview deployments), DEC-070 (staging-first workflow)
+
+
+---
+
+## DEC-081 — Emergency patch: correct R-410A US PSI thresholds in diagnostic_questions + diagnostic.py (2026-05-24)
+
+**Date:** 2026-05-24 (Issue #1 — Priority 0, pre-beta walkthrough)
+
+**Problem:** Stage 7 QA verified *routing* (45 PSI → Refrigerant Leak) but did NOT verify the displayed hint text accuracy. The walkthrough revealed Step 2 question hint read "R-410A typical: 65-85 PSI at normal charge" — those are R-22 numbers. Additionally, `diagnostic.py` `_us_suction` dict had incorrect bounds (low=108, high=144 instead of low=115, high=140), and `_us_discharge` had incorrect bounds (low_R410A=250, high_R410A=350 instead of 225/275).
+
+**Canonical R-410A US thresholds at 95°F outdoor ambient:**
+- Suction: 115–140 PSI normal | >= 141 = high
+- Discharge: 225–275 PSI normal | >= 276 = high
+
+**Fix (Alembic 035 + diagnostic.py):**
+- Migration `035_correct_us_psi_thresholds_emergency.py`: updates 4 `diagnostic_questions` rows via `jsonb_set()`:
+  - `q2-nc-suction`, `q2-hiss-suction`, `q2-wd-suction`: low_threshold 60→115, high_threshold 145→141, hint corrected
+  - `q2-nc-discharge`: low_threshold 250→225, high_threshold 350→276, hint corrected
+- `diagnostic.py` `_us_suction` dict: R-410A changed to (115, 140); R-22 to (55, 78); R-32 to (110, 145)
+- `diagnostic.py` `_us_discharge` dict: R-410A changed to (225, 275); R-22 to (150, 275); R-32 to (225, 290)
+
+**PK unaffected:** PK market uses `pak_operating_targets` dynamic lookup — not touched by this migration.
+
+**Boundary-value gate (WA-41):**
+  - Suction: 80 PSI → low alert | 125 PSI → normal/ok | 160 PSI → high alert
+  - Discharge: 210 PSI → low/escalate | 250 PSI → normal (Card 14) | 310 PSI → high (Card 17)
+
+**Staging-first workflow:** Merged to `staging` branch → Railway auto-ran `alembic upgrade head` → verified 035 as head → boundary tests on staging.snapai.mainnov.tech → then promote-to-prod.sh to `main`.
+
+**Rule for future work:** The canonical threshold table lives in PROJECT_BRAIN.md Section 'Canonical PSI Threshold Table'. Any future PSI changes must update that table, `diagnostic.py` dicts, AND the `diagnostic_questions` hint text in lockstep. Never use the Stage 7 QA test value (45 PSI) as a reference threshold — it was a deliberately low test input.

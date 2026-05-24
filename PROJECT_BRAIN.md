@@ -47,6 +47,21 @@ What was accomplished:
 
 > Full details in TECH_STACK.md WA-9 through WA-14. Read before starting new work.
 
+## Canonical PSI Threshold Table (authoritative — updated 2026-05-24)
+
+| Refrigerant | Market | Suction Normal (PSI) | Suction High Threshold | Discharge Normal (PSI) | Discharge High Threshold |
+|-------------|--------|----------------------|------------------------|------------------------|--------------------------|
+| R-410A      | US     | 115 – 140            | >= 141                 | 225 – 275              | >= 276                   |
+| R-22        | US     | 55 – 78              | >= 79                  | 150 – 275              | >= 276                   |
+| R-32        | US/PK  | 110 – 145            | >= 146                 | 225 – 290              | >= 291                   |
+| R-410A      | PK     | pak_operating_targets (dynamic lookup by ambient_c) ||
+| R-22        | PK     | pak_operating_targets (dynamic lookup by ambient_c) ||
+
+> Source of truth: diagnostic.py `_us_suction`/`_us_discharge` dicts + Alembic 035 migration.
+> Do NOT use pre-035 DB values or Stage 7 QA report numbers (45 PSI was a low test value).
+> At 95 degrees F outdoor ambient, R-410A suction normal is 115-140 PSI.
+
+
 | Rule | One-liner | Where |
 |------|-----------|-------|
 | apiFetch needs explicit token | `apiFetch` never auto-injects JWT. Pass `token: await getToken()` on every call. Fire-and-forget: wrap in `getToken().then()`. | WA-9, DEC-030 |
@@ -83,8 +98,8 @@ What was accomplished:
 | diagnostic_questions uses step_id, no market col | Column is `step_id` (NOT `step_key`). No `market` column. Table is shared US+PK. PSI thresholds stored here. | — |
 | NEXT_PUBLIC_ENV=staging on prod = recurring bug | BUG-031 (2026-05-21) and BUG-041 (2026-05-23) both caused by this. After ANY Vercel env var changes, verify production NEXT_PUBLIC_ENV is absent or "production". | DEC-023, DEC-073 |
 | Address gate affects BOTH markets — ✅ RESOLVED 2026-05-24 | WA-32 gate removed: 5-line R.3 block deleted from handleComplaintSelected in assess/page.tsx. Complaint selection works without address on both US and PK markets. Backend already supports property_id=None. | WA-32
-| QA pass ≠ front-end content accuracy | Stage 7 Houston QA "PASS" verified backend routing (45 PSI → Refrigerant Leak). It did NOT verify displayed hint accuracy. Walkthrough found Step 2 hint reads "R-410A typical: 65-85 PSI at normal charge" — those are R-22 numbers, not R-410A. Backend uses correct R-410A thresholds (108-144 PSI normal, 145+ high). Front-end content QA is a separate gate from backend routing QA. | WA-41 |
-| R-410A PSI hint shows R-22 numbers (live) | Front-end Step 2 question hint contains a factual error. Diagnostic backend routes correctly but the displayed text will mislead techs. Source: `diagnostic_questions.question_hint` or similar. Fix is one-line text correction. Verify against PROJECT_BRAIN.md PSI threshold table before editing. | open bug — fix before any tech walks through |
+| QA pass ≠ front-end content accuracy | Stage 7 Houston QA “PASS” verified backend routing (45 PSI → Refrigerant Leak). It did NOT verify displayed hint accuracy. ✅ RESOLVED 2026-05-24: Alembic 035 + diagnostic.py corrected R-410A thresholds to 115-140 PSI suction, 225-275 PSI discharge. hint text updated in diagnostic_questions. | WA-41 ✔ |
+| R-410A PSI hint shows R-22 numbers — ✅ RESOLVED 2026-05-24 | Alembic 035 corrects all 4 affected diagnostic_questions rows (q2-nc-suction, q2-nc-discharge, q2-hiss-suction, q2-wd-suction). diagnostic.py _us_suction/_us_discharge dicts corrected. Verified boundary-value: 80→low, 125→ok, 160→high for suction; 210→escalate, 250→ok, 310→high for discharge. | WA-41 closed |
 | Brand voice on landing pages â â RESOLVED 2026-05-24 | Homepage, /tech, /homeowner rewritten with honest builder positioning. Loom placeholders removed, "1 in 4" stat removed, Gemini Vision removed, banned-word scrub clean. Pricing line added. | chore/brand-voice-landing-pages
 | Tier naming — ✅ RESOLVED 2026-05-24 | Good/Better/Best unified across estimate builder, /homeowner, /r/ report, and contractor PDF. isRec split into isMiddleTier (styling) + isRecommended (badge, wired to opt.recommended). | DEC-049 resolved
 | /d/ vs /r/ URL audiences differ | `/d/{share_token}` = tech-to-tech diagnostic share. Uses HVAC jargon ("pull vacuum to 500 microns", "Schrader valves"). Public, no auth. NOT homeowner-facing. `/r/{slug}/{reportId}` = homeowner-facing report (Good/Better/Best, plain English, no jargon). When sharing externally, use the right URL for the audience. | arch note |
