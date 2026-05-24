@@ -63,7 +63,7 @@ export default function HomeownerLandingPage() {
       number: "02",
       title: "Three repair options at different price points",
       description:
-        "You see a Good option (quick fix), a Better option (fix plus prevention), and a Best option (long-term replacement). Real prices. Your call which one to choose.",
+        "You see a Good option (quick fix), a Better option (fix plus prevention), and a Best option (most thorough — addresses root cause, includes pressure testing). Real prices. Your call which one to choose.",
     },
     {
       number: "03",
@@ -172,6 +172,9 @@ export default function HomeownerLandingPage() {
               </div>
             ))}
           </div>
+          <p className="text-sm text-text-secondary mt-8 text-center max-w-lg mx-auto leading-relaxed">
+            Your contractor’s SnapAI estimate marks one tier as ★️ Recommended based on your unit’s age and condition — sometimes Good, sometimes Better, sometimes Best.
+          </p>
         </div>
       </section>
 
@@ -201,7 +204,7 @@ export default function HomeownerLandingPage() {
             },
             {
               tier: "Best",
-              label: "Full replacement",
+              label: "Most Thorough",
               color: "text-text-primary",
               bg: "bg-surface-card",
               border: "border-surface-border",

@@ -3,7 +3,7 @@
 > This file records decisions made during development that have lasting impact on how the codebase works.
 > Future AI sessions: read this before proposing architecture changes or writing migrations.
 >
-> Last updated: 2026-05-24 (DEC-080 added — Stage 6 Vercel staging domain-level gitBranch rewire; DEC-067 marked SUPERSEDED. | Previously: DEC-071 added -- Stripe test-mode GAP from Stage 2 cost audit. | DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
+> Last updated: 2026-05-24 (Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. Houston full flow PASS (rpt-e198935c USD estimate), PK staging backend PASS (environment:staging, R-410A pressure-targets). | DEC-080 added — Stage 6 Vercel staging domain-level gitBranch rewire; DEC-067 marked SUPERSEDED. | Previously: DEC-071 added -- Stripe test-mode GAP from Stage 2 cost audit. | DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
 
 ---
 
@@ -25,7 +25,7 @@
 
 **Impact:** Any new `.py` file added to `scopesnap-api/db/migrations/versions/` will run on next Railway deploy. Do NOT push a migration that is already applied to the DB — Alembic will skip it safely, but a data-changing migration run twice could corrupt data. Always check `alembic_version` table before pushing a new migration.
 
-**Current revision:** 029 (as of 2026-05-20)
+**Current revision:** 034 (as of 2026-05-24 Stage 5 parity sync)
 
 ---
 
@@ -844,7 +844,7 @@ gives instant access — no re-login needed.
 
 ---
 
-## DEC-049 -- Estimate option tiers stored as "A"/"B"/"C" -- NOT "good"/"better"/"best" (2026-05-21)
+## DEC-049 -- Estimate option tiers stored as "A"/"B"/"C" -- NOT "good"/"better"/"best" (2026-05-21) — ✅ RESOLVED 2026-05-24: unified to Good/Better/Best across all surfaces; isRec → opt.recommended
 
 **Date:** 2026-05-21
 
@@ -1369,7 +1369,7 @@ switches contexts.
 
 **Rule:** All future changes follow the 7-step workflow in `WORKFLOW.md` Section 4. Exception: emergency hotfix path (`WORKFLOW.md` Section 9) bypasses staging only for genuine production emergencies, with mandatory 24-hour follow-up sync to bring staging in line with main, plus a retrospective DEC entry explaining what slipped through normal QA.
 
-**Activation:** This workflow becomes mandatory the moment Stage 7 (Staging End-to-End QA) signs off — at which point staging is verified to be a true mirror of production, the Vercel staging project deploys the `staging` branch, and a full QA pass on staging matches a full QA pass on production. Until that moment, transitional rules apply (DEC-004 `/tmp` clone pattern continues for git ops, DEC-013 no git stash from sandbox, DEC-022 Desktop Commander for git ops).
+**Activation:** ACTIVE — Stage 7 (Staging End-to-End QA) signed off 2026-05-24. This workflow is now mandatory. — at which point staging is verified to be a true mirror of production, the Vercel staging project deploys the `staging` branch, and a full QA pass on staging matches a full QA pass on production. Transitional rules (DEC-004 `/tmp` clone, DEC-013 no git stash from sandbox, DEC-022 Desktop Commander for git ops) remain in force for AI git operations — these are environment constraints, not workflow gates.
 
 **Cross-references:**
 - `C:\Users\dell\My Drive\Personal Claude\ScopeSnapAI\WORKFLOW.md` — full protocol with worked examples
