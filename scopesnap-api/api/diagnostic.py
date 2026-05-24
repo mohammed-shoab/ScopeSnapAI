@@ -595,7 +595,7 @@ async def _pk_evaluate_pressure(
     """
     Look up pak_operating_targets and return "low" | "ok" | "high".
     "not_sure" defaults to R-410A.
-    Falls back to US thresholds (60/110 PSI suction) if table lookup fails.
+    Falls back to US thresholds (R-410A 115-140 PSI suction at 95°F ambient) if table lookup fails.
     """
     ref = refrigerant if refrigerant != "not_sure" else "R-410A"
 
@@ -619,14 +619,14 @@ async def _pk_evaluate_pressure(
         # Fallback: US thresholds — refrigerant-aware for correct hot-ambient routing
         # R-410A at 35-40°C ambient (Houston summer): suction 65-145 PSI, discharge 200-400 PSI
         _us_suction = {
-            "R-410A": (65, 145),
-            "R-22":   (55, 90),
-            "R-32":   (90, 145),
+            "R-410A": (115, 140),
+            "R-22":   (55, 78),
+            "R-32":   (110, 145),  # mostly PK-only deployment
         }
         _us_discharge = {
-            "R-410A": (200, 400),
-            "R-22":   (150, 350),
-            "R-32":   (200, 420),
+            "R-410A": (225, 275),
+            "R-22":   (150, 275),
+            "R-32":   (225, 290),
         }
         if subtype == "suction":
             lo, hi = _us_suction.get(ref, (65, 145))
