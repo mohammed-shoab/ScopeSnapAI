@@ -141,11 +141,13 @@ export async function getOfflineQueueCount(): Promise<number> {
 // ── Process queue (upload all pending items) ──────────────────────────────────
 export async function processOfflineQueue(
   apiUrl: string,
-  headers: Record<string, string>,
+  getHeaders: () => Promise<Record<string, string>>,
 ): Promise<{ uploaded: number }> {
   const items = await getOfflineQueue();
   let uploaded = 0;
   for (const item of items) {
+    // BUG-006 fix: refresh Clerk JWT (60s lifetime per DEC-058) per item
+    const headers = await getHeaders();
     try {
       const formData = new FormData();
       formData.append("address", item.address);
@@ -212,12 +214,12 @@ export function subscribeToQueueCount(fn: QueueCountListener): () => void {
  */
 export function setupAutoSync(
   apiUrl: string,
-  getHeaders: () => Record<string, string>,
+  getHeaders: () => Promise<Record<string, string>>,
 ): () => void {
   if (typeof window === "undefined") return () => { return; };
 
   const handler = () => {
-    processOfflineQueue(apiUrl, getHeaders()).catch(() => { return; });
+    processOfflineQueue(apiUrl, getHeaders).catch(() => { return; });
   };
 
   window.addEventListener("online", handler);
