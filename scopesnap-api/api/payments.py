@@ -175,7 +175,13 @@ async def stripe_webhook(
     sig_header = request.headers.get("stripe-signature", "")
 
     # ── Parse event ───────────────────────────────────────────────────────────
-    if settings.stripe_webhook_secret and sig_header:
+    # BUG-003b fix: shared _is_real_secret helper + environment gate.
+    # In non-development environments a missing/placeholder secret or missing
+    # signature MUST cause a 500, not a silent fall-through.
+    _secret_is_real = bool(settings.stripe_webhook_secret) and "placeholder" not in (settings.stripe_webhook_secret or "")
+    if (not _secret_is_real or not sig_header) and settings.environment != "development":
+        raise HTTPException(status_code=500, detail="Webhook secret/signature not configured")
+    if _secret_is_real and sig_header:
         # Production: verify signature
         payment_service = get_payment_service()
         try:
