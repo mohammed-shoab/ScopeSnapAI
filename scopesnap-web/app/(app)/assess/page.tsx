@@ -199,11 +199,11 @@ function AssessPageInner() {
     } catch { /* ignore */ }
     getOfflineQueueCount().then(count => { if (count > 0) setPendingCount(count); }).catch(() => {});
     const handleOnline = () => {
-      getAuthHeaders().then(headers =>
-        processOfflineQueue(API_URL, headers).then(({ uploaded }) => {
-          if (uploaded > 0) setPendingCount(0);
-        })
-      ).catch(() => {});
+      // BUG-006 fix: pass getAuthHeaders directly so processOfflineQueue can
+      // refresh the Clerk JWT (60s lifetime per DEC-058) per drain item.
+      processOfflineQueue(API_URL, getAuthHeaders).then(({ uploaded }) => {
+        if (uploaded > 0) setPendingCount(0);
+      }).catch(() => {});
     };
     window.addEventListener("online", handleOnline);
     if (typeof navigator !== "undefined" && navigator.onLine) handleOnline();
