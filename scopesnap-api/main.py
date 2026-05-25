@@ -93,9 +93,15 @@ async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSON
         request.method, request.url.path, exc,
         exc_info=True,
     )
+    # BUG-009 fix: redact internals in non-development environments.
+    # Sentry captures the full exception in all environments (main.py:46-58).
+    if settings.is_development:
+        detail = f"{type(exc).__name__}: {exc}"
+    else:
+        detail = "Internal server error"
     return JSONResponse(
         status_code=500,
-        content={"detail": f"{type(exc).__name__}: {exc}"},
+        content={"detail": detail},
     )
 app.add_middleware(SlowAPIMiddleware)
 

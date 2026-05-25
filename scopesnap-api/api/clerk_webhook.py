@@ -11,6 +11,7 @@ Security: Webhook signature verified via svix (Clerk's delivery provider).
 Dev mode: Accepts unsigned webhooks if CLERK_WEBHOOK_SECRET is not set.
 """
 
+import html as _html_mod
 import json
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,7 +56,10 @@ async def _send_welcome_email(email: str, name: str) -> None:
         print("[Welcome Email] RESEND_API_KEY not set — skipping welcome email")
         return
 
+    # BUG-021 fix: HTML-escape Clerk-controlled fields before interpolating
+    # into the welcome-email HTML body (CONTRACTS.md C-021).
     first_name = name.split()[0] if name else "there"
+    first_name = _html_mod.escape(first_name)
 
     html = f"""
     <div style="font-family:'Plus Jakarta Sans',Arial,sans-serif;max-width:560px;margin:0 auto;background:#f7f7f3;padding:32px 24px;">
@@ -176,7 +180,13 @@ async def clerk_webhook(
 
     # ── Verify webhook signature ───────────────────────────────────────────────
     clerk_webhook_secret = getattr(settings, "clerk_webhook_secret", "")
-    if clerk_webhook_secret and not clerk_webhook_secret.startswith("whsec_placeholder"):
+    # BUG-003a fix: shared _is_real_secret helper + environment gate.
+    # In non-development environments a missing or placeholder secret MUST cause
+    # a 500, not a silent fall-through to unsigned parsing.
+    _secret_is_real = bool(clerk_webhook_secret) and not clerk_webhook_secret.startswith("whsec_placeholder")
+    if not _secret_is_real and settings.environment != "development":
+        raise HTTPException(status_code=500, detail="Webhook secret not configured")
+    if _secret_is_real:
         # Production: verify svix signature
         try:
             from svix.webhooks import Webhook, WebhookVerificationError

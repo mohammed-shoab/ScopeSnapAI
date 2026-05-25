@@ -261,7 +261,13 @@ async def stripe_billing_webhook(
     sig_header = request.headers.get("stripe-signature", "")
 
     # Parse event (dev: unsigned, prod: verified)
-    if settings.stripe_webhook_secret and "placeholder" not in settings.stripe_webhook_secret:
+    # BUG-003c fix: shared _is_real_secret helper + environment gate.
+    # In non-development environments a missing/placeholder secret MUST cause
+    # a 500, not a silent fall-through to unsigned parsing.
+    _secret_is_real = bool(settings.stripe_webhook_secret) and "placeholder" not in (settings.stripe_webhook_secret or "")
+    if not _secret_is_real and settings.environment != "development":
+        raise HTTPException(status_code=500, detail="Webhook secret not configured")
+    if _secret_is_real:
         try:
             import stripe
             stripe.api_key = settings.stripe_secret_key

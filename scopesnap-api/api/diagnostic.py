@@ -714,28 +714,26 @@ async def _process_branch(
 
     # ── service_complete ───────────────────────────────────────────────────────
     if branch.get("service_complete"):
-        # BUG-009 fix: generate estimate before marking session done
-        # BUG-010 fix: wrap in try/except so step-8 photo never 503s
-        # BUG-010b fix: rollback session after estimate failure so the session
-        #   isn't left in an aborted-transaction state, which would cause
-        #   _complete_service_session to throw an unhandled exception → 503.
+        # BUG-008 fix: failure must propagate as HTTP 503; do NOT silently
+        # return service_step_complete=True while the estimate row is missing.
+        # Sentry receives the full exception via logger.error(exc_info=True).
         if branch.get("generate_estimate") and assessment_id and company_id:
             try:
                 await _generate_service_estimate(db, assessment_id, company_id, tables.market)
             except Exception as exc:
                 logger.error(
-                    "[diagnostic] service estimate creation failed (non-fatal): %s", exc
+                    "[diagnostic] service estimate creation failed: %s", exc,
+                    exc_info=True,
                 )
                 try:
                     await db.rollback()
                 except Exception:
                     pass
-        try:
-            await _complete_service_session(db, session_id)
-        except Exception as exc:
-            logger.error(
-                "[diagnostic] _complete_service_session failed (non-fatal): %s", exc
-            )
+                raise HTTPException(
+                    status_code=503,
+                    detail="Estimate creation failed — please retry.",
+                )
+        await _complete_service_session(db, session_id)
         return AnswerResponse(service_step_complete=True, finding=finding)
 
     # ── escalate ───────────────────────────────────────────────────────────────

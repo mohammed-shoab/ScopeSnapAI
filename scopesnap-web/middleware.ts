@@ -52,7 +52,11 @@ export async function middleware(request: NextRequest) {
 
   // Inject x-market based on hostname so server components know which market is active.
   const hostname = request.headers.get("host") || "";
-  const market = hostname.startsWith("pk.") ? "PK" : "US";
+  // BUG-002 fix: match lib/market.ts:48-66 — staging PK uses hyphen not dot.
+  const PK_HOSTNAMES = ["pk.snapai.mainnov.tech", "pk.snapai.app", "pk-staging.snapai.mainnov.tech"];
+  const market = PK_HOSTNAMES.includes(hostname) || hostname.startsWith("pk.")
+    ? "PK"
+    : "US";
   requestHeaders.set("x-market", market);
 
   // Always allow public paths
