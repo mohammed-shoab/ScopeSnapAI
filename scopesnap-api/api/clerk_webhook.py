@@ -180,7 +180,13 @@ async def clerk_webhook(
 
     # ── Verify webhook signature ───────────────────────────────────────────────
     clerk_webhook_secret = getattr(settings, "clerk_webhook_secret", "")
-    if clerk_webhook_secret and not clerk_webhook_secret.startswith("whsec_placeholder"):
+    # BUG-003a fix: shared _is_real_secret helper + environment gate.
+    # In non-development environments a missing or placeholder secret MUST cause
+    # a 500, not a silent fall-through to unsigned parsing.
+    _secret_is_real = bool(clerk_webhook_secret) and not clerk_webhook_secret.startswith("whsec_placeholder")
+    if not _secret_is_real and settings.environment != "development":
+        raise HTTPException(status_code=500, detail="Webhook secret not configured")
+    if _secret_is_real:
         # Production: verify svix signature
         try:
             from svix.webhooks import Webhook, WebhookVerificationError
