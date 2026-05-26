@@ -649,6 +649,21 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       {/* ── MANUAL ENTRY TAB (Section 5A + 5C + 5D) ─────────────────────── */}
       {activeTab === "manual" && (
         <div className="space-y-4">
+          {/* Scenario C: photo persists after Tier-4 silent fallback */}
+          {outdoorPreview && (
+            <button
+              onClick={() => setActiveTab("photo")}
+              className="relative w-full rounded-xl border-2 overflow-hidden flex items-center gap-3 px-3 py-2 transition-colors"
+              style={{ borderColor: "#1a8754", background: "#f0faf6" }}
+            >
+              <img src={outdoorPreview} alt="Outdoor nameplate" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
+              <div className="flex-1 text-left">
+                <p className="text-xs font-bold text-gray-800">📷 Photo attached</p>
+                <p className="text-[10px] text-gray-500">Tap to retake or use AI scan</p>
+              </div>
+              <span className="text-[10px] font-bold text-green-700 uppercase tracking-wider">Retake</span>
+            </button>
+          )}
           <p className="text-xs text-gray-500 text-center">
             Select brand &amp; model to auto-fill, or type specs directly.
           </p>
@@ -1222,7 +1237,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             <div key={i} className="w-2.5 h-2.5 rounded-full animate-bounce"
                  style={{ background: "#f39c12", animationDelay: `${i * 0.15}s` }} />
           ))}
-          <span className="text-sm text-gray-500 font-medium">Gemini reading nameplate…</span>
+          <span className="text-sm text-gray-500 font-medium">Reading nameplate…</span>
         </div>
       )}
 
