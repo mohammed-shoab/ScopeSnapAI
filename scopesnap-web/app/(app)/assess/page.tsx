@@ -424,7 +424,7 @@ function AssessPageInner() {
   if (phase === "step-zero") {
     return (
       <StepZeroPanel
-        clerkToken={null}
+        clerkToken={null /* BUG-034: StepZeroPanel calls getToken() internally */}
         onConfirm={(result, ambientCValue) => {
           setOcrResult(result as unknown as Record<string, unknown>);
           setAmbientC(ambientCValue);
