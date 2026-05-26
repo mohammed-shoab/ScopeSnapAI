@@ -11,13 +11,13 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { API_URL } from "@/lib/api";
 import { checkImageQuality, type ImageQualityResult } from "@/lib/imageQuality";
 import { getBrands, searchModels, type EquipmentModelRecord } from "@/lib/modelCache";
 import { detectMarket } from "@/lib/market";
 import { useLang } from "@/lib/language-context";
 import { isOffline, subscribeToQueueCount, saveToOfflineQueue } from "@/lib/offlineQueue";
-import { runTesseractOcr, terminateTesseractWorker } from "@/lib/tesseractOcr";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ interface OcrResult {
 interface Props {
   assessmentId?: string;  // set once assessment is created (for persisting)
   clerkToken: string | null;
-  onConfirm: (result: OcrResult) => void;
+  onConfirm: (result: OcrResult, ambientC: number) => void;
   onSkip: () => void;
 }
 
@@ -106,6 +106,8 @@ const ELECTRICAL_SPECS_BY_TONNAGE: Record<number, {
 
 export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onSkip }: Props) {
   const { t } = useLang();
+  // BUG-034 Root Cause A fix: get live Clerk JWT instead of relying on prop (which was hardcoded null)
+  const { getToken } = useAuth();
   const [outdoorFile,  setOutdoorFile]  = useState<File | null>(null);
   const [indoorFile,   setIndoorFile]   = useState<File | null>(null);
   const [outdoorPreview, setOutdoorPreview] = useState<string | null>(null);
@@ -113,6 +115,10 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   const [loading,      setLoading]      = useState(false);
   const [error,        setError]        = useState<string | null>(null);
   const [ocrResult,    setOcrResult]    = useState<OcrResult | null>(null);
+  // Ambient temperature bucket — drives PSI threshold lookup in operating_targets
+  // "mild" = 25°C (<86°F), "hot" = 35°C (86-100°F, default Houston summer), "extreme" = 40°C (>100°F)
+  const [ambientBucket, setAmbientBucket] = useState<"mild" | "hot" | "extreme">("hot");
+  const AMBIENT_C_MAP: Record<"mild" | "hot" | "extreme", number> = { mild: 25, hot: 35, extreme: 40 };
   const [editedUnit,   setEditedUnit]   = useState<NameplateUnit | null>(null);
 
   const outdoorInputRef = useRef<HTMLInputElement>(null);
@@ -122,22 +128,17 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   const [outdoorQuality, setOutdoorQuality] = useState<ImageQualityResult | null>(null);
   const [indoorQuality,  setIndoorQuality]  = useState<ImageQualityResult | null>(null);
 
-  // ── Section 6B/6C: Offline + Tesseract state ───────────────────────────
-  const [ocrSource,       setOcrSource]      = useState<"gemini" | "tesseract" | null>(null);
-  const [tesseractPct,    setTesseractPct]   = useState<number>(0);
-  const [tesseractStatus, setTesseractStatus] = useState<string>("");
+  // ── Section 6B/6C: Offline state ────────────────────────────────────────
   const [offlineCount,    setOfflineCount]   = useState<number>(0);
   const [savedOffline,    setSavedOffline]   = useState(false);
+  // BUG-034: fields with confidence 40-69 get yellow border (needs-confirmation)
+  const [needsConfirmationFields, setNeedsConfirmationFields] = useState<Set<string>>(new Set());
+  const [confirmationHeading, setConfirmationHeading] = useState<string | null>(null);
 
   // Subscribe to offline queue count
   useEffect(() => {
     const unsub = subscribeToQueueCount(setOfflineCount);
     return unsub;
-  }, []);
-
-  // Terminate Tesseract worker when component unmounts
-  useEffect(() => {
-    return () => { terminateTesseractWorker().catch(() => {}); };
   }, []);
 
   // ── Market detection (useEffect so it runs after hydration, not SSR) ──
@@ -345,8 +346,8 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       d7_brand_detected: false,
       d7_brand_name: null,
     };
-    onConfirm(result);
-  }, [manualUnit, pkRefrigerant, isPK, onConfirm]);
+    onConfirm(result, AMBIENT_C_MAP[ambientBucket]);
+  }, [manualUnit, pkRefrigerant, isPK, onConfirm, ambientBucket]);
 
   // ── Photo selection ─────────────────────────────────────────────────────
 
@@ -375,7 +376,8 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
 
   // ── Run OCR ─────────────────────────────────────────────────────────────
 
-  // ── Section 6B: Hybrid OCR pipeline — Gemini first, Tesseract fallback ──
+  // ── Section 6B: OCR pipeline — Gemini AI → DB lookup → Manual entry ──────
+  // BUG-034: Root Cause A fix (live JWT) + Root Cause B fix (Tesseract removed)
   const runOCR = useCallback(async () => {
     if (!outdoorFile) {
       setError("Please capture the outdoor unit nameplate first.");
@@ -385,8 +387,9 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
     setLoading(true);
     setError(null);
     setOcrResult(null);
-    setOcrSource(null);
     setSavedOffline(false);
+    setNeedsConfirmationFields(new Set());
+    setConfirmationHeading(null);
 
     // ── Branch A: Device is fully offline → queue for later ────────────────
     if (isOffline()) {
@@ -404,16 +407,26 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       return;
     }
 
-    // ── Branch B: Try Gemini AI first ──────────────────────────────────────
+    // ── Tier 1: Gemini AI OCR ─────────────────────────────────────────────
+    // BUG-034 Root Cause A: get live JWT from Clerk (prop was hardcoded null in page.tsx)
     const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
-    const headers: Record<string, string> = {};
-    if (clerkToken) {
-      headers["Authorization"] = `Bearer ${clerkToken}`;
-    } else if (IS_DEV) {
-      headers["X-Dev-Clerk-User-Id"] = "test_user_mike";
+    const market = detectMarket(); // BUG-034: market-aware header
+    let token: string | null = null;
+    if (!IS_DEV) {
+      try { token = await getToken(); } catch { token = null; }
     }
 
+    const authHeaders: Record<string, string> = {
+      "X-Market": market, // BUG-034: market-aware OCR (Root Cause A companion)
+      ...(IS_DEV
+        ? { "X-Dev-Clerk-User-Id": "test_user_mike" }
+        : token ? { "Authorization": `Bearer ${token}` } : {}),
+    };
+
+    const tStart = Date.now();
     let geminiSucceeded = false;
+    let overallConfidence = 0;
+    let finalTier = 4; // default to manual
 
     try {
       const fd = new FormData();
@@ -422,7 +435,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
 
       const res = await fetch(`${API_URL}/api/ocr/nameplate`, {
         method: "POST",
-        headers,
+        headers: authHeaders,
         body: fd,
       });
 
@@ -433,55 +446,86 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
 
       const result: OcrResult = await res.json();
       const withSource: OcrResult = { ...result, source: "gemini" };
-      setOcrResult(withSource);
-      setEditedUnit({ ...result.outdoor });
-      setOcrSource("gemini");
+      overallConfidence = result.outdoor.confidence ?? 0;
       geminiSucceeded = true;
-    } catch (geminiErr) {
-      // Gemini failed — fall through to Tesseract
-      console.warn("[OCR] Gemini failed, trying local Tesseract:", geminiErr);
-    }
 
-    // ── Branch C: Tesseract local fallback ─────────────────────────────────
-    if (!geminiSucceeded) {
-      try {
-        setTesseractPct(0);
-        setTesseractStatus("Starting local OCR…");
+      // ── Tier 2: Field-level confidence gating ─────────────────────────────
+      // Gemini returns a single unit-level confidence (0–100).
+      // Derive per-field confidence: null fields → 0; non-null fields inherit overall.
+      // ≥70 → trust as-is | 40–69 → yellow border (needs confirmation) | <40 → treat as missing
+      const needsConfirm = new Set<string>();
+      const fieldsToCheck: (keyof NameplateUnit)[] = [
+        "model_number", "tonnage", "refrigerant", "rla", "lra",
+        "capacitor_uf", "mca", "mocp",
+      ];
 
-        const tessResult = await runTesseractOcr(
-          outdoorFile,
-          indoorFile ?? undefined,
-          (pct, status) => {
-            setTesseractPct(pct);
-            setTesseractStatus(status);
-          }
-        );
-
-        const asOcrResult: OcrResult = {
-          outdoor:           tessResult.outdoor,
-          indoor:            tessResult.indoor,
-          captured_at:       tessResult.captured_at,
-          capture_method:    "tesseract",
-          source:            "tesseract",
-          d7_brand_detected: tessResult.d7_brand_detected,
-          d7_brand_name:     tessResult.d7_brand_name,
-        };
-
-        setOcrResult(asOcrResult);
-        setEditedUnit({ ...tessResult.outdoor });
-        setOcrSource("tesseract");
-      } catch (tessErr) {
-        setError(
-          "Both AI and local OCR failed. Check your connection and try again, or use Manual Entry."
-        );
-        console.error("[OCR] Tesseract also failed:", tessErr);
+      for (const field of fieldsToCheck) {
+        const val = result.outdoor[field];
+        const fieldConf = val !== null && val !== undefined ? overallConfidence : 0;
+        if (fieldConf < 40) {
+          // Missing / very low confidence — Tier 3 DB lookup will try to fill
+        } else if (fieldConf < 70) {
+          needsConfirm.add(field);
+        }
       }
+
+      // ── Tier 3: DB lookup fills missing low-confidence fields ──────────────
+      // Tonnage is the key index — if we have it, look up electrical specs
+      if (result.outdoor.tonnage !== null && overallConfidence >= 40) {
+        const elecSpec = ELECTRICAL_SPECS_BY_TONNAGE[result.outdoor.tonnage];
+        if (elecSpec) {
+          const patched = { ...result.outdoor };
+          if (!patched.rla       || overallConfidence < 40) patched.rla       = elecSpec.rla;
+          if (!patched.lra       || overallConfidence < 40) patched.lra       = elecSpec.lra;
+          if (!patched.mca       || overallConfidence < 40) patched.mca       = elecSpec.mca;
+          if (!patched.mocp      || overallConfidence < 40) patched.mocp      = elecSpec.mocp;
+          if (!patched.capacitor_uf || overallConfidence < 40) patched.capacitor_uf = elecSpec.capacitor_uf;
+          const patchedResult = { ...withSource, outdoor: patched };
+          setOcrResult(patchedResult);
+          setEditedUnit({ ...patched });
+        } else {
+          setOcrResult(withSource);
+          setEditedUnit({ ...result.outdoor });
+        }
+      } else {
+        setOcrResult(withSource);
+        setEditedUnit({ ...result.outdoor });
+      }
+
+      if (needsConfirm.size > 0) {
+        setNeedsConfirmationFields(needsConfirm);
+        setConfirmationHeading("Confirm these specs — we'll take care of the rest.");
+      }
+
+      finalTier = needsConfirm.size > 0 ? 2 : 1;
+
+    } catch (geminiErr) {
+      // ── Tier 4 (invisible failure): Gemini failed → silent fallback to manual ──
+      // BUG-034 item 6: Do NOT show "Both AI and local OCR failed" error
+      console.warn("[OCR] Gemini failed, falling back to manual entry:", geminiErr);
+      geminiSucceeded = false;
+      finalTier = 4;
+
+      // Pre-fill manual unit with any partial data if available
+      setConfirmationHeading("Let's confirm the specs together.");
+      setActiveTab("manual");
     }
+
+    // ── Telemetry (BUG-034 item 8) ─────────────────────────────────────────
+    try {
+      (window as Window & { posthog?: { capture?: (event: string, props: Record<string, unknown>) => void } })
+        .posthog?.capture?.("nameplate_ocr_attempt", {
+          market,
+          gemini_called: true,
+          gemini_succeeded: geminiSucceeded,
+          overall_confidence: overallConfidence,
+          final_tier: finalTier,
+          time_ms: Date.now() - tStart,
+        });
+    } catch { /* PostHog never breaks the flow */ }
 
     setLoading(false);
-    setTesseractPct(0);
-    setTesseractStatus("");
-  }, [outdoorFile, indoorFile, clerkToken]);
+  }, [outdoorFile, indoorFile, getToken]);
 
   // ── Auto-trigger OCR when outdoor photo is captured ─────────────────────
   useEffect(() => {
@@ -497,16 +541,22 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
 
     const finalResult: OcrResult = { ...ocrResult, outdoor: editedUnit };
 
-    // Persist to assessment if we have an ID
-    if (assessmentId && clerkToken) {
+    // BUG-034: persist uses live JWT (not the null prop)
+    if (assessmentId) {
       try {
-        const headers: Record<string, string> = {
+        const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
+        let tok: string | null = null;
+        if (!IS_DEV) { try { tok = await getToken(); } catch { tok = null; } }
+        const persistHeaders: Record<string, string> = {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${clerkToken}`,
+          "X-Market": detectMarket(),
+          ...(IS_DEV
+            ? { "X-Dev-Clerk-User-Id": "test_user_mike" }
+            : tok ? { "Authorization": `Bearer ${tok}` } : {}),
         };
         await fetch(`${API_URL}/api/ocr/assessments/${assessmentId}/nameplate`, {
           method: "PATCH",
-          headers,
+          headers: persistHeaders,
           body: JSON.stringify({ ocr_result: finalResult }),
         });
       } catch {
@@ -514,8 +564,8 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       }
     }
 
-    onConfirm(finalResult);
-  }, [ocrResult, editedUnit, assessmentId, clerkToken, onConfirm]);
+    onConfirm(finalResult, AMBIENT_C_MAP[ambientBucket]);
+  }, [ocrResult, editedUnit, assessmentId, getToken, onConfirm]);
 
   // ── Edit field helper ───────────────────────────────────────────────────
 
@@ -961,6 +1011,42 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             </div>
           </div>
 
+          {/* Outdoor temperature — ambient selector (Phase 2: drives PSI threshold lookup) */}
+          {/* Show when user picked a series from DB lookup */}
+          {(editedUnit || manualUnit.series_id) && (
+            <div className="space-y-2 mt-2">
+              <label className="text-sm font-bold" style={{ color: "#c9d1d9" }}>
+                Outdoor temperature
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["mild", "hot", "extreme"] as const).map((bucket) => {
+                  const labels: Record<typeof bucket, { title: string; sub: string }> = {
+                    mild:    { title: "Mild",    sub: "< 86°F (30°C)" },
+                    hot:     { title: "Hot",     sub: "86–100°F (30–38°C)" },
+                    extreme: { title: "Extreme", sub: "> 100°F (38°C+)" },
+                  };
+                  const selected = ambientBucket === bucket;
+                  return (
+                    <button
+                      key={bucket}
+                      onClick={() => setAmbientBucket(bucket)}
+                      className="py-2 px-1 rounded-lg text-xs font-semibold transition-all text-center leading-tight"
+                      style={{
+                        background: selected ? "#1a8754" : "#1e2330",
+                        color: selected ? "#ffffff" : "#7a8299",
+                        border: selected ? "1.5px solid #1a8754" : "1.5px solid #2d3547",
+                      }}
+                    >
+                      {labels[bucket].title}
+                      <br />
+                      <span style={{ fontWeight: 400, opacity: 0.8 }}>{labels[bucket].sub}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-3">
             <button
               onClick={handleManualConfirm}
@@ -1142,32 +1228,14 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
         </button>
       )}
 
-      {/* Section 6B: Loading indicator — Gemini or Tesseract progress */}
+      {/* Section 6B: Loading indicator */}
       {loading && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-center gap-3 py-2">
-            {[0,1,2].map(i => (
-              <div key={i} className="w-2.5 h-2.5 rounded-full animate-bounce"
-                   style={{ background: "#f39c12", animationDelay: `${i * 0.15}s` }} />
-            ))}
-            <span className="text-sm text-gray-500 font-medium">
-              {tesseractPct > 0 ? tesseractStatus : "Gemini reading nameplate…"}
-            </span>
-          </div>
-          {/* Tesseract progress bar */}
-          {tesseractPct > 0 && (
-            <div className="mx-2">
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-300"
-                  style={{ width: `${tesseractPct}%`, background: "#f39c12" }}
-                />
-              </div>
-              <p className="text-[10px] text-center text-amber-600 mt-1 font-semibold">
-                Local OCR fallback — AI not reachable
-              </p>
-            </div>
-          )}
+        <div className="flex items-center justify-center gap-3 py-2">
+          {[0,1,2].map(i => (
+            <div key={i} className="w-2.5 h-2.5 rounded-full animate-bounce"
+                 style={{ background: "#f39c12", animationDelay: `${i * 0.15}s` }} />
+          ))}
+          <span className="text-sm text-gray-500 font-medium">Gemini reading nameplate…</span>
         </div>
       )}
 
@@ -1184,20 +1252,14 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
           <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs font-black uppercase tracking-wider text-green-600">
-                {ocrSource === "tesseract" ? "Local OCR" : "AI Extracted"} — verify &amp; edit
+                {confirmationHeading ?? "AI Extracted — verify & edit"}
               </span>
-              {/* Section 6B: source badge */}
-              {ocrSource && (
-                <span
-                  className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{
-                    background: ocrSource === "gemini" ? "#e8f5ee" : "#fff3e0",
-                    color:      ocrSource === "gemini" ? "#1a8754" : "#c4600a",
-                  }}
-                >
-                  {ocrSource === "gemini" ? "✶ Gemini AI" : "📱 Local OCR"}
-                </span>
-              )}
+              <span
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                style={{ background: "#e8f5ee", color: "#1a8754" }}
+              >
+                ✶ Gemini AI
+              </span>
             </div>
             <span className="text-xs font-mono text-gray-400">{editedUnit.confidence}% confidence</span>
           </div>
@@ -1228,15 +1290,21 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
               const isEmpty = displayVal === "";
               const isDbField  = badge === "db"  && !isEmpty;
               const isEstField = badge === "est";
+              // BUG-034: yellow border for 40-69 confidence fields (needs confirmation)
+              const needsConfirm = needsConfirmationFields.has(key);
               return (
                 <div key={key} className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{label}</span>
-                    {isDbField && (
+                    {needsConfirm && (
+                      <span className="text-[9px] font-black px-1 py-0.5 rounded"
+                            style={{ background: "#fef9c3", color: "#a16207" }}>?</span>
+                    )}
+                    {!needsConfirm && isDbField && (
                       <span className="text-[9px] font-black px-1 py-0.5 rounded"
                             style={{ background: "#e8f5ee", color: "#1a8754" }}>DB</span>
                     )}
-                    {isEstField && (
+                    {!needsConfirm && isEstField && (
                       <span className="text-[9px] font-black px-1 py-0.5 rounded"
                             style={{ background: "#fff3e0", color: "#c4600a" }}>Est.</span>
                     )}
@@ -1249,9 +1317,10 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                       placeholder="—"
                       className="w-full text-sm font-mono font-bold rounded-lg border px-2 py-1.5 focus:outline-none focus:ring-1 transition-colors"
                       style={{
-                        borderColor: isEmpty ? "#e2dfd7" : isEstField ? "#c4600a" : "#1a8754",
-                        background:  isEmpty ? "#fafaf8" : isEstField ? "#fffaf5" : "#f0faf6",
+                        borderColor: needsConfirm ? "#facc15" : isEmpty ? "#e2dfd7" : isEstField ? "#c4600a" : "#1a8754",
+                        background:  needsConfirm ? "#fefce8" : isEmpty ? "#fafaf8" : isEstField ? "#fffaf5" : "#f0faf6",
                         color: isEmpty ? "#aaa" : "#1a1a1a",
+                        boxShadow: needsConfirm ? "0 0 0 2px #fde047" : undefined,
                       } as React.CSSProperties}
                     />
                     {unit && !isEmpty && (
@@ -1272,6 +1341,42 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Outdoor temperature — ambient selector (Phase 2: drives PSI threshold lookup) */}
+      {/* Show when: (a) OCR returned a unit, or (b) user picked a series from DB lookup */}
+      {(editedUnit || manualUnit.series_id) && (
+        <div className="space-y-2 mt-2">
+          <label className="text-sm font-bold" style={{ color: "#c9d1d9" }}>
+            Outdoor temperature
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {(["mild", "hot", "extreme"] as const).map((bucket) => {
+              const labels: Record<typeof bucket, { title: string; sub: string }> = {
+                mild:    { title: "Mild",    sub: "< 86°F (30°C)" },
+                hot:     { title: "Hot",     sub: "86–100°F (30–38°C)" },
+                extreme: { title: "Extreme", sub: "> 100°F (38°C+)" },
+              };
+              const selected = ambientBucket === bucket;
+              return (
+                <button
+                  key={bucket}
+                  onClick={() => setAmbientBucket(bucket)}
+                  className="py-2 px-1 rounded-lg text-xs font-semibold transition-all text-center leading-tight"
+                  style={{
+                    background: selected ? "#1a8754" : "#1e2330",
+                    color: selected ? "#ffffff" : "#7a8299",
+                    border: selected ? "1.5px solid #1a8754" : "1.5px solid #2d3547",
+                  }}
+                >
+                  {labels[bucket].title}
+                  <br />
+                  <span style={{ fontWeight: 400, opacity: 0.8 }}>{labels[bucket].sub}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

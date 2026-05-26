@@ -41,7 +41,7 @@ type Phase =
 const COMPLAINT_OPTIONS = [
   { id: "service",               icon: "\u{1F527}", label: "Service / Tune-Up",      sub: "Routine maintenance visit" },
   { id: "not_cooling",           icon: "\u{1F975}", label: "Not Cooling",            sub: "Weak or no cooling" },
-  { id: "not_heating",           icon: "\u{1F525}", label: "Not Heating",            sub: "No heat / cold air" },
+  { id: "not_heating",           icon: "\u{2744}", label: "Not Heating",            sub: "No heat / cold air" },
   { id: "intermittent_shutdown", icon: "⚡",    label: "Intermittent Shutdown",  sub: "Short cycling / random shutoffs" },
   { id: "water_dripping",        icon: "\u{1F4A7}", label: "Water Dripping",         sub: "Dripping or pooling" },
   { id: "not_turning_on",        icon: "\u{1F50C}", label: "Not Turning On",         sub: "No response at all" },
@@ -127,6 +127,8 @@ function AssessPageInner() {
 
   // ── Core state ─────────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("step-zero");
+  // Ambient temperature bucket captured at Step Zero (Phase 2: ambient-aware PSI routing)
+  const [ambientC, setAmbientC] = useState<number>(35); // default "Hot" = 35°C ≈ 95°F
   const [ocrResult, setOcrResult] = useState<Record<string, unknown> | null>(null);
   const [complaintType, setComplaintType] = useState<ComplaintId | null>(null);
   const [assessmentId, setAssessmentId] = useState<string | null>(null);
@@ -197,11 +199,11 @@ function AssessPageInner() {
     } catch { /* ignore */ }
     getOfflineQueueCount().then(count => { if (count > 0) setPendingCount(count); }).catch(() => {});
     const handleOnline = () => {
-      getAuthHeaders().then(headers =>
-        processOfflineQueue(API_URL, headers).then(({ uploaded }) => {
-          if (uploaded > 0) setPendingCount(0);
-        })
-      ).catch(() => {});
+      // BUG-006 fix: pass getAuthHeaders directly so processOfflineQueue can
+      // refresh the Clerk JWT (60s lifetime per DEC-058) per drain item.
+      processOfflineQueue(API_URL, getAuthHeaders).then(({ uploaded }) => {
+        if (uploaded > 0) setPendingCount(0);
+      }).catch(() => {});
     };
     window.addEventListener("online", handleOnline);
     if (typeof navigator !== "undefined" && navigator.onLine) handleOnline();
@@ -235,11 +237,6 @@ function AssessPageInner() {
   // ── Create assessment + enter diagnostic ───────────────────────────────────
   const handleComplaintSelected = async (complaintId: ComplaintId) => {
     setComplaintType(complaintId);
-    // R.3: Address required for US market before creating a job
-    if (!address.trim()) {
-      setError("Please enter the property address before selecting a complaint type.");
-      return;
-    }
     setCreatingAssessment(true);
     setError(null);
     try {
@@ -427,9 +424,10 @@ function AssessPageInner() {
   if (phase === "step-zero") {
     return (
       <StepZeroPanel
-        clerkToken={null}
-        onConfirm={(result) => {
+        clerkToken={null /* BUG-034: StepZeroPanel calls getToken() internally */}
+        onConfirm={(result, ambientCValue) => {
           setOcrResult(result as unknown as Record<string, unknown>);
+          setAmbientC(ambientCValue);
           // PK inverter pricing: capture series_type from DB model selection
           const st = (result.outdoor as { series_type?: string | null })?.series_type;
           setMeteringType(st === "inverter" ? "inverter" : "any");
@@ -698,6 +696,7 @@ function AssessPageInner() {
           complaintType={complaintType}
           getAuthHeaders={getAuthHeaders}
           ocrNameplate={ocrResult}
+          ambientC={ambientC}
           onResolved={handleDiagnosticResolved}
           onPhase2Gate={handlePhase2Gate}
           onEscalated={() => {
