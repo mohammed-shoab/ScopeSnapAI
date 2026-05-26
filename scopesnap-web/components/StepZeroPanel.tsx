@@ -147,6 +147,32 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
 
   // ── Section 5C: Manual entry tab ───────────────────────────────────────
   const [activeTab, setActiveTab] = useState<"photo" | "manual">("photo");
+
+  // Scenario D — restore last-used path; Scenario E — A/B variant for new users
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem("snap_sz_path") as "photo" | "manual" | null;
+    if (saved) {
+      // Returning user: restore last-used path
+      setActiveTab(saved);
+    } else {
+      // New user: assign 50/50 A/B variant and fire telemetry
+      const variant: "photo" | "manual" = Math.random() < 0.5 ? "photo" : "manual";
+      localStorage.setItem("snap_sz_variant", variant);
+      (window as Window & { posthog?: { capture?: (e: string, p: Record<string, unknown>) => void } })
+        .posthog?.capture?.("ab_test_variant_assigned", {
+          default_path_variant: variant,
+          market: detectMarket(),
+        });
+      if (variant === "manual") setActiveTab("manual");
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Explicit user-initiated tab switch — persists preference for Scenario D */
+  const handleTabSelect = (tab: "photo" | "manual") => {
+    localStorage.setItem("snap_sz_path", tab);
+    setActiveTab(tab);
+  };
   const BLANK_UNIT: NameplateUnit = {
     model_number: null, serial_number: null, tonnage: null, refrigerant: null,
     factory_charge_oz: null, rla: null, lra: null, capacitor_uf: null,
@@ -621,7 +647,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       {/* Section 5C: Entry method — Scan Nameplate primary, manual secondary (B.2) */}
       <div className="flex flex-col gap-2">
         <button
-          onClick={() => setActiveTab("photo")}
+          onClick={() => handleTabSelect("photo")}
           className="w-full py-3 rounded-2xl font-bold text-sm transition-all"
           style={{
             background: activeTab === "photo" ? "#1a8754" : "#e8f5ef",
@@ -632,7 +658,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
           📸 {t("Scan Nameplate")}
         </button>
         <button
-          onClick={() => setActiveTab("manual")}
+          onClick={() => handleTabSelect("manual")}
           className="text-xs font-medium text-center py-1 w-full"
           style={{
             color: activeTab === "manual" ? "#1a8754" : "#9ca3af",
@@ -652,7 +678,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
           {/* Scenario C: photo persists after Tier-4 silent fallback */}
           {outdoorPreview && (
             <button
-              onClick={() => setActiveTab("photo")}
+              onClick={() => handleTabSelect("photo")}
               className="relative w-full rounded-xl border-2 overflow-hidden flex items-center gap-3 px-3 py-2 transition-colors"
               style={{ borderColor: "#1a8754", background: "#f0faf6" }}
             >
