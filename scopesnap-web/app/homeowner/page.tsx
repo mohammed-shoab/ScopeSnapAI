@@ -12,11 +12,22 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { usePostHog } from "posthog-js/react";
 
 export default function HomeownerLandingPage() {
   const posthog = usePostHog();
   const [copied, setCopied] = useState(false);
+  const router = useRouter();
+  const { isLoaded, isSignedIn } = useUser();
+
+  // 4.14: redirect signed-in users to dashboard
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.replace("/dashboard");
+    }
+  }, [isLoaded, isSignedIn, router]);
 
   // PostHog: fire homeowner_landing_visited + capture UTM params
   useEffect(() => {
@@ -95,10 +106,6 @@ export default function HomeownerLandingPage() {
 
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-16 pb-12 text-center">
-        <div className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide uppercase text-brand-green bg-brand-green-light px-3 py-1.5 rounded-full mb-6">
-          For Houston Homeowners
-        </div>
-
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-text-primary leading-tight mb-5 max-w-3xl mx-auto">
           Three options. Real prices. No surprises.
         </h1>
@@ -109,9 +116,14 @@ export default function HomeownerLandingPage() {
           what happens if you wait.
         </p>
 
-        <p className="text-sm text-text-secondary max-w-xl mx-auto">
+        <p className="text-sm text-text-secondary max-w-xl mx-auto mb-4">
           Ask your contractor if they use SnapAI.
           If they do not, share this page with them.
+        </p>
+
+        {/* 4.13: market scope line */}
+        <p className="text-xs text-text-tertiary max-w-xl mx-auto">
+          Currently active in Houston, Texas. Other markets coming.
         </p>
       </section>
 
