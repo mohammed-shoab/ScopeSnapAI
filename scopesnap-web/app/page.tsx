@@ -154,18 +154,18 @@ export default function LandingPage() {
               {[
                 {
                   step: "01",
-                  title: "Photograph the equipment",
-                  desc: "Open the app, tap Assess, and photograph the nameplate. The diagnostic engine reads make, model, age, and refrigerant type.",
+                  title: "Photograph the equipment.",
+                  desc: "Open the app. Photograph the nameplate. Make, model, year, refrigerant — read in seconds.",
                 },
                 {
                   step: "02",
-                  title: "AI identifies everything",
-                  desc: "Answer guided questions about symptoms. The system routes your answers through a fault tree built from manufacturer documentation and Houston field patterns.",
+                  title: "Guided AI diagnosis.",
+                  desc: "A few questions about the symptoms. The system walks the same fault tree a senior tech walks — without forgetting steps.",
                 },
                 {
                   step: "03",
-                  title: "Send the homeowner a report",
-                  desc: "One tap delivers a branded PDF report to the homeowner's inbox. No login required on their end.",
+                  title: "Homeowner gets a real report.",
+                  desc: "One tap delivers a branded PDF — three estimates, your markup, your name. Before you leave the driveway.",
                 },
               ].map(({ step, title, desc }) => (
                 <div key={step} className="text-center">
@@ -241,17 +241,19 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-          {/* ── YouTube demo video embed ── */}
-          {/* Replace SNAPAI_VIDEO_ID below with your YouTube video ID (e.g. dQw4w9WgXcQ) */}
-          <div className="mt-12 relative w-full rounded-2xl overflow-hidden"
-               style={{ paddingBottom: "56.25%" }}>
-            <iframe
-              className="absolute inset-0 w-full h-full"
-              src="https://www.youtube.com/embed/SNAPAI_VIDEO_ID?autoplay=1&mute=1&loop=1&playlist=SNAPAI_VIDEO_ID&rel=0&modestbranding=1&playsinline=1"
-              title="SnapAI — 90-second demo"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+          {/* ── Hero video embed (4.15) ── */}
+          {/* TODO: replace placeholder with /hero.mp4 once Shoab provides it */}
+          <div className="mt-12 rounded-2xl overflow-hidden bg-surface-card border border-surface-border flex items-center justify-center" style={{ minHeight: "320px" }}>
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              className="w-full h-auto rounded-xl shadow-lg"
+            >
+              <source src="/hero.mp4" type="video/mp4" />
+            </video>
           </div>
           <p className="text-center text-xs text-text-secondary mt-4">
             Can&apos;t wait? <Link href="/dashboard" className="text-brand-green font-semibold hover:underline">Try it live →</Link>

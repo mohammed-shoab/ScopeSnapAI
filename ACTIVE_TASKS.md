@@ -2,6 +2,40 @@
 
 ---
 
+## BUG-045 — Nameplate OCR Auth + Tesseract Removal + 4-Tier Waterfall — COMPLETE + LIVE 2026-05-27
+
+| Check | Result |
+|-------|--------|
+| Root Cause A: JWT in OCR request (intercepted in Chrome) | PASS — `Authorization: Bearer <JWT>` + `X-Market: US` confirmed |
+| Root Cause B: No Tesseract CDN requests | PASS — zero `cdn.jsdelivr.net` requests in performance entries |
+| Old error string "Both AI and local OCR failed" absent from bundle | PASS — absent from `page-7542711e330724e9.js` |
+| `nameplate_ocr_attempt` PostHog event in bundle | PASS — present in new chunk |
+| Yellow border `#facc15` code in bundle | PASS — present in new chunk |
+| Invisible failure: silent switch to manual tab on bad image | PASS — no error toast, UI on manual tab |
+| New chunk hash deployed (page-7542711e330724e9.js) | PASS — old chunk 404, new chunk 200 + 109KB |
+| US staging Railway health | PASS — `{"status":"ok","db":"connected","environment":"staging"}` |
+| Flow 1 Not Cooling 128 PSI → NORMAL | PASS — `128 PSI (ok)` confirmed |
+| Fault card returned end-to-end | PASS — Ductwork Leak, High Confidence |
+
+**Git state:**
+- `staging` branch HEAD: `25492dc` (Scenario D returning-user + Scenario E A/B variant)
+- `main` branch HEAD: `3f06f0b` — PROMOTED TO PRODUCTION 2026-05-27 ✅
+- Alembic: no migration — frontend-only change
+
+**21-point acceptance QA: ALL PASS (2026-05-27)**
+- Scenarios A–E × 2 markets: 10/10 ✅
+- Negative tests NT-1 through NT-11: 11/11 ✅
+
+**Additional fixes in this session (not in original BUG-045 scope):**
+- Scenario C: photo persists on Tier-4 manual fallback (photo strip with "Tap to retake" in manual tab)
+- Spinner text: "Gemini reading nameplate…" → "Reading nameplate…" (de-branded)
+- Scenario D: returning user restores last-used tab via `snap_sz_path` localStorage
+- Scenario E: new user A/B variant via `snap_sz_variant` + `ab_test_variant_assigned` PostHog event
+
+**Note on bug numbering:** Commits were labeled BUG-034 due to an error; that number was already used for ServiceChecklist 401 (2026-05-22). Canonical number for this fix is **BUG-045**.
+
+---
+
 ## Phase 2 Ambient-Aware PSI Routing -- COMPLETE + LIVE -- 2026-05-24
 
 | Check | Result |
@@ -485,6 +519,16 @@ BUG-040 and BUG-041 found and fixed. All 6 flows confirmed live on both markets.
 ---
 
 ## Last QA Run
+
+**Date:** 2026-05-26 — BUG-045 staging QA (US staging only — nameplate OCR auth fix)
+**Markets tested:** Houston US staging
+**Outcome:** PASS ✅ — OCR JWT auth confirmed live, Tesseract CDN absent, invisible failure working, Flow 1 Not Cooling PASS, fault card returned
+**Git HEAD:** `c42cce0` (staging branch — NOT yet on main)
+**Vercel:** US staging + PK staging both serving `page-7542711e330724e9.js` ✅
+**Railway staging:** ACTIVE — health OK ✅
+**QA sign-off:** STAGING COMPLETE — production promotion pending Shoab go-ahead
+
+## Previous Last QA Run
 
 **Date:** 2026-05-23 — Stage 1 Production Verification (both markets, all 6 flows, BUG-040 + BUG-041 fixed)
 **Markets tested:** Both Houston US and Pakistan PK

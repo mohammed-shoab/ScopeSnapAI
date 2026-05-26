@@ -3,7 +3,7 @@
 > This file records decisions made during development that have lasting impact on how the codebase works.
 > Future AI sessions: read this before proposing architecture changes or writing migrations.
 >
-> Last updated: 2026-05-24 (DEC-084 added -- TypeScript build failure cascade. DEC-082/083 added -- React fiber QA bypass + Vercel error tracing. DEC-081 added -- R-410A PSI emergency patch thresholds. Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. Houston full flow PASS (rpt-e198935c USD estimate), PK staging backend PASS (environment:staging, R-410A pressure-targets). | DEC-080 added — Stage 6 Vercel staging domain-level gitBranch rewire; DEC-067 marked SUPERSEDED. | Previously: DEC-071 added -- Stripe test-mode GAP from Stage 2 cost audit. | DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
+> Last updated: 2026-05-27 (DEC-089 added — Step Zero A/B test + returning-user localStorage path. BUG-045 promoted to production commit 3f06f0b. | Previously: DEC-087/DEC-088 added — BUG-045 nameplate OCR JWT self-sourcing + Tesseract removal. | Previously: 2026-05-24 (DEC-084 added -- TypeScript build failure cascade. DEC-082/083 added -- React fiber QA bypass + Vercel error tracing. DEC-081 added -- R-410A PSI emergency patch thresholds. Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. Houston full flow PASS (rpt-e198935c USD estimate), PK staging backend PASS (environment:staging, R-410A pressure-targets). | DEC-080 added — Stage 6 Vercel staging domain-level gitBranch rewire; DEC-067 marked SUPERSEDED. | Previously: DEC-071 added -- Stripe test-mode GAP from Stage 2 cost audit. | DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
 
 ---
 
@@ -1736,3 +1736,52 @@ const isRec = isMiddleTier;  // backward-compat alias for existing headerBg/badg
 **Rule added:** When writing a migration hotfix that adds steps before an existing step, run a diff to confirm the final upgrade() contains no duplicate op.execute blocks. Any ADD CONSTRAINT call must appear exactly once. Grep `ADD CONSTRAINT` count before committing.
 
 **Cross-references:** DEC-085 (Phase 2 rewrite), DEC-050 (WA-17 pattern), migration 036 `84fedcf`
+
+
+---
+
+## DEC-087 — StepZeroPanel self-sources Clerk JWT via useAuth() (BUG-045 Root Cause A fix, 2026-05-26)
+
+**Decision:** `StepZeroPanel` calls `useAuth().getToken()` internally before every OCR fetch, instead of relying on the `clerkToken` prop passed from the parent (`assess/page.tsx`).
+
+**Problem:** `clerkToken` prop was always `null` — `assess/page.tsx` is a Server Component that cannot call React hooks. Every `POST /api/ocr/nameplate` sent no `Authorization` header, causing 401 on every OCR attempt.
+
+**Solution:** Added `const { getToken } = useAuth()` inside `StepZeroPanel` (client component). Both `runOCR` and `handleConfirm` call `await getToken()` just before the OCR fetch. Also adds `X-Market: detectMarket()` header to the raw `fetch()` call (previously missing). The `clerkToken` prop is retained in Props for backward compat but is no longer read for auth.
+
+**Rule for future work:** Any client component that calls a protected API must self-source its JWT via `useAuth().getToken()`. Never rely on a parent Server Component to pass the token as a prop — Server Components cannot call hooks.
+
+**Commit:** c42cce0 (staging branch, 2026-05-26) | **File:** `scopesnap-web/components/StepZeroPanel.tsx`
+
+---
+
+## DEC-089 — Step Zero default path: localStorage A/B test + returning-user restore (2026-05-27)
+
+**Decision:** The initial tab shown on `/assess` is determined client-side:
+1. **Returning user** (`snap_sz_path` in localStorage) → restore their last explicit choice.
+2. **New user** (no `snap_sz_path`) → 50/50 A/B variant stored as `snap_sz_variant`; `ab_test_variant_assigned` PostHog event fired.
+3. Tier-4 silent fallback (`setActiveTab("manual")`) does NOT write to `snap_sz_path` — system decision, not user preference.
+4. Only explicit user taps on "Scan Nameplate" or "I'll enter manually" write to `snap_sz_path`.
+
+**Why localStorage not backend:** Zero latency, no extra API round-trip on a hot path (Step Zero renders immediately). PostHog already collects the telemetry; backend sync deferred until sufficient A/B data justifies it.
+
+**Impact:** `StepZeroPanel.tsx` `handleTabSelect()` + `useEffect` on mount.
+
+---
+
+## DEC-088 — Tesseract.js removed; Gemini-only OCR with 4-tier fallback waterfall (BUG-045 Root Cause B fix, 2026-05-26)
+
+**Decision:** Removed all Tesseract.js usage from `StepZeroPanel`. Nameplate OCR is now Gemini-only with a silent 4-tier fallback.
+
+**4-tier waterfall:**
+1. **Tier 1 — Gemini Vision** (`POST /api/ocr/nameplate` with live JWT + X-Market header)
+2. **Tier 2 — Confidence gating**: Fields with confidence 40-69 get yellow border (`#facc15`) and `needsConfirmationFields` state. Fields >= 70 auto-accepted; fields < 40 left blank.
+3. **Tier 3 — DB fill**: Blank fields back-filled from `ELECTRICAL_SPECS_BY_TONNAGE` if tonnage is known.
+4. **Tier 4 — Silent manual fallback**: On Gemini error or low overall confidence, UI silently calls `setActiveTab("manual")`. No error message shown.
+
+**Why Tesseract was removed:** Worker loaded from `cdn.jsdelivr.net` — blocked in some field environments. The two-engine fallback was complex, unreliable, and the user-visible error "Both AI and local OCR failed" was confusing. Gemini with invisible failure is simpler and better UX.
+
+**PostHog telemetry:** `nameplate_ocr_attempt` event fires after every OCR attempt with: `market`, `gemini_called`, `gemini_succeeded`, `overall_confidence`, `final_tier`, `time_ms`.
+
+**Dead code note:** `scopesnap-web/lib/tesseractOcr.ts` still exists in the repo but is no longer imported. Safe to delete in a future cleanup commit.
+
+**Commit:** c42cce0 (staging branch, 2026-05-26) | **File:** `scopesnap-web/components/StepZeroPanel.tsx`

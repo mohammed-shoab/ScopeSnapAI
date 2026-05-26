@@ -11,11 +11,22 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { usePostHog } from "posthog-js/react";
 
 export default function TechLandingPage() {
   const posthog = usePostHog();
   const [copied, setCopied] = useState(false);
+  const router = useRouter();
+  const { isLoaded, isSignedIn } = useUser();
+
+  // 4.14: redirect signed-in users to dashboard
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.replace("/dashboard");
+    }
+  }, [isLoaded, isSignedIn, router]);
 
   // PostHog: fire tech_landing_visited + capture UTM params
   useEffect(() => {
@@ -43,21 +54,21 @@ export default function TechLandingPage() {
   const steps = [
     {
       number: "01",
-      title: "Photograph the unit",
+      title: "Snap the nameplate in the truck.",
       description:
-        "Open SnapAI, tap New Assessment, and photograph the nameplate and unit. The AI reads make, model, age, and refrigerant automatically.",
+        "You're at the job. Open the app, photograph the data plate. Make, model, year, refrigerant pulled in seconds. No supply house phone calls.",
     },
     {
       number: "02",
-      title: "App walks the diagnostic",
+      title: "Walk the diagnosis on your phone.",
       description:
-        "Answer a series of guided questions about symptoms. The system follows the same fault tree your best senior tech has in his head.",
+        "Guided fault tree. Same logic your best senior tech runs in his head — written down. Diagnosis in under 90 seconds, every tech, every call.",
     },
     {
       number: "03",
-      title: "Good / Better / Best estimate in 90 seconds",
+      title: "Quote and close before you pull out.",
       description:
-        "SnapAI generates a three-tier estimate with your markup applied. Send the homeowner a branded PDF before you leave the driveway.",
+        "Good / Better / Best estimate with your markup applied. Homeowner approves on your phone. Branded PDF in their inbox before you turn the key.",
     },
   ];
 
@@ -91,17 +102,20 @@ export default function TechLandingPage() {
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-16 pb-12 text-center">
         <div className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide uppercase text-brand-green bg-brand-green-light px-3 py-1.5 rounded-full mb-6">
-          Houston Contractors Only
+          Built for Houston contractors first
         </div>
 
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-text-primary leading-tight mb-5 max-w-3xl mx-auto">
           Diagnose, estimate, and close before you leave the driveway.
         </h1>
 
-        <p className="text-lg sm:text-xl text-text-secondary max-w-2xl mx-auto mb-8 leading-relaxed">
-          An AI HVAC diagnostic tool built for Houston contractors.
-          Guided fault detection. Good / Better / Best estimate. Homeowner-approved PDF.
-          All before you pull out of the driveway.
+        <p className="text-lg sm:text-xl text-text-secondary max-w-2xl mx-auto mb-6 leading-relaxed">
+          Guided diagnostic, three-tier estimate, homeowner-approved PDF — all on your phone before you leave the driveway.
+        </p>
+
+        {/* 4.13 positioning callout */}
+        <p className="text-sm text-text-tertiary max-w-xl mx-auto mb-8 italic">
+          If your service truck is your office, this is for you. No implementation team. No quarterly review. No IT.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -113,6 +127,20 @@ export default function TechLandingPage() {
             Start Free Beta Access
           </Link>
           <p className="text-sm text-text-tertiary">First 10 Houston testers. Free, no commitment.</p>
+        </div>
+
+        {/* 4.15: Hero video embed — TODO: replace placeholder with /hero.mp4 once Shoab provides it */}
+        <div className="mt-10 max-w-3xl mx-auto rounded-2xl overflow-hidden bg-surface-card border border-surface-border">
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            className="w-full h-auto rounded-xl shadow-lg"
+          >
+            <source src="/hero.mp4" type="video/mp4" />
+          </video>
         </div>
       </section>
 

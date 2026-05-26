@@ -1507,6 +1507,16 @@ Sending `{ "value": 80 }` (the raw PSI reading) returns HTTP 422 "Field required
 
 ---
 
+## WA-48 — StepZeroPanel must self-source JWT via useAuth(), not rely on clerkToken prop (2026-05-26)
+
+**Discovery (BUG-045):** The `clerkToken` prop in `StepZeroPanel` was always `null` because `assess/page.tsx` is a Server Component — it cannot call `useAuth()`. Every OCR call sent no `Authorization` header, causing 401 on every nameplate scan attempt.
+
+**Rule:** Any client component that calls a protected API must use `const { getToken } = useAuth()` internally. Never pass a Clerk JWT as a prop from a Server Component parent.
+
+**Fix applied:** `const { getToken } = useAuth()` added inside `StepZeroPanel`. Both `runOCR` and `handleConfirm` call `await getToken()` per fetch. See DEC-087.
+
+---
+
 ## WA-47 -- TypeScript "Cannot find name" breaks ALL subsequent Vercel builds silently (2026-05-24)
 
 **Discovery (BUG-044):** A TS error introduced in commit N (`Cannot find name 'isRecommended'` in `assessment/[id]/page.tsx`) caused EVERY subsequent Vercel build -- including commits touching unrelated files -- to fail with the same error.
