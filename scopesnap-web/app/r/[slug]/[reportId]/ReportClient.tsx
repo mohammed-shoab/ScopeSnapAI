@@ -688,7 +688,7 @@ export default function ReportClient({ report }: { report: Report }) {
             <div style={{ padding: "12px 16px 16px" }}>
               {report.options.map((opt, i) => {
                 const isSelected = selectedTier === opt.tier;
-                const isRec = opt.recommended || opt.tier === "better";
+                const isRec = !!opt.recommended; // reads backend recommended flag directly (algo-bias fix 2026-05-29)
 
                 return (
                   <div

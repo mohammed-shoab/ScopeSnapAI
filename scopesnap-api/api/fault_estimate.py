@@ -60,22 +60,106 @@ def _get_labels(unit_age_years: Optional[int]) -> dict:
     return _LABEL_SETS[-1]
 
 
-# -- Replacement recommendation logic ----------------------------------------
+# -- Recommendation engine: fault severity × age bucket ----------------------
+# Fix: algo-bias audit 2026-05-29. Replaces pure-age trigger (_REPLACEMENT_TRIGGER_AGE=8)
+# which recommended replacement for ALL mid-life units regardless of fault cost.
+# Now uses a 3×3 matrix: age_bucket × fault_severity → recommended tier (A/B/C).
 
-_REPLACEMENT_TRIGGER_AGE   = 8
-_REPLACEMENT_COST_RATIO    = 0.50
+_SEVERITY_EASY_MAX_USD   = 400   # easy fault: difficulty=easy AND repair < $400
+_SEVERITY_MEDIUM_MAX_USD = 800   # medium fault: repair < $800
+
+# Maps (age_bucket, fault_severity) → recommended tier string "A"/"B"/"C"
+_URGENCY_RULES: dict = {
+    ("young",       "easy"):   "A",
+    ("young",       "medium"): "A",
+    ("young",       "major"):  "B",
+    ("mid_life",    "easy"):   "A",   # KEY FIX: was always "C" due to age≥8 trigger
+    ("mid_life",    "medium"): "B",
+    ("mid_life",    "major"):  "C",
+    ("end_of_life", "easy"):   "B",
+    ("end_of_life", "medium"): "C",
+    ("end_of_life", "major"):  "C",
+}
+
+# Reasoning strings for each combination (included in API response)
+_URGENCY_REASONS: dict = {
+    ("young",       "easy"):   "Young system with a minor fault — repair is the right call.",
+    ("young",       "medium"): "Young system — repair is cost-effective.",
+    ("young",       "major"):  "Young system but the fault is significant — enhanced repair protects your investment.",
+    ("mid_life",    "easy"):   "Mid-life system but the fault is minor — repair is more cost-effective than replacement.",
+    ("mid_life",    "medium"): "Mid-life system with a moderate fault — enhanced repair is the best value.",
+    ("mid_life",    "major"):  "Mid-life system with a major fault — replacement is the better long-term value.",
+    ("end_of_life", "easy"):   "End-of-life system — even minor faults are warning signs. Plan for replacement.",
+    ("end_of_life", "medium"): "End-of-life system with a moderate fault — replacement is the right call.",
+    ("end_of_life", "major"):  "End-of-life system with a major fault — replacement is urgent.",
+}
+
+
+def _get_age_bucket(unit_age_years: Optional[int]) -> str:
+    """Classify unit age into young / mid_life / end_of_life."""
+    age = unit_age_years or 0
+    if age <= 7:
+        return "young"
+    elif age <= 14:
+        return "mid_life"
+    return "end_of_life"
+
+
+def _compute_fault_severity(difficulty: str, repair_typical_usd: int) -> str:
+    """
+    Classify fault severity as easy / medium / major.
+    Conservative: prefer under-calling severity (favor cheaper tier) when ambiguous.
+    """
+    d = (difficulty or "").lower()
+    if d == "easy" and repair_typical_usd < _SEVERITY_EASY_MAX_USD:
+        return "easy"
+    if repair_typical_usd < _SEVERITY_MEDIUM_MAX_USD:
+        return "medium"
+    return "major"
+
+
+def _compute_recommended_tier(
+    unit_age_years: Optional[int],
+    fault_difficulty: str,
+    fault_repair_typical: int,
+    better_typical: int,
+    replacement_typical: int,
+) -> tuple:
+    """
+    Compute the recommended tier string ("A"/"B"/"C") and a human-readable reason.
+    Uses age_bucket × fault_severity matrix.
+    Falls back to cost-ratio check for edge cases (very expensive repair on any unit).
+    Returns (tier_str, reason_str, age_bucket, severity).
+    """
+    age_bucket = _get_age_bucket(unit_age_years)
+    severity   = _compute_fault_severity(fault_difficulty, fault_repair_typical)
+    tier       = _URGENCY_RULES.get((age_bucket, severity), "B")
+    reason     = _URGENCY_REASONS.get((age_bucket, severity), "Recommendation based on unit age and fault severity.")
+
+    # Safety override: if repair cost > 50% of replacement on any unit, never recommend A
+    _REPLACEMENT_COST_RATIO = 0.50
+    if (tier == "A" and replacement_typical > 0
+            and better_typical > 0
+            and (better_typical / replacement_typical) >= _REPLACEMENT_COST_RATIO):
+        tier   = "B"
+        reason = "Repair cost is significant relative to replacement — enhanced repair is more prudent."
+
+    return tier, reason, age_bucket, severity
+
 
 def _should_recommend_replacement(
     unit_age_years: Optional[int],
     better_typical: int,
     replacement_typical: int,
+    fault_difficulty: str = "medium",
+    fault_repair_typical: int = 0,
 ) -> bool:
-    age = unit_age_years or 0
-    if age >= _REPLACEMENT_TRIGGER_AGE:
-        return True
-    if replacement_typical > 0 and (better_typical / replacement_typical) >= _REPLACEMENT_COST_RATIO:
-        return True
-    return False
+    """Legacy shim — returns True only when _compute_recommended_tier returns C."""
+    tier, _, _, _ = _compute_recommended_tier(
+        unit_age_years, fault_difficulty, fault_repair_typical,
+        better_typical, replacement_typical,
+    )
+    return tier == "C"
 
 
 # -- Five-year cost comparison ------------------------------------------------
@@ -207,6 +291,7 @@ class FaultCardEstimateResponse(BaseModel):
     seasonal_modifier_pct:  int = 0
     seasonal_note:          Optional[str] = None
     generated_at:           str
+    recommendation:         Optional[dict] = None   # §4C: severity×age decision metadata
 
 
 # -- POST /api/estimates/fault-card ------------------------------------------
@@ -343,7 +428,11 @@ async def generate_fault_card_estimate(
 
     # 8. Determine if replacement should be recommended
     better_base = better_data.get("typical", base_B) if better_data else base_B
-    recommend_replacement = _should_recommend_replacement(unit_age, better_base, repl_typical)
+    rec_tier, rec_reason, rec_age_bucket, rec_severity = _compute_recommended_tier(
+        unit_age, getattr(fc, 'difficulty', 'medium') or 'medium',
+        int(fc.price_list_typical or 0), int(better_base), int(repl_typical),
+    )
+    recommend_replacement = (rec_tier == "C")
 
     tiers = []
 
@@ -385,7 +474,7 @@ async def generate_fault_card_estimate(
         tier="B", label=labels["better"],
         base_amount=b_base, surcharges=bkdn_B, subtotal=sub_B,
         markup_amount=mkup_B, total=total_B,
-        recommended=not recommend_replacement,
+        recommended=(rec_tier == "B"),
         description=b_desc, why_recommended=b_why,
         parts_included=b_parts, service_items=b_svc,
     ))
@@ -425,11 +514,23 @@ async def generate_fault_card_estimate(
             why_recommended=(better_data or {}).get("why_recommended_best_comprehensive"),
         ))
 
-    # Q.6.5 — Consult lifecycle_rules for recommendation metadata
-    # condition_signal = "default" until Track REC.2 ships derive_condition_signal_from_assessment().
-    # With "default", we only attach reason/source metadata to the already-recommended tier;
-    # we do NOT override the recommended flag (which correctly handles age/cost-ratio replacement).
-    # When REC.2 provides a real condition_signal, the flag override below will activate.
+    # Q.6.5 — Apply base recommendation from severity×age matrix, then overlay lifecycle_rules
+    # Base recommendation (rec_tier/rec_reason/rec_age_bucket/rec_severity) was computed above
+    # via _compute_recommended_tier() using the fault severity × age matrix.
+    # If condition_signals.py returns a real (non-default) signal, the lifecycle_rules DB
+    # lookup can further override the recommended tier for edge-case condition patterns
+    # (e.g., photo_confirmed_pitting, under_warranty, rla_over_nameplate).
+
+    # Apply the base severity×age recommendation to all tiers
+    for t in tiers:
+        t.recommended = (t.tier == rec_tier)
+    # Seed reason/source from matrix
+    for t in tiers:
+        if t.recommended:
+            t.recommendation_reason = rec_reason
+            t.recommendation_source = "severity_age_matrix"
+
+    # Q.6.5 overlay: lifecycle_rules DB can override for condition-specific cases
     try:
         condition_signal = await derive_condition_signal_from_assessment(
             assessment_id=body.assessment_id,
@@ -437,23 +538,21 @@ async def generate_fault_card_estimate(
             unit_age_years=unit_age,
             db=db,
         )
-        rec = await get_recommended_tier_internal(
-            card_id=body.card_id,
-            age_years=float(unit_age) if unit_age is not None else None,
-            condition_signal=condition_signal,
-            db=db, tables=tables,
-        )
-        # Only override recommended flags when we have a real (non-default) condition signal
         if condition_signal != "default":
+            lc_rec = await get_recommended_tier_internal(
+                card_id=body.card_id,
+                age_years=float(unit_age) if unit_age is not None else None,
+                condition_signal=condition_signal,
+                db=db, tables=tables,
+            )
             for t in tiers:
-                t.recommended = (t.tier == rec["recommended_tier"])
-        # Always attach reason/source to the currently-recommended tier
-        for t in tiers:
-            if t.recommended:
-                t.recommendation_reason = rec.get("reason")
-                t.recommendation_source = rec.get("source")
+                t.recommended = (t.tier == lc_rec["recommended_tier"])
+            for t in tiers:
+                if t.recommended:
+                    t.recommendation_reason = lc_rec.get("reason")
+                    t.recommendation_source = lc_rec.get("source")
     except Exception:
-        logger.warning("[fault_estimate] lifecycle_rules lookup failed — skipping Q.6.5 overlay",
+        logger.warning("[fault_estimate] lifecycle_rules overlay failed — using severity×age base",
                        exc_info=True)
 
     # R.9 -- build seasonal note for report footer
@@ -530,6 +629,14 @@ async def generate_fault_card_estimate(
                 logger.info("[fault_estimate v2] Saved estimate %s for assessment %s card %d age=%s",
                             estimate_id, body.assessment_id, body.card_id, unit_age)
 
+    # Build recommendation metadata (§4C)
+    _rec_meta = {
+        "recommended_tier": rec_tier,
+        "reasoning": rec_reason,
+        "severity_classification": rec_severity,
+        "age_bucket": rec_age_bucket,
+    }
+
     return FaultCardEstimateResponse(
         id=estimate_id, card_id=fc.card_id, card_name=fc.card_name,
         phase=fc.phase, difficulty=fc.difficulty, tech_notes=fc.tech_notes,
@@ -540,4 +647,5 @@ async def generate_fault_card_estimate(
         seasonal_modifier_pct=seasonal_pct_int,
         seasonal_note=_seasonal_note,
         generated_at=datetime.now(timezone.utc).isoformat(),
+        recommendation=_rec_meta,
     )

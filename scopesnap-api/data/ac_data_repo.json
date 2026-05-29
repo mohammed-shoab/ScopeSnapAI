@@ -6359,6 +6359,76 @@
       "method": "linear",
       "formula": "avg_lifespan_years - unit_age_years",
       "note": "Clamp to 0 if result is negative. unit_age_years = current_year - install_year."
+    },
+    "urgency_rules": [
+      {
+        "age_bucket": "young",
+        "fault_severity": "easy",
+        "recommended_tier": "good"
+      },
+      {
+        "age_bucket": "young",
+        "fault_severity": "medium",
+        "recommended_tier": "good"
+      },
+      {
+        "age_bucket": "young",
+        "fault_severity": "major",
+        "recommended_tier": "better"
+      },
+      {
+        "age_bucket": "mid_life",
+        "fault_severity": "easy",
+        "recommended_tier": "good"
+      },
+      {
+        "age_bucket": "mid_life",
+        "fault_severity": "medium",
+        "recommended_tier": "better"
+      },
+      {
+        "age_bucket": "mid_life",
+        "fault_severity": "major",
+        "recommended_tier": "best"
+      },
+      {
+        "age_bucket": "end_of_life",
+        "fault_severity": "easy",
+        "recommended_tier": "better"
+      },
+      {
+        "age_bucket": "end_of_life",
+        "fault_severity": "medium",
+        "recommended_tier": "best"
+      },
+      {
+        "age_bucket": "end_of_life",
+        "fault_severity": "major",
+        "recommended_tier": "best"
+      }
+    ],
+    "severity_thresholds": {
+      "_comment": "Maps fault difficulty + repair cost to a severity classification. Conservative — prefer under-calling severity (favor cheaper tier) when ambiguous.",
+      "easy": {
+        "difficulty_in": [
+          "easy"
+        ],
+        "total_estimate_max_usd": 400
+      },
+      "medium": {
+        "difficulty_in": [
+          "easy",
+          "medium"
+        ],
+        "total_estimate_max_usd": 800
+      },
+      "major": {
+        "difficulty_in": [
+          "medium",
+          "hard"
+        ],
+        "total_estimate_min_usd": 800
+      }
     }
   }
 }
