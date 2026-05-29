@@ -2,6 +2,82 @@
 
 ---
 
+## Algo Bias Fix — fault_severity×age_bucket Matrix — COMPLETE + LIVE 2026-05-29
+
+**Problem:** `_should_recommend_replacement()` in `fault_estimate.py` had `_REPLACEMENT_TRIGGER_AGE = 8` — any AC ≥ 8 years old unconditionally got Tier C (Replace System) recommended, regardless of fault severity. Mid-life units (8-14 yr) with a minor capacitor swap got "Replace System" — directly contradicting the "no upsell" marketing claim.
+
+**Fix:** Replaced the pure-age trigger with a 3×3 (age_bucket × fault_severity) matrix in `_compute_recommended_tier()`. Added `urgency_rules` + `severity_thresholds` to `ac_data_repo.json`. Fixed `ReportClient.tsx` `isRec` fallback. Followed DEC-070 staging-first workflow end-to-end.
+
+**Files changed:**
+- `scopesnap-api/api/fault_estimate.py` — new `_compute_recommended_tier()` matrix + `recommendation` metadata in response
+- `scopesnap-api/data/ac_data_repo.json` — `urgency_rules` + `severity_thresholds` added to `lifecycle_rules` section
+- `scopesnap-web/app/r/[slug]/[reportId]/ReportClient.tsx` — removed `|| opt.tier === "better"` hardcoded fallback
+
+**9/9 Test Cases PASS on production:**
+
+| TC | Card | Age | Expected | Bucket | Severity | Result |
+|----|------|-----|----------|--------|----------|--------|
+| TC1 | Capacitor (easy) | 5 yr | A | young | easy | ✅ A |
+| TC2 | Compressor (major) | 5 yr | B | young | major | ✅ B |
+| TC3 | Capacitor (easy) | 10 yr | A | mid_life | easy | ✅ A — KEY CASE |
+| TC4 | Blower Motor (medium) | 10 yr | B | mid_life | medium | ✅ B |
+| TC5 | Compressor (major) | 10 yr | C | mid_life | major | ✅ C |
+| TC6 | Capacitor (easy) | 16 yr | B | end_of_life | easy | ✅ B |
+| TC7 | Compressor (major) | 16 yr | C | end_of_life | major | ✅ C |
+| TC8 | Blower Motor (medium) | 16 yr | C | end_of_life | medium | ✅ C |
+| TC9 | Capacitor (easy) | 8 yr | A | mid_life | easy | ✅ A |
+
+**Git state:**
+- Feature branch: `fix/algo-bias-age-x-severity` at `e7904e2`
+- `staging` HEAD: `38036c0` (Merge fix/algo-bias-age-x-severity)
+- `main` HEAD: `03d80cb` (promote: algo bias fix from staging to main)
+- No DB migration — code + JSON change only
+
+**Workflow steps completed:**
+1. ✅ Branch `fix/algo-bias-age-x-severity` off `staging`
+2. ✅ Implement fix (Python matrix + JSON + frontend)
+3. ✅ Validate JSON + ast.parse, merge to staging, Railway auto-deploy
+4. ✅ Manual smoke test on staging (3 key scenarios)
+5. ✅ All 9 TC verified on staging
+6. ✅ Mirror check: git diff main..staging clean, Railway env vars match
+7. ✅ Promote to main, 9/9 TC verified on production
+8. ✅ Brain files + tracker updated (this entry)
+
+**Decision:** DEC-090 added to PROJECT_BRAIN.md. WA-49 added. Marketing team unblocked.
+
+---
+
+## Scope 4.13/4.14/4.15 — Copy + Signed-In Redirects + Video Embed — COMPLETE + LIVE 2026-05-27
+
+| Check | Result |
+|-------|--------|
+| 4.13 Codie's copy on `/` (3 steps) | PASS — both markets, server confirmed |
+| 4.13 Copy on `/tech` (eyebrow, subhead, callout, 3 steps) | PASS — both markets |
+| 4.13 Copy on `/homeowner` (eyebrow removed, market scope added) | PASS — both markets |
+| 4.14 Signed-in redirect on `/tech` → `/dashboard` | PASS — confirmed in browser (US staging) |
+| 4.14 Signed-in redirect on `/homeowner` → `/dashboard` | PASS — confirmed in browser (US staging) |
+| 4.15 `<video>` embed on `/` | PASS — both markets, YouTube gone |
+| 4.15 `<video>` embed on `/tech` | PASS — both markets |
+| Prod deploy — US `snapai.mainnov.tech` | PASS — Vercel Ready 2m 2s, commit 932b20e |
+| Prod deploy — PK `pk.snapai.mainnov.tech` | PASS — server returning new copy, old copy gone |
+
+**Git state:**
+- `staging` branch HEAD: `f58c77e`
+- `main` branch HEAD: `932b20e` — PROMOTED TO PRODUCTION 2026-05-27 ✅
+
+---
+
+## Last QA Run
+- Date: 2026-05-27
+- Layers run: 2 (staging formal), 4 (post-deploy production)
+- Markets: Houston + PK (both)
+- Result: Layer 2 PASS (18/18 checks, 1 SKIPPED — PK 4.14 browser, reason: Clerk domain-scoped) | Layer 4 PASS (22/22 checks, 1 SKIPPED — assess flow, reason: Phase 2 rewrite in progress)
+- Bugs found: 0
+- Bugs fixed in-loop: 0
+- Notable findings: Next.js client-side hydration shows stale DOM after hard reload on prod — server fetch (cache:no-store) is the reliable verification method for SSR pages. Browser redirect test is the authoritative check for 4.14.
+
+---
+
 ## BUG-045 — Nameplate OCR Auth + Tesseract Removal + 4-Tier Waterfall — COMPLETE + LIVE 2026-05-27
 
 | Check | Result |
