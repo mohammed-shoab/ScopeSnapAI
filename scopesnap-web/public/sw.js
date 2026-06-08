@@ -5,7 +5,7 @@
  * API calls are always network-first (no offline data caching).
  */
 
-const CACHE_NAME = "snapai-shell-v2";
+const CACHE_NAME = "snapai-shell-v3";
 
 // App shell files to cache on install
 const SHELL_FILES = [
