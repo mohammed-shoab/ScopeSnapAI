@@ -52,9 +52,9 @@ if not is_sqlite:
     # first), so the browser sees "Failed to fetch" instead of a proper error.
     # Disabling the cache avoids this at a negligible per-query cost.
     engine_kwargs.update(
-        pool_size=3,
-        max_overflow=7,
-        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=5,
+        pool_recycle=1800,
         connect_args={"statement_cache_size": 0},
     )
 
