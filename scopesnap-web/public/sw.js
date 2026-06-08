@@ -5,7 +5,7 @@
  * API calls are always network-first (no offline data caching).
  */
 
-const CACHE_NAME = "snapai-shell-v3";
+const CACHE_NAME = "snapai-shell-v4";
 
 // App shell files to cache on install
 const SHELL_FILES = [
@@ -47,8 +47,7 @@ self.addEventListener("fetch", (event) => {
 
   // API calls: always network-first
   if (url.pathname.startsWith("/api/") || url.hostname === "localhost" && url.port === "8001") {
-    event.respondWith(fetch(event.request));
-    return;
+    return; // pass through to browser natively — never intercept API/cross-origin (fixes PK "API offline", DEC-092)
   }
 
 
@@ -67,8 +66,7 @@ self.addEventListener("fetch", (event) => {
     url.hostname.includes("maps.googleapis.com") ||
     url.hostname.includes("maps.gstatic.com")
   ) {
-    event.respondWith(fetch(event.request));
-    return;
+    return; // pass through to browser natively — never intercept API/cross-origin (fixes PK "API offline", DEC-092)
   }
 
   // Static assets (JS, CSS, images): cache-first
