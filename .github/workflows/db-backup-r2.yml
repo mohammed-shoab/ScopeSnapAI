@@ -30,6 +30,7 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: auto          # R2 requires region "auto"
       R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+      PGDUMP: /usr/lib/postgresql/17/bin/pg_dump   # explicit PG17 binary (server is 17.x)
     steps:
       - name: Install PostgreSQL 17 client
         run: |
@@ -42,14 +43,14 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client-17
-          pg_dump --version
+          "$PGDUMP" --version
 
       - name: Backup PROD
         run: |
           set -euo pipefail
           TS=$(date -u +%Y%m%d_%H%M)
           FILE="prod_${TS}.sql.gz"
-          pg_dump "${{ secrets.SUPABASE_DB_URL_PROD }}" \
+          "$PGDUMP" "${{ secrets.SUPABASE_DB_URL_PROD }}" \
             --no-owner --no-privileges --quote-all-identifiers \
             | gzip -9 > "$FILE"
           echo "Dump size: $(du -h "$FILE" | cut -f1)"
@@ -61,7 +62,7 @@ jobs:
           set -euo pipefail
           TS=$(date -u +%Y%m%d_%H%M)
           FILE="staging_${TS}.sql.gz"
-          pg_dump "${{ secrets.SUPABASE_DB_URL_STAGING }}" \
+          "$PGDUMP" "${{ secrets.SUPABASE_DB_URL_STAGING }}" \
             --no-owner --no-privileges --quote-all-identifiers \
             | gzip -9 > "$FILE"
           echo "Dump size: $(du -h "$FILE" | cut -f1)"
