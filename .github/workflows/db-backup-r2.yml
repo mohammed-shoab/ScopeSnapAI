@@ -1,0 +1,77 @@
+name: DB Backup to R2 (daily)
+
+# Daily logical backup of the Virginia (us-east-1) Supabase databases.
+# Each run pg_dumps prod + staging, gzips, and uploads to the private
+# Cloudflare R2 bucket `snapai-db-backups`. A lifecycle rule on the bucket
+# auto-deletes objects after 14 days, so storage stays tiny and free.
+#
+# Why this exists: Supabase free tier keeps NO automatic backups (0-day
+# retention) and permanently deletes data after an extended pause. This is
+# our independent, off-platform safety net. See DECISIONS.md (R2 backups).
+#
+# Secrets required (Settings -> Secrets and variables -> Actions):
+#   R2_ACCESS_KEY_ID          - R2 API token Access Key ID  (token: snapai-db-backups-rw)
+#   R2_SECRET_ACCESS_KEY      - R2 API token Secret Access Key
+#   R2_ENDPOINT               - https://0c1bfa87134c7a6688d7eaf4410bf86a.r2.cloudflarestorage.com
+#   SUPABASE_DB_URL_PROD      - Virginia PROD "Session pooler" URI (port 5432, incl. password)
+#   SUPABASE_DB_URL_STAGING   - Virginia STAGING "Session pooler" URI (port 5432, incl. password)
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # every day 03:00 UTC
+  workflow_dispatch:        # allows a manual "Run workflow" test
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      R2_BUCKET: snapai-db-backups
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto          # R2 requires region "auto"
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+    steps:
+      - name: Install PostgreSQL 17 client
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          pg_dump --version
+
+      - name: Backup PROD
+        run: |
+          set -euo pipefail
+          TS=$(date -u +%Y%m%d_%H%M)
+          FILE="prod_${TS}.sql.gz"
+          pg_dump "${{ secrets.SUPABASE_DB_URL_PROD }}" \
+            --no-owner --no-privileges --quote-all-identifiers \
+            | gzip -9 > "$FILE"
+          echo "Dump size: $(du -h "$FILE" | cut -f1)"
+          aws s3 cp "$FILE" "s3://${R2_BUCKET}/prod/${FILE}" \
+            --endpoint-url "$R2_ENDPOINT"
+
+      - name: Backup STAGING
+        run: |
+          set -euo pipefail
+          TS=$(date -u +%Y%m%d_%H%M)
+          FILE="staging_${TS}.sql.gz"
+          pg_dump "${{ secrets.SUPABASE_DB_URL_STAGING }}" \
+            --no-owner --no-privileges --quote-all-identifiers \
+            | gzip -9 > "$FILE"
+          echo "Dump size: $(du -h "$FILE" | cut -f1)"
+          aws s3 cp "$FILE" "s3://${R2_BUCKET}/staging/${FILE}" \
+            --endpoint-url "$R2_ENDPOINT"
+
+      - name: Verify uploads
+        run: |
+          set -euo pipefail
+          echo "=== prod/ (latest 5) ==="
+          aws s3 ls "s3://${R2_BUCKET}/prod/"    --endpoint-url "$R2_ENDPOINT" | tail -5
+          echo "=== staging/ (latest 5) ==="
+          aws s3 ls "s3://${R2_BUCKET}/staging/" --endpoint-url "$R2_ENDPOINT" | tail -5
