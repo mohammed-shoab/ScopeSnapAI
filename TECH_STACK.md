@@ -608,11 +608,102 @@ See DEC-028 for full pattern. `git fast-import` is immune to index corruption an
 | **Supabase** | Free | ✅ Secured | All 15 tables have RLS enabled (fixed Apr 29 2026). This is the ONLY database — Railway Postgres was never used. |
 | **Cloudflare R2** | Free tier | ✅ Active | Photo storage for equipment images. Daily DB backup cron also writes here. |
 | **Resend** | Free tier | ✅ Active | Transactional email (homeowner reports) |
-| **Clerk** | Free (dev mode) | ✅ Active | Dev mode keys — switch to Production before open beta |
+| **Clerk** | Free | ✅ Active (Production keys) | Production scope-snap-ai uses pk_live_/sk_live_ Production app; staging uses pk_test_/sk_test_ Development app (DEC-077, Stage 4 audit 2026-05-23). NOT dev mode in prod despite older note. |
 | **Sentry** | Free developer plan | ✅ OK | Business trial ended Apr 28 2026; usage near-zero (93 spans, 0 errors) — free plan sufficient |
 | **UptimeRobot** | Free | ✅ Confirmed | Monitoring confirmed active Apr 30 2026. 50% uptime Apr 19–25 was pre-deploy downtime — not an ongoing issue. |
-| **Google Gemini** | Pay-per-use | ✅ Active | AI vision: equipment ID + condition analysis |
-| **Stripe** | Test mode (likely) | ⚠️ GAP | STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET in Railway prod env. Dashboard blocked by safety tooling. No paying customers. Manual verify: dashboard.stripe.com to confirm sk_test_ prefix. |
+| **Google Gemini** | Tier 1 paid (linked to My Billing Account 2026-05-29) | ✅ Active | AI vision: nameplate OCR + condition analysis. **Production API keys live in GCP project `Default Gemini Project` (project ID `gen-lang-client-0809557545`) — keys `...nAgY` (May 27 2026) + `..._69A` (Mar 22 2026).** Was Free tier hitting 429 rate-limit errors (20 RPD cap on Gemini 2.5 Flash) until 2026-05-29 when project linked to My Billing Account → moved to Tier 1: 10,000 RPD on Flash, Unlimited on Flash Lite. Free quotas continue to apply alongside paid billing — actual cost stays at $0-2/mo for first 5 Wave 1 testers; ~$13-18/mo at 25 testers. **Note:** Maps API still runs through separate project `snapai-maps` (root-matrix-497207-j4) — also linked to same billing account, separate API key. |
+| **Stripe** | Test mode (likely) | ⚠️ GAP | STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET in Railway prod env (verified 2026-05-29). Dashboard blocked by safety tooling. No paying customers yet. Manual verify before first charge: dashboard.stripe.com to confirm sk_test_ vs sk_live_ prefix. |
+
+### Marketing Infrastructure (added 2026-05-29)
+
+**Outreach domain = `hellosnapai.com`. NOT the product domain.**
+
+The product runs on `mainnov.tech` (snapai.mainnov.tech for US, pk.snapai.mainnov.tech for PK testing). Marketing outreach to Houston HVAC contractors runs through a separate domain to keep outreach reputation, product DNS, and (importantly) any stealth-founder concerns isolated. Do NOT use mainnov.tech addresses for cold outreach — they signal "we own the product domain" and can leak product info into the outreach inbox.
+
+| Service | Plan | Status | Notes |
+|---|---|---|---|
+| **hellosnapai.com domain** | Cloudflare Registrar | ✅ Active | $10.44/yr, auto-renew ON. Registered 2026-05-27. |
+| **Cloudflare DNS for hellosnapai.com** | Free | ✅ Active | 10 records live: 5 MX (Google) + SPF + DMARC + 2 verification TXT + DKIM. mail-tester scored 10/10 on first send. |
+| **Google Workspace for sajan@hellosnapai.com** | Business Starter | ✅ Active | $7.56/mo. The outbound mailbox Sajan sends Touch 1 emails from. Separate from ds.shoab@gmail.com which owns all production infra. |
+| **Gmail Postmaster Tools** | Free | ✅ Verified | Reputation monitoring active for hellosnapai.com. |
+
+Note: DNS for `mainnov.tech` is on Hostinger (account: `mshoabarabi@gmail.com`), not Cloudflare. Cloudflare hosts DNS only for `hellosnapai.com`. See PROJECT_BRAIN.md DEC-068.
+
+### Marketing Research Database — `research` schema (added 2026-05-31)
+
+**Lives in the `snapai-staging` Supabase project (`pqmgveqkuckbvyygsilk`), in an isolated `research` schema — NOT in the app's `public` schema, and NOT in production (`scopesnap`).** This is the SnapAI Continuous Research Agent dataset: every Houston-MSA HVAC operator, cross-source-verified, scored against Q1 ICP, flagged for the Pakistani-American diaspora wedge. It does not touch any app table. Chosen over a dedicated project to stay inside the 2-project free-tier cap at $0 (DEC: research-db-isolation).
+
+**Why staging, not prod:** schema-level isolation gives separate namespace/grants with zero cost; keeping it off the production instance avoids any research query load on the live app.
+
+**Tables (all in `research.`):**
+
+| Table | Role |
+|---|---|
+| `raw_source_records` | **APPEND-ONLY** source of truth (UPDATE/DELETE blocked by `trg_raw_append_only` trigger). Everything downstream is rebuildable from here. |
+| `canonical_operators` | Deduplicated operators (name/phone normalized matching). |
+| `operator_fields` | One row per (operator, field) with `source_raw_snippet` (verbatim) + `extraction_justification` + `verification_status` (unverified/verified/disputed/hallucinated). |
+| `operator_scoring` | Q1 ICP score (0-100), `diaspora_flag` + confidence, `anti_icp_flag`, `dossier_finding_summary`, `human_review_required` (Anthropic AUP control — must be flipped before any finding ships in outreach). |
+| `source_credibility` | Locked per-source weights (TDLR 0.95 … legacy-seed 0.50). |
+| `canon_queue`, `canon_processed` | Work-queue for the canonicalizer (O(n) processing). |
+| `agent_runs`, `source_rate_tracking`, `contacted_log` | Monitoring + outreach dedupe. |
+
+**Pipeline (server-side Postgres functions, single-task-loop semantics):**
+- `research.run_canonicalization()` → raw → canonical + operator_fields
+- `research.run_scoring()` → canonical → operator_scoring (re-scores operators enriched by a later source)
+- `research.run_verifier()` → re-extracts each field from its snippet, marks `hallucinated` + nulls value on mismatch. **Never fills missing data.**
+
+**RPC (the Persona-AI feed, View 4):** `research.get_top_prospects(limit, min_score, diaspora_only)`, `get_review_themes(op_id)`, `get_industry_patterns()`, `mark_contacted(op_id, channel, notes)`.
+
+**Live dashboards (Cowork artifacts, refresh on open):** Wave-1 Ready Queue (Sajan), Content Substrate (Codie), Data Quality Brief (Shoab) — all read `research` via the Supabase MCP `execute_sql`.
+
+**Ingest code (runs on Shoab's machine, where the pooler DNS resolves — sandbox cannot reach it):** `marketing/research_agent/` — `ingest_tdlr_csv.py` (TDLR `ltairref.csv`, idempotent, batched), `ingest_houston_permits.py` (Socrata open-data API), `run_pipeline.py`, `db.py` (reads `SUPABASE_STAGING_DATABASE_URL` from `.env`).
+
+**Current contents (clean, verified 2026-05-31):** 4,586 raw rows · 4,365 canonical operators (full Houston MSA: 4,414 active A/C-Contractor licenses + 200 legacy seed, deduped) · 22,703 fields, 100% verified, 0 hallucinated · 37 diaspora-flagged · 172 Wave-1-qualifying. Storage impact on the free tier is a few MB (well within the 500 MB cap).
+
+**TOS note:** only TOS-clean sources are ingested by automation — TDLR (bulk CSV, government records) + Houston open-data (official API) + the legacy seed. LinkedIn / HVAC-Talk / Reddit / Yelp / Google directory scraping is **prohibited** and deliberately NOT built; those remain human-assisted entry. See `marketing/SnapAI_Platform_Safety_Matrix.md`.
+
+### Production Account Inventory (verified live 2026-05-29)
+
+All 5 production services confirmed signed in under a single Google identity. Single point of failure — 2FA + recovery codes recommended on the primary Google account.
+
+| Service | Account / Identity | Plan | Verified state |
+|---|---|---|---|
+| Vercel | mohammed-shoab's projects | Hobby (Free) | No payment method. ToS upgrade required at first paid tester conversion. |
+| Railway | mohamm... (HOBBY) | Hobby ($5/mo flat) | scopesnap-api service, production env has 22 service vars including all 5 R2 vars. |
+| Supabase | mohammed-shoab's Org | Free | DB 32 MB / 6% of 500 MB cap; egress 39 MB / <1% of 5 GB cap; 0 MAU. Storage cap NOT a concern because photos+PDFs go to R2. |
+| Google Cloud / Gemini API | (primary Google identity) | Tier 1 paid (linked 2026-05-29) | Default Gemini Project on paid tier; snapai-maps already on paid tier. |
+| Resend | (primary Google identity) | Free | Transactional 0 / 3,000 monthly, 0 / 100 daily. Safe through ~18 testers. |
+| Cloudflare | (primary Google identity) | Free | DNS + Registrar for hellosnapai.com; R2 active under same account. |
+| Clerk | scope-snap-ai (Production app) + firm-chamois-61 (Development/staging app) | Free | Production keys live; under 10K MAU free cap. |
+| Stripe | (primary Google identity) | Test mode (likely) | Keys in Railway prod env. No customers yet. |
+| Sentry | (primary Google identity) | Free developer plan | Free plan sufficient at current volume. |
+
+### Cost-to-Serve Structure (verified live 2026-05-29)
+
+All numbers below are based on live verification of the 5 production services + cost projections at modeled scales. Numbers update when revenue tier changes or when any service crosses a plan boundary.
+
+| Users (paying) | Monthly cost | Revenue at $39/tech/mo | Net contribution | Margin |
+|---:|---:|---:|---:|---:|
+| 0 (today) | ~$8.43 | $0 | -$8.43 | — |
+| 5 (Wave 1 free beta period) | ~$8.43 | $0 | -$8.43 | — |
+| 5 (post-beta paying) | ~$40 | $195 | +$155 | 79% |
+| 10 paying | ~$55 | $390 | +$335 | 86% |
+| 25 paying | ~$78 | $975 | +$897 | 92% |
+| 50 paying | ~$120 | $1,950 | +$1,830 | 94% |
+| 100 paying | ~$200 | $3,900 | +$3,700 | 95% |
+
+**Break-even:** ~2 paying users. Each additional user beyond that adds ~$35 of contribution at $39/tech/month pricing.
+
+**Fixed (regardless of user count):** Cloudflare DNS $0 + hellosnapai.com domain $0.87 + Google Workspace $7.56 = **$8.43/mo** baseline.
+
+**Step-function jumps:**
+- Vercel Pro: +$20/mo at first paid tester conversion (Day 14 of Wave 1)
+- Supabase Pro: NOT needed (R2 absorbs the storage path; DB usage stays under Free caps until ~100+ paying users)
+- Resend Pro: +$20/mo at ~18 paying testers (3,000 emails/mo cap)
+- Railway: +$5/mo at higher compute or +Postgres add-on (not needed — Supabase is the DB)
+- Gemini API: ~$0-2 at 5 users, ~$13-18 at 25 users (free quotas absorb most usage)
+
+**The Patrick Campbell churn-cost concern remains on record separately from cost-to-serve.** $39 customers historically show 2-3x faster churn than $79-89 customers. LTV at $39 × 6 months avg retention = $234; LTV at $89 × 18 months avg retention = $1,602. Track Wave 1 Month-3 retention as the early signal — if 4 of 5 testers still paying at Month 3, $39 was right. If 2 of 5 churned, raise to $79-89 for Wave 2.
 
 ### Railway Cost Controls (updated Apr 30 2026)
 
@@ -1535,3 +1626,187 @@ const isRec = isMiddleTier;  // alias kept for card headerBg/badgeBg/priceColor
 ```
 
 **DEC reference:** DEC-084
+
+---
+
+## 2026-06-08 — Database region + connection pool (STAGING migrated; PROD pending)
+
+**Supabase Database — region change (staging only so far):**
+- **Staging DB is now in `us-east-1` (N. Virginia)** — project `snapai-staging-use1` ref `kikhhnanuwzocwcpzutr`, co-located with the Railway US East backend. DATABASE_URL = session pooler `aws-1-us-east-1.pooler.supabase.com:5432`, user `postgres.kikhhnanuwzocwcpzutr`.
+- Old staging DB `snapai-staging` (ref `pqmgveqkuckbvyygsilk`, ap-northeast-1 / Tokyo) is PAUSED (rollback, backed up).
+- **PROD DB `scopesnap` (ref `quqrvnoguofbjacrxcim`) is STILL in Tokyo (ap-northeast-1) — not yet migrated.** Migrate to us-east-1 next, same recipe.
+- Both projects: Free plan, NANO compute, $0. Session-pooler cap = 15 connections.
+- Reason: backend (Railway US East) ↔ DB (Tokyo) was ~1,300 ms per query. Co-locating in Virginia dropped it to ~18 ms.
+
+**Connection pool (`scopesnap-api/db/database.py`, commit b5fc5d0 on `staging`):**
+- `pool_size=5`, `max_overflow=5` (max 10 conns, under the 15 cap), `pool_recycle=1800`, NO `pool_pre_ping` (removed — it cost an extra round-trip per checkout and is unneeded with a co-located DB), `statement_cache_size=0` (unchanged, required for pgbouncer).
+
+**app_events index (Virginia staging only, applied directly — make it an Alembic migration for prod):**
+`CREATE INDEX ix_app_events_report_viewed_short_id ON app_events ((event_data->>'report_short_id')) WHERE event_name='report_viewed';`
+
+**DB backups:** daily Railway cron `pg_dump`→R2 still active for prod. Manual full dumps from 2026-06-08 in `ScopeSnapAI/backups/` (prod + staging incl research schema), row-count-verified.
+
+## 2026-06-08 — POST-MIGRATION QA: ALL 4 SURFACES PASS (US+PK × staging+prod)
+
+Full QA after both DB migrations to Virginia (us-east-1):
+- Backend health: prod + staging both `{"status":"ok","db":"connected"}`. ✅
+- Speed (DB query cost, co-located): prod ~0–18 ms, staging ~18 ms (was ~1,300 ms). Health/endpoints ~430–490 ms (mostly measurement-distance network). ✅
+- Data integrity Virginia-PROD: US equipment_models=76 (fingerprint 1760, app==DB exact), fault_cards=19, pricing_tiers=57, operating_targets=20 | PK pak_fault_cards=16, pak_pricing_tiers=48, pak_brands=15, PK-models=73 | TXN assessments=199, estimates=43, diagnostic_sessions=192. Matches Tokyo-prod 0-diff. ✅
+- Data integrity Virginia-STAGING: US same reference set (76/19/57/20) | PK pak_fault_cards=16, pak_pricing_tiers=45, pak_brands=15 | TXN assessments=20, estimates=2 | RESEARCH/marketing operator_fields=22,703, canonical_operators=4,365 (full schema preserved). Matches staging backup 0-diff. ✅
+- App-reads-correct verified on prod (US models API 76/1760 exact) and staging (equipment_models, estimates rpt-567750/rpt-922499, diagnoses fault-card joins all exact).
+- Note: US-prod authenticated + all PK frontends need separate Clerk logins not available in-session, so those were verified at backend+data level (same shared backend+DB as the US-staging frontend, which was verified end-to-end). Staging Vercel renderer intermittently freezes on heavy pages — pre-existing frontend perf issue, unrelated to DB migration.
+
+VERDICT: Migration fully verified. Both markets, both environments, on Virginia, fast, data byte-exact.
+
+---
+
+## ⚠️ PK MARKET COMPATIBILITY VIEWS — critical, read before touching PK or migrations (DEC-092, 2026-06-09)
+
+The PK market request path does NOT query the `pak_*` base tables directly. `api/dependencies.py` → `MarketTables` routes PK requests to **five compatibility VIEWS** that remap Pakistani columns onto the US-compatible names the shared SQL expects:
+
+| View | Maps |
+|---|---|
+| `pak_fault_cards_v` | `pkr_est_*` → `price_list_*`; NULL `phase`/`difficulty` |
+| `pak_error_codes_v` | `brand_id` → `brand_family`; `code` → `error_code`; `description` → `meaning` |
+| `pak_labor_rates_v` | PKR labor cols → Houston names (attic/r22) |
+| `pak_replacement_costs_v` | `pkr_min/max/typical` → `price_min/max/typical` |
+| `pak_lifecycle_rules_v` | US-compatible schema, 0 rows (`WHERE false`) → falls to default |
+| `pak_operating_targets_v` | owned by migration 036 (`operating_targets WHERE market='PK'`) |
+
+**These views are load-bearing for ALL PK functionality.** If any are missing, every PK query throws "relation does not exist" → backend 503 with NO CORS headers (WA-21 escaped-exception pattern) → the browser shows "Failed to fetch", which *looks* like a CORS/service-worker/connectivity bug but is actually a missing-relation bug. Do not chase CORS/SW first — check these views exist.
+
+**History:** The 5 non-`operating_targets` views were originally created out-of-band (Supabase SQL editor) and were NOT in Alembic. The 2026-06-08 Tokyo→Virginia DB migration lost them on the **staging** restore (the staging dump never contained them). Repaired 2026-06-09 by recreating from the Tokyo-prod backup, and now codified in **Alembic migration `037_pak_market_views.py`** (idempotent `CREATE OR REPLACE VIEW`) so future restores recreate them automatically. Virginia **prod** always had all 6.
+
+**Migration-verification lesson:** row-count diffs do NOT catch missing views/functions/sequences (views have no rows). Any future DB migration must also diff `information_schema.views`, functions, and sequences — not just table row counts.
+
+**US is unaffected by all of this** — US uses the base `fault_cards`/`error_codes`/etc. tables, which restored fine. Verified working on US prod (76 models, estimates resolve, pricing_rules 28) and US staging.
+
+### Two separate PK issues still OPEN (NOT the view bug — do not conflate):
+1. **Dashboard "Recent Assessments" / "API offline"** — the dashboard's `/api/estimates/?limit=5` and `/api/analytics/estimates-summary` calls use the SHARED `estimates`/`assessments` ORM tables (no views), yet fail on the PK origin with a network/CORS-layer error (the React `.catch`, not an HTTP error). DB is clean post-view-fix. Needs the Railway/Sentry response-header trace to confirm whether the deployed CORS is not returning `Access-Control-Allow-Origin` for PK origins on normal 200 responses. US origins are unaffected.
+2. **`pk.snapai.mainnov.tech` (PROD) renders the DEV/staging Clerk instance** on sign-in ("Sign in to ScopeSnapAI Staging", "Development mode", `firm-chamois-61.accounts.dev`). Possible prod Clerk-key misconfiguration OR the PK prod domain is mapped to the staging Vercel deployment. Verify the PK prod domain's Vercel project + Clerk env vars vs US prod (`snapai.mainnov.tech`, which correctly uses prod Clerk).
+
+---
+
+## ✅ CURRENT STATE — 2026-06-09 (PK fully resolved + 2 open follow-ups)
+
+**Working & live-verified:**
+- **US prod** `snapai.mainnov.tech` — dashboard loads real data (rpt-0456, rpt-688001, rpt-9515, rpt-547105, rpt-5025). pk_live Clerk + scopesnap-api-production. ✅
+- **PK prod** `pk.snapai.mainnov.tech` — NOW serves the correct production build (pk_live Clerk + scopesnap-api-production + Virginia-prod DB). Dashboard loads the same real data. ✅ (was serving a stale staging build; re-aliased via Vercel → Domains → Edit → Save.)
+- **Backends:** prod + staging both `{"status":"ok","db":"connected"}`. ✅
+- **DBs:** Virginia staging + prod both at alembic **037**, both have all **6** `pak_*_v` views. ✅
+- **Migration `037_pak_market_views.py`** committed to staging + main, deployed and ran on both backends (idempotent). ✅
+
+**The 3 PK issues (all fixed):**
+1. Missing `pak_*_v` views (migration restore gap) → recreated + codified in migration 037.
+2. pk.snapai aliased to stale staging build → re-aliased to production deployment (no rebuild).
+3. Dashboard "API offline" → was a STALE SERVICE WORKER (snapai-shell-v2) from the old build intercepting /api calls, NOT backend CORS → cleared.
+
+**OPEN FOLLOW-UP #1 — frontend prod builds fail (`npm error E404`).** Fresh Vercel production builds error at `npm install --legacy-peer-deps` because a dependency version is missing from the npm registry (E404). The live prod deployment (03d80cb, May 29) still serves fine, but NO new frontend change can deploy to prod until the offending dep is pinned/updated in scopesnap-web/package.json + package-lock.json. (Backend/Railway builds are Docker-based and unaffected — migration 037 deployed fine.)
+
+**OPEN FOLLOW-UP #2 — stale SW for returning PK users.** Returning visitors who used the old pk.snapai may still hold the stale service worker and see "API offline" until it updates or they hard-refresh (clear site data / unregister SW). The robust fix is to bump the SW cache name (snapai-shell-v2 → v3) in sw.js on the next frontend deploy so all clients force-update — but that is blocked by follow-up #1 (build must be fixed first).
+
+---
+
+## QA RUN — 2026-06-09 (snapai-qa, all 4 surfaces)
+
+**Surfaces:** US prod (snapai.mainnov.tech), PK prod (pk.snapai.mainnov.tech), US staging (staging.snapai.mainnov.tech), PK staging (pk-staging.snapai.mainnov.tech). **Outcome: PASS.**
+
+**Backend health:** prod + staging `/health` → `{"status":"ok","db":"connected"}`.
+
+**Engine data (BOTH Virginia DBs at Alembic 037):**
+- equipment_models 76; fault_cards US 19 / PK 16 (view == base); operating_targets US 8 / PK 12 (ambient-aware per DEC migration 036).
+- PSI thresholds @35°C: US R-410A 115–140 (128 PSI → NORMAL ✓); PK R-410A 115–135 (130 PSI → NORMAL, not Dirty Coil ✓); PK R-22 65–72; PK R-32 110–130.
+- pricing_tiers US 57 / PK 48 (prod), 45 (staging); pak_*_v views all populated (error_codes 17, fault_cards 16, labor 1, replacement 4).
+- Brands market-separated: US 15 Houston (Carrier/Bryant/Amana…), PK 15 (Gree/Dawlance/Daikin/Haier PK…).
+
+**Frontend config (all 4 correctly wired):** US prod & PK prod = pk_live + production API; US staging & PK staging = pk_test + staging API. PK prod + PK staging serve **SW v4** (browser-native API passthrough). US prod + PK prod dashboards render real data (rpt-0456, rpt-688001, …).
+
+**Recent-fix verification (all confirmed live):** migration 037 + pak_*_v views present on both DBs; pk.snapai on prod build (durable — vercel.json alias removed); SW v4 deployed prod+staging; package-lock.json deterministic builds green; vercel.json pk.snapai alias removed.
+
+**Bugs found this run:** none new. **Caveat:** full manual click-through of all 6 diagnostic flows per surface was not performed (staging needs dev-Clerk login; browser tooling intermittent) — but the data those flows depend on is fully verified and prod dashboards render live data.
+
+---
+
+# 🧭 SESSION RETROSPECTIVE & LEARNINGS — 2026-06-09 (the PK "API offline" + Tokyo→Virginia migration saga)
+
+This was a long debugging session. Capturing roadblocks → how they were resolved → reusable lessons so future AI/dev sessions skip the detours. **The single biggest lesson: READ THIS FILE + `api/dependencies.py` (MarketTables) BEFORE doing extensive live browser probing.** Reading the brain cracked a multi-hour problem in minutes.
+
+## ROADBLOCK 1 — "API offline" / "Failed to fetch" on PK had FOUR identical-looking causes
+A browser "Failed to fetch" / the app's "API offline" looks the same whether the cause is:
+(a) a backend 503/raw exception that **bypasses CORS middleware** so the response has no CORS headers (WA-21 pattern), (b) a missing CORS allowed-origin, (c) the **service worker intercepting** the request, or (d) a **missing DB relation** making the backend error. I burned hours assuming CORS and oscillating between CORS↔SW.
+**What it actually was:** THREE layered causes, not one — (1) missing `pak_*_v` views from the migration, (2) pk.snapai serving the wrong build, (3) the service worker intercepting API calls.
+**Diagnostic order that works (use this next time):**
+1. Read `api/dependencies.py` `MarketTables` + this brain — PK routes to **views** `pak_*_v`, not base tables. If a view is missing → backend errors → looks like CORS.
+2. Pull **Supabase Postgres logs** (`get_logs` postgres) + `get_advisors` — the real SQL error is there. Browser probes are confounded by SW/CSP/cache.
+3. `fetch(url,{mode:'no-cors'})` succeeds opaquely if the request **reaches the server** → isolates network/CSP from CORS. `mode:'cors'` failing while no-cors succeeds = CORS/headers issue, not reachability.
+4. **Clerk deduction:** Clerk is also a cross-origin call through the same SW passthrough. If Clerk works from the origin, the SW + cross-origin path is fine → the problem is backend or CORS-config, NOT the SW.
+5. **Unregister the SW and reload.** If the API works with no SW but fails when the SW controls the page → the SW is the culprit (see ROADBLOCK 4).
+
+## ROADBLOCK 2 — Migration row-count check passed but PK was broken (missing VIEWS)
+The Tokyo→Virginia data-integrity check compared **table row counts** (0 differences) and declared success — but the 5 `pak_*_v` views have no rows, so they were invisible to the check and silently lost on the staging restore.
+**Resolution:** found the views referenced in `dependencies.py`, queried `information_schema.views` on the live DB (only 1 of 6 present), extracted the `CREATE VIEW` DDL from the **Tokyo-prod backup** (`backups/prod_fresh_*.sql.gz`), recreated them, and codified in Alembic migration `037`.
+**Lesson:** after ANY pg_dump/restore, diff **views, functions, sequences** — not just table row counts. Backups are the recovery source of truth (the prod dump held the exact view definitions).
+
+## ROADBLOCK 3 — pk.snapai kept reverting to the wrong build after every deploy (FLAPPING)
+I fixed pk.snapai (re-aliased to prod) several times via Vercel Domains → Save, but it kept reverting to the staging build (dev Clerk) after the next deploy.
+**Root cause:** `scopesnap-web/vercel.json` had a hardcoded `"alias": ["pk.snapai.mainnov.tech"]`. BOTH the prod project (builds `main`) and the staging project (builds `staging`) build this same file, so **every staging deploy stole pk.snapai to staging, every prod deploy stole it back.**
+**Resolution:** removed the `alias` from vercel.json on both branches → pk.snapai is now governed **only by the Vercel Domains UI** (assigned to the prod project). It stays put now.
+**Lesson:** if a domain serves the wrong build or flaps between deploys, check `vercel.json` `"alias"` first. Govern multi-project domains via the Domains UI, never a hardcoded vercel.json alias.
+
+## ROADBLOCK 4 — the service worker broke cross-origin API calls
+After fixing the views + build, "API offline" still recurred whenever the SW controlled the page. `sw.js` did `event.respondWith(fetch(event.request))` for `/api/` + cross-origin — that re-fetch from the SW context **failed on the PK origin even though a direct browser fetch returned 200 + data.**
+**Resolution:** SW **v4** now `return`s WITHOUT `respondWith` for API/cross-origin → the browser handles them natively. Bumped `CACHE_NAME` v2→v3→v4 to force stale clients to update.
+**Lesson:** `respondWith(fetch(event.request))` is interception, not passthrough, and can fail cross-origin where native fetch works. True passthrough = early `return`. Always bump the SW cache name when changing sw.js so clients update.
+
+## ROADBLOCK 5 — E404 build failure was a red herring; the real gap was no lockfile
+A no-cache "Redeploy" failed at `npm install` with E404. I over-flagged it as blocking.
+**Resolution/finding:** **normal git-push deploys use the build cache and succeed** — only a *from-scratch* rebuild re-resolves deps and can hit a **transient** registry E404 (a clean `npm install` later completed with 0 errors → not a yanked package). The real fragility was **no lockfile** (repo had only package.json), so every clean build re-resolved "latest matching". Fixed by committing `package-lock.json` (verified on staging, promoted to prod).
+**Lesson:** Railway/Docker builds are unaffected by npm registry blips; only Vercel clean rebuilds are. Commit a lockfile for determinism. Don't panic on a one-off E404 — confirm whether normal deploys still pass.
+
+## TOOLING GOTCHAS hit this session (save time next time)
+- **Vercel/Railway dashboards FREEZE the browser renderer** on screenshots (CDP timeout). Use `get_page_text` (text extraction) instead of screenshots for these SPAs.
+- **API-fetch JS from PK origins can HANG/freeze the renderer** (the failing fetch). DOM-read JS is fine; for API checks use `no-cors`, the Supabase logs, or `web_fetch` (server-side) instead.
+- **Sandbox bash:** each call is independent (no cwd/env carryover), 45s hard limit; **background processes and /tmp do NOT persist between calls.** The npm registry IS reachable from the sandbox (registry.npmjs.org → 200), but Clerk/Railway/GitHub APIs are proxy-blocked (403). To run npm within 45s: `--prefer-offline` with a warm cache; log to a file with `--loglevel http` to capture partial output before the timeout kills it.
+- **Committing without git push:** the sandbox can't `git push` (proxy 403). Use GitHub web **"Upload files"** + the `file_upload` tool — it overwrites existing files with exact content. The green "Commit changes" button often needs **two clicks** (first click can land on the "choose your files" link).
+- **Backend deploys via env-var change may reuse a cached image** (the code SHA didn't change) — a code commit forces a true rebuild.
+
+## PROCESS LESSONS
+1. **Read the project docs + routing code before live probing.** The user had to say "read the tech stack first" — that was the turning point. Hours of browser probing vs minutes once the `pak_*_v` view architecture was understood.
+2. **Don't commit a speculative fix before confirming the root cause** (nearly shipped a CORS `allow_origin_regex` that wouldn't have fixed the real, view/SW/alias causes).
+3. **Staging-first for risky prod changes** (lockfile, etc.) — verify the build green on staging before promoting to main.
+4. **One "fix" can mask layered causes** — PK needed FOUR independent fixes (views, build alias, SW, lockfile). Re-verify end-to-end after each, and don't declare done until the SW-controlled load works.
+
+---
+
+## 🗄️ PRE-MIGRATION TOKYO BACKUPS (safe to delete Tokyo Supabase projects — restore source is here)
+Before/after the Tokyo→Virginia migration, full `pg_dump` backups of the old Tokyo databases were saved. Once the two PAUSED Tokyo Supabase projects are deleted, THESE FILES become the only copy of the pre-migration state — **keep them safe** (they live in the synced Drive folder):
+- `ScopeSnapAI/backups/prod_fresh_20260608_164020.sql.gz` — Tokyo PROD full dump (all schemas; **contains the pak_*_v view DDL** — this is what we restored the views from).
+- `ScopeSnapAI/backups/prod_20260608_131219.sql.gz` — Tokyo PROD earlier dump.
+- `ScopeSnapAI/backups/staging_20260608_131219.sql.gz` — Tokyo STAGING full dump (incl. research schema).
+**To restore if ever needed:** `gunzip -c <file>.sql.gz | psql "<target DATABASE_URL>"`. Note: these are a **2026-06-08 point-in-time snapshot** — live data now lives in the Virginia DBs, so these are a historical/rollback reference, not current data.
+
+---
+
+## DATABASE BACKUPS — Cloudflare R2 (added 2026-06-10, DEC-094)
+
+**Automated daily off-platform backups** of both Virginia (us-east-1) Supabase DBs. This is the independent safety net on top of the GitHub Actions keepalive pings (Supabase free tier = 0-day backup retention).
+
+| Item | Value |
+|---|---|
+| Workflow | `.github/workflows/db-backup-r2.yml` (on `main`) — daily `0 3 * * *` UTC + manual `workflow_dispatch` |
+| Dump tool | **PG17** client, explicit binary `/usr/lib/postgresql/17/bin/pg_dump` (server is 17.6; runner's default pg_dump 16 is too old) |
+| DB connection | **Session pooler** (port **5432**, user `postgres.<ref>`) — NOT Transaction pooler (6543) |
+| Format | plain SQL `--no-owner --no-privileges --quote-all-identifiers`, gzipped |
+| Destination | R2 bucket **`snapai-db-backups`** → `prod/` + `staging/` prefixes |
+| Retention | Lifecycle rule `delete-after-14-days` (auto-delete 14 days after upload) |
+| R2 token | `snapai-db-backups-rw` — Object R/W, **this bucket only**, no expiry |
+| R2 bucket region | ENAM, Standard class, **private** (public access disabled) |
+| Account ID | `0c1bfa87134c7a6688d7eaf4410bf86a` |
+| Cost | **$0** — far inside R2 free tier (10 GB / 1M Class A / 10M Class B / free egress); dumps ~0.2 MB prod, ~2 MB staging |
+
+**GitHub secrets (backup workflow):** `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`, `SUPABASE_DB_URL_PROD`, `SUPABASE_DB_URL_STAGING`.
+⚠️ Separate from the older `CLOUDFLARE_R2_*` secrets (those serve the app's `scopesnap-uploads` bucket — do not confuse/overwrite).
+
+**Restore:** download `.sql.gz` from R2 → `gunzip` → `psql "<Session-pooler URL>" -f dump.sql`.
+
+**Pre-migration Tokyo dumps** remain in `ScopeSnapAI/backups/` (the only copy of pre-Virginia-migration data) — do not delete that folder.

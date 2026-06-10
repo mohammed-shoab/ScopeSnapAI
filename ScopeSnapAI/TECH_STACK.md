@@ -1406,3 +1406,199 @@ Always wrap async code in an IIFE:
 ## WA-29 -- POST /api/estimates/service does NOT exist — use onComplete() (2026-05-22)
 
 **Discovery (BUG-036):** `ServiceChecklist.tsx` was calling `generateServiceEstimate()` which POSTed to `/api/estimates/service`. This endpoint was never implemented on the backend. The POST returned a 404, the error was swallowed, and the flow appeared to hang
+---
+
+## WA-30 -- ServiceChecklist must receive `getAuthHeaders` as a callback, not pre-baked headers (2026-05-22)
+
+**Discovery (BUG-034):** ServiceChecklist was receiving pre-baked `authHeaders` as a prop. Clerk JWTs expire in 60 seconds. A service checklist session takes 3-10 minutes. Every API call after minute 1 returned 401.
+
+**Fix:** Pass `getAuthHeaders: () => Promise<Record<string,string>>` as a callback prop. ServiceChecklist calls it fresh before each step submission. Pattern:
+```typescript
+// Caller
+getAuthHeaders={async () => ({
+  Authorization: `Bearer ${await getToken()}`,
+  'X-Market': market,
+})}
+```
+**DEC reference:** DEC-058
+
+---
+
+## WA-31 -- Edit tool truncates NTFS .md files at non-ASCII characters (2026-05-22)
+
+**Discovery:** DEC-027 originally documented this for TSX files. Further testing confirmed it applies to ALL file types (.md, .py, .ts) if the file contains any non-ASCII characters (emoji, curly quotes, em-dashes, etc.).
+
+**Rule:** Never use the Edit tool on any file containing non-ASCII. Use Python replace() via the bash sandbox:
+```python
+with open('/tmp/snapai_tmp/scopesnap-web/path/to/file.tsx', 'r', encoding='utf-8') as f:
+    content = f.read()
+content = content.replace('OLD_STRING', 'NEW_STRING')
+with open('/tmp/snapai_tmp/scopesnap-web/path/to/file.tsx', 'w', encoding='utf-8') as f:
+    f.write(content)
+```
+**DEC reference:** DEC-027
+
+---
+
+## WA-32 -- Address input must be populated via React onChange before complaint selection (2026-05-22)
+
+**Discovery:** In the StepZero flow, selecting a complaint type before the address field was populated caused the diagnostic session to be created with no property address. The address input uses a controlled React component — typing into it must trigger `onChange` to update state before proceeding.
+
+**Fix:** Either (a) enforce address-first via UI validation before complaint selection, or (b) ensure address is populated programmatically via `__reactProps.onChange()` (see WA-27) before any other step interaction.
+
+---
+
+## WA-33 -- Next.js SSR pages have no visible client-side API fetches in DevTools network tab (2026-05-22)
+
+**Discovery:** When verifying that the correct market data was being fetched, checking Chrome DevTools Network for API calls from public pages (/, /tech, /homeowner) showed no fetch requests. These pages are fully server-rendered — the data fetch happens on the server and the browser only receives the final HTML.
+
+**Implication:** To inspect what data an SSR page fetches, check Railway logs or add logging to the server-side data-fetching functions. Browser DevTools network tab only shows client-side fetches from authenticated (hydrated) pages.
+
+---
+
+## WA-34 -- Supabase free-tier pauses after 1 week of inactivity (2026-05-23)
+
+**Discovery (Stage 2 cost audit):** Supabase free tier pauses the project after 7 days with no API traffic. This would take down both staging and prod databases.
+
+**Fix:** GitHub Actions keepalive workflows (`.github/workflows/keepalive-supabase-A.yml` + `keepalive-supabase-B.yml`) run `SELECT 1` against both Supabase projects every Sunday and Wednesday. Do not delete these workflows.
+
+---
+
+## WA-35 -- Railway "Online" status is unreliable; always verify via /health endpoint (2026-05-23)
+
+**Same as DEC-045.** Repeat: Railway dashboard can show a service as "Online" while it is crash-looping on a SyntaxError in the startup script. Only `GET /health -> {"status":"ok"}` is a reliable health signal. After any Railway deploy, always hit the /health endpoint before declaring success.
+
+---
+
+## WA-36 -- Vercel ISR edge cache can serve stale Clerk keys after env var change (2026-05-23)
+
+**Discovery (Stage 4 audit, finding 4.6):** After fixing the Clerk key on `pk.snapai.mainnov.tech` from `pk_test_` to `pk_live_`, the page still served `pk_test_` for several minutes due to Vercel's Incremental Static Regeneration edge cache.
+
+**Fix:** After any env var change that affects the rendered page, trigger a no-cache redeploy from the Vercel dashboard (Deployments → Redeploy → uncheck "Use existing Build Cache").
+
+---
+
+## WA-37 -- DNS changes in Hostinger take 0–30 minutes to propagate (2026-05-23)
+
+**Discovery:** After updating CNAME records in Hostinger for staging domains, Vercel showed "Invalid Configuration" for up to 20 minutes before DNS propagated. This is normal Hostinger TTL behavior.
+
+**Rule:** After any DNS change in Hostinger, wait at least 20 minutes before concluding there's a problem. Check propagation via `nslookup <domain>` rather than the Vercel dashboard.
+
+---
+
+## WA-38 -- CAST(:options AS jsonb) required for all JSONB column INSERTs in raw SQLAlchemy (2026-05-23)
+
+**Same as DEC-072.** Repeat for discoverability: raw SQLAlchemy INSERT into a JSONB column silently fails without an explicit CAST. No exception is raised. The row appears to insert but no data is stored.
+
+**Pattern:**
+```sql
+INSERT INTO some_table (options) VALUES (CAST(:options AS jsonb))
+```
+
+---
+
+## WA-39 -- Always verify NEXT_PUBLIC_ENV on production Vercel after any env var change (2026-05-23)
+
+**Same as DEC-073/DEC-023.** This has happened twice (BUG-031, BUG-041). After any Vercel environment variable change on any project, immediately verify that `NEXT_PUBLIC_ENV` on production is NOT set to `"staging"`. The staging banner appearing on prod is the symptom.
+
+---
+
+## WA-40 -- 2.5T commercial warning triggers on manual text input, NOT tonnage buttons (2026-05-23)
+
+**Discovery:** The commercial warning for 2.5T+ units triggers only when the user manually types "2.5" or higher into the tonnage text field. The tonnage buttons (1.0T / 1.5T / 2.0T) do NOT trigger it. Test by typing directly into the tonnage input, not by clicking buttons.
+
+---
+
+## WA-41 -- BUG numbering: always check git log before assigning a new bug number (2026-05-27)
+
+**Same as DEC-081 in practical form.** Before labeling a new bug:
+```bash
+git log --oneline --all | grep -iE "BUG-[0-9]+" | grep -oE "BUG-[0-9]+" | sort -t'-' -k2 -n | tail -5
+```
+Take max + 1. BUG-034 was reused (original: ServiceChecklist 401; second use: OCR fix, should have been BUG-045). The OCR fix commit history will permanently say BUG-034 — accept it, document it, move on.
+
+---
+
+## WA-42 -- promote-to-prod.sh does not exist; use manual git merge (2026-05-27)
+
+**Same as DEC-082 in practical form.** The script referenced throughout brain files was never created. Manual promote from /tmp clone:
+```bash
+git config user.email "ds.shoab@gmail.com" && git config user.name "Shoab"
+git checkout main && git pull origin main
+git merge staging --no-ff -m "merge(prod): <desc> — QA verified YYYY-MM-DD both markets"
+git push origin main
+```
+
+---
+
+## WA-43 -- Use fetch(url, {cache:'no-store'}) not browser DOM to verify Next.js prod content (2026-05-27)
+
+**Same as DEC-085 in practical form.** After a Vercel deploy, `document.body.innerText` returns stale cached content from the Next.js client router. The server IS serving new content. Use server fetch to verify:
+```javascript
+const html = await (await fetch(url, {cache:'no-store'})).text();
+html.includes('expected string'); // authoritative
+```
+For redirect behavior: use browser navigation, not fetch.
+
+---
+
+## WA-44 -- `innerText` returns CSS-transformed text; check uppercased strings with .toUpperCase() (2026-05-27)
+
+**Same as DEC-086 in practical form.** Elements with `text-transform: uppercase` CSS return UPPERCASE from `innerText`. Always check:
+```javascript
+document.body.innerText.toUpperCase().includes("BUILT FOR HOUSTON CONTRACTORS FIRST") // correct
+document.body.innerText.includes("Built for Houston contractors first") // WRONG — will miss it
+```
+
+---
+
+## WA-45 -- Set git config user identity immediately after every /tmp clone (2026-05-27)
+
+**Same as DEC-091 in practical form.** The very first commands after `git clone ... /tmp/snapai_tmp` should always be:
+```bash
+git config user.email "ds.shoab@gmail.com"
+git config user.name "Shoab"
+```
+Omitting this causes "Author identity unknown" on the first commit attempt.
+
+---
+
+## WA-46 -- CDP javascript_tool times out at 45s; split long waits across multiple tool calls (2026-05-27)
+
+**Same as DEC-092 in practical form.** Never put a total sleep > 30s inside a single javascript_tool call. For Vercel build polling:
+1. Navigate to deployment URL
+2. Check status with javascript_tool (short async wait, < 10s)
+3. If still building: use bash `sleep 45` in a separate tool call
+4. Navigate + re-check in a new tool call pair
+
+---
+
+## WA-47 -- Clerk staging (pk_test_) and prod (pk_live_) have separate sessions; cross-env login does not work (2026-05-27)
+
+**Same as DEC-093 in practical form.** Being logged in on prod does NOT give you a session on staging, and vice versa. Each environment requires a separate login. Within the same environment, US+PK share a session (same Clerk app). Cross-environment (prod vs staging) sessions are always separate.
+
+---
+
+## DATABASE BACKUPS — Cloudflare R2 (added 2026-06-10, DEC-094)
+
+**Automated daily off-platform backups** of both Virginia (us-east-1) Supabase DBs. This is the independent safety net on top of the GitHub Actions keepalive pings (Supabase free tier = 0-day backup retention).
+
+| Item | Value |
+|---|---|
+| Workflow | `.github/workflows/db-backup-r2.yml` (on `main`) — daily `0 3 * * *` UTC + manual `workflow_dispatch` |
+| Dump tool | **PG17** client, explicit binary `/usr/lib/postgresql/17/bin/pg_dump` (server is 17.6; runner's default pg_dump 16 is too old) |
+| DB connection | **Session pooler** (port **5432**, user `postgres.<ref>`) — NOT Transaction pooler (6543) |
+| Format | plain SQL `--no-owner --no-privileges --quote-all-identifiers`, gzipped |
+| Destination | R2 bucket **`snapai-db-backups`** → `prod/` + `staging/` prefixes |
+| Retention | Lifecycle rule `delete-after-14-days` (auto-delete 14 days after upload) |
+| R2 token | `snapai-db-backups-rw` — Object R/W, **this bucket only**, no expiry |
+| R2 bucket region | ENAM, Standard class, **private** (public access disabled) |
+| Account ID | `0c1bfa87134c7a6688d7eaf4410bf86a` |
+| Cost | **$0** — far inside R2 free tier (10 GB / 1M Class A / 10M Class B / free egress); dumps ~0.2 MB prod, ~2 MB staging |
+
+**GitHub secrets (backup workflow):** `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT`, `SUPABASE_DB_URL_PROD`, `SUPABASE_DB_URL_STAGING`.
+⚠️ Separate from the older `CLOUDFLARE_R2_*` secrets (those serve the app's `scopesnap-uploads` bucket — do not confuse/overwrite).
+
+**Restore:** download `.sql.gz` from R2 → `gunzip` → `psql "<Session-pooler URL>" -f dump.sql`.
+
+**Pre-migration Tokyo dumps** remain in `ScopeSnapAI/backups/` (the only copy of pre-Virginia-migration data) — do not delete that folder.

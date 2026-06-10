@@ -3,7 +3,8 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-24 — Stage 8 COMPLETE. All 8 stages signed off. STAGING_MIRROR_CLOSEOUT.md written. DEC-070 ACTIVE. | Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. Houston full diagnostic flow PASS on staging (Not Cooling -> PSI low -> Refrigerant Leak -> estimate USD A=$608/B=$1013/C=$1368). PK staging backend PASS (environment:staging, Clerk pk_test_, /api/diagnostic/pk/pressure-targets R-410A data). Staging is a true mirror of production. | Stage 6 Vercel Staging Branch Rewire COMPLETE. All 3 staging domains (staging.snapai.mainnov.tech, pk-staging.snapai.mainnov.tech, scopesnap-web-staging.vercel.app) now serve staging git branch via domain-level gitBranch setting. DEC-067 SUPERSEDED by DEC-080. main HEAD=ebe82f6c, staging HEAD=71bc7fea. | Previously: Stage 5 Staging DB & Branch Parity COMPLETE. Staging alembic=034 (was 025), git branch force-pushed to main HEAD 92034b3b, all 15 reference tables synced from prod. Health OK. Manual app smoke test pending Shoab login. | Previously: 2026-05-23 — Stage 3 Google Maps Integration COMPLETE. HoustonAddressAutocomplete live. DEC-078 (CSP) + DEC-079 (SW passthrough) added. BUG-042 (i18n placeholder) logged. GCP key restrictions DONE (HTTP referrer restrictions restored 2026-05-23: localhost:3000/*, snapai.mainnov.tech/*, staging.snapai.mainnov.tech/*). Code comments in next.config.js + sw.js erroneously reference DEC-076/DEC-077 for Maps -- correct refs are DEC-078/DEC-079. | Stage 4 Staging Isolation Audit COMPLETE. All 8 dimensions PASS. 2 critical cross-contaminations found and fixed (Railway sk_live_ on staging → sk_test_; pk.snapai.mainnov.tech ISR cache → fresh redeploy CwjgWfNBi). Staging branch Preview redeploy pattern confirmed (DEC-074). DEC-074/075/076/077 added. | Previously: Stage 1 Production Verification COMPLETE. BUG-040 (CAST(:options AS jsonb) fix in diagnostic.py), BUG-041 (NEXT_PUBLIC_ENV=production on Vercel prod, redeployed 8WLih2SBr). All 6 flows PASS both markets. L36-L39 added, DEC-072/073, WA-38/39. | Previously: Stage 2 Free-Tier Cost Audit COMPLETE. All 15 services verified. Total: $5.00/mo (Railway flat fee only). Supabase spend cap enabled, Railway $10 limit set. DEC-071 added. | Previously: 2026-05-23 — Full QA pass (both markets, all 6 flows, zero bugs). Brain files updated with lessons L28-L35, DEC-065/066, WA-28 through WA-37. | Previously: 2026-05-22 — STAGING FIX PLAN phases 1-10 complete. BUG-037 CONFIRMED LIVE. BUG-038-build FIXED. HEAD: 19db2d1. Alembic: 034. Staging: NEXT_PUBLIC_ENV=staging fixed+redeployed; DNS updated in Hostinger (mshoabarabi@gmail.com — NOT Cloudflare); custom domains pending propagation; scopesnap-web-staging.vercel.app VALID. StagingBanner = RSC in app/(app)/layout.tsx (auth-only routes). pak_diagnostic_questions does NOT exist — PSI thresholds in pak_operating_targets. Address input must be populated via React onChange BEFORE complaint selection (WA-32). A.6 scope = DiagnosisListRow only (DEC-061). PK pricing DB URL = /settings/pricing. Next.js uses SSR — no client-side API fetches visible (WA-33).
+> Last updated: 2026-05-27 — Scope 4.13/4.14/4.15 COMPLETE + LIVE (commit 932b20e). BUG-045 OCR fix confirmed live. 13 new DECs (081-093), 17 new WAs (30-47) written. promote-to-prod.sh confirmed non-existent — manual merge is the process (DEC-082). Single Vercel project confirmed (DEC-084). QA Layer 2+4 PASS both markets.
+> Previously: 2026-05-24 — Stage 8 COMPLETE. All 8 stages signed off. STAGING_MIRROR_CLOSEOUT.md written. DEC-070 ACTIVE. | Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. Houston full diagnostic flow PASS on staging (Not Cooling -> PSI low -> Refrigerant Leak -> estimate USD A=$608/B=$1013/C=$1368). PK staging backend PASS (environment:staging, Clerk pk_test_, /api/diagnostic/pk/pressure-targets R-410A data). Staging is a true mirror of production. | Stage 6 Vercel Staging Branch Rewire COMPLETE. All 3 staging domains (staging.snapai.mainnov.tech, pk-staging.snapai.mainnov.tech, scopesnap-web-staging.vercel.app) now serve staging git branch via domain-level gitBranch setting. DEC-067 SUPERSEDED by DEC-080. main HEAD=ebe82f6c, staging HEAD=71bc7fea. | Previously: Stage 5 Staging DB & Branch Parity COMPLETE. Staging alembic=034 (was 025), git branch force-pushed to main HEAD 92034b3b, all 15 reference tables synced from prod. Health OK. Manual app smoke test pending Shoab login. | Previously: 2026-05-23 — Stage 3 Google Maps Integration COMPLETE. HoustonAddressAutocomplete live. DEC-078 (CSP) + DEC-079 (SW passthrough) added. BUG-042 (i18n placeholder) logged. GCP key restrictions DONE (HTTP referrer restrictions restored 2026-05-23: localhost:3000/*, snapai.mainnov.tech/*, staging.snapai.mainnov.tech/*). Code comments in next.config.js + sw.js erroneously reference DEC-076/DEC-077 for Maps -- correct refs are DEC-078/DEC-079. | Stage 4 Staging Isolation Audit COMPLETE. All 8 dimensions PASS. 2 critical cross-contaminations found and fixed (Railway sk_live_ on staging → sk_test_; pk.snapai.mainnov.tech ISR cache → fresh redeploy CwjgWfNBi). Staging branch Preview redeploy pattern confirmed (DEC-074). DEC-074/075/076/077 added. | Previously: Stage 1 Production Verification COMPLETE. BUG-040 (CAST(:options AS jsonb) fix in diagnostic.py), BUG-041 (NEXT_PUBLIC_ENV=production on Vercel prod, redeployed 8WLih2SBr). All 6 flows PASS both markets. L36-L39 added, DEC-072/073, WA-38/39. | Previously: Stage 2 Free-Tier Cost Audit COMPLETE. All 15 services verified. Total: $5.00/mo (Railway flat fee only). Supabase spend cap enabled, Railway $10 limit set. DEC-071 added. | Previously: 2026-05-23 — Full QA pass (both markets, all 6 flows, zero bugs). Brain files updated with lessons L28-L35, DEC-065/066, WA-28 through WA-37. | Previously: 2026-05-22 — STAGING FIX PLAN phases 1-10 complete. BUG-037 CONFIRMED LIVE. BUG-038-build FIXED. HEAD: 19db2d1. Alembic: 034. Staging: NEXT_PUBLIC_ENV=staging fixed+redeployed; DNS updated in Hostinger (mshoabarabi@gmail.com — NOT Cloudflare); custom domains pending propagation; scopesnap-web-staging.vercel.app VALID. StagingBanner = RSC in app/(app)/layout.tsx (auth-only routes). pak_diagnostic_questions does NOT exist — PSI thresholds in pak_operating_targets. Address input must be populated via React onChange BEFORE complaint selection (WA-32). A.6 scope = DiagnosisListRow only (DEC-061). PK pricing DB URL = /settings/pricing. Next.js uses SSR — no client-side API fetches visible (WA-33).
 > Previous: Track H Group E complete: full Urdu translation live on pk.snapai.mainnov.tech. Dashboard, sidebar, Step Zero, homeowner report all translated. HEAD: b57d969. Alembic: 032. No open issues.)
 > **2026-05-23 patch:** change workflow `WORKFLOW.md` + DEC-070 added — staging-first 7-step loop becomes mandatory after Stage 7 sign-off.
 
@@ -11,7 +12,15 @@
 
 ## Change Workflow (added 2026-05-23 — DEC-070)
 
-**Every code, schema, env-var, or infra change uses the staging-first workflow defined in `WORKFLOW.md`.** The flow is: branch off `staging` → merge to `staging` → auto-deploys to staging.snapai.mainnov.tech + pk-staging.snapai.mainnov.tech → verify → run `scripts/promote-to-prod.sh <files>` → main updates → prod auto-deploys → verify on real domain.
+**Every code, schema, env-var, or infra change uses the staging-first workflow defined in `WORKFLOW.md`.** The flow is: branch off `staging` → merge to `staging` → auto-deploys to staging.snapai.mainnov.tech + pk-staging.snapai.mainnov.tech → verify → manually merge staging→main (see DEC-082) → main updates → prod auto-deploys → verify on real domain.
+
+**NOTE (DEC-082):** `scripts/promote-to-prod.sh` does NOT exist. Manual promote from /tmp clone:
+```bash
+git config user.email "ds.shoab@gmail.com" && git config user.name "Shoab"
+git checkout main && git pull origin main
+git merge staging --no-ff -m "merge(prod): <desc> — QA verified YYYY-MM-DD both markets"
+git push origin main
+```
 
 **The four absolute rules (codified in DEC-070):**
 1. Never edit code directly on `main` without going through `staging` first
@@ -66,6 +75,16 @@ What was accomplished:
 | NEVER set NEXT_PUBLIC_ENV=staging on production Vercel | StagingBanner shows on prod (BUG-031). Fix via Vercel dashboard — no code change. | DEC-023 |
 | ServiceChecklist ≠ DiagnosticFlow | Service/Tune-Up renders ServiceChecklist.tsx. UI features in DiagnosticFlow are silently absent for service flows. Duplicate any skip/override UI in both components. | WA-25, DEC-056 |
 | Maps API key never echoed | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is NEXT_PUBLIC (baked at build time, visible in browser network tab). Never echo in assistant responses. SW must passthrough googleapis.com or opaque response blocks script execution (DEC-079). GCP project snapai-maps. | DEC-078, DEC-079 |
+| promote-to-prod.sh does NOT exist | Use manual git merge from /tmp clone: `git checkout main && git merge staging --no-ff && git push origin main`. DEC-082 has the full command. | DEC-082, WA-42 |
+| Vercel = ONE project for all 4 domains | `scopesnap-web-staging` (prj_vq1rWfPN9tD3k82OLFjfIxmNdULc) serves prod AND staging via domain-level gitBranch. `scope-snap-ai` reference is stale. Team URL: `vercel.com/mohammed-shoabs-projects-7844119e`. | DEC-083, DEC-084 |
+| Next.js DOM cache misleads QA | After Vercel deploy, browser DOM may show stale content. Use `fetch(url, {cache:'no-store'})` for content checks. Use browser navigation for redirect/auth-gate checks. | DEC-085, WA-43 |
+| innerText is CSS-transformed | `text-transform: uppercase` causes `innerText` to return uppercase. Always use `.toUpperCase()` before string comparison. | DEC-086, WA-44 |
+| StepZeroPanel self-sources Clerk JWT | Get fresh `getToken()` immediately before every OCR API call. Never cache the token across requests — it expires in 60s. Extension of WA-9. | DEC-087 |
+| Audit before implementing any fix prompt | Read all 5 brain files + git log before writing ANY code. Match each scope item against recent commits. In BUG-034 prompt, items 4.1–4.12 were already live. | DEC-090 |
+| git config after every /tmp clone | `git config user.email "ds.shoab@gmail.com" && git config user.name "Shoab"` — run immediately after clone, before first commit. | DEC-091, WA-45 |
+| CDP javascript_tool timeout is 45s | Never await >30s total in one javascript_tool call. Split Vercel build waits across separate bash sleep + navigate + check cycles. | DEC-092, WA-46 |
+| Clerk staging vs prod = separate sessions | Staging uses pk_test_ (firm-chamois-61), prod uses pk_live_. Different apps = separate sessions. Cross-env login does not work. Within same env, US+PK share session. | DEC-093, WA-47 |
+| BUG number must be checked before assigning | `git log --oneline --all \| grep -i "BUG-0"` — take max + 1. BUG-034 was reused; OCR fix is canonically BUG-045. | DEC-081, WA-41 |
 | PK models live in pak_brands JSONB, not equipment_models | pak_equipment_models does not exist. PK models = pak_brands.series[] JSONB array. `type: "inverter"` drives the inverter badge. After seeding, clear IndexedDB cache. | DEC-057, WA-26 |
 | IndexedDB model cache = 24h TTL | After updating pak_brands, browser shows stale models for 24h. Force-clear: `indexedDB.deleteDatabase('snapai_models_pk')` + reload. localStorage has no model cache. | WA-26 |
 | React controlled components ignore native events | `element.click()` and `dispatchEvent` do NOT update React state. Must call `element[__reactPropsKey].onChange/onClick()` directly. | WA-27 |
@@ -157,7 +176,7 @@ Staging custom domains (staging.snapai.mainnov.tech, pk-staging.snapai.mainnov.t
 | Railway service | `a23d5cad-d8c9-434e-a3dc-89634d8642ab` |
 | Railway environment | `03c478ed-5720-427a-b567-d6bd2ebf3eb1` |
 | Supabase project | `quqrvnoguofbjacrxcim` |
-| Vercel project | `scope-snap-ai` (mohammed-shoabs-projects-7844119e) |
+| Vercel project | `scopesnap-web-staging` (prj_vq1rWfPN9tD3k82OLFjfIxmNdULc) — ONE project serves ALL 4 domains (DEC-084). `scope-snap-ai` reference is stale. |
 | GitHub repo | `mohammed-shoab/ScopeSnapAI` |
 
 ### Staging
@@ -179,32 +198,22 @@ Staging custom domains (staging.snapai.mainnov.tech, pk-staging.snapai.mainnov.t
 ### Production
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel (both prod domains) | `4db39be` (BUG-036 ServiceChecklist fix) | ✅ Auto-deploying | 2026-05-22 |
-| Railway backend (prod) | `937b8c7` (BUG-035 estimates INSERT fix) | ✅ Auto-deploying | 2026-05-22 |
-| Alembic migration (prod) | `034` | ✅ Applied (031 photo_skipped direct; 033 estimates.market; 034 card_tco_data) | 2026-05-21 |
-| diagnostic_sessions.photo_skipped | BOOLEAN NOT NULL DEFAULT false | ✅ Applied directly (031 was skipped by Railway during outage) | 2026-05-21 |
+| Vercel (both prod domains) | `932b20e` merge(prod): 4.13+4.14+4.15 | ✅ Ready (2m 2s build) | 2026-05-27 |
+| Railway backend (prod) | unchanged — frontend-only change | ✅ Health OK — `{"status":"ok","db":"connected","environment":"production"}` | 2026-05-27 |
+| Alembic migration (prod) | `036` | ✅ Applied | 2026-05-27 |
 | card_tco_data (US) | 57 rows | ✅ Seeded | 2026-05-21 |
 | pak_card_tco_data (PK) | 45 rows | ✅ Seeded | 2026-05-21 |
-| pak_data_defaults | 1 row (market=PK) | Seeded | 2026-05-19 |
-| pak_operating_targets | PK PSI thresholds + R-32 (5 rows, 30-50C ambient) | Seeded | 2026-05-18 |
 
 ### Staging
 | Layer | Commit | Status | Date |
 |-------|--------|--------|------|
-| Vercel staging (vercel.app URL) | `80df2e4` (redeploy BphSPPVbC) | ✅ Ready — Valid Configuration | 2026-05-22 |
-| Vercel staging (custom domains) | Both custom domains live | ✅ DNS fixed 2026-05-23; Clerk key fixed 2026-05-23 — Preview redeploy 5HJ2piG8A | 2026-05-23 |
-| NEXT_PUBLIC_ENV | `staging` | ✅ Set+saved (direct typing), redeployed | 2026-05-22 |
-| Railway staging backend | `92034b3b` | ✅ Health OK, alembic=034 | 2026-05-24 |
-| Supabase staging DB | All tables seeded (US + pak_*) | ✅ Full mirror of prod schema | 2026-05-19 |
-| Alembic migration (staging) | `034` (migrations 026–034 applied, Stage 5 parity) | ✅ Applied | 2026-05-24 |
-| pak_pricing_tiers (staging) | 45 rows (15 cards × 3 tiers) | ✅ Seeded | 2026-05-19 |
-| pak_labor_rates (staging) | full_system_1ton/1_5ton_pkr backfilled | ✅ Updated | 2026-05-19 |
-| Reference data parity (staging) | All 15 ref tables synced from prod (Stage 5) | ✅ Complete | 2026-05-24 |
+| Vercel staging (all 3 staging domains) | `f58c77e` staging HEAD | ✅ Ready | 2026-05-27 |
+| Railway staging backend | unchanged | ✅ Health OK — `{"status":"ok","db":"connected","environment":"staging"}` | 2026-05-27 |
+| Alembic migration (staging) | `036` | ✅ Matches prod | 2026-05-27 |
 
-**Staging git HEAD:** `92034b3b` — matches main HEAD (Stage 5 force-push 2026-05-24)
-**Promote staging → prod:** `scripts/promote-to-prod.sh <file1> [file2 ...]` (run from a local main checkout)
-
-**Current git HEAD (main):** `92034b3b` -- "docs: Stage 3 Google Maps sign-off — DEC-078/DEC-079, BUG-042" (latest as of 2026-05-24)
+**Current git HEAD (main):** `932b20e` — "merge(prod): 4.13 copy + 4.14 signed-in redirects + 4.15 video embed — QA verified 2026-05-27 both markets"
+**Current git HEAD (staging):** `f58c77e` — "merge(staging): 4.13 copy + 4.14 redirect + 4.15 video"
+**Promote staging → prod:** Manual git merge — see DEC-082 (scripts/promote-to-prod.sh does NOT exist)
 
 **Recent commits (newest first -- main):**
 - `19db2d1` -- chore: remove [MKT:] debug marker from REF line (2026-05-22)
@@ -262,6 +271,8 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 
 | Date | Markets | Outcome | Bugs Fixed | HEAD |
 |------|---------|---------|------------|------|
+| 2026-05-27 | Houston + PK (staging + prod) | COMPLETE ✅ | Zero. Layer 2 staging PASS 18/18. Layer 4 prod PASS 22/22. Scope 4.13 copy + 4.14 redirects + 4.15 video live on both markets. BUG-045 (OCR 4-tier waterfall) confirmed still live. Commit 932b20e main. 13 new DECs (DEC-081 to DEC-093) + 17 new WAs (WA-30 to WA-47) written. | 932b20e |
+| 2026-05-27 | Houston + PK (prod) | COMPLETE ✅ | BUG-045 (nameplate OCR): Gemini JWT auth, Tesseract CDN removal, 4-tier waterfall, field-level confidence gating, photo persistence Tier 4, PostHog US-only telemetry, A/B test snap_sz_variant. 21/21 acceptance checks PASS. Commit 3f06f0b. | 3f06f0b |
 | 2026-05-24 | Houston + PK (staging) | COMPLETE ✅ | Zero production bugs. Stage 7 Staging E2E QA. Houston full flow PASS: Not Cooling -> 45 PSI low -> Refrigerant Leak High Confidence -> Estimate Builder A=$608/B=$1013/C=$1368 USD. PK: environment:staging confirmed, Clerk pk_test_, /api/diagnostic/pk/pressure-targets R-410A data. DEC-070 ACTIVE. |
 | 2026-05-23 | Houston + PK | COMPLETE ✅ | BUG-040 (CAST jsonb fix in _generate_service_estimate), BUG-041 (NEXT_PUBLIC_ENV=production on Vercel, redeployed 8WLih2SBr). All 6 flows PASS. PSI thresholds verified. 2.5T warning confirmed. | 19db2d1 |
 | 2026-05-23 | Houston + PK | COMPLETE ✅ | Zero — full verification QA + brain file updates. All 6 flows PASS both markets. Lessons L32-L35 documented. DEC-065/066 added. WA-28 through WA-37 added to TECH_STACK. | 19db2d1 |
@@ -297,3 +308,22 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 
 ---
 
+
+---
+
+### 2026-06-10 — DB backups live (Cloudflare R2) — see DEC-094 / TECH_STACK
+Free automated daily backups of both Virginia DBs now run via GitHub Actions (`.github/workflows/db-backup-r2.yml`) → private R2 bucket `snapai-db-backups` (14-day retention, $0). Verified green 2026-06-10 (run 27296950101); prod+staging dumps present in bucket. Both backends `/health` ok/db-connected afterward.
+- Prod backend (live): `scopesnap-api-production.up.railway.app` — note the bare `scopesnap-api.up.railway.app` is STALE (Railway 404).
+- **Open:** Healthchecks "Keepalive B DOWN" — keepalive workflows still ping the deleted Tokyo Supabase URLs; repoint the 4 keepalive secrets to Virginia or retire the keepalives.
+
+### 2026-06-10 — Keepalive "DOWN" RESOLVED (DEC-094 follow-up)
+Root cause confirmed from run logs: keepalive-supabase-B failed with `curl: (6) Could not resolve host: quqrvnoguofbjacrxcim.supabase.co` — the 4 keepalive secrets still pointed at the **deleted Tokyo** projects, so the ping failed and the `if: success()` Healthchecks heartbeat never fired → DOWN.
+
+**Fix:** repointed all 4 keepalive secrets to the Virginia (us-east-1) projects (values fetched via Supabase MCP; updated through the GitHub Secrets API with libsodium sealed-box encryption — the anon keys are publishable/public):
+- `SUPABASE_PROD_URL`    = `https://zpsoprffaujswywtsgzy.supabase.co` (snapai-prod-use1)
+- `SUPABASE_STAGING_URL` = `https://kikhhnanuwzocwcpzutr.supabase.co` (snapai-staging-use1)
+- `SUPABASE_PROD_ANON_KEY` / `SUPABASE_STAGING_ANON_KEY` = each project's legacy anon JWT.
+
+**Verified 2026-06-10:** manually dispatched both keepalive-supabase-A and -B → both **success**; steps Ping production / Ping staging / Heartbeat(Healthchecks.io) all green. Both Healthchecks checks flip DOWN→UP. Twice-weekly schedule restored (A = Sun 02:00 UTC, B = Wed 14:00 UTC).
+
+Note: keepalive is now somewhat redundant with the daily R2 backup (which pg_dumps both DBs daily = stronger DB-activity keepalive), but it's kept for the independent Healthchecks "did the scheduled job run" monitor.

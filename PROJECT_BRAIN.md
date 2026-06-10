@@ -3,7 +3,8 @@
 > Single source of truth for live URLs, infra IDs, deployment state, and architecture facts.
 > Read this first at the start of every session. Update after every deploy or schema change.
 >
-> Last updated: 2026-05-26 — BUG-045 (nameplate OCR auth + Tesseract removal + 4-tier waterfall) STAGED + QA PASS. Commit c42cce0 on `staging` branch. WA-48, DEC-087/DEC-088 added. | Previously: 2026-05-24 — Phase 2 ambient-aware PSI routing COMPLETE + LIVE. Main HEAD: 84fedcf. Alembic: 036 (production + staging). Boundary tests: 24/24 PASS. DEC-085 + DEC-086. | Pre-beta walkthrough COMPLETE. All 6 issues fixed, 2 build bugs found and fixed, full QA PASS both markets. Main HEAD: 5596fde. Alembic: 035. | Stage 8 COMPLETE. All 8 stages signed off. STAGING_MIRROR_CLOSEOUT.md written. DEC-070 ACTIVE. | Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. Houston full diagnostic flow PASS on staging (Not Cooling -> PSI low -> Refrigerant Leak -> estimate USD A=$608/B=$1013/C=$1368). PK staging backend PASS (environment:staging, Clerk pk_test_, /api/diagnostic/pk/pressure-targets R-410A data). Staging is a true mirror of production. | Stage 6 Vercel Staging Branch Rewire COMPLETE. All 3 staging domains (staging.snapai.mainnov.tech, pk-staging.snapai.mainnov.tech, scopesnap-web-staging.vercel.app) now serve staging git branch via domain-level gitBranch setting. DEC-067 SUPERSEDED by DEC-080. main HEAD=ebe82f6c, staging HEAD=71bc7fea. | Previously: Stage 5 Staging DB & Branch Parity COMPLETE. Staging alembic=034 (was 025), git branch force-pushed to main HEAD 92034b3b, all 15 reference tables synced from prod. Health OK. Manual app smoke test pending Shoab login. | Previously: 2026-05-23 — Stage 3 Google Maps Integration COMPLETE. HoustonAddressAutocomplete live. DEC-078 (CSP) + DEC-079 (SW passthrough) added. BUG-042 (i18n placeholder) logged. GCP key restrictions DONE (HTTP referrer restrictions restored 2026-05-23: localhost:3000/*, snapai.mainnov.tech/*, staging.snapai.mainnov.tech/*). Code comments in next.config.js + sw.js erroneously reference DEC-076/DEC-077 for Maps -- correct refs are DEC-078/DEC-079. | Stage 4 Staging Isolation Audit COMPLETE. All 8 dimensions PASS. 2 critical cross-contaminations found and fixed (Railway sk_live_ on staging → sk_test_; pk.snapai.mainnov.tech ISR cache → fresh redeploy CwjgWfNBi). Staging branch Preview redeploy pattern confirmed (DEC-074). DEC-074/075/076/077 added. | Previously: Stage 1 Production Verification COMPLETE. BUG-040 (CAST(:options AS jsonb) fix in diagnostic.py), BUG-041 (NEXT_PUBLIC_ENV=production on Vercel prod, redeployed 8WLih2SBr). All 6 flows PASS both markets. L36-L39 added, DEC-072/073, WA-38/39. | Previously: Stage 2 Free-Tier Cost Audit COMPLETE. All 15 services verified. Total: $5.00/mo (Railway flat fee only). Supabase spend cap enabled, Railway $10 limit set. DEC-071 added. | Previously: 2026-05-23 — Full QA pass (both markets, all 6 flows, zero bugs). Brain files updated with lessons L28-L35, DEC-065/066, WA-28 through WA-37. | Previously: 2026-05-22 — STAGING FIX PLAN phases 1-10 complete. BUG-037 CONFIRMED LIVE. BUG-038-build FIXED. HEAD: 19db2d1. Alembic: 034. Staging: NEXT_PUBLIC_ENV=staging fixed+redeployed; DNS updated in Hostinger (mshoabarabi@gmail.com — NOT Cloudflare); custom domains pending propagation; scopesnap-web-staging.vercel.app VALID. StagingBanner = RSC in app/(app)/layout.tsx (auth-only routes). pak_diagnostic_questions does NOT exist — PSI thresholds in pak_operating_targets. Address input must be populated via React onChange BEFORE complaint selection (WA-32). A.6 scope = DiagnosisListRow only (DEC-061). PK pricing DB URL = /settings/pricing. Next.js uses SSR — no client-side API fetches visible (WA-33).
+> Last updated: 2026-05-29 evening — **Production infrastructure audit + Gemini billing fix.** Joe ran live verification via Chrome on all 5 production services. Findings: (1) Default Gemini Project (gen-lang-client-0809557545) where production API keys live was on Free tier hitting 20 RPD caps + visible 429 errors — linked to My Billing Account tonight, now Tier 1 paid (10,000 RPD on Flash, Unlimited on Flash Lite). (2) All 5 R2 env vars verified set in Railway production — photos AND PDFs already routing to Cloudflare R2 via storage.py abstraction. (3) Supabase still on Free tier and will stay there long past 25 paying users because R2 absorbs the photo/PDF storage path. (4) Vercel still on Hobby (Free) — ToS upgrade trigger is first paid tester conversion event. (5) Cost-to-serve at $39/tech/mo verified: 5 paying users = $40/mo total cost vs $195 revenue = +$155 / 79% margin; 25 users = $78 cost vs $975 revenue = +$897 / 92% margin. Break-even at 2 users. **Stale entries corrected in TECH_STACK.md:** Clerk plan line (was "dev mode" — actually Production keys per DEC-077) + Gemini line (was "Pay-per-use" — now Tier 1 with project IDs). New sections added to TECH_STACK.md: Marketing Infrastructure (hellosnapai.com outreach domain separation from mainnov.tech product domain) + Production Account Inventory (live-verified account/plan map) + Cost-to-Serve Structure (verified). v2.1.2 marketing templates + v1.1 Strategic Narrative draft shipped same day; cost-recoverability gate on Shoab's $39 price veto closed PASS.
+> Previously: 2026-05-26 — BUG-045 (nameplate OCR auth + Tesseract removal + 4-tier waterfall) STAGED + QA PASS. Commit c42cce0 on `staging` branch. WA-48, DEC-087/DEC-088 added. | Previously: 2026-05-24 — Phase 2 ambient-aware PSI routing COMPLETE + LIVE. Main HEAD: 84fedcf. Alembic: 036 (production + staging). Boundary tests: 24/24 PASS. DEC-085 + DEC-086. | Pre-beta walkthrough COMPLETE. All 6 issues fixed, 2 build bugs found and fixed, full QA PASS both markets. Main HEAD: 5596fde. Alembic: 035. | Stage 8 COMPLETE. All 8 stages signed off. STAGING_MIRROR_CLOSEOUT.md written. DEC-070 ACTIVE. | Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. Houston full diagnostic flow PASS on staging (Not Cooling -> PSI low -> Refrigerant Leak -> estimate USD A=$608/B=$1013/C=$1368). PK staging backend PASS (environment:staging, Clerk pk_test_, /api/diagnostic/pk/pressure-targets R-410A data). Staging is a true mirror of production. | Stage 6 Vercel Staging Branch Rewire COMPLETE. All 3 staging domains (staging.snapai.mainnov.tech, pk-staging.snapai.mainnov.tech, scopesnap-web-staging.vercel.app) now serve staging git branch via domain-level gitBranch setting. DEC-067 SUPERSEDED by DEC-080. main HEAD=ebe82f6c, staging HEAD=71bc7fea. | Previously: Stage 5 Staging DB & Branch Parity COMPLETE. Staging alembic=034 (was 025), git branch force-pushed to main HEAD 92034b3b, all 15 reference tables synced from prod. Health OK. Manual app smoke test pending Shoab login. | Previously: 2026-05-23 — Stage 3 Google Maps Integration COMPLETE. HoustonAddressAutocomplete live. DEC-078 (CSP) + DEC-079 (SW passthrough) added. BUG-042 (i18n placeholder) logged. GCP key restrictions DONE (HTTP referrer restrictions restored 2026-05-23: localhost:3000/*, snapai.mainnov.tech/*, staging.snapai.mainnov.tech/*). Code comments in next.config.js + sw.js erroneously reference DEC-076/DEC-077 for Maps -- correct refs are DEC-078/DEC-079. | Stage 4 Staging Isolation Audit COMPLETE. All 8 dimensions PASS. 2 critical cross-contaminations found and fixed (Railway sk_live_ on staging → sk_test_; pk.snapai.mainnov.tech ISR cache → fresh redeploy CwjgWfNBi). Staging branch Preview redeploy pattern confirmed (DEC-074). DEC-074/075/076/077 added. | Previously: Stage 1 Production Verification COMPLETE. BUG-040 (CAST(:options AS jsonb) fix in diagnostic.py), BUG-041 (NEXT_PUBLIC_ENV=production on Vercel prod, redeployed 8WLih2SBr). All 6 flows PASS both markets. L36-L39 added, DEC-072/073, WA-38/39. | Previously: Stage 2 Free-Tier Cost Audit COMPLETE. All 15 services verified. Total: $5.00/mo (Railway flat fee only). Supabase spend cap enabled, Railway $10 limit set. DEC-071 added. | Previously: 2026-05-23 — Full QA pass (both markets, all 6 flows, zero bugs). Brain files updated with lessons L28-L35, DEC-065/066, WA-28 through WA-37. | Previously: 2026-05-22 — STAGING FIX PLAN phases 1-10 complete. BUG-037 CONFIRMED LIVE. BUG-038-build FIXED. HEAD: 19db2d1. Alembic: 034. Staging: NEXT_PUBLIC_ENV=staging fixed+redeployed; DNS updated in Hostinger (mshoabarabi@gmail.com — NOT Cloudflare); custom domains pending propagation; scopesnap-web-staging.vercel.app VALID. StagingBanner = RSC in app/(app)/layout.tsx (auth-only routes). pak_diagnostic_questions does NOT exist — PSI thresholds in pak_operating_targets. Address input must be populated via React onChange BEFORE complaint selection (WA-32). A.6 scope = DiagnosisListRow only (DEC-061). PK pricing DB URL = /settings/pricing. Next.js uses SSR — no client-side API fetches visible (WA-33).
 > Previous: Track H Group E complete: full Urdu translation live on pk.snapai.mainnov.tech. Dashboard, sidebar, Step Zero, homeowner report all translated. HEAD: b57d969. Alembic: 032. No open issues.)
 > **2026-05-23 patch:** change workflow `WORKFLOW.md` + DEC-070 added — staging-first 7-step loop becomes mandatory after Stage 7 sign-off.
 
@@ -116,6 +117,9 @@ What was accomplished:
 | Goodman model database has 10 series only | Brand dropdown shows "Goodman (10 models)". Real Houston Goodman fleet likely spans 30-50+ series across 20 years (DSZC, GSX, GSXC, GSZC, ARUF, AVPTC, etc.). "My brand isn't listed…" fallback exists but its end-to-end flow is unverified. First 5 testers will surface which brands are missing. | open — wait for beta data |
 | Migration hotfix duplicate block = invisible on staging | When adding a step to an existing migration as a hotfix, the fixed migration does NOT re-run on staging (DB already at that version). Grep `ADD CONSTRAINT` count before committing — must be exactly 1. DEC-086. | DEC-086 |
 | No naming non-existent people in marketing copy | “Beta panel” framing is aspirational; switch to panel-claim language only after tester #1 signs up with consent. Never attribute quotes to real people in copy without verification. | open — enforced in brand-voice PR |
+| Two GCP projects exist — production Gemini API keys live in Default Gemini Project, NOT snapai-maps | Production Gemini API keys (`...nAgY` + `..._69A`) live in GCP project `Default Gemini Project` (ID `gen-lang-client-0809557545`). The other project `snapai-maps` (ID `root-matrix-497207-j4`) holds the Google Maps API key. BOTH are linked to "My Billing Account" as of 2026-05-29. When future AI sessions check Gemini usage/spend/quotas, they must check the Default Gemini Project — not snapai-maps. Same applies to rate-limit chart and the AI Studio Spend page (project picker must be set to `Default Gemini Project`). | 2026-05-29 audit |
+| Photos AND PDFs both go to Cloudflare R2 in production — NOT Supabase Storage | `scopesnap-api/services/storage.py` defines a `BaseStorage` abstract with `LocalStorage` (dev) + `R2Storage` (prod) implementations. Factory `get_storage()` picks based on `ENVIRONMENT` env var + presence of 5 R2 env vars. Production buckets: `scopesnap-uploads` (prod) and `scopesnap-uploads-staging` (staging). Storage paths: photos at `photos/{company_slug}/assessment-{id}/...`; documents at `documents/{company_slug}/estimate-{id}/...`. Supabase Storage is unused in production. Future cost projections must NOT assume photos count against Supabase egress/storage caps. | 2026-05-29 audit |
+| R2 env vars are mandatory in production — fallback to LocalStorage silently loses photos on redeploy | `get_storage()` checks for all 5 of `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET_NAME` / `R2_PUBLIC_URL`. If any is missing in production, it falls back to LocalStorage with a printed warning AND photos write to Railway's ephemeral disk that resets on every redeploy. Verify these 5 env vars exist in Railway production env before any deploy that touches storage code. As of 2026-05-29 audit: all 5 confirmed set. | 2026-05-29 audit |
 
 
 ---
@@ -204,6 +208,7 @@ Staging custom domains (staging.snapai.mainnov.tech, pk-staging.snapai.mainnov.t
 | R2 staging bucket | `scopesnap-uploads-staging` |
 | Git branch | `staging` (off `main`) |
 | GitHub Actions keepalive | `.github/workflows/keepalive-supabase-A.yml` + `keepalive-supabase-B.yml` (every Sun+Wed) |
+| `research` schema (added 2026-05-31) | Marketing Research Agent DB inside the **staging** project, isolated `research` schema (NOT `public`, NOT prod). Full Houston-MSA HVAC operator dataset (4,365 operators, cross-source-verified, diaspora-flagged). Touches no app table. Details: `TECH_STACK.md` → "Marketing Research Database"; code in `marketing/research_agent/`. |
 | Secrets reference | `C:\Users\dell\My Drive\Personal Claude\.staging_secrets.txt` (⚠ never commit) |
 
 ---
@@ -298,6 +303,7 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 
 | Date | Markets | Outcome | Bugs Fixed | HEAD |
 |------|---------|---------|------------|------|
+| 2026-05-29 | Houston (prod /tech page) | COMPLETE ✅ | Zero bugs. Copy-only deploy: Changes A–E (Wave 1 framing, first-5, $39/tech/mo pricing, About footer with Pakistan/Shoab honesty). Staged on feat/tech-landing-v2.1.2-copy → staging (8e48891) → main (0b7bec0). All 7 smoke checks PASS on snapai.mainnov.tech/tech. Railway health OK. Tracker item 73 closed. | 0b7bec0 |
 | 2026-05-27 | Houston + PK (staging→prod) | COMPLETE ✅ | BUG-034 nameplate OCR: JWT auth fix (getToken() inside StepZeroPanel), Tesseract CDN removed, 4-tier Gemini waterfall, photo persistence on Tier-4, spinner text de-branded, Scenario D returning-user path (snap_sz_path localStorage), Scenario E A/B variant + PostHog ab_test_variant_assigned. All 21 acceptance checks PASS. Promoted staging→main commit 3f06f0b. | 3f06f0b |
 | 2026-05-24 | Houston + PK | COMPLETE ✅ | 2 build bugs (BUG-043 orphaned brace in homeowner/page.tsx, BUG-044 undeclared isRecommended in assessment/[id]/page.tsx). Both fixed commits 5b137ba/5596fde. All 6 pre-beta issues verified live. Flows 1-6 PASS both markets. PSI thresholds DB confirmed. | 5596fde |
 | 2026-05-24 | Houston + PK (staging) | COMPLETE ✅ | Zero production bugs. Stage 7 Staging E2E QA. Houston full flow PASS: Not Cooling -> 45 PSI low -> Refrigerant Leak High Confidence -> Estimate Builder A=$608/B=$1013/C=$1368 USD. PK: environment:staging confirmed, Clerk pk_test_, /api/diagnostic/pk/pressure-targets R-410A data. DEC-070 ACTIVE. |
@@ -339,3 +345,190 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 
 ---
 
+
+---
+
+## 2026-06-08 — STAGING DB MIGRATED Tokyo → Virginia (us-east-1) + connection-pool tuning
+
+**What changed:** Staging database moved Supabase **Tokyo (ap-northeast-1) → Virginia (us-east-1)**, co-located with the Railway backend (US East). Fixes the ~1,300 ms-per-query cross-Pacific latency. Cost unchanged: **$0** (Free plan, NANO).
+
+**Why:** Speed audit found Railway (Virginia) → Supabase (Tokyo) was ~11,000 km each way, costing ~1,300 ms on EVERY DB query. Region mismatch confirmed by inspecting actual project regions.
+
+**Supabase project state now:**
+- Staging (NEW): `snapai-staging-use1` ref `kikhhnanuwzocwcpzutr`, region **us-east-1**, ACTIVE. Railway staging DATABASE_URL points here (session pooler, port 5432).
+- Staging (OLD): `snapai-staging` ref `pqmgveqkuckbvyygsilk`, Tokyo — **PAUSED** (rollback; fully backed up).
+- Prod: `scopesnap` ref `quqrvnoguofbjacrxcim`, Tokyo — **UNCHANGED. PROD NOT YET MIGRATED.**
+- Free-tier 2-active-project limit handled by pausing old before creating new → always ≤2 active = $0.
+
+**Code change (committed to `staging` branch, commit b5fc5d0):** `scopesnap-api/db/database.py` engine pool — removed `pool_pre_ping=True` (extra SELECT 1 round-trip per checkout, wasteful now DB is co-located), added `pool_recycle=1800`, set `pool_size=5`, `max_overflow=5` (max conns still 10, under Supabase 15-conn session-pooler cap). NOTE: local repo was 7 commits behind remote + dirty tree, so this was committed directly on GitHub web, not pushed from local.
+
+**DB index (Virginia staging, applied directly via MCP — NOT yet an Alembic migration):** `ix_app_events_report_viewed_short_id` partial index on `app_events ((event_data->>'report_short_id')) WHERE event_name='report_viewed'`. Future-proofs the report-view-count query. ADD AS A MIGRATION before/with prod.
+
+**Measured results (staging, post-tuning):** DB query ~1,300 ms → **~18 ms**; `/api/events` (was slowest) ~3,200 ms → **~417 ms**; Dashboard TTFB 2,462 ms → **726 ms**. ~400 ms of measured latency is the measuring machine's distance to Virginia (a Houston user pays ~30–50 ms there).
+
+**Data integrity — VERIFIED 0 differences:** Virginia staging is a byte-exact clone of old Tokyo staging (restored from verified pg_dump). 57 tables / 41,163 rows, row-by-row identical, incl full `research` (marketing) schema (operator_fields 22,703, canonical_operators 4,365) AND all app US+PK tables. App confirmed reading correct data: equipment_models exact (76, app==DB fingerprint), estimates exact (rpt-567750, rpt-922499), diagnoses exact (fault_cards joins intact).
+
+**Backups (`ScopeSnapAI/backups/`):** `prod_20260608_131219.sql.gz` (Tokyo prod full), `staging_20260608_131219.sql.gz` (Tokyo staging full incl research). gzip-verified + row-count-exact vs live.
+
+**Gemini API key (same day):** old key expired → rotated to new no-expiry AI Studio key in project gen-lang-client-0809557545; billing moved to Prepay ($10 loaded). OCR working.
+
+**NEXT STEP — migrate PROD the same way (after Shoab sign-off).** Proven recipe: pause old → create us-east-1 project → restore fresh pg_dump → swap DATABASE_URL (staging-first done) → verify. Add app_events index as Alembic migration. Known low-risk items user opted to leave: prod Supabase pw + a GitHub PAT were briefly exposed in-session.
+
+## 2026-06-08 (later) — PROD DB ALSO MIGRATED to Virginia (us-east-1) ✅
+
+Production database migrated Tokyo → Virginia, same recipe as staging. New prod project: `snapai-prod-use1` ref `zpsoprffaujswywtsgzy` (us-east-1). Railway prod DATABASE_URL now points here (session pooler 5432 + ?sslmode=require). Verified: Virginia-prod == Tokyo-prod byte-exact (45 tables, 2,450 rows, 0 diff). Prod DB query latency 1,307 ms → **18 ms**. Deploy Active/healthy. Tokyo-prod (`scopesnap`/quqrvnoguofbjacrxcim) kept as hot rollback. app_events index applied to Virginia-prod directly. NOTE: one failed deploy first (pasted staging ref kikhhnanuwzocwcpzutr + port 6543 by mistake) — Railway kept old Tokyo container serving so NO prod downtime; corrected to prod ref + 5432 and it deployed clean. **Both markets US+PK now on Virginia.** Remaining follow-ups: promote the pool-tuning commit (b5fc5d0) from staging→main so prod gets it too (prod already fast at 18 ms without it); convert app_events index to an Alembic migration; decide when to delete the paused Tokyo projects.
+
+## 2026-06-08 — POST-MIGRATION QA: ALL 4 SURFACES PASS (US+PK × staging+prod)
+
+Full QA after both DB migrations to Virginia (us-east-1):
+- Backend health: prod + staging both `{"status":"ok","db":"connected"}`. ✅
+- Speed (DB query cost, co-located): prod ~0–18 ms, staging ~18 ms (was ~1,300 ms). Health/endpoints ~430–490 ms (mostly measurement-distance network). ✅
+- Data integrity Virginia-PROD: US equipment_models=76 (fingerprint 1760, app==DB exact), fault_cards=19, pricing_tiers=57, operating_targets=20 | PK pak_fault_cards=16, pak_pricing_tiers=48, pak_brands=15, PK-models=73 | TXN assessments=199, estimates=43, diagnostic_sessions=192. Matches Tokyo-prod 0-diff. ✅
+- Data integrity Virginia-STAGING: US same reference set (76/19/57/20) | PK pak_fault_cards=16, pak_pricing_tiers=45, pak_brands=15 | TXN assessments=20, estimates=2 | RESEARCH/marketing operator_fields=22,703, canonical_operators=4,365 (full schema preserved). Matches staging backup 0-diff. ✅
+- App-reads-correct verified on prod (US models API 76/1760 exact) and staging (equipment_models, estimates rpt-567750/rpt-922499, diagnoses fault-card joins all exact).
+- Note: US-prod authenticated + all PK frontends need separate Clerk logins not available in-session, so those were verified at backend+data level (same shared backend+DB as the US-staging frontend, which was verified end-to-end). Staging Vercel renderer intermittently freezes on heavy pages — pre-existing frontend perf issue, unrelated to DB migration.
+
+VERDICT: Migration fully verified. Both markets, both environments, on Virginia, fast, data byte-exact.
+
+---
+
+## ⚠️ PK MARKET COMPATIBILITY VIEWS — critical, read before touching PK or migrations (DEC-092, 2026-06-09)
+
+The PK market request path does NOT query the `pak_*` base tables directly. `api/dependencies.py` → `MarketTables` routes PK requests to **five compatibility VIEWS** that remap Pakistani columns onto the US-compatible names the shared SQL expects:
+
+| View | Maps |
+|---|---|
+| `pak_fault_cards_v` | `pkr_est_*` → `price_list_*`; NULL `phase`/`difficulty` |
+| `pak_error_codes_v` | `brand_id` → `brand_family`; `code` → `error_code`; `description` → `meaning` |
+| `pak_labor_rates_v` | PKR labor cols → Houston names (attic/r22) |
+| `pak_replacement_costs_v` | `pkr_min/max/typical` → `price_min/max/typical` |
+| `pak_lifecycle_rules_v` | US-compatible schema, 0 rows (`WHERE false`) → falls to default |
+| `pak_operating_targets_v` | owned by migration 036 (`operating_targets WHERE market='PK'`) |
+
+**These views are load-bearing for ALL PK functionality.** If any are missing, every PK query throws "relation does not exist" → backend 503 with NO CORS headers (WA-21 escaped-exception pattern) → the browser shows "Failed to fetch", which *looks* like a CORS/service-worker/connectivity bug but is actually a missing-relation bug. Do not chase CORS/SW first — check these views exist.
+
+**History:** The 5 non-`operating_targets` views were originally created out-of-band (Supabase SQL editor) and were NOT in Alembic. The 2026-06-08 Tokyo→Virginia DB migration lost them on the **staging** restore (the staging dump never contained them). Repaired 2026-06-09 by recreating from the Tokyo-prod backup, and now codified in **Alembic migration `037_pak_market_views.py`** (idempotent `CREATE OR REPLACE VIEW`) so future restores recreate them automatically. Virginia **prod** always had all 6.
+
+**Migration-verification lesson:** row-count diffs do NOT catch missing views/functions/sequences (views have no rows). Any future DB migration must also diff `information_schema.views`, functions, and sequences — not just table row counts.
+
+**US is unaffected by all of this** — US uses the base `fault_cards`/`error_codes`/etc. tables, which restored fine. Verified working on US prod (76 models, estimates resolve, pricing_rules 28) and US staging.
+
+### Two separate PK issues still OPEN (NOT the view bug — do not conflate):
+1. **Dashboard "Recent Assessments" / "API offline"** — the dashboard's `/api/estimates/?limit=5` and `/api/analytics/estimates-summary` calls use the SHARED `estimates`/`assessments` ORM tables (no views), yet fail on the PK origin with a network/CORS-layer error (the React `.catch`, not an HTTP error). DB is clean post-view-fix. Needs the Railway/Sentry response-header trace to confirm whether the deployed CORS is not returning `Access-Control-Allow-Origin` for PK origins on normal 200 responses. US origins are unaffected.
+2. **`pk.snapai.mainnov.tech` (PROD) renders the DEV/staging Clerk instance** on sign-in ("Sign in to ScopeSnapAI Staging", "Development mode", `firm-chamois-61.accounts.dev`). Possible prod Clerk-key misconfiguration OR the PK prod domain is mapped to the staging Vercel deployment. Verify the PK prod domain's Vercel project + Clerk env vars vs US prod (`snapai.mainnov.tech`, which correctly uses prod Clerk).
+
+### UPDATE 2026-06-09 — PK prod misconfig CONFIRMED (was "possible" above)
+Verified by reading the deployed builds' Clerk publishable key + CSP API target:
+- **US prod** `snapai.mainnov.tech` → `pk_live_` Clerk + `scopesnap-api-production` ✅ correct.
+- **PK prod** `pk.snapai.mainnov.tech` → `pk_test_` (DEV) Clerk + `scopesnap-api-staging` ❌ — it is serving the **staging build/env**, not production.
+Implication: pk.snapai has been running against the **staging** backend + staging DB + dev Clerk. So (a) the 2026-06-09 staging view fix also benefits pk.snapai, and (b) the real remedy is to re-point the pk.snapai prod domain to the production Vercel deployment/env (prod Clerk `pk_live_` + `scopesnap-api-production`). Needs Vercel domain/env access.
+
+---
+
+## ✅ CURRENT STATE — 2026-06-09 (PK fully resolved + 2 open follow-ups)
+
+**Working & live-verified:**
+- **US prod** `snapai.mainnov.tech` — dashboard loads real data (rpt-0456, rpt-688001, rpt-9515, rpt-547105, rpt-5025). pk_live Clerk + scopesnap-api-production. ✅
+- **PK prod** `pk.snapai.mainnov.tech` — NOW serves the correct production build (pk_live Clerk + scopesnap-api-production + Virginia-prod DB). Dashboard loads the same real data. ✅ (was serving a stale staging build; re-aliased via Vercel → Domains → Edit → Save.)
+- **Backends:** prod + staging both `{"status":"ok","db":"connected"}`. ✅
+- **DBs:** Virginia staging + prod both at alembic **037**, both have all **6** `pak_*_v` views. ✅
+- **Migration `037_pak_market_views.py`** committed to staging + main, deployed and ran on both backends (idempotent). ✅
+
+**The 3 PK issues (all fixed):**
+1. Missing `pak_*_v` views (migration restore gap) → recreated + codified in migration 037.
+2. pk.snapai aliased to stale staging build → re-aliased to production deployment (no rebuild).
+3. Dashboard "API offline" → was a STALE SERVICE WORKER (snapai-shell-v2) from the old build intercepting /api calls, NOT backend CORS → cleared.
+
+**OPEN FOLLOW-UP #1 — frontend prod builds fail (`npm error E404`).** Fresh Vercel production builds error at `npm install --legacy-peer-deps` because a dependency version is missing from the npm registry (E404). The live prod deployment (03d80cb, May 29) still serves fine, but NO new frontend change can deploy to prod until the offending dep is pinned/updated in scopesnap-web/package.json + package-lock.json. (Backend/Railway builds are Docker-based and unaffected — migration 037 deployed fine.)
+
+**OPEN FOLLOW-UP #2 — stale SW for returning PK users.** Returning visitors who used the old pk.snapai may still hold the stale service worker and see "API offline" until it updates or they hard-refresh (clear site data / unregister SW). The robust fix is to bump the SW cache name (snapai-shell-v2 → v3) in sw.js on the next frontend deploy so all clients force-update — but that is blocked by follow-up #1 (build must be fixed first).
+
+---
+
+## QA RUN — 2026-06-09 (snapai-qa, all 4 surfaces)
+
+**Surfaces:** US prod (snapai.mainnov.tech), PK prod (pk.snapai.mainnov.tech), US staging (staging.snapai.mainnov.tech), PK staging (pk-staging.snapai.mainnov.tech). **Outcome: PASS.**
+
+**Backend health:** prod + staging `/health` → `{"status":"ok","db":"connected"}`.
+
+**Engine data (BOTH Virginia DBs at Alembic 037):**
+- equipment_models 76; fault_cards US 19 / PK 16 (view == base); operating_targets US 8 / PK 12 (ambient-aware per DEC migration 036).
+- PSI thresholds @35°C: US R-410A 115–140 (128 PSI → NORMAL ✓); PK R-410A 115–135 (130 PSI → NORMAL, not Dirty Coil ✓); PK R-22 65–72; PK R-32 110–130.
+- pricing_tiers US 57 / PK 48 (prod), 45 (staging); pak_*_v views all populated (error_codes 17, fault_cards 16, labor 1, replacement 4).
+- Brands market-separated: US 15 Houston (Carrier/Bryant/Amana…), PK 15 (Gree/Dawlance/Daikin/Haier PK…).
+
+**Frontend config (all 4 correctly wired):** US prod & PK prod = pk_live + production API; US staging & PK staging = pk_test + staging API. PK prod + PK staging serve **SW v4** (browser-native API passthrough). US prod + PK prod dashboards render real data (rpt-0456, rpt-688001, …).
+
+**Recent-fix verification (all confirmed live):** migration 037 + pak_*_v views present on both DBs; pk.snapai on prod build (durable — vercel.json alias removed); SW v4 deployed prod+staging; package-lock.json deterministic builds green; vercel.json pk.snapai alias removed.
+
+**Bugs found this run:** none new. **Caveat:** full manual click-through of all 6 diagnostic flows per surface was not performed (staging needs dev-Clerk login; browser tooling intermittent) — but the data those flows depend on is fully verified and prod dashboards render live data.
+
+---
+
+# 🧭 SESSION RETROSPECTIVE & LEARNINGS — 2026-06-09 (the PK "API offline" + Tokyo→Virginia migration saga)
+
+This was a long debugging session. Capturing roadblocks → how they were resolved → reusable lessons so future AI/dev sessions skip the detours. **The single biggest lesson: READ THIS FILE + `api/dependencies.py` (MarketTables) BEFORE doing extensive live browser probing.** Reading the brain cracked a multi-hour problem in minutes.
+
+## ROADBLOCK 1 — "API offline" / "Failed to fetch" on PK had FOUR identical-looking causes
+A browser "Failed to fetch" / the app's "API offline" looks the same whether the cause is:
+(a) a backend 503/raw exception that **bypasses CORS middleware** so the response has no CORS headers (WA-21 pattern), (b) a missing CORS allowed-origin, (c) the **service worker intercepting** the request, or (d) a **missing DB relation** making the backend error. I burned hours assuming CORS and oscillating between CORS↔SW.
+**What it actually was:** THREE layered causes, not one — (1) missing `pak_*_v` views from the migration, (2) pk.snapai serving the wrong build, (3) the service worker intercepting API calls.
+**Diagnostic order that works (use this next time):**
+1. Read `api/dependencies.py` `MarketTables` + this brain — PK routes to **views** `pak_*_v`, not base tables. If a view is missing → backend errors → looks like CORS.
+2. Pull **Supabase Postgres logs** (`get_logs` postgres) + `get_advisors` — the real SQL error is there. Browser probes are confounded by SW/CSP/cache.
+3. `fetch(url,{mode:'no-cors'})` succeeds opaquely if the request **reaches the server** → isolates network/CSP from CORS. `mode:'cors'` failing while no-cors succeeds = CORS/headers issue, not reachability.
+4. **Clerk deduction:** Clerk is also a cross-origin call through the same SW passthrough. If Clerk works from the origin, the SW + cross-origin path is fine → the problem is backend or CORS-config, NOT the SW.
+5. **Unregister the SW and reload.** If the API works with no SW but fails when the SW controls the page → the SW is the culprit (see ROADBLOCK 4).
+
+## ROADBLOCK 2 — Migration row-count check passed but PK was broken (missing VIEWS)
+The Tokyo→Virginia data-integrity check compared **table row counts** (0 differences) and declared success — but the 5 `pak_*_v` views have no rows, so they were invisible to the check and silently lost on the staging restore.
+**Resolution:** found the views referenced in `dependencies.py`, queried `information_schema.views` on the live DB (only 1 of 6 present), extracted the `CREATE VIEW` DDL from the **Tokyo-prod backup** (`backups/prod_fresh_*.sql.gz`), recreated them, and codified in Alembic migration `037`.
+**Lesson:** after ANY pg_dump/restore, diff **views, functions, sequences** — not just table row counts. Backups are the recovery source of truth (the prod dump held the exact view definitions).
+
+## ROADBLOCK 3 — pk.snapai kept reverting to the wrong build after every deploy (FLAPPING)
+I fixed pk.snapai (re-aliased to prod) several times via Vercel Domains → Save, but it kept reverting to the staging build (dev Clerk) after the next deploy.
+**Root cause:** `scopesnap-web/vercel.json` had a hardcoded `"alias": ["pk.snapai.mainnov.tech"]`. BOTH the prod project (builds `main`) and the staging project (builds `staging`) build this same file, so **every staging deploy stole pk.snapai to staging, every prod deploy stole it back.**
+**Resolution:** removed the `alias` from vercel.json on both branches → pk.snapai is now governed **only by the Vercel Domains UI** (assigned to the prod project). It stays put now.
+**Lesson:** if a domain serves the wrong build or flaps between deploys, check `vercel.json` `"alias"` first. Govern multi-project domains via the Domains UI, never a hardcoded vercel.json alias.
+
+## ROADBLOCK 4 — the service worker broke cross-origin API calls
+After fixing the views + build, "API offline" still recurred whenever the SW controlled the page. `sw.js` did `event.respondWith(fetch(event.request))` for `/api/` + cross-origin — that re-fetch from the SW context **failed on the PK origin even though a direct browser fetch returned 200 + data.**
+**Resolution:** SW **v4** now `return`s WITHOUT `respondWith` for API/cross-origin → the browser handles them natively. Bumped `CACHE_NAME` v2→v3→v4 to force stale clients to update.
+**Lesson:** `respondWith(fetch(event.request))` is interception, not passthrough, and can fail cross-origin where native fetch works. True passthrough = early `return`. Always bump the SW cache name when changing sw.js so clients update.
+
+## ROADBLOCK 5 — E404 build failure was a red herring; the real gap was no lockfile
+A no-cache "Redeploy" failed at `npm install` with E404. I over-flagged it as blocking.
+**Resolution/finding:** **normal git-push deploys use the build cache and succeed** — only a *from-scratch* rebuild re-resolves deps and can hit a **transient** registry E404 (a clean `npm install` later completed with 0 errors → not a yanked package). The real fragility was **no lockfile** (repo had only package.json), so every clean build re-resolved "latest matching". Fixed by committing `package-lock.json` (verified on staging, promoted to prod).
+**Lesson:** Railway/Docker builds are unaffected by npm registry blips; only Vercel clean rebuilds are. Commit a lockfile for determinism. Don't panic on a one-off E404 — confirm whether normal deploys still pass.
+
+## TOOLING GOTCHAS hit this session (save time next time)
+- **Vercel/Railway dashboards FREEZE the browser renderer** on screenshots (CDP timeout). Use `get_page_text` (text extraction) instead of screenshots for these SPAs.
+- **API-fetch JS from PK origins can HANG/freeze the renderer** (the failing fetch). DOM-read JS is fine; for API checks use `no-cors`, the Supabase logs, or `web_fetch` (server-side) instead.
+- **Sandbox bash:** each call is independent (no cwd/env carryover), 45s hard limit; **background processes and /tmp do NOT persist between calls.** The npm registry IS reachable from the sandbox (registry.npmjs.org → 200), but Clerk/Railway/GitHub APIs are proxy-blocked (403). To run npm within 45s: `--prefer-offline` with a warm cache; log to a file with `--loglevel http` to capture partial output before the timeout kills it.
+- **Committing without git push:** the sandbox can't `git push` (proxy 403). Use GitHub web **"Upload files"** + the `file_upload` tool — it overwrites existing files with exact content. The green "Commit changes" button often needs **two clicks** (first click can land on the "choose your files" link).
+- **Backend deploys via env-var change may reuse a cached image** (the code SHA didn't change) — a code commit forces a true rebuild.
+
+## PROCESS LESSONS
+1. **Read the project docs + routing code before live probing.** The user had to say "read the tech stack first" — that was the turning point. Hours of browser probing vs minutes once the `pak_*_v` view architecture was understood.
+2. **Don't commit a speculative fix before confirming the root cause** (nearly shipped a CORS `allow_origin_regex` that wouldn't have fixed the real, view/SW/alias causes).
+3. **Staging-first for risky prod changes** (lockfile, etc.) — verify the build green on staging before promoting to main.
+4. **One "fix" can mask layered causes** — PK needed FOUR independent fixes (views, build alias, SW, lockfile). Re-verify end-to-end after each, and don't declare done until the SW-controlled load works.
+
+---
+
+### 2026-06-10 — DB backups live (Cloudflare R2) — see DEC-094 / TECH_STACK
+Free automated daily backups of both Virginia DBs now run via GitHub Actions (`.github/workflows/db-backup-r2.yml`) → private R2 bucket `snapai-db-backups` (14-day retention, $0). Verified green 2026-06-10 (run 27296950101); prod+staging dumps present in bucket. Both backends `/health` ok/db-connected afterward.
+- Prod backend (live): `scopesnap-api-production.up.railway.app` — note the bare `scopesnap-api.up.railway.app` is STALE (Railway 404).
+- **Open:** Healthchecks "Keepalive B DOWN" — keepalive workflows still ping the deleted Tokyo Supabase URLs; repoint the 4 keepalive secrets to Virginia or retire the keepalives.
+
+### 2026-06-10 — Keepalive "DOWN" RESOLVED (DEC-094 follow-up)
+Root cause confirmed from run logs: keepalive-supabase-B failed with `curl: (6) Could not resolve host: quqrvnoguofbjacrxcim.supabase.co` — the 4 keepalive secrets still pointed at the **deleted Tokyo** projects, so the ping failed and the `if: success()` Healthchecks heartbeat never fired → DOWN.
+
+**Fix:** repointed all 4 keepalive secrets to the Virginia (us-east-1) projects (values fetched via Supabase MCP; updated through the GitHub Secrets API with libsodium sealed-box encryption — the anon keys are publishable/public):
+- `SUPABASE_PROD_URL`    = `https://zpsoprffaujswywtsgzy.supabase.co` (snapai-prod-use1)
+- `SUPABASE_STAGING_URL` = `https://kikhhnanuwzocwcpzutr.supabase.co` (snapai-staging-use1)
+- `SUPABASE_PROD_ANON_KEY` / `SUPABASE_STAGING_ANON_KEY` = each project's legacy anon JWT.
+
+**Verified 2026-06-10:** manually dispatched both keepalive-supabase-A and -B → both **success**; steps Ping production / Ping staging / Heartbeat(Healthchecks.io) all green. Both Healthchecks checks flip DOWN→UP. Twice-weekly schedule restored (A = Sun 02:00 UTC, B = Wed 14:00 UTC).
+
+Note: keepalive is now somewhat redundant with the daily R2 backup (which pg_dumps both DBs daily = stronger DB-activity keepalive), but it's kept for the independent Healthchecks "did the scheduled job run" monitor.
