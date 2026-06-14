@@ -129,9 +129,9 @@ interface Report {
 }
 
 const TIER_LABELS: Record<string, string> = {
-  good: "Good",
-  better: "Better",
-  best: "Best",
+  good: "Repair",
+  better: "Enhanced Repair",
+  best: "Full Replacement",
 };
 
 const CONDITION_COLORS: Record<string, string> = {
