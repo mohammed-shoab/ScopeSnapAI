@@ -4,7 +4,7 @@
  * FaultResolutionScreen — Track D + Track DX (Group B)
  *
  * Group B changes (DX.3–DX.11):
- *   DX.3  — Repair Plan section (3 tier cards, Good/Better/Best)
+ *   DX.3  — Repair Plan section (3 tier cards, context-aware labels)
  *   DX.4  — Density trim: customer → subtitle, reasoning → bottom link, parts+time merged
  *   DX.5  — 2-button footer: large Continue + small "Different problem" link
  *   DX.6  — Different problem opens structured picker modal (DiagnosisFeedbackModal)
@@ -31,6 +31,7 @@ import {
   getDiagnosesOpenedCount,
   getSessionCount,
 } from "@/lib/userSessionCounter";
+import { tierLabelForUnit } from "@/lib/tier-labels";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -71,6 +72,8 @@ export interface DiagnosticResult {
 interface Props {
   data: DiagnosticResult;
   mode?: "authenticated" | "public";
+  /** Unit age in years for context-aware tier labels. Optional — diagnostic API may omit it. */
+  unitAgeYears?: number | null;
 }
 
 // ── Confidence badge ──────────────────────────────────────────────────────────
@@ -91,7 +94,7 @@ const TIER_LABEL: Record<string, "good" | "better" | "best"> = { A: "good", B: "
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function FaultResolutionScreen({ data, mode = "authenticated" }: Props) {
+export default function FaultResolutionScreen({ data, mode = "authenticated", unitAgeYears }: Props) {
   const market   = detectMarket();
   const isPublic = mode === "public";
   const conf     = CONFIDENCE[data.fault.confidence] ?? CONFIDENCE.high;
@@ -458,7 +461,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
           {(showAllTiers ? orderedTiers : orderedTiers.filter(t => t.key === recTier)).map(tier => {
             const isExpanded    = expandedTiers.has(tier.key);
             const isRecommended = tier.key === recTier;
-            const tierName      = tier.name || (tier.key === "A" ? "Good" : tier.key === "B" ? "Better" : "Best");
+            const tierName      = tier.name || tierLabelForUnit(TIER_LABEL[tier.key], unitAgeYears);
 
             return (
               <div
@@ -534,7 +537,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated" }: 
           {/* Show non-recommended tiers when expanded */}
           {!showAllTiers && showOtherTiers && orderedTiers.filter(t => t.key !== recTier).map(tier => {
             const isExpanded = expandedTiers.has(tier.key);
-            const tierName   = tier.name || (tier.key === "A" ? "Good" : tier.key === "B" ? "Better" : "Best");
+            const tierName   = tier.name || tierLabelForUnit(TIER_LABEL[tier.key], unitAgeYears);
             return (
               <div
                 key={tier.key}

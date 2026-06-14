@@ -298,7 +298,7 @@ export default function DashboardPage() {
           </div>
           <h2 className="text-white font-bold text-xl mb-2">{t("Take your first assessment")}</h2>
           <p className="text-white/70 text-sm mb-6 max-w-xs mx-auto">
-            Photograph any HVAC unit. AI identifies the equipment and generates Good / Better / Best pricing in seconds.
+            Photograph any HVAC unit. AI identifies the equipment and generates three context-aware options with one honest recommendation in seconds.
           </p>
           <Link
             href="/assess"
@@ -321,7 +321,7 @@ export default function DashboardPage() {
           <div className="min-w-0">
             <p className="text-white/70 text-xs font-semibold uppercase tracking-wider mb-1">{t("Ready for your next job?")}</p>
             <p className="text-white font-bold text-lg leading-snug">{t("Start a new assessment")}</p>
-            <p className="text-white/60 text-xs mt-0.5">{t("90 seconds · AI-powered · Good / Better / Best")}</p>
+            <p className="text-white/60 text-xs mt-0.5">{t("90 seconds · AI-powered · three options, one recommendation")}</p>
           </div>
           <Link
             href="/assess"

@@ -19,6 +19,7 @@ import { ph } from "@/providers/PostHogProvider";
 import PresentMode from "@/components/PresentMode";
 import { formatCurrency, detectMarket } from "@/lib/market";
 import { useLang } from "@/lib/language-context";
+import { tierLabelForUnit, type TierKey } from "@/lib/tier-labels";
 
 const IS_DEV = process.env.NEXT_PUBLIC_ENV === "development";
 const DEV_HEADER = { "X-Dev-Clerk-User-Id": "test_user_mike" };
@@ -331,6 +332,13 @@ function CategoryHeader({ label, icon }: { label: string; icon: string }) {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
+function computeDisplayTotal(opt: Option, items: LineItem[], markup: number): number {
+  const list = items || [];
+  const subtotal = list.reduce((acc, item) => acc + itemRawCost(item), 0);
+  const markupAmt = Math.round(subtotal * markup / 100);
+  return subtotal > 0 ? subtotal + markupAmt : opt.total;
+}
+
 export default function EstimatePage() {
   const { id } = useParams<{ id: string }>();
   const { getToken } = useAuth();
@@ -346,6 +354,7 @@ export default function EstimatePage() {
   }, [getToken]);
   const { t, lang } = useLang();
   const [estimate, setEstimate] = useState<EstimateData | null>(null);
+  const [unitAgeYears, setUnitAgeYears] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("estimate");
 
@@ -357,8 +366,6 @@ export default function EstimatePage() {
   const [selectedTier, setSelectedTier] = useState("better");
   const [recommendedTier, setRecommendedTier] = useState("better");
 
-  // Repair / Replace toggle per option tier
-  const [jobTypes, setJobTypes] = useState<Record<string, JobType>>({});
 
   // Local line items state (editable, not persisted to API yet)
   const [localItems, setLocalItems] = useState<Record<string, LineItem[]>>({});
@@ -412,15 +419,22 @@ export default function EstimatePage() {
           if (d.customer_email) setSendEmail(d.customer_email);
           if (d.customer_phone) setSendPhone(d.customer_phone);
           if (d.customer_name) setHomeownerName(d.customer_name);
-          // Init local items & job types from API data
+          // Init local items from API data
           const items: Record<string, LineItem[]> = {};
-          const jt: Record<string, JobType> = {};
           (data.options || []).forEach((opt) => {
             items[opt.tier] = [...(opt.line_items || [])];
-            jt[opt.tier] = opt.job_type || "replace";
           });
           setLocalItems(items);
-          setJobTypes(jt);
+          // Issue 1: fetch unit age (install_year) for context-aware tier labels
+          if (data.assessment_id) {
+            fetch(`${API_URL}/api/assessments/${data.assessment_id}`, { headers })
+              .then((r) => (r.ok ? r.json() : null))
+              .then((a) => {
+                const iy = a?.ai_equipment_id?.install_year;
+                if (iy) setUnitAgeYears(new Date().getFullYear() - Number(iy));
+              })
+              .catch(() => {});
+          }
         })
         .catch(() => setLoading(false));
     })();
@@ -766,14 +780,13 @@ export default function EstimatePage() {
               const isMiddleTier = opt.tier === "better"; // drives card styling only
               const isRecommended = !!(opt as { recommended?: boolean }).recommended; // drives badge
               const isRec = isMiddleTier; // kept for card headerBg/badgeBg/priceColor below
-              const jobType = jobTypes[opt.tier] || "replace";
               const items = localItems[opt.tier] || [];
               const groups = groupItems(items);
 
               // Compute totals from local items
               const subtotal = items.reduce((s, item) => s + itemRawCost(item), 0);
               const markupAmt = Math.round(subtotal * markup / 100);
-              const displayTotal = subtotal > 0 ? subtotal + markupAmt : opt.total;
+              const displayTotal = computeDisplayTotal(opt, items, markup);
               const displaySubtotal = subtotal > 0 ? subtotal : (opt.subtotal || Math.round(opt.total / (1 + markup / 100)));
 
               // Card styling per tier
@@ -813,28 +826,12 @@ export default function EstimatePage() {
                         {/* Badge + Repair/Replace toggle */}
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                           <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${badgeBg}`}>
-                            {opt.tier.charAt(0).toUpperCase() + opt.tier.slice(1)}
+                            {tierLabelForUnit(opt.tier as TierKey, unitAgeYears)}
                             {isRecommended && " — ★ REC"}
                           </span>
-                          {/* Repair / Replace segmented control */}
-                          <div
-                            className="flex bg-white rounded-full border border-surface-border p-0.5 shadow-sm"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {(["repair", "replace"] as JobType[]).map((jt) => (
-                              <button
-                                key={jt}
-                                onClick={() => setJobTypes((prev) => ({ ...prev, [opt.tier]: jt }))}
-                                className={`text-xs font-semibold px-3 py-1 rounded-full transition-all ${
-                                  jobType === jt
-                                    ? "bg-brand-green text-white shadow-sm"
-                                    : "text-text-secondary hover:text-text-primary"
-                                }`}
-                              >
-                                {jt === "repair" ? "🔧 Repair" : "🔄 Replace"}
-                              </button>
-                            ))}
-                          </div>
+                          {/* Repair/Replace toggle hidden in this release — see TODO-REPAIR-REPLACE. */}
+                          {/* Backend returns one pre-calculated total per tier; per-tier */}
+                          {/* repair/replace needs EstimateOption extended + items per job_type. */}
                         </div>
                         <h3 className="font-bold text-base text-text-primary leading-tight">{opt.name}</h3>
                         {opt.description && (
@@ -1097,7 +1094,7 @@ export default function EstimatePage() {
                             <div className="flex items-center gap-1.5">
                               {isSelected && <span className="w-2 h-2 rounded-full bg-brand-green flex-shrink-0" />}
                               <span className={`font-semibold text-xs md:text-sm ${tierColors[opt.tier] || "text-text-primary"}`}>
-                                {opt.name}
+                                {opt.name || tierLabelForUnit(opt.tier as TierKey, unitAgeYears)}
                               </span>
                             </div>
                           </td>
@@ -1143,7 +1140,7 @@ export default function EstimatePage() {
             className="w-full bg-brand-green text-white font-bold py-4 rounded-xl text-base shadow-lg shadow-green-200 hover:shadow-xl transition-shadow"
           >
             {selectedOption
-              ? `Continue with ${selectedOption.name} (${fmt(selectedOption.total)}) →`
+              ? `Continue with ${selectedOption.name} (${fmt(computeDisplayTotal(selectedOption, localItems[selectedOption.tier] || [], markup))}) →`
               : "Continue →"}
           </button>
         </>
