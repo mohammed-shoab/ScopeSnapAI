@@ -269,12 +269,12 @@ async def ocr_nameplate(
     outdoor_serial = outdoor_raw.get("serial_number")
     if outdoor_serial:
         try:
-            decode_result = decode_serial(
+            decode_result, _ = decode_serial(
                 brand=brand_data.get("brand_id") or "",
                 serial=outdoor_serial,
             )
-            if decode_result:
-                outdoor_raw["year_of_manufacture"] = decode_result.get("year")
+            if decode_result and decode_result.year:
+                outdoor_raw["year_of_manufacture"] = decode_result.year
         except Exception:
             pass
 
@@ -283,12 +283,12 @@ async def ocr_nameplate(
         if indoor_serial:
             try:
                 indoor_brand = brand_data.get("brand_id")
-                decode_result = decode_serial(
+                decode_result, _ = decode_serial(
                     brand=indoor_brand or "",
                     serial=indoor_serial,
                 )
-                if decode_result:
-                    indoor_raw["year_of_manufacture"] = decode_result.get("year")
+                if decode_result and decode_result.year:
+                    indoor_raw["year_of_manufacture"] = decode_result.year
             except Exception:
                 pass
 

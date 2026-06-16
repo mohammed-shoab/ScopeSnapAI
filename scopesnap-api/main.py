@@ -213,6 +213,13 @@ async def on_startup():
     import sys as _sys
     _sys.path.insert(0, "/app")
 
+    # Load v1.2 brand serial-decode data into memory (Stage 1 decoder).
+    try:
+        from services import brand_data_loader
+        brand_data_loader.load_all()
+    except Exception as _bd_err:
+        print(f"\u26a0\ufe0f  Brand data load failed (non-fatal): {_bd_err}")
+
     # Auto-seed pricing rules if the table is empty
     try:
         from db.database import AsyncSessionLocal

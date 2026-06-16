@@ -623,9 +623,9 @@ async def analyze_assessment(
         serial = ai_equipment_id.get("serial", "")
         brand = ai_equipment_id.get("brand", "")
         if serial and brand:
-            decoded = decode_serial(brand, serial)
+            decoded, _decode_fail = decode_serial(brand, serial)
             if decoded:
-                ai_equipment_id["serial_decoded"] = decoded
+                ai_equipment_id["serial_decoded"] = decoded.to_dict()
                 assessment.ai_equipment_id = ai_equipment_id
 
         await db.commit()
