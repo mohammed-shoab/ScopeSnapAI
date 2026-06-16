@@ -738,7 +738,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
         <div className="flex flex-col gap-1">
           <label
             htmlFor="install-year-select"
-            className="text-[10px] font-bold uppercase tracking-wider text-gray-400"
+            className="text-[10px] font-bold uppercase tracking-wider text-gray-500"
           >
             {t("Year installed")}
           </label>
@@ -779,7 +779,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
 
         {/* Age-confidence selector (Sure / Approximate / Unknown) */}
         <fieldset style={{ border: "none", margin: 0, padding: 0 }}>
-          <legend className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+          <legend className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
             {t("How sure are we?")}
           </legend>
           <div className="grid grid-cols-3 gap-2">
@@ -792,7 +792,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
               return (
                 <label
                   key={opt.key}
-                  className="flex items-center justify-center text-center rounded-lg cursor-pointer text-xs font-semibold"
+                  className="flex items-center justify-center text-center rounded-lg cursor-pointer text-xs font-semibold focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#1a8754]"
                   style={{
                     background: selected ? "#1a8754" : "#ffffff",
                     color: selected ? "#ffffff" : "#374151",

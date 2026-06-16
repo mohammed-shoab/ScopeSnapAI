@@ -1032,7 +1032,7 @@ export default function ReportClient({ report }: { report: Report }) {
             <p style={{ fontSize: 13, fontWeight: 700, margin: "0 0 4px", color: "#1a1a1a" }}>
               {t("Install year shown")}: <span style={{ color: "#1a8754" }}>{displayInstallYear}</span>. {t("Is this correct?")}
             </p>
-            <p style={{ fontSize: 11, color: "#7a7770", margin: "0 0 12px", lineHeight: 1.5 }}>
+            <p style={{ fontSize: 11, color: "#6f6c64", margin: "0 0 12px", lineHeight: 1.5 }}>
               {t("Confirming the age helps us recommend repair vs replacement accurately.")}
             </p>
 
@@ -1107,7 +1107,7 @@ export default function ReportClient({ report }: { report: Report }) {
             </button>
             {ageCorrectionMode === "relative" && (
               <fieldset style={{ border: "1px solid #e5e2da", borderRadius: 10, padding: "10px 12px", margin: "8px 0 0" }}>
-                <legend style={{ fontSize: 11, fontWeight: 700, color: "#7a7770", padding: "0 4px" }}>
+                <legend style={{ fontSize: 11, fontWeight: 700, color: "#6f6c64", padding: "0 4px" }}>
                   {t("About how many years ago?")}
                 </legend>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6, marginTop: 4 }}>
@@ -1117,6 +1117,7 @@ export default function ReportClient({ report }: { report: Report }) {
                     return (
                       <label
                         key={yrs}
+                        className="focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#1a8754]"
                         style={{
                           display: "flex", alignItems: "center", justifyContent: "center",
                           padding: "10px 4px", borderRadius: 8, cursor: "pointer", minHeight: 44,

@@ -705,7 +705,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
                 }}
               >
                 Why this recommendation?
-                <span style={{ fontSize: 16, color: "#94a3b8", transform: whyOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+                <span style={{ fontSize: 16, color: "#64748b", transform: whyOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
                   &#8964;
                 </span>
               </button>
@@ -765,7 +765,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
                         <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "2px 0" }}>
                           <span style={{ color: "#64748b" }}>{f.label || f.name}</span>
                           <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-                            +{(f.contribution).toFixed(2)} <span style={{ color: "#94a3b8", fontWeight: 400 }}>(w {f.weight.toFixed(2)})</span>
+                            +{(f.contribution).toFixed(2)} <span style={{ color: "#64748b", fontWeight: 400 }}>(w {f.weight.toFixed(2)})</span>
                           </span>
                         </div>
                       ))}
