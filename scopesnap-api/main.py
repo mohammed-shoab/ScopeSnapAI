@@ -41,6 +41,7 @@ from api.recommend import router as recommend_router           # WS-H
 from api.followup import router as followup_router             # WS-I
 from api.uploads import router as uploads_router   # Diagnostic photo upload
 from api.models import router as models_router     # Section 5A: model lookup
+from api.version import router as version_router   # Brand Decoder Stage 5: GET /api/version (public)
 
 
 # ââ Sentry Error Tracking âââââââââââââââââââââââââââââââââââââââââââââââââââââ
@@ -157,6 +158,7 @@ app.include_router(feedback_router)         # WS-F training feedback
 app.include_router(followup_router)         # WS-I follow-up emails
 app.include_router(uploads_router)           # POST /api/uploads (diagnostic photo upload)
 app.include_router(models_router)            # GET /api/models/* (Section 5A model lookup)
+app.include_router(version_router)           # GET /api/version (public, brand-decoder version stamp)
 
 
 # ââ Health Check ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ

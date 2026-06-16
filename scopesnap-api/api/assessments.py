@@ -54,6 +54,31 @@ class AssessmentOverride(BaseModel):
     notes: Optional[str] = None
 
 
+def build_install_year_change_entry(
+    *,
+    ai_install_year,
+    new_install_year,
+    ai_install_year_source=None,
+    tech_id,
+    timestamp,
+):
+    """Pure builder for an install_year `_issue_change_log` entry.
+
+    Mirrors the structure/style of the other change-log appends in the
+    PATCH /api/assessments/{id} handler. Factored out so it can be unit-tested
+    without a DB / request (Stage 6).
+    """
+    return {
+        "field": "install_year",
+        "from": ai_install_year,
+        "to": new_install_year,
+        "from_source": ai_install_year_source or "ai_decoder",
+        "to_source": "tech_override",
+        "tech_id": tech_id,
+        "timestamp": timestamp,
+    }
+
+
 class AssessmentResponse(BaseModel):
     id: str
     status: str
@@ -774,6 +799,44 @@ async def update_assessment(
                 "tech_id": auth.user_id,
                 "timestamp": now_iso,
             })
+
+    # Track install_year changes (feeds the "% confident-wrong" age metric) ──
+    # The new value may arrive in the PATCH body directly (overrides.install_year).
+    ai_install_year = None
+    ai_install_year_source = None
+    if assessment.ai_equipment_id:
+        ai_install_year = assessment.ai_equipment_id.get("install_year")
+        ai_install_year_source = assessment.ai_equipment_id.get("install_year_source")
+    if "install_year" in new_values and new_values["install_year"] != ai_install_year:
+        new_install_year = new_values["install_year"]
+        issue_change_log.append(
+            build_install_year_change_entry(
+                ai_install_year=ai_install_year,
+                new_install_year=new_install_year,
+                ai_install_year_source=ai_install_year_source,
+                tech_id=auth.user_id,
+                timestamp=now_iso,
+            )
+        )
+        # Fire age_corrected analytics (best-effort, never breaks the request).
+        try:
+            from services.analytics import fire_age_corrected
+            ai_confidence = (
+                assessment.ai_equipment_id.get("confidence")
+                if assessment.ai_equipment_id
+                else None
+            )
+            fire_age_corrected(
+                assessment_id=assessment_id,
+                original_year=ai_install_year,
+                corrected_year=new_install_year,
+                original_confidence=ai_confidence,
+                original_source=ai_install_year_source or "ai_decoder",
+                corrected_by="tech",
+                distinct_id=auth.user_id,
+            )
+        except Exception:
+            pass
 
     # Persist label_edited flag and issue change log
     if label_was_edited:

@@ -37,6 +37,8 @@ from api.auth import get_current_user, AuthContext
 from api.recommend import get_recommended_tier_internal
 from api.dependencies import get_tables, MarketTables
 from services.condition_signals import derive_condition_signal_from_assessment
+from services import brand_data_loader
+from services.analytics import capture_event
 
 logger = logging.getLogger(__name__)
 
@@ -368,6 +370,332 @@ class FaultCardEstimateResponse(BaseModel):
     recommendation:         Optional[dict] = None   # §4C: severity×age decision metadata
 
 
+# =====================================================================
+# Stage 4 -- Track 2 shadow-mode weighted replace score
+# =====================================================================
+# Shadow-only: this score is computed alongside the live recommendation but
+# NEVER drives the user-facing tier. It exists to (a) gather divergence data via
+# the `replace_decision_shadow_eval` PostHog event and (b) feed the Stage 3C
+# "show the math" panel. Weights come from the JSON replace_decision_logic_spec
+# (falling back to the constants below); the threshold comes from an env var.
+
+from dataclasses import dataclass, field, asdict
+
+# Default weights -- mirror replace_decision_logic_spec.weights_initial_estimate.
+_DEFAULT_REPLACE_WEIGHTS = {
+    "remaining_life": 0.35,
+    "refrigerant": 0.25,
+    "cost_ratio": 0.20,
+    "climate": 0.10,
+    "repair_history": 0.10,
+}
+
+# cr_substituted (low-confidence Tier-3) records get their remaining_life weight
+# halved to down-weight the least reliable signal.
+_CR_SUBSTITUTED_REMAINING_LIFE_FACTOR = 0.5
+
+# Neutral value used whenever a factor cannot be derived from the record/inputs.
+_NEUTRAL_FACTOR = 0.5
+
+
+def _replace_recommend_threshold() -> float:
+    """RECOMMEND_REPLACE_THRESHOLD env var (default 0.6). Tunable without redeploy."""
+    raw = os.environ.get("RECOMMEND_REPLACE_THRESHOLD", "")
+    try:
+        return float(raw) if raw.strip() else 0.6
+    except (ValueError, AttributeError):
+        return 0.6
+
+
+def _replace_weights() -> dict:
+    """Weights from replace_decision_logic_spec, else the default constants.
+
+    The spec stores them under `weights_initial_estimate` keyed by the longer
+    research names (brand_tier_remaining_life / refrigerant_compatibility /
+    cost_ratio / climate_adjustment / repair_history). We map those onto our
+    short factor keys; any missing key falls back to the default weight.
+    """
+    weights = dict(_DEFAULT_REPLACE_WEIGHTS)
+    try:
+        spec = brand_data_loader.get_replace_logic_spec() or {}
+        raw = spec.get("weights_initial_estimate") or spec.get("weights") or {}
+        key_map = {
+            "remaining_life": ("remaining_life", "brand_tier_remaining_life"),
+            "refrigerant": ("refrigerant", "refrigerant_compatibility"),
+            "cost_ratio": ("cost_ratio",),
+            "climate": ("climate", "climate_adjustment"),
+            "repair_history": ("repair_history",),
+        }
+        for short, candidates in key_map.items():
+            for c in candidates:
+                if c in raw:
+                    weights[short] = float(raw[c])
+                    break
+    except Exception:  # pragma: no cover - stay safe, fall back to defaults
+        logger.debug("[replace_score] weight lookup failed; using defaults", exc_info=True)
+    return weights
+
+
+@dataclass
+class ReplaceFactor:
+    raw: float          # normalized 0..1 factor value
+    weight: float       # weight actually applied (post cr_substituted adjustment)
+    contribution: float # raw * weight
+    sourced: bool       # True if derived from data, False if neutral default
+
+
+@dataclass
+class ReplaceScore:
+    score: float
+    recommend_replace: bool
+    threshold: float
+    cr_substituted: bool
+    record_found: bool
+    factors: dict = field(default_factory=dict)  # name -> ReplaceFactor (as dict)
+
+    def as_dict(self) -> dict:
+        return asdict(self)
+
+
+def _clamp01(x: float) -> float:
+    if x != x:  # NaN
+        return _NEUTRAL_FACTOR
+    return max(0.0, min(1.0, float(x)))
+
+
+def _parse_lifespan_years(value) -> Optional[float]:
+    """Parse a lifespan string/number like '12-16' or '15' into a midpoint float."""
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    s = str(value)
+    nums = re.findall(r"\d+(?:\.\d+)?", s)
+    if not nums:
+        return None
+    vals = [float(n) for n in nums]
+    return sum(vals) / len(vals)
+
+
+def _lookup_replace_record(
+    records: list, brand: Optional[str], tier: Optional[str],
+    variant: Optional[str], region: Optional[str],
+) -> Optional[dict]:
+    """Find the best Track 2 record for (brand, tier, variant, region).
+
+    Matching is case-insensitive and progressively relaxed: brand is required;
+    tier/variant/region narrow the match but a brand-only fallback is returned
+    if no fully-qualified record exists.
+    """
+    if not brand:
+        return None
+    b = brand.strip().lower()
+    t = (tier or "").strip().lower()
+    v = (variant or "").strip().lower()
+    r = (region or "").strip().lower()
+
+    def _score(rec: dict) -> int:
+        if (rec.get("brand") or rec.get("canonical_name") or "").strip().lower() != b:
+            return -1  # brand mismatch disqualifies
+        s = 8
+        if t and (rec.get("tier") or "").strip().lower() == t:
+            s += 4
+        if v and (rec.get("variant") or "").strip().lower() == v:
+            s += 2
+        if r and (rec.get("market") or rec.get("region") or "").strip().lower() == r:
+            s += 1
+        return s
+
+    best = None
+    best_s = -1
+    for rec in records:
+        sc = _score(rec)
+        if sc > best_s:
+            best, best_s = rec, sc
+    return best if best_s >= 0 else None
+
+
+def _refrigerant_factor(record: Optional[dict], refrigerant: Optional[str],
+                        unit_age_years: Optional[int]) -> tuple:
+    """Map refrigerant generation -> replace pressure (0..1). Returns (value, sourced)."""
+    rcode = (refrigerant or "").upper().replace(" ", "")
+    if rcode.startswith("R-22") or rcode.startswith("R22"):
+        return 1.0, True   # R-22: recharge uneconomical/illegal-for-new -> strong replace
+    if rcode.startswith("R-410A") or rcode.startswith("R410A"):
+        return 0.5, True   # R-410A: phase-down adds moderate weight
+    if (rcode.startswith("R-454") or rcode.startswith("R-32")
+            or rcode.startswith("R454") or rcode.startswith("R32")):
+        return 0.1, True   # A2L: current generation, no penalty
+    # Fall back: infer from record's refrigerant_compatibility by install era.
+    if record and unit_age_years is not None:
+        try:
+            comp = record.get("refrigerant_compatibility") or {}
+            install_year = datetime.now(timezone.utc).year - int(unit_age_years)
+            if install_year < 2010 and comp.get("before_2010"):
+                return 1.0, True
+            if 2010 <= install_year < 2025 and comp.get("2010_2024"):
+                return 0.5, True
+            if install_year >= 2025:
+                return 0.1, True
+        except Exception:
+            pass
+    return _NEUTRAL_FACTOR, False
+
+
+def _remaining_life_factor(record: Optional[dict], unit_age_years: Optional[int]) -> tuple:
+    """Replace pressure from remaining service life (0..1). Returns (value, sourced).
+
+    Uses reliability_profile.houston_climate_adjusted lifespan minus unit age.
+    Less life remaining -> higher replace pressure. remaining<=3 -> ~1.0.
+    """
+    if not record or unit_age_years is None:
+        return _NEUTRAL_FACTOR, False
+    prof = record.get("reliability_profile") or {}
+    expected = (
+        _parse_lifespan_years(prof.get("houston_climate_adjusted"))
+        or _parse_lifespan_years(prof.get("expected_lifespan_years_humid_climate"))
+        or _parse_lifespan_years(prof.get("expected_lifespan_years_dry_climate"))
+    )
+    if not expected or expected <= 0:
+        return _NEUTRAL_FACTOR, False
+    remaining = expected - float(unit_age_years)
+    if remaining <= 3:
+        return 1.0, True
+    # Linear: full life left -> 0 pressure; 3 yrs left -> ~1.0 pressure.
+    return _clamp01(1.0 - (remaining - 3) / max(expected - 3, 1.0)), True
+
+
+def _climate_factor(record: Optional[dict], region: Optional[str]) -> tuple:
+    """Climate harshness -> replace pressure (0..1). Houston/humid -> higher."""
+    if record:
+        prof = record.get("reliability_profile") or {}
+        humid = _parse_lifespan_years(prof.get("expected_lifespan_years_humid_climate"))
+        dry = _parse_lifespan_years(prof.get("expected_lifespan_years_dry_climate"))
+        if humid and dry and dry > 0:
+            # Larger humid/dry shortfall -> harsher climate -> more replace pressure.
+            return _clamp01((dry - humid) / dry + 0.4), True
+    r = (region or "").strip().lower()
+    if r in ("us", "houston"):
+        return 0.6, True   # Houston humidity: moderate replace pressure
+    if r == "pk":
+        return 0.7, True   # PK extreme ambient: slightly higher
+    return _NEUTRAL_FACTOR, False
+
+
+def _cost_ratio_factor(repair_cost: Optional[float], replacement_cost: Optional[float]) -> tuple:
+    """repair/replace cost ratio -> replace pressure (0..1)."""
+    if repair_cost and replacement_cost and replacement_cost > 0:
+        return _clamp01(float(repair_cost) / float(replacement_cost)), True
+    return _NEUTRAL_FACTOR, False
+
+
+def _repair_history_factor(repair_count: Optional[int]) -> tuple:
+    """Past repair count -> replace pressure (0..1). 0 repairs -> 0, 3+ -> ~1.0."""
+    if repair_count is None:
+        return _NEUTRAL_FACTOR, False
+    return _clamp01(float(repair_count) / 3.0), True
+
+
+def _compute_weighted_replace_score(
+    brand: Optional[str],
+    tier: Optional[str],
+    variant: Optional[str],
+    region: Optional[str],
+    unit_age_years: Optional[int] = None,
+    refrigerant: Optional[str] = None,
+    repair_cost: Optional[float] = None,
+    replacement_cost: Optional[float] = None,
+    repair_count: Optional[int] = None,
+    threshold: Optional[float] = None,
+) -> ReplaceScore:
+    """Shadow-mode weighted replace score in [0, 1] with a full factor breakdown.
+
+    Looks up the Track 2 record for (brand, tier, variant, region). Each factor
+    is normalized to 0..1 (1.0 = strong replace pressure); absent factors default
+    to a neutral 0.5. The weighted sum uses the JSON-sourced weights (or the
+    default constants). When the record is cr_substituted, the remaining_life
+    weight is halved (down-weighting the least-reliable Tier-3 signal) and the
+    weight vector is renormalized so the score stays in [0, 1].
+
+    Returns a ReplaceScore with the recommendation flag + per-factor breakdown
+    (raw value, applied weight, contribution) for the Stage 3C show-the-math panel.
+    """
+    records = brand_data_loader.get_replace_records()
+    record = _lookup_replace_record(records, brand, tier, variant, region)
+    cr_substituted = bool(record.get("cr_substituted")) if record else False
+
+    rl_val, rl_src = _remaining_life_factor(record, unit_age_years)
+    ref_val, ref_src = _refrigerant_factor(record, refrigerant, unit_age_years)
+    cost_val, cost_src = _cost_ratio_factor(repair_cost, replacement_cost)
+    clim_val, clim_src = _climate_factor(record, region)
+    hist_val, hist_src = _repair_history_factor(repair_count)
+
+    base_weights = _replace_weights()
+    weights = dict(base_weights)
+
+    # cr_substituted: halve the remaining_life weight, then renormalize the whole
+    # vector so contributions still sum to a 0..1 score (no artificial deflation
+    # of the other factors). Documented approach: down-weight + renormalize.
+    if cr_substituted:
+        weights["remaining_life"] = (
+            base_weights["remaining_life"] * _CR_SUBSTITUTED_REMAINING_LIFE_FACTOR
+        )
+        total = sum(weights.values())
+        if total > 0:
+            weights = {k: v / total for k, v in weights.items()}
+
+    factor_values = {
+        "remaining_life": (rl_val, rl_src),
+        "refrigerant": (ref_val, ref_src),
+        "cost_ratio": (cost_val, cost_src),
+        "climate": (clim_val, clim_src),
+        "repair_history": (hist_val, hist_src),
+    }
+
+    factors = {}
+    score = 0.0
+    for name, (val, sourced) in factor_values.items():
+        w = float(weights.get(name, 0.0))
+        contribution = _clamp01(val) * w
+        score += contribution
+        factors[name] = asdict(ReplaceFactor(
+            raw=round(_clamp01(val), 4), weight=round(w, 4),
+            contribution=round(contribution, 4), sourced=bool(sourced),
+        ))
+
+    score = _clamp01(score)
+    thr = _replace_recommend_threshold() if threshold is None else float(threshold)
+    return ReplaceScore(
+        score=round(score, 4),
+        recommend_replace=(score >= thr),
+        threshold=thr,
+        cr_substituted=cr_substituted,
+        record_found=record is not None,
+        factors=factors,
+    )
+
+
+def _extract_brand_tier_variant(asmt) -> tuple:
+    """Best-effort (brand, tier, variant) from an assessment's OCR/AI equipment data.
+
+    Used only for the shadow-mode replace score lookup -- returns (None, None, None)
+    when nothing usable is present (the score then falls back to neutral factors).
+    """
+    if asmt is None:
+        return None, None, None
+    brand = None
+    for blob_name in ("ocr_nameplate", "ai_equipment_id"):
+        blob = getattr(asmt, blob_name, None)
+        if isinstance(blob, dict):
+            b = blob.get("brand") or blob.get("canonical_name")
+            if b:
+                brand = str(b).strip()
+                break
+    # tier/variant are not reliably stored on the assessment today; leave None so
+    # the lookup uses a brand-only fallback record.
+    return brand, None, None
+
+
 # -- POST /api/estimates/fault-card ------------------------------------------
 
 @router.post("/fault-card", status_code=200, response_model=FaultCardEstimateResponse)
@@ -643,6 +971,7 @@ async def generate_fault_card_estimate(
 
     # 9. Persist estimate (BUG-011 fix)
     estimate_id = None
+    _shadow_brand = _shadow_tier = _shadow_variant = None
     if body.assessment_id:
         asmt_row = await db.execute(
             select(Assessment).where(
@@ -652,6 +981,7 @@ async def generate_fault_card_estimate(
         )
         asmt = asmt_row.scalar_one_or_none()
         if asmt:
+            _shadow_brand, _shadow_tier, _shadow_variant = _extract_brand_tier_variant(asmt)
             existing = await db.execute(
                 text("SELECT id FROM estimates WHERE assessment_id = :aid LIMIT 1"),
                 {"aid": body.assessment_id},
@@ -698,6 +1028,19 @@ async def generate_fault_card_estimate(
                         break
                 if new_estimate is None:
                     raise HTTPException(status_code=500, detail="Could not allocate unique report_short_id after 5 attempts")
+
+                # Stage 5: stamp brand-decoder / replace-logic data versions on
+                # the assessment row (migration 040 columns). New estimates carry
+                # the live JSON data versions; historical rows keep "pre-v1.2".
+                try:
+                    asmt.decoder_version = brand_data_loader.BRAND_DATA_VERSION
+                    _rl_spec = brand_data_loader.get_replace_logic_spec() or {}
+                    asmt.replace_logic_version = str(
+                        _rl_spec.get("version") or brand_data_loader.BRAND_DATA_VERSION
+                    )
+                except Exception:
+                    logger.warning("[fault_estimate] version stamping failed", exc_info=True)
+
                 await db.flush()
                 estimate_id = str(new_estimate.id)
                 logger.info("[fault_estimate v2] Saved estimate %s for assessment %s card %d age=%s",
@@ -719,6 +1062,56 @@ async def generate_fault_card_estimate(
         "reliable_age": _reliable_age,
         "requires_user_chooser": _requires_chooser,
     }
+
+    # Stage 4: Track 2 shadow-mode weighted replace score.
+    # SHADOW ONLY -- never changes the user-facing rec_tier above. Recorded in the
+    # response meta for the Stage 3C "show the math" panel + fired to PostHog.
+    try:
+        _shadow = _compute_weighted_replace_score(
+            brand=_shadow_brand,
+            tier=_shadow_tier,
+            variant=_shadow_variant,
+            region=tables.market,
+            unit_age_years=unit_age,
+            refrigerant=body.refrigerant,
+            repair_cost=float(fc.price_list_typical or 0) or None,
+            replacement_cost=float(repl_typical or 0) or None,
+            repair_count=None,
+        )
+        _old_recommends_replace = (rec_tier == "C")
+        _did_diverge = _shadow.recommend_replace != _old_recommends_replace
+        _rec_meta["shadow_replace_score"] = _shadow.as_dict()
+
+        try:
+            capture_event(
+                "replace_decision_shadow_eval",
+                {
+                    "brand": _shadow_brand,
+                    "tier": _shadow_tier,
+                    "variant": _shadow_variant,
+                    "region": tables.market,
+                    "unit_age_years": unit_age,
+                    "refrigerant": body.refrigerant,
+                    "card_id": body.card_id,
+                    "factors": _shadow.factors,
+                    "record_found": _shadow.record_found,
+                    "old_recommended_tier": rec_tier,
+                    "old_recommends_replace": _old_recommends_replace,
+                    "new_score": _shadow.score,
+                    "new_threshold": _shadow.threshold,
+                    "new_recommends_replace": _shadow.recommend_replace,
+                    "did_diverge": _did_diverge,
+                    "cr_substituted": _shadow.cr_substituted,
+                    "age_source": body.age_source,
+                    "age_confidence": _age_confidence_out,
+                },
+                distinct_id=f"company:{auth.company_id}",
+            )
+        except Exception:
+            logger.debug("[fault_estimate] shadow_eval analytics failed", exc_info=True)
+    except Exception:
+        logger.warning("[fault_estimate] shadow replace-score computation failed",
+                       exc_info=True)
 
     return FaultCardEstimateResponse(
         id=estimate_id, card_id=fc.card_id, card_name=fc.card_name,

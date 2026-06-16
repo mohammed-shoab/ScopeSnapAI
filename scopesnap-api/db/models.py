@@ -370,6 +370,16 @@ class Assessment(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, server_default="pending")
     # 'pending' | 'analyzed' | 'estimated' | 'sent' | 'approved' | 'completed'
 
+    # Brand-decoder / replace-logic provenance (migration 040, v1.2 Stage 5).
+    # Stamped at estimate-creation time from the loaded JSON data versions.
+    # Historical rows default to "pre-v1.2" (never recomputed/backfilled).
+    decoder_version: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, server_default="pre-v1.2"
+    )
+    replace_logic_version: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, server_default="pre-v1.2"
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

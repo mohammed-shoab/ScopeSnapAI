@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -73,7 +74,59 @@ def get_serial_brand(brand: str) -> Optional[Dict[str, Any]]:
     return _serial_brand_index().get(brand.strip().lower())
 
 
+def _count_tier1_sources(rec: Dict[str, Any]) -> int:
+    """Number of Tier-1 ('(T1)') sources cited in a replace record's source_links.
+
+    Records mark each source with a tier suffix, e.g.
+    'building-center.org (T2)'. Tier-1 ('(T1)') are the strongest primary
+    sources (AHRI / ASHRAE / Energy Star / manufacturer bulletins).
+    """
+    n = 0
+    for s in (rec.get("source_links") or []):
+        if re.search(r"\(T1\)", str(s), re.IGNORECASE):
+            n += 1
+    return n
+
+
+@lru_cache(maxsize=1)
+def _recomputed_replace_records() -> list:
+    """Constraint #2 -- load-time confidence recompute.
+
+    For any record where cr_substituted is True AND confidence == "medium" AND
+    it cites < 1 Tier-1 source, demote confidence to "low" (CR-substituted
+    Tier-3 data without a primary source does not warrant "medium" confidence).
+
+    Operates on a deep-ish copy (per-record shallow dict copies) so the raw
+    cached JSON is left untouched. Logs a count of demotions once.
+    """
+    records = _replace_data().get("brand_tier_records", [])
+    out = []
+    demotions = 0
+    for rec in records:
+        if (
+            rec.get("cr_substituted") is True
+            and rec.get("confidence") == "medium"
+            and _count_tier1_sources(rec) < 1
+        ):
+            rec = dict(rec)
+            rec["confidence"] = "low"
+            rec["confidence_demoted"] = True
+            demotions += 1
+        out.append(rec)
+    logger.info(
+        "BrandDataLoader: confidence recompute demoted %d cr_substituted+medium "
+        "records (<1 Tier-1 source) to low", demotions,
+    )
+    return out
+
+
 def get_replace_records() -> list:
+    """Replace-decision records with the load-time confidence recompute applied."""
+    return _recomputed_replace_records()
+
+
+def get_raw_replace_records() -> list:
+    """Replace-decision records exactly as stored in the JSON (no recompute)."""
     return _replace_data().get("brand_tier_records", [])
 
 
