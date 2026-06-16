@@ -661,6 +661,42 @@ def _refrigerant_2025_compatible(refrigerant: Optional[str]) -> Optional[bool]:
     return None
 
 
+# Constraint #8: per-brand factory refrigerant by manufacture year. The 2025+
+# A2L transition splits by manufacturer (R-32 vs R-454B), so "can't recharge,
+# must replace" pressure respects the actual likely charge.
+_R2025_BY_BRAND = {
+    # R-32 adopters
+    "daikin": "R-32", "daikin mini-split": "R-32", "goodman": "R-32", "amana": "R-32",
+    # R-454B adopters (majority of US OEMs)
+    "carrier": "R-454B", "bryant": "R-454B", "payne": "R-454B",
+    "trane": "R-454B", "american standard": "R-454B",
+    "lennox": "R-454B", "rheem": "R-454B", "ruud": "R-454B",
+    "york": "R-454B", "coleman": "R-454B", "luxaire": "R-454B",
+    "mrcool": "R-454B",
+    # Nortek family 2025+ = working hypothesis R-454B (pending v1.2 Batch 2)
+    "frigidaire hvac": "R-454B", "nortek": "R-454B", "maytag hvac": "R-454B",
+}
+_DEFAULT_R2025 = "R-454B"
+
+
+def refrigerant_for_year(brand: Optional[str], year: Optional[int]) -> Optional[str]:
+    """Likely factory refrigerant for a US residential unit of (brand, year).
+
+    <=2009  -> R-22   (pre-410A residential era)
+    2010-24 -> R-410A (410A mandated for new equipment from 2010)
+    >=2025  -> A2L: per-brand R-32 vs R-454B split (default R-454B).
+    Returns None when year is unknown.
+    """
+    if year is None:
+        return None
+    if year <= 2009:
+        return "R-22"
+    if year <= 2024:
+        return "R-410A"
+    canon = (brand or "").strip().lower()
+    return _R2025_BY_BRAND.get(canon, _DEFAULT_R2025)
+
+
 def _compute_weighted_replace_score(
     brand: Optional[str],
     tier: Optional[str],
@@ -1170,7 +1206,10 @@ async def generate_fault_card_estimate(
         _rl_record = None
     _estimated_install_year_out = _estimated_install_year(unit_age)
     _remaining_life_band_out = _remaining_life_band(unit_age, _rl_record)
-    _refrigerant_2025_out = _refrigerant_2025_compatible(body.refrigerant)
+    # Constraint #8: if the tech didn't enter a refrigerant, infer it per-brand
+    # from the (estimated) manufacture year so the 2025+ A2L split is respected.
+    _eff_refrigerant = body.refrigerant or refrigerant_for_year(_shadow_brand, _estimated_install_year_out)
+    _refrigerant_2025_out = _refrigerant_2025_compatible(_eff_refrigerant)
 
     # Build recommendation metadata (§4C)
     _rec_meta = {
@@ -1185,7 +1224,7 @@ async def generate_fault_card_estimate(
         # Stage 3C show-the-math / why-panel fields:
         "estimated_install_year": _estimated_install_year_out,
         "remaining_life_band": _remaining_life_band_out,
-        "refrigerant": body.refrigerant,
+        "refrigerant": _eff_refrigerant,
         "refrigerant_2025_compatible": _refrigerant_2025_out,
     }
 
@@ -1199,7 +1238,7 @@ async def generate_fault_card_estimate(
             variant=_shadow_variant,
             region=tables.market,
             unit_age_years=unit_age,
-            refrigerant=body.refrigerant,
+            refrigerant=_eff_refrigerant,
             repair_cost=float(fc.price_list_typical or 0) or None,
             replacement_cost=float(repl_typical or 0) or None,
             repair_count=None,
