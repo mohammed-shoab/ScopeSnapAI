@@ -52,10 +52,21 @@ _LABEL_SETS = [
     {"max_age": 999, "good": "Emergency Fix", "better": "Last Repair",                 "best": "Replace Immediately"},
 ]
 
+# Stage 2: a single explicit "missing age" sentinel — no silent numeric default.
+DEFAULT_UNKNOWN_AGE = None
+
+# Neutral labels used when unit age is unknown: never imply the unit is new
+# (would hide replacement) nor old (would alarm). Just repair-forward wording.
+_UNKNOWN_AGE_LABELS = {
+    "max_age": 0, "good": "Basic Repair",
+    "better": "Repair + Maintenance", "best": "Full Service",
+}
+
 def _get_labels(unit_age_years: Optional[int]) -> dict:
-    age = unit_age_years or 7
+    if unit_age_years is None:
+        return _UNKNOWN_AGE_LABELS
     for s in _LABEL_SETS:
-        if age <= s["max_age"]:
+        if unit_age_years <= s["max_age"]:
             return s
     return _LABEL_SETS[-1]
 
@@ -64,6 +75,12 @@ def _get_labels(unit_age_years: Optional[int]) -> dict:
 # Fix: algo-bias audit 2026-05-29. Replaces pure-age trigger (_REPLACEMENT_TRIGGER_AGE=8)
 # which recommended replacement for ALL mid-life units regardless of fault cost.
 # Now uses a 3×3 matrix: age_bucket × fault_severity → recommended tier (A/B/C).
+
+# Stage 2: replacement trigger age, sourced from ac_data_repo.json
+# lifecycle_rules.replacement_trigger_age_years (15). The legacy hardcoded
+# value of 8 was removed in the 2026-05-29 algo-bias audit; this reinstates
+# a single, data-reconciled module constant used for the end_of_life boundary.
+_REPLACEMENT_TRIGGER_AGE = 15
 
 _SEVERITY_EASY_MAX_USD   = 400   # easy fault: difficulty=easy AND repair < $400
 _SEVERITY_MEDIUM_MAX_USD = 800   # medium fault: repair < $800
@@ -96,11 +113,17 @@ _URGENCY_REASONS: dict = {
 
 
 def _get_age_bucket(unit_age_years: Optional[int]) -> str:
-    """Classify unit age into young / mid_life / end_of_life."""
-    age = unit_age_years or 0
-    if age <= 7:
+    """Classify unit age into young / mid_life / end_of_life / unknown.
+
+    Stage 2: no silent default. Missing age -> "unknown" (never silently
+    treated as 0). end_of_life boundary is _REPLACEMENT_TRIGGER_AGE (15),
+    reconciled with ac_data_repo lifecycle_rules.replacement_trigger_age_years.
+    """
+    if unit_age_years is None:
+        return "unknown"
+    if unit_age_years <= 7:
         return "young"
-    elif age <= 14:
+    if unit_age_years < _REPLACEMENT_TRIGGER_AGE:
         return "mid_life"
     return "end_of_life"
 
@@ -133,6 +156,15 @@ def _compute_recommended_tier(
     """
     age_bucket = _get_age_bucket(unit_age_years)
     severity   = _compute_fault_severity(fault_difficulty, fault_repair_typical)
+
+    if age_bucket == "unknown":
+        # No reliable age signal -> never recommend replacement (C) from age.
+        # Severity-only: easy -> A, medium/major -> B. The replace gate
+        # (requires_user_chooser) surfaces the replacement option in the UI.
+        tier   = "A" if severity == "easy" else "B"
+        reason = "Age not confirmed — recommending repair; replacement shown as an option."
+        return tier, reason, age_bucket, severity
+
     tier       = _URGENCY_RULES.get((age_bucket, severity), "B")
     reason     = _URGENCY_REASONS.get((age_bucket, severity), "Recommendation based on unit age and fault severity.")
 
@@ -162,6 +194,42 @@ def _should_recommend_replacement(
     return tier == "C"
 
 
+# -- Stage 2: reliable-age gate + replace-recommendation gate -----------------
+
+# Sources we trust enough to drive a replacement recommendation on age alone.
+def _has_reliable_age(age_source: Optional[str],
+                      age_confidence: Optional[str],
+                      unit_age_years: Optional[int]) -> bool:
+    """True only for trustworthy age provenance:
+      - serial decoder at >= medium confidence
+      - plate_date (printed manufacture date)
+      - homeowner_input at >= approximate
+      - legacy_brand_age_floor
+    False for: no age, "unknown" confidence, or a tech-marked Unknown.
+    """
+    if unit_age_years is None:
+        return False
+    src = (age_source or "").strip().lower()
+    conf = (age_confidence or "").strip().lower()
+    # plate_date and legacy floors are reliable on provenance alone.
+    if src in ("plate_date", "plate", "legacy_brand_age_floor", "legacy_floor"):
+        return True
+    # An explicit "unknown" (or blank) confidence is never reliable.
+    if conf in ("unknown", "none", ""):
+        return False
+    if src.startswith("serial"):
+        return conf in ("high", "medium")
+    if src in ("homeowner_input", "homeowner", "homeowner_sure", "homeowner_approximate"):
+        return conf in ("sure", "approximate", "high", "medium")
+    return False
+
+
+def replace_recommendation_gate(is_replacement: bool, reliable_age: bool) -> bool:
+    """Returns requires_user_chooser: True when we'd recommend Full Replacement
+    but the age driving it is not reliable. Drives the Stage 3C chooser-gate UI."""
+    return bool(is_replacement and not reliable_age)
+
+
 # -- Five-year cost comparison ------------------------------------------------
 
 _REPAIR_PROB_BY_AGE = {
@@ -171,7 +239,9 @@ _REPAIR_PROB_BY_AGE = {
 }
 
 def _five_year_comparison(repair_cost: int, replacement_cost: int, unit_age_years: Optional[int]) -> dict:
-    age = min(unit_age_years or 8, 15)
+    # Only invoked when a replacement (C) tier was reached, which requires a
+    # numeric end_of_life age; fall back to the trigger age if absent.
+    age = min(unit_age_years if unit_age_years is not None else _REPLACEMENT_TRIGGER_AGE, 15)
     prob, avg_next = _REPAIR_PROB_BY_AGE.get(age, (0.90, 1400))
     repair_path   = repair_cost + (prob * avg_next * 2)
     energy_savings = replacement_cost * 0.003 * 5
@@ -252,6 +322,8 @@ class FaultCardEstimateRequest(BaseModel):
     refrigerant:    Optional[str]   = Field(None)
     assessment_id:  Optional[str]   = Field(None)
     metering_type:  Optional[str]   = Field("any", description="inverter | non_inverter | any")
+    age_source:     Optional[str]   = Field(None, description="serial_decode_high|serial_decode_medium|plate_date|homeowner_sure|homeowner_approximate|legacy_brand_age_floor|photo_estimate|unknown")
+    age_confidence: Optional[str]   = Field(None, description="high|medium|low|sure|approximate|unknown")
 
 
 class EstimateTier(BaseModel):
@@ -290,6 +362,8 @@ class FaultCardEstimateResponse(BaseModel):
     defaults_warning:       Optional[str] = None
     seasonal_modifier_pct:  int = 0
     seasonal_note:          Optional[str] = None
+    age_confidence:         Optional[str] = None
+    requires_user_chooser:  bool = False
     generated_at:           str
     recommendation:         Optional[dict] = None   # §4C: severity×age decision metadata
 
@@ -629,12 +703,21 @@ async def generate_fault_card_estimate(
                 logger.info("[fault_estimate v2] Saved estimate %s for assessment %s card %d age=%s",
                             estimate_id, body.assessment_id, body.card_id, unit_age)
 
+    # Stage 2: reliable-age gate + replacement chooser gate
+    _reliable_age = _has_reliable_age(body.age_source, body.age_confidence, unit_age)
+    _requires_chooser = replace_recommendation_gate(rec_tier == "C", _reliable_age)
+    _age_confidence_out = (body.age_confidence or "unknown") if _reliable_age else "unknown"
+
     # Build recommendation metadata (§4C)
     _rec_meta = {
         "recommended_tier": rec_tier,
         "reasoning": rec_reason,
         "severity_classification": rec_severity,
         "age_bucket": rec_age_bucket,
+        "age_source": body.age_source,
+        "age_confidence": _age_confidence_out,
+        "reliable_age": _reliable_age,
+        "requires_user_chooser": _requires_chooser,
     }
 
     return FaultCardEstimateResponse(
@@ -646,6 +729,8 @@ async def generate_fault_card_estimate(
         using_defaults=using_defaults, defaults_warning=defaults_warning,
         seasonal_modifier_pct=seasonal_pct_int,
         seasonal_note=_seasonal_note,
+        age_confidence=_age_confidence_out,
+        requires_user_chooser=_requires_chooser,
         generated_at=datetime.now(timezone.utc).isoformat(),
         recommendation=_rec_meta,
     )
