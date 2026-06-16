@@ -22,6 +22,7 @@ import logging
 from fastapi import APIRouter
 
 from services.brand_data_loader import BRAND_DATA_VERSION, get_replace_logic_spec
+from services.analytics import is_enabled as _analytics_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ def get_version_payload() -> dict:
         "decoder_version": BRAND_DATA_VERSION,
         "replace_logic_version": _resolve_replace_logic_version(),
         "brand_data_version": BRAND_DATA_VERSION,
+        "analytics_enabled": bool(_analytics_enabled()),
     }
 
 
