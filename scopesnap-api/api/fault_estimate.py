@@ -596,6 +596,71 @@ def _repair_history_factor(repair_count: Optional[int]) -> tuple:
     return _clamp01(float(repair_count) / 3.0), True
 
 
+# -- Stage 3C: install-year / remaining-life band / refrigerant compatibility --
+# These feed the FaultResolutionScreen "Why this recommendation?" panel via the
+# recommendation dict. The band is ALWAYS a range string (never year-exact) and
+# is Houston-climate adjusted. None when age is unknown (frontend hides the row).
+
+_DEFAULT_HOUSTON_LIFESPAN_YEARS = 18  # sane default when no brand record found
+
+
+def _estimated_install_year(unit_age_years: Optional[int]) -> Optional[int]:
+    """Echo the unit-age-derived install year (current_year - age). None if unknown."""
+    if unit_age_years is None:
+        return None
+    return datetime.now(timezone.utc).year - int(unit_age_years)
+
+
+def _typical_lifespan_years(record: Optional[dict]) -> float:
+    """Houston-adjusted typical lifespan (years) from a replace record, else default.
+
+    Uses the midpoint of houston_climate_adjusted (e.g. "12-16" -> 14). Falls back
+    to the humid-climate profile, then to a Houston-typical default.
+    """
+    if record:
+        prof = record.get("reliability_profile") or {}
+        for key in ("houston_climate_adjusted",
+                    "expected_lifespan_years_humid_climate"):
+            val = _parse_lifespan_years(prof.get(key))
+            if val and val > 0:
+                return float(val)
+    return float(_DEFAULT_HOUSTON_LIFESPAN_YEARS)
+
+
+def _remaining_life_band(unit_age_years: Optional[int],
+                         record: Optional[dict] = None) -> Optional[str]:
+    """Houston-adjusted REMAINING-life range string like "12-16 years".
+
+    NEVER year-exact: rendered as a +/-2 band around (typical lifespan - age),
+    floored at 0. Returns None when age is unknown so the frontend hides the row.
+    """
+    if unit_age_years is None:
+        return None
+    lifespan = _typical_lifespan_years(record)
+    remaining = max(0.0, lifespan - float(unit_age_years))
+    lo = max(0, int(round(remaining - 2)))
+    hi = max(lo, int(round(remaining + 2)))
+    return f"{lo}-{hi} years"
+
+
+def _refrigerant_2025_compatible(refrigerant: Optional[str]) -> Optional[bool]:
+    """Map a refrigerant code to 2025+ A2L compatibility.
+
+    r22   -> False (phased out, not serviceable / not 2025+ compatible)
+    r410a -> False (serviceable now but phasing down -> not the 2025+ standard)
+    r32 / r454b -> True (current A2L generation)
+    Unknown / None -> None (frontend hides the badge).
+    """
+    if not refrigerant:
+        return None
+    code = str(refrigerant).upper().replace("-", "").replace(" ", "")
+    if code in ("R22", "R410A", "R410"):
+        return False
+    if code in ("R32", "R454B", "R454"):
+        return True
+    return None
+
+
 def _compute_weighted_replace_score(
     brand: Optional[str],
     tier: Optional[str],
@@ -1006,6 +1071,49 @@ async def generate_fault_card_estimate(
                     }
                     for t in tiers
                 ]
+                # Stage 3C: stash recommendation metadata on the recommended tier
+                # option so the diagnostic repair_plan (GET /api/diagnostic/{id})
+                # can surface the chooser-gate banner + "Why this recommendation?"
+                # panel without recomputing. Backward-compatible: an extra key on
+                # an existing option dict; consumers that ignore it are unaffected.
+                _persist_reliable_age = _has_reliable_age(
+                    body.age_source, body.age_confidence, unit_age
+                )
+                try:
+                    _persist_rl_record = _lookup_replace_record(
+                        brand_data_loader.get_replace_records(),
+                        _shadow_brand, _shadow_tier, _shadow_variant, tables.market,
+                    )
+                except Exception:
+                    _persist_rl_record = None
+                _persist_rec_meta = {
+                    "recommended_tier": rec_tier,
+                    "age_source": body.age_source,
+                    "age_confidence": (
+                        (body.age_confidence or "unknown")
+                        if _persist_reliable_age else "unknown"
+                    ),
+                    "reliable_age": _persist_reliable_age,
+                    "requires_user_chooser": replace_recommendation_gate(
+                        rec_tier == "C", _persist_reliable_age
+                    ),
+                    "estimated_install_year": _estimated_install_year(unit_age),
+                    "remaining_life_band": _remaining_life_band(
+                        unit_age, _persist_rl_record
+                    ),
+                    "refrigerant": body.refrigerant,
+                    "refrigerant_2025_compatible": _refrigerant_2025_compatible(
+                        body.refrigerant
+                    ),
+                    "unit_age_years": unit_age,
+                }
+                for _opt in options_payload:
+                    if _opt.get("recommended"):
+                        _opt["recommendation_meta"] = _persist_rec_meta
+                        break
+                else:
+                    if options_payload:
+                        options_payload[0]["recommendation_meta"] = _persist_rec_meta
                 report_token = secrets.token_urlsafe(32)[:32]
                 # BUG-030b: 4-digit short ID (10k combos) causes UniqueViolation as DB grows.
                 # Retry up to 5 times with 6-digit ID (1M combos) to eliminate collision.
@@ -1051,6 +1159,19 @@ async def generate_fault_card_estimate(
     _requires_chooser = replace_recommendation_gate(rec_tier == "C", _reliable_age)
     _age_confidence_out = (body.age_confidence or "unknown") if _reliable_age else "unknown"
 
+    # Stage 3C: install-year echo, Houston-adjusted remaining-life band, and
+    # refrigerant 2025+ compatibility for the "Why this recommendation?" panel.
+    try:
+        _rl_record = _lookup_replace_record(
+            brand_data_loader.get_replace_records(),
+            _shadow_brand, _shadow_tier, _shadow_variant, tables.market,
+        )
+    except Exception:
+        _rl_record = None
+    _estimated_install_year_out = _estimated_install_year(unit_age)
+    _remaining_life_band_out = _remaining_life_band(unit_age, _rl_record)
+    _refrigerant_2025_out = _refrigerant_2025_compatible(body.refrigerant)
+
     # Build recommendation metadata (§4C)
     _rec_meta = {
         "recommended_tier": rec_tier,
@@ -1061,6 +1182,11 @@ async def generate_fault_card_estimate(
         "age_confidence": _age_confidence_out,
         "reliable_age": _reliable_age,
         "requires_user_chooser": _requires_chooser,
+        # Stage 3C show-the-math / why-panel fields:
+        "estimated_install_year": _estimated_install_year_out,
+        "remaining_life_band": _remaining_life_band_out,
+        "refrigerant": body.refrigerant,
+        "refrigerant_2025_compatible": _refrigerant_2025_out,
     }
 
     # Stage 4: Track 2 shadow-mode weighted replace score.
