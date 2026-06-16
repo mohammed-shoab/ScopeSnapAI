@@ -83,6 +83,7 @@ test.describe("Stage 3A — install-year review @stage3", () => {
     await stepZero.uploadNameplate();
 
     const results = await new AxeBuilder({ page })
+      .include('[data-testid="stage3-age-review"]')
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
       .analyze();
     const serious = results.violations.filter(

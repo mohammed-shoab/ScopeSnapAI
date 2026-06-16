@@ -367,7 +367,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
             style={{
               width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
               background: "none", border: "none", cursor: "pointer", borderRadius: 8,
-              color: copied ? "#16a34a" : "#64748b",
+              color: copied ? "#16a34a" : "#475569",
             }}
           >
             {/* Share2 icon SVG */}
@@ -385,7 +385,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
               style={{
                 width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center",
                 background: menuOpen ? "#f1f5f9" : "none", border: "none", cursor: "pointer", borderRadius: 8,
-                color: "#64748b",
+                color: "#475569",
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -495,7 +495,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
             style={{ width: "100%", display: "block", maxHeight: 280, objectFit: "cover" }}
           />
           {data.photo_evidence[0].label && (
-            <div style={{ padding: "8px 12px", fontSize: 12, color: "#64748b", background: "#f8fafc" }}>
+            <div style={{ padding: "8px 12px", fontSize: 12, color: "#475569", background: "#f8fafc" }}>
               {data.photo_evidence[0].label}
             </div>
           )}
@@ -505,7 +505,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
       {/* DX.4: Alternative diagnoses — collapsed link when medium/low confidence ── */}
       {hasAlts && data.fault.confidence !== "high" && (
         <details style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 14px" }}>
-          <summary style={{ cursor: "pointer", fontSize: 13, color: "#64748b", userSelect: "none" }}>
+          <summary style={{ cursor: "pointer", fontSize: 13, color: "#475569", userSelect: "none" }}>
             Show alternatives considered
           </summary>
           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -536,6 +536,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
               WCAG AA: #92400e text on #fffbeb bg (contrast > 4.5:1); not color-alone. */}
           {requiresChooser && !repairFirstRevealed && (
             <div
+              data-testid="stage3-chooser-banner"
               style={{
                 background: "#fffbeb", border: "1.5px solid #f59e0b", borderRadius: 10,
                 padding: "12px 14px", marginBottom: 12, color: "#92400e",
@@ -623,7 +624,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
                         <li key={i} style={{ fontSize: 13, color: "#334155" }}>
                           {item.description}
                           {item.category === "parts" && (
-                            <span style={{ fontSize: 12, color: "#64748b" }}> — {fmt(item.amount)}</span>
+                            <span style={{ fontSize: 12, color: "#475569" }}> — {fmt(item.amount)}</span>
                           )}
                         </li>
                       ))}
@@ -677,7 +678,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
                         <li key={i} style={{ fontSize: 13, color: "#334155" }}>
                           {item.description}
                           {item.category === "parts" && (
-                            <span style={{ fontSize: 12, color: "#64748b" }}> — {fmt(item.amount)}</span>
+                            <span style={{ fontSize: 12, color: "#475569" }}> — {fmt(item.amount)}</span>
                           )}
                         </li>
                       ))}
@@ -705,7 +706,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
                 }}
               >
                 Why this recommendation?
-                <span style={{ fontSize: 16, color: "#64748b", transform: whyOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+                <span style={{ fontSize: 16, color: "#475569", transform: whyOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
                   &#8964;
                 </span>
               </button>
@@ -722,7 +723,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
                 >
                   {/* Estimated install year + source label */}
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                    <span style={{ color: "#64748b" }}>Estimated install year</span>
+                    <span style={{ color: "#475569" }}>Estimated install year</span>
                     <span style={{ fontWeight: 600 }}>
                       {recMeta.estimated_install_year ?? "—"}
                       {recMeta.age_source ? ` (${recMeta.age_source.replace(/_/g, " ")})` : ""}
@@ -731,7 +732,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
 
                   {/* Confidence label */}
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                    <span style={{ color: "#64748b" }}>Age confidence</span>
+                    <span style={{ color: "#475569" }}>Age confidence</span>
                     <span style={{ fontWeight: 600, textTransform: "capitalize" }}>
                       {recMeta.age_confidence ?? "unknown"}
                     </span>
@@ -739,14 +740,14 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
 
                   {/* Expected remaining-life BAND — range, never year-exact */}
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                    <span style={{ color: "#64748b" }}>Expected remaining life</span>
+                    <span style={{ color: "#475569" }}>Expected remaining life</span>
                     <span style={{ fontWeight: 600 }}>{recMeta.remaining_life_band ?? "—"}</span>
                   </div>
 
                   {/* Refrigerant + 2025+ compatibility */}
                   {recMeta.refrigerant && (
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                      <span style={{ color: "#64748b" }}>Refrigerant</span>
+                      <span style={{ color: "#475569" }}>Refrigerant</span>
                       <span style={{ fontWeight: 600 }}>
                         {recMeta.refrigerant}
                         {recMeta.refrigerant_2025_compatible === true && " · 2025+ compatible"}
@@ -763,9 +764,9 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
                       </div>
                       {recMeta.shadow_replace_score.factors.map((f, i) => (
                         <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "2px 0" }}>
-                          <span style={{ color: "#64748b" }}>{f.label || f.name}</span>
+                          <span style={{ color: "#475569" }}>{f.label || f.name}</span>
                           <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-                            +{(f.contribution).toFixed(2)} <span style={{ color: "#64748b", fontWeight: 400 }}>(w {f.weight.toFixed(2)})</span>
+                            +{(f.contribution).toFixed(2)} <span style={{ color: "#475569", fontWeight: 400 }}>(w {f.weight.toFixed(2)})</span>
                           </span>
                         </div>
                       ))}
@@ -832,7 +833,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
               onClick={handleDifferentFault}
               style={{
                 background: "none", border: "none", cursor: "pointer",
-                fontSize: 14, color: "#64748b", textAlign: "center", padding: "6px 0",
+                fontSize: 14, color: "#475569", textAlign: "center", padding: "6px 0",
                 textDecoration: "underline",
               }}
             >
@@ -849,7 +850,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
       {/* Public mode footer */}
       {isPublic && (
         <div style={{ textAlign: "center", fontSize: 12, color: "#94a3b8", marginTop: 8 }}>
-          Built with <strong style={{ color: "#64748b" }}>SnapAI</strong>
+          Built with <strong style={{ color: "#475569" }}>SnapAI</strong>
         </div>
       )}
 
@@ -926,7 +927,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
             <div style={{ fontWeight: 700, fontSize: 16, color: "#0f172a", marginBottom: 8 }}>
               Cancel this diagnosis?
             </div>
-            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 13, color: "#475569", marginBottom: 20, lineHeight: 1.5 }}>
               It will be marked as cancelled and won&apos;t appear in your active assessments.
             </div>
             <div style={{ display: "flex", gap: 10 }}>
@@ -972,7 +973,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
             <div style={{ fontWeight: 700, fontSize: 16, color: "#0f172a", marginBottom: 8 }}>
               Start over?
             </div>
-            <div style={{ fontSize: 13, color: "#64748b", marginBottom: 20, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 13, color: "#475569", marginBottom: 20, lineHeight: 1.5 }}>
               Start the diagnostic over from the beginning?
             </div>
             <div style={{ display: "flex", gap: 10 }}>

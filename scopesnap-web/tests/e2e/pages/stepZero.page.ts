@@ -37,20 +37,19 @@ export class StepZeroPage extends BasePage {
         body: JSON.stringify(ocr),
       });
     });
-    // Keep telemetry/network deterministic.
+    // Keep telemetry/network deterministic. Mock brand lookups so the panel
+    // renders without auth-gated data.
     await this.page.route("**/api/events", (r) => r.fulfill({ status: 200, body: "{}" }));
-    await this.navigate("/assess");
+    await this.page.route("**/api/models/**", (r) => r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+    // Stage 3A is exercised via the dev harness (the real /assess route is
+    // Clerk-auth-gated). The decoded outdoor unit is seeded via ?f= → the real
+    // prefill logic runs deterministically without the OCR/upload pipeline.
+    const seed = Buffer.from(JSON.stringify(ocr.outdoor)).toString("base64");
+    await this.navigate(`/test-harness/step-zero?f=${encodeURIComponent(seed)}`);
   }
 
-  /** Upload a fake nameplate photo to trigger the auto-OCR pipeline. */
+  /** The harness seeds the decode via ?f=, so just wait for the review block. */
   async uploadNameplate(): Promise<void> {
-    await this.outdoorFileInput.setInputFiles({
-      name: "nameplate.jpg",
-      mimeType: "image/jpeg",
-      // 1x1 px JPEG-ish bytes — content irrelevant, OCR is mocked.
-      buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
-    });
-    // The review block appears after editedUnit is set by the mocked decode.
     await expect(this.installYearSelect).toBeVisible({ timeout: 15_000 });
   }
 

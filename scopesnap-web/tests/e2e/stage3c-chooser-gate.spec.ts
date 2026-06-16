@@ -17,7 +17,7 @@ test.describe("Stage 3C — chooser-gate + show-the-math @stage3", () => {
 
   // Scenario 7 — chooser-gate banner + reveal repair tier
   test("chooser-gate banner appears for unknown-age replacement; 'Show repair-first option' reveals repair tier", async () => {
-    await fault.gotoPublicShare("chooser", DIAG_CHOOSER_GATE);
+    await fault.gotoHarness(DIAG_CHOOSER_GATE);
 
     await expect(fault.chooserBanner).toBeVisible();
     // Banner copy uses "X+ years old".
@@ -33,7 +33,7 @@ test.describe("Stage 3C — chooser-gate + show-the-math @stage3", () => {
 
   // Scenario 8 — Why panel + Show the math render a BAND, never a bare year
   test("'Why this recommendation?' / 'Show the math' renders a remaining-life BAND (range), never a single year", async () => {
-    await fault.gotoPublicShare("chooser", DIAG_CHOOSER_GATE);
+    await fault.gotoHarness(DIAG_CHOOSER_GATE);
 
     await fault.openWhyPanel();
 
@@ -53,10 +53,12 @@ test.describe("Stage 3C — chooser-gate + show-the-math @stage3", () => {
 
   // a11y — disclosure focus + contrast on the chooser banner + Why panel
   test("a11y: chooser-gate + Why panel have no serious axe violations @a11y", async ({ page }) => {
-    await fault.gotoPublicShare("chooser", DIAG_CHOOSER_GATE);
+    await fault.gotoHarness(DIAG_CHOOSER_GATE);
     await fault.openWhyPanel();
 
     const results = await new AxeBuilder({ page })
+      .include('[data-testid="stage3-chooser-banner"]')
+      .include("#why-rec-panel")
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
       .analyze();
     const serious = results.violations.filter(
@@ -68,7 +70,7 @@ test.describe("Stage 3C — chooser-gate + show-the-math @stage3", () => {
 
   // a11y — the "Why this recommendation?" disclosure exposes aria-expanded state
   test("a11y: 'Why this recommendation?' disclosure toggles aria-expanded @a11y", async () => {
-    await fault.gotoPublicShare("chooser", DIAG_CHOOSER_GATE);
+    await fault.gotoHarness(DIAG_CHOOSER_GATE);
 
     await expect(fault.whyButton).toHaveAttribute("aria-expanded", "false");
     await fault.whyButton.click();

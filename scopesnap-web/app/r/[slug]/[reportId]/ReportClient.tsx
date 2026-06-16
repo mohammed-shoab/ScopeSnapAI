@@ -1028,6 +1028,7 @@ export default function ReportClient({ report }: { report: Report }) {
               boxShadow: "0 1px 4px rgba(0,0,0,.04), 0 6px 16px rgba(0,0,0,.04)",
               padding: "16px",
             }}
+            data-testid="stage3-age-correction"
           >
             <p style={{ fontSize: 13, fontWeight: 700, margin: "0 0 4px", color: "#1a1a1a" }}>
               {t("Install year shown")}: <span style={{ color: "#1a8754" }}>{displayInstallYear}</span>. {t("Is this correct?")}

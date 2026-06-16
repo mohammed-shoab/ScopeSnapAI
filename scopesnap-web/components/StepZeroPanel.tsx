@@ -66,6 +66,9 @@ interface Props {
   clerkToken: string | null;
   onConfirm: (result: OcrResult, ambientC: number) => void;
   onSkip: () => void;
+  /** TEST-ONLY: seed a decoded unit to drive the Stage 3A prefill deterministically
+   *  from the dev test-harness (never passed by the real /assess route). */
+  __testSeedUnit?: NameplateUnit | null;
 }
 
 // ── OCR field display config ─────────────────────────────────────────────────
@@ -108,7 +111,7 @@ const ELECTRICAL_SPECS_BY_TONNAGE: Record<number, {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onSkip }: Props) {
+export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onSkip, __testSeedUnit }: Props) {
   const { t } = useLang();
   // BUG-034 Root Cause A fix: get live Clerk JWT instead of relying on prop (which was hardcoded null)
   const { getToken } = useAuth();
@@ -124,6 +127,12 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   const [ambientBucket, setAmbientBucket] = useState<"mild" | "hot" | "extreme">("hot");
   const AMBIENT_C_MAP: Record<"mild" | "hot" | "extreme", number> = { mild: 25, hot: 35, extreme: 40 };
   const [editedUnit,   setEditedUnit]   = useState<NameplateUnit | null>(null);
+
+  // TEST-ONLY: seed a decoded unit (from the dev harness) so Playwright can drive
+  // the Stage 3A install-year prefill without the auth-gated OCR/upload pipeline.
+  useEffect(() => {
+    if (__testSeedUnit) setEditedUnit(__testSeedUnit as NameplateUnit);
+  }, [__testSeedUnit]);
 
   // ── Stage 3A: install-year + age-confidence review ─────────────────────────
   // Year picker range 1980–2026. Confidence: Sure / Approximate / Unknown.
@@ -733,7 +742,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
           {t("Install year")}
         </span>
       </div>
-      <div className="p-3 flex flex-col gap-3">
+      <div className="p-3 flex flex-col gap-3" data-testid="stage3-age-review">
         {/* Year picker */}
         <div className="flex flex-col gap-1">
           <label

@@ -51,7 +51,7 @@ export class FaultResolutionPage extends BasePage {
       ? `?f=${encodeURIComponent(Buffer.from(JSON.stringify(fixture)).toString("base64"))}`
       : "";
     await this.navigate(`/test-harness/fault-resolution${q}`);
-    await expect(this.whyButton.or(this.chooserBanner)).toBeVisible({ timeout: 15_000 });
+    await expect(this.chooserBanner).toBeVisible({ timeout: 15_000 });
   }
 
   async openWhyPanel(): Promise<void> {
