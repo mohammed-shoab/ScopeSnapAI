@@ -74,9 +74,18 @@ def upgrade() -> None:
         market = rec.get("market") or "US"
         # decodable = the brand has at least one variant with a modern regex
         variants = rec.get("variants") or {}
-        decodable = any(
+        has_pattern = any(
             (v or {}).get("modern_regex") or (v or {}).get("modern_pattern")
             for v in variants.values()
+        )
+        # Decodable in our market logic: US-market brands with a usable pattern,
+        # excluding the explicitly non-decodable DIY/Samsung set. PK brands are
+        # serial_capture_required_from_field -> not decodable here.
+        _NON_DECODABLE = {"pioneer", "senville", "della", "samsung"}
+        decodable = (
+            (market or "US").upper() == "US"
+            and canon.lower() not in _NON_DECODABLE
+            and has_pattern
         )
         serial_format = json.dumps(
             {k: {"pattern": (v or {}).get("modern_pattern"),
