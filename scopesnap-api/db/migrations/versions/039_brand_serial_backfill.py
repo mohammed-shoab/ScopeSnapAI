@@ -10,8 +10,8 @@ UPSERT keyed on the brand slug. Safe to re-run. If the data file is missing at
 migration time (e.g. minimal deploy), the column add still succeeds and the
 backfill is skipped with a warning.
 
-Revision ID: 036
-Revises: 035
+Revision ID: 039
+Revises: 038
 """
 from __future__ import annotations
 
@@ -24,8 +24,8 @@ from alembic import op
 from sqlalchemy import text
 from sqlalchemy.dialects import postgresql
 
-revision: str = "036"
-down_revision: Union[str, None] = "035"
+revision: str = "039"
+down_revision: Union[str, None] = "038"
 branch_labels = None
 depends_on = None
 
@@ -57,7 +57,7 @@ def upgrade() -> None:
     # 2) Backfill from the v1.2 JSON (skip gracefully if absent).
     path = _data_file()
     if not os.path.exists(path):
-        print(f"[migration 036] data file not found at {path}; skipping backfill")
+        print(f"[migration 039] data file not found at {path}; skipping backfill")
         return
 
     with open(path, encoding="utf-8") as fh:
@@ -102,7 +102,7 @@ def upgrade() -> None:
         )
         upserted += 1
 
-    print(f"[migration 036] backfilled serial metadata for {upserted} brands")
+    print(f"[migration 039] backfilled serial metadata for {upserted} brands")
 
 
 def downgrade() -> None:
