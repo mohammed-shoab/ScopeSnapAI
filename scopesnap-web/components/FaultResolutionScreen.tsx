@@ -43,9 +43,49 @@ export interface RepairPlanTier {
   recommended: boolean;
 }
 
+/** Stage 3C — one weighted factor in the shadow replace-score breakdown. */
+export interface ShadowScoreFactor {
+  name: string;
+  weight: number;        // 0–1 weight of this factor
+  value: number;         // 0–1 normalized factor value
+  contribution: number;  // weight * value
+  label?: string;        // human-readable explanation
+}
+
+/** Stage 3C — shadow replace-score breakdown (backend Stage 4; optional/forward-compatible). */
+export interface ShadowReplaceScore {
+  total: number;                 // 0–1 weighted replacement score
+  formula?: string;              // "Show the math" formula text
+  factors: ShadowScoreFactor[];  // the five weighted-score factors
+}
+
+/** Stage 3C — recommendation metadata surfaced from the fault-card estimate response. */
+export interface RecommendationMeta {
+  recommended_tier?: string;
+  reasoning?: string;
+  age_source?: string | null;
+  age_confidence?: string | null;
+  reliable_age?: boolean;
+  requires_user_chooser?: boolean;
+  /** Estimated install year + source label for the "Why this recommendation?" panel. */
+  estimated_install_year?: number | null;
+  /** Expected remaining-life BAND — render as a range, NEVER year-exact. */
+  remaining_life_band?: string | null;
+  refrigerant?: string | null;
+  /** Whether the refrigerant is 2025+ A2L-compatible (R-454B / R-32). */
+  refrigerant_2025_compatible?: boolean | null;
+  shadow_replace_score?: ShadowReplaceScore | null;
+}
+
 export interface RepairPlan {
   recommended_tier: "A" | "B" | "C";
   tiers: RepairPlanTier[];
+  /** Stage 3C — true when we recommend replacement on unconfirmed age. */
+  requires_user_chooser?: boolean;
+  /** Stage 3C — unit age in years (drives the "X+ years old" banner copy). */
+  unit_age_years?: number | null;
+  /** Stage 3C — recommendation + show-the-math metadata. */
+  recommendation?: RecommendationMeta | null;
 }
 
 export interface DiagnosticResult {
@@ -145,6 +185,27 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
     ...allTiers.filter(t => t.key !== recTier),
   ];
 
+  // ── Stage 3C: chooser-gate banner + "Why this recommendation?" panel ────────
+  const requiresChooser = !!repairPlan?.requires_user_chooser;
+  const recMeta = repairPlan?.recommendation ?? null;
+  const unitAge = repairPlan?.unit_age_years ?? unitAgeYears ?? null;
+  // When the user overrides the replacement recommendation, reveal the Repair tier
+  // as if age <= 8 (show repair-first option).
+  const [repairFirstRevealed, setRepairFirstRevealed] = useState(false);
+  // Collapsible "Why this recommendation?" panel + "Show the math" sub-toggle.
+  const [whyOpen, setWhyOpen] = useState(false);
+  const [showMath, setShowMath] = useState(false);
+  const whyPanelRef = useRef<HTMLDivElement>(null);
+
+  function handleShowRepairFirst() {
+    setRepairFirstRevealed(true);
+    trackEvent("replacement_recommendation_overridden_by_user", {
+      session_id: data.session_id,
+      unit_age_years: unitAge,
+      recommended_tier: recTier,
+    });
+  }
+
   // ── Effects ──────────────────────────────────────────────────────────────
 
   // DX.7: animate checkmark after first paint
@@ -193,12 +254,25 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
     });
     try {
       const token = await getToken();
+      // Stage 3A: forward install-year + age confidence/source captured on the
+      // review screen (StepZeroPanel stashes it in sessionStorage on confirm).
+      let ageCapture: Record<string, unknown> = {};
+      try {
+        const raw = typeof window !== "undefined" ? sessionStorage.getItem("snap_age_capture") : null;
+        if (raw) {
+          const parsed = JSON.parse(raw) as { install_year?: number | null; age_source?: string | null; age_confidence?: string | null };
+          if (parsed.install_year != null) ageCapture.install_year = parsed.install_year;
+          if (parsed.age_source) ageCapture.age_source = parsed.age_source;
+          if (parsed.age_confidence) ageCapture.age_confidence = parsed.age_confidence;
+        }
+      } catch { /* sessionStorage unavailable — non-fatal */ }
       const est = await apiFetch<{ id: string }>("/api/estimates/fault-card", {
         method: "POST",
         token: token ?? undefined,
         body: JSON.stringify({
           card_id: data.fault.card_id,
           assessment_id: data.assessment_id,
+          ...ageCapture,
         }),
       });
       if (!est.id) throw new Error("No estimate ID");
@@ -457,8 +531,47 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
             What we&apos;d recommend doing
           </div>
 
-          {/* Tiers to show based on self-graduating logic (DX.10) */}
-          {(showAllTiers ? orderedTiers : orderedTiers.filter(t => t.key === recTier)).map(tier => {
+          {/* ── Stage 3C: chooser-gate banner ──
+              Shows when the backend recommends replacement on an UNCONFIRMED age.
+              WCAG AA: #92400e text on #fffbeb bg (contrast > 4.5:1); not color-alone. */}
+          {requiresChooser && !repairFirstRevealed && (
+            <div
+              style={{
+                background: "#fffbeb", border: "1.5px solid #f59e0b", borderRadius: 10,
+                padding: "12px 14px", marginBottom: 12, color: "#92400e",
+              }}
+            >
+              <div style={{ fontSize: 13, lineHeight: 1.5, fontWeight: 600 }}>
+                We&apos;re recommending replacement because we estimate this unit is{" "}
+                {unitAge != null ? `${unitAge}+` : "8+"} years old. The age wasn&apos;t confirmed.
+                See what we&apos;d recommend if the unit is newer.
+              </div>
+              <button
+                onClick={handleShowRepairFirst}
+                style={{
+                  marginTop: 10, padding: "10px 14px", borderRadius: 8, border: "1.5px solid #92400e",
+                  background: "#fff", color: "#92400e", fontSize: 13, fontWeight: 700,
+                  cursor: "pointer", minHeight: 44, width: "100%",
+                }}
+              >
+                Show repair-first option
+              </button>
+            </div>
+          )}
+
+          {/* Tiers to show based on self-graduating logic (DX.10).
+              Stage 3C: when repairFirstRevealed, also surface the Repair tier (key "A")
+              as if age <= 8. */}
+          {(() => {
+            let visible = showAllTiers ? orderedTiers : orderedTiers.filter(t => t.key === recTier);
+            if (repairFirstRevealed) {
+              const repairTier = orderedTiers.find(t => t.key === "A");
+              if (repairTier && !visible.some(t => t.key === "A")) {
+                visible = [repairTier, ...visible];
+              }
+            }
+            return visible;
+          })().map(tier => {
             const isExpanded    = expandedTiers.has(tier.key);
             const isRecommended = tier.key === recTier;
             const tierName      = tier.name || tierLabelForUnit(TIER_LABEL[tier.key], unitAgeYears);
@@ -574,6 +687,124 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
               </div>
             );
           })}
+
+          {/* ── Stage 3C: "Why this recommendation?" collapsible panel ──
+              Lifespans render as BANDS, never year-exact. */}
+          {recMeta && (
+            <div style={{ marginTop: 12 }}>
+              <button
+                onClick={() => setWhyOpen(o => !o)}
+                aria-expanded={whyOpen}
+                aria-controls="why-rec-panel"
+                style={{
+                  width: "100%", textAlign: "left", background: "#f8fafc",
+                  border: "1px solid #e2e8f0", borderRadius: 8, padding: "12px 14px",
+                  cursor: "pointer", fontSize: 13, fontWeight: 700, color: "#0f172a",
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  minHeight: 44,
+                }}
+              >
+                Why this recommendation?
+                <span style={{ fontSize: 16, color: "#94a3b8", transform: whyOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
+                  &#8964;
+                </span>
+              </button>
+
+              {whyOpen && (
+                <div
+                  id="why-rec-panel"
+                  ref={whyPanelRef}
+                  style={{
+                    border: "1px solid #e2e8f0", borderTop: "none",
+                    borderRadius: "0 0 8px 8px", padding: "12px 14px",
+                    display: "flex", flexDirection: "column", gap: 8, fontSize: 13, color: "#334155",
+                  }}
+                >
+                  {/* Estimated install year + source label */}
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <span style={{ color: "#64748b" }}>Estimated install year</span>
+                    <span style={{ fontWeight: 600 }}>
+                      {recMeta.estimated_install_year ?? "—"}
+                      {recMeta.age_source ? ` (${recMeta.age_source.replace(/_/g, " ")})` : ""}
+                    </span>
+                  </div>
+
+                  {/* Confidence label */}
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <span style={{ color: "#64748b" }}>Age confidence</span>
+                    <span style={{ fontWeight: 600, textTransform: "capitalize" }}>
+                      {recMeta.age_confidence ?? "unknown"}
+                    </span>
+                  </div>
+
+                  {/* Expected remaining-life BAND — range, never year-exact */}
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <span style={{ color: "#64748b" }}>Expected remaining life</span>
+                    <span style={{ fontWeight: 600 }}>{recMeta.remaining_life_band ?? "—"}</span>
+                  </div>
+
+                  {/* Refrigerant + 2025+ compatibility */}
+                  {recMeta.refrigerant && (
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                      <span style={{ color: "#64748b" }}>Refrigerant</span>
+                      <span style={{ fontWeight: 600 }}>
+                        {recMeta.refrigerant}
+                        {recMeta.refrigerant_2025_compatible === true && " · 2025+ compatible"}
+                        {recMeta.refrigerant_2025_compatible === false && " · not 2025+ compatible"}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Five weighted-score factors + contributions */}
+                  {recMeta.shadow_replace_score && recMeta.shadow_replace_score.factors.length > 0 && (
+                    <div style={{ marginTop: 4, borderTop: "1px solid #f1f5f9", paddingTop: 8 }}>
+                      <div style={{ fontWeight: 700, fontSize: 12, color: "#0f172a", marginBottom: 6 }}>
+                        Replacement-score factors
+                      </div>
+                      {recMeta.shadow_replace_score.factors.map((f, i) => (
+                        <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "2px 0" }}>
+                          <span style={{ color: "#64748b" }}>{f.label || f.name}</span>
+                          <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
+                            +{(f.contribution).toFixed(2)} <span style={{ color: "#94a3b8", fontWeight: 400 }}>(w {f.weight.toFixed(2)})</span>
+                          </span>
+                        </div>
+                      ))}
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 4, fontWeight: 700, color: "#0f172a" }}>
+                        <span>Total replace score</span>
+                        <span style={{ fontVariantNumeric: "tabular-nums" }}>{recMeta.shadow_replace_score.total.toFixed(2)}</span>
+                      </div>
+
+                      {/* "Show the math" sub-toggle — expands the formula text */}
+                      {recMeta.shadow_replace_score.formula && (
+                        <>
+                          <button
+                            onClick={() => setShowMath(m => !m)}
+                            aria-expanded={showMath}
+                            style={{
+                              marginTop: 8, background: "none", border: "none", cursor: "pointer",
+                              fontSize: 12, color: "#2563eb", padding: "4px 0", textDecoration: "underline",
+                            }}
+                          >
+                            {showMath ? "Hide the math" : "Show the math"}
+                          </button>
+                          {showMath && (
+                            <pre style={{
+                              marginTop: 6, whiteSpace: "pre-wrap", wordBreak: "break-word",
+                              fontSize: 11, color: "#475569", background: "#f8fafc",
+                              border: "1px solid #e2e8f0", borderRadius: 6, padding: "8px 10px",
+                              fontFamily: "ui-monospace, monospace",
+                            }}>
+                              {recMeta.shadow_replace_score.formula}
+                            </pre>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

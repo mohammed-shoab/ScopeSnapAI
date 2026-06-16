@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import DataConfidenceLabel from "@/components/DataConfidenceLabel";
-import { track } from "@/lib/tracking";
+import { track, trackEvent } from "@/lib/tracking";
 import { formatCurrency, detectMarket, getLanguage } from "@/lib/market";
 import { URDU_STRINGS } from "@/lib/urdu-strings";
 import FiveYearComparison, { type TierTCO } from "@/components/FiveYearComparison";
@@ -370,6 +370,80 @@ export default function ReportClient({ report }: { report: Report }) {
   const [approved, setApproved] = useState(alreadyApproved);
   const [approvedTier, setApprovedTier] = useState<string | undefined>(report.selected_option);
   const [error, setError] = useState<string | null>(null);
+
+  // ── Stage 3B: homeowner install-year correction surface ─────────────────────
+  const currentYear = new Date().getFullYear();
+  const originalInstallYear = report.equipment?.install_year ?? null;
+  // The year currently displayed (may be homeowner-corrected).
+  const [displayInstallYear, setDisplayInstallYear] = useState<number | null>(originalInstallYear);
+  // Which correction option the homeowner picked: null | "confirmed" | "corrected" | "relative"
+  const [ageCorrectionMode, setAgeCorrectionMode] = useState<null | "confirmed" | "corrected" | "relative">(null);
+  const [ageCorrectionDone, setAgeCorrectionDone] = useState(false);
+  const [correctedYearInput, setCorrectedYearInput] = useState<string>("");
+  const [relativeYears, setRelativeYears] = useState<number | null>(null);
+  // Recomputed remaining-life band shown in the "Updated based on your correction" banner.
+  const [recomputedBand, setRecomputedBand] = useState<string | null>(null);
+
+  // Average lifespan for the local recompute (falls back to a Houston-typical 15 yrs).
+  const avgLifespan = report.remaining_life?.avg_lifespan ?? 15;
+
+  // Client-side recompute of the remaining-life BAND (never year-exact) from a corrected year.
+  function recomputeBandForYear(installYr: number): string {
+    const age = Math.max(0, currentYear - installYr);
+    const remaining = Math.max(0, avgLifespan - age);
+    // Render as a ±2-year band, clamped at 0.
+    const low = Math.max(0, remaining - 2);
+    const high = remaining + 2;
+    return `${low}-${high} ${t("years")}`;
+  }
+
+  function applyCorrectedYear(yr: number, source: string) {
+    setDisplayInstallYear(yr);
+    setRecomputedBand(recomputeBandForYear(yr));
+    setAgeCorrectionDone(true);
+    // Fire age_corrected via the existing event mechanism (POST /api/events).
+    trackEvent("age_corrected", {
+      report_short_id: report.report_short_id,
+      corrected_by: "homeowner",
+      source,
+      original_install_year: originalInstallYear,
+      corrected_install_year: yr,
+    });
+    // Best-effort backend recompute (Stage 6 endpoint). Degrades silently to UI-only.
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      fetch(`${apiUrl}/api/reports/${report.report_token}/correct-age`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ install_year: yr, source, corrected_by: "homeowner" }),
+      }).catch(() => { /* endpoint may not exist yet — UI recompute already applied */ });
+    } catch { /* non-fatal */ }
+  }
+
+  function handleAgeConfirmed() {
+    setAgeCorrectionMode("confirmed");
+    setAgeCorrectionDone(true);
+    trackEvent("homeowner_age_confirmed", {
+      report_short_id: report.report_short_id,
+      install_year: originalInstallYear,
+    });
+  }
+
+  function handleCorrectedYearSubmit() {
+    const yr = parseInt(correctedYearInput, 10);
+    if (Number.isNaN(yr) || yr < 1980 || yr > currentYear) {
+      setError(t("Please enter a valid year."));
+      return;
+    }
+    setError(null);
+    applyCorrectedYear(yr, "homeowner_direct_entry");
+  }
+
+  function handleRelativeSubmit() {
+    if (relativeYears == null) return;
+    const yr = currentYear - relativeYears;
+    applyCorrectedYear(yr, "relative_age_picker");
+  }
 
   // SOW Task 1.10 — track homeowner report view on mount
   useEffect(() => {
@@ -937,6 +1011,182 @@ export default function ReportClient({ report }: { report: Report }) {
                 </>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ── Stage 3B: install-year correction surface (homeowner) ──────────────
+            Sits below the recommendation/options card. Lets the homeowner confirm
+            or correct the install year shown, recomputing the estimate inline.
+            Accessible: <fieldset>/<legend> + radio labels for the relative-age picker,
+            high-contrast banner, keyboard-navigable controls. */}
+        {originalInstallYear != null && !ageCorrectionDone && (
+          <div
+            style={{
+              background: "white",
+              margin: "10px",
+              borderRadius: 16,
+              boxShadow: "0 1px 4px rgba(0,0,0,.04), 0 6px 16px rgba(0,0,0,.04)",
+              padding: "16px",
+            }}
+          >
+            <p style={{ fontSize: 13, fontWeight: 700, margin: "0 0 4px", color: "#1a1a1a" }}>
+              {t("Install year shown")}: <span style={{ color: "#1a8754" }}>{displayInstallYear}</span>. {t("Is this correct?")}
+            </p>
+            <p style={{ fontSize: 11, color: "#7a7770", margin: "0 0 12px", lineHeight: 1.5 }}>
+              {t("Confirming the age helps us recommend repair vs replacement accurately.")}
+            </p>
+
+            {/* Option 1: confirm */}
+            <button
+              onClick={handleAgeConfirmed}
+              style={{
+                width: "100%", padding: "12px", borderRadius: 10, marginBottom: 8,
+                border: "1.5px solid #1a8754", background: ageCorrectionMode === "confirmed" ? "#e8f5ee" : "white",
+                color: "#1a8754", fontSize: 14, fontWeight: 700, cursor: "pointer", minHeight: 44,
+              }}
+            >
+              {t("Yes, that's right")}
+            </button>
+
+            {/* Option 2: correct the year directly */}
+            <button
+              onClick={() => setAgeCorrectionMode(ageCorrectionMode === "corrected" ? null : "corrected")}
+              aria-expanded={ageCorrectionMode === "corrected"}
+              style={{
+                width: "100%", padding: "12px", borderRadius: 10, marginBottom: 8,
+                border: "1.5px solid #d1d5db", background: ageCorrectionMode === "corrected" ? "#f7f6f2" : "white",
+                color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", minHeight: 44,
+                textAlign: "left",
+              }}
+            >
+              {t("No — actual year is")} ___
+            </button>
+            {ageCorrectionMode === "corrected" && (
+              <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center", padding: "0 4px 8px" }}>
+                <label htmlFor="corrected-year-input" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>
+                  {t("Actual install year")}
+                </label>
+                <input
+                  id="corrected-year-input"
+                  type="number"
+                  inputMode="numeric"
+                  min={1980}
+                  max={currentYear}
+                  placeholder="YYYY"
+                  value={correctedYearInput}
+                  onChange={(e) => setCorrectedYearInput(e.target.value)}
+                  style={{
+                    flex: 1, padding: "10px 12px", borderRadius: 8, border: "1.5px solid #d1d5db",
+                    fontSize: 16, minHeight: 44, color: "#111827",
+                  }}
+                />
+                <button
+                  onClick={handleCorrectedYearSubmit}
+                  style={{
+                    padding: "10px 16px", borderRadius: 8, border: "none", background: "#1a8754",
+                    color: "white", fontSize: 14, fontWeight: 700, cursor: "pointer", minHeight: 44,
+                  }}
+                >
+                  {t("Save")}
+                </button>
+              </div>
+            )}
+
+            {/* Option 3: relative-age picker */}
+            <button
+              onClick={() => setAgeCorrectionMode(ageCorrectionMode === "relative" ? null : "relative")}
+              aria-expanded={ageCorrectionMode === "relative"}
+              style={{
+                width: "100%", padding: "12px", borderRadius: 10,
+                border: "1.5px solid #d1d5db", background: ageCorrectionMode === "relative" ? "#f7f6f2" : "white",
+                color: "#374151", fontSize: 14, fontWeight: 600, cursor: "pointer", minHeight: 44,
+                textAlign: "left",
+              }}
+            >
+              {t("I don't know — installed when we bought the house")} ___ {t("years ago")}
+            </button>
+            {ageCorrectionMode === "relative" && (
+              <fieldset style={{ border: "1px solid #e5e2da", borderRadius: 10, padding: "10px 12px", margin: "8px 0 0" }}>
+                <legend style={{ fontSize: 11, fontWeight: 700, color: "#7a7770", padding: "0 4px" }}>
+                  {t("About how many years ago?")}
+                </legend>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6, marginTop: 4 }}>
+                  {[5, 10, 15, 20].map((yrs) => {
+                    const selected = relativeYears === yrs;
+                    const label = yrs === 20 ? "20+" : String(yrs);
+                    return (
+                      <label
+                        key={yrs}
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          padding: "10px 4px", borderRadius: 8, cursor: "pointer", minHeight: 44,
+                          fontSize: 13, fontWeight: 700,
+                          background: selected ? "#1a8754" : "white",
+                          color: selected ? "white" : "#374151",
+                          border: selected ? "1.5px solid #1a8754" : "1.5px solid #d1d5db",
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="relative-age"
+                          value={yrs}
+                          checked={selected}
+                          onChange={() => setRelativeYears(yrs)}
+                          style={{ position: "absolute", opacity: 0, width: 1, height: 1 }}
+                        />
+                        {label}
+                      </label>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={handleRelativeSubmit}
+                  disabled={relativeYears == null}
+                  style={{
+                    width: "100%", marginTop: 10, padding: "10px", borderRadius: 8, border: "none",
+                    background: relativeYears == null ? "#c7c2b8" : "#1a8754", color: "white",
+                    fontSize: 14, fontWeight: 700, cursor: relativeYears == null ? "not-allowed" : "pointer",
+                    minHeight: 44,
+                  }}
+                >
+                  {t("Save")}
+                </button>
+              </fieldset>
+            )}
+
+            {error && ageCorrectionMode === "corrected" && (
+              <p style={{ color: "#c62828", fontSize: 12, marginTop: 8, fontWeight: 600 }}>⚠ {error}</p>
+            )}
+          </div>
+        )}
+
+        {/* Stage 3B: post-correction acknowledgement / updated banner */}
+        {ageCorrectionDone && (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              background: "#e8f5ee", margin: "10px", borderRadius: 12,
+              border: "1.5px solid #1a8754", padding: "14px 16px",
+            }}
+          >
+            {ageCorrectionMode === "confirmed" ? (
+              <p style={{ fontSize: 13, fontWeight: 700, color: "#166534", margin: 0 }}>
+                ✓ {t("Thanks — age confirmed.")}
+              </p>
+            ) : (
+              <>
+                <p style={{ fontSize: 12, fontWeight: 700, color: "#166534", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  {t("Updated based on your correction")}
+                </p>
+                <p style={{ fontSize: 13, color: "#1a1a1a", margin: 0, lineHeight: 1.5 }}>
+                  {t("Install year")}: <strong>{displayInstallYear}</strong>
+                  {recomputedBand && (
+                    <> · {t("Est. Life Remaining")}: <strong>{recomputedBand}</strong></>
+                  )}
+                </p>
+              </>
+            )}
           </div>
         )}
 

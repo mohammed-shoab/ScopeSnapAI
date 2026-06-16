@@ -55,6 +55,10 @@ interface OcrResult {
   source?:            "gemini" | "tesseract" | "manual";
   d7_brand_detected:  boolean;
   d7_brand_name:      string | null;
+  /** Stage 3A — install-year review fields, wired to the fault-card estimate request */
+  install_year?:      number | null;
+  age_source?:        string | null;
+  age_confidence?:    "sure" | "approximate" | "unknown" | null;
 }
 
 interface Props {
@@ -120,6 +124,19 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   const [ambientBucket, setAmbientBucket] = useState<"mild" | "hot" | "extreme">("hot");
   const AMBIENT_C_MAP: Record<"mild" | "hot" | "extreme", number> = { mild: 25, hot: 35, extreme: 40 };
   const [editedUnit,   setEditedUnit]   = useState<NameplateUnit | null>(null);
+
+  // ── Stage 3A: install-year + age-confidence review ─────────────────────────
+  // Year picker range 1980–2026. Confidence: Sure / Approximate / Unknown.
+  const AGE_YEAR_MIN = 1980;
+  const AGE_YEAR_MAX = 2026;
+  const [installYear, setInstallYear] = useState<number | null>(null);
+  const [ageConfidence, setAgeConfidence] = useState<"sure" | "approximate" | "unknown">("unknown");
+  // age_source describes WHERE the year came from (drives backend reliable-age gate)
+  const [ageSource, setAgeSource] = useState<string>("unknown");
+  // Legacy-brand estimate badge: shown when year was derived from a discontinued brand midpoint
+  const [ageIsLegacyEstimate, setAgeIsLegacyEstimate] = useState<boolean>(false);
+  // Track whether the tech has manually touched the year/confidence (then we stop auto-prefilling)
+  const ageTouchedRef = useRef<boolean>(false);
 
   const outdoorInputRef = useRef<HTMLInputElement>(null);
   const indoorInputRef  = useRef<HTMLInputElement>(null);
@@ -358,12 +375,106 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
     setEditedManualFields(prev => { const next = new Set(prev); next.add(String(key)); return next; });
   }, []);
 
+  // ── Stage 3A: derive install-year + age confidence from decoder output ──────
+  // Runs when the active unit (photo OCR result OR manual DB-matched unit) changes.
+  // Pre-fills only while the tech has NOT manually overridden the fields.
+  const activeAgeUnit: NameplateUnit | null = editedUnit ?? (manualUnit.series_id || manualUnit.year_of_manufacture !== null ? manualUnit : null);
+  useEffect(() => {
+    if (ageTouchedRef.current) return;            // tech is in control — never clobber edits
+    const unit = activeAgeUnit;
+    if (!unit) return;
+    const decodeConf = typeof unit.confidence === "number" ? unit.confidence : 0;
+    const yr = unit.year_of_manufacture;
+
+    // Legacy brand (discontinued) → pre-fill computed midpoint year (already on the unit),
+    // show an "estimated from brand discontinue" badge, confidence = approximate.
+    if (unit.is_legacy && yr != null) {
+      setInstallYear(yr);
+      setAgeConfidence("approximate");
+      setAgeSource("legacy_brand_age_floor");
+      setAgeIsLegacyEstimate(true);
+      return;
+    }
+
+    // High-confidence decode (>=70) → pre-fill year, confidence = Sure.
+    // Medium (40-69) → pre-fill year, confidence = Approximate.
+    if (yr != null && decodeConf >= 70) {
+      setInstallYear(yr);
+      setAgeConfidence("sure");
+      setAgeSource("serial_decode_high");
+      setAgeIsLegacyEstimate(false);
+      return;
+    }
+    if (yr != null && decodeConf >= 40) {
+      setInstallYear(yr);
+      setAgeConfidence("approximate");
+      setAgeSource("serial_decode_medium");
+      setAgeIsLegacyEstimate(false);
+      return;
+    }
+
+    // Decode failed / low / unknown → leave year BLANK, confidence = unknown.
+    // No yellow highlight, no alarm — just an empty input with an "Ask homeowner" hint.
+    setInstallYear(null);
+    setAgeConfidence("unknown");
+    setAgeSource("unknown");
+    setAgeIsLegacyEstimate(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAgeUnit?.year_of_manufacture, activeAgeUnit?.confidence, activeAgeUnit?.is_legacy, activeAgeUnit?.series_id]);
+
+  /** Stage 3A — user picks/edits the install year. Marks the field as tech-controlled. */
+  const handleInstallYearChange = useCallback((raw: string) => {
+    ageTouchedRef.current = true;
+    setAgeIsLegacyEstimate(false);
+    if (raw === "") {
+      setInstallYear(null);
+      // Blank year → unknown confidence + source (matches backend "unknown" gate).
+      setAgeConfidence("unknown");
+      setAgeSource("unknown");
+      return;
+    }
+    const n = parseInt(raw, 10);
+    if (Number.isNaN(n)) return;
+    setInstallYear(n);
+    // A tech-entered year is a plate/homeowner observation, not a decode.
+    if (ageSource === "unknown") setAgeSource("plate_date");
+  }, [ageSource]);
+
+  /** Stage 3A — user overrides the age-confidence selector. */
+  const handleAgeConfidenceChange = useCallback((c: "sure" | "approximate" | "unknown") => {
+    ageTouchedRef.current = true;
+    setAgeConfidence(c);
+    if (c === "sure" && (ageSource === "unknown" || ageSource === "plate_date")) {
+      setAgeSource("homeowner_sure");
+    } else if (c === "approximate" && (ageSource === "unknown" || ageSource === "plate_date")) {
+      setAgeSource("homeowner_approximate");
+    } else if (c === "unknown") {
+      setAgeSource("unknown");
+    }
+  }, [ageSource]);
+
+  /** Stage 3A — stash the captured age data so the fault-card estimate request can read it. */
+  const persistAgeForEstimate = useCallback((iy: number | null, src: string, conf: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      if (iy == null) {
+        sessionStorage.removeItem("snap_age_capture");
+      } else {
+        sessionStorage.setItem("snap_age_capture", JSON.stringify({
+          install_year: iy, age_source: src, age_confidence: conf,
+        }));
+      }
+    } catch { /* sessionStorage unavailable — non-fatal */ }
+  }, []);
+
   /** Confirm manual entry — wraps manualUnit into an OcrResult */
   const handleManualConfirm = useCallback(() => {
     // PK: bake the picker selection into the outdoor unit before confirming
     const outdoor = isPK
       ? { ...manualUnit, refrigerant: pkRefrigerant, series_type: selectedSeriesType }
       : { ...manualUnit };
+    // Stage 3A: carry install-year + age confidence/source through to the estimate.
+    persistAgeForEstimate(installYear, ageSource, ageConfidence);
     const result: OcrResult = {
       outdoor,
       indoor: null,
@@ -371,9 +482,12 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       capture_method: "manual",
       d7_brand_detected: false,
       d7_brand_name: null,
+      install_year: installYear,
+      age_source: ageSource,
+      age_confidence: ageConfidence,
     };
     onConfirm(result, AMBIENT_C_MAP[ambientBucket]);
-  }, [manualUnit, pkRefrigerant, isPK, onConfirm, ambientBucket]);
+  }, [manualUnit, pkRefrigerant, isPK, onConfirm, ambientBucket, installYear, ageSource, ageConfidence, persistAgeForEstimate]);
 
   // ── Photo selection ─────────────────────────────────────────────────────
 
@@ -552,7 +666,15 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   const handleConfirm = useCallback(async () => {
     if (!ocrResult || !editedUnit) return;
 
-    const finalResult: OcrResult = { ...ocrResult, outdoor: editedUnit };
+    // Stage 3A: carry install-year + age confidence/source through to the estimate.
+    persistAgeForEstimate(installYear, ageSource, ageConfidence);
+    const finalResult: OcrResult = {
+      ...ocrResult,
+      outdoor: editedUnit,
+      install_year: installYear,
+      age_source: ageSource,
+      age_confidence: ageConfidence,
+    };
 
     // BUG-034: persist uses live JWT (not the null prop)
     if (assessmentId) {
@@ -578,7 +700,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
     }
 
     onConfirm(finalResult, AMBIENT_C_MAP[ambientBucket]);
-  }, [ocrResult, editedUnit, assessmentId, getToken, onConfirm]);
+  }, [ocrResult, editedUnit, assessmentId, getToken, onConfirm, installYear, ageSource, ageConfidence, persistAgeForEstimate]);
 
   // ── Edit field helper ───────────────────────────────────────────────────
 
@@ -593,6 +715,108 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       });
     },
     []
+  );
+
+  // ── Stage 3A: Install-year + age-confidence review block ───────────────────
+  // Rendered in BOTH the photo-review and manual paths (single-screen UX).
+  // Accessible: <label htmlFor>, <fieldset>/<legend> for the confidence radios,
+  // high-contrast (WCAG AA) badge + hint text, large tappable controls (truck-cab).
+  const yearOptions: number[] = [];
+  for (let y = AGE_YEAR_MAX; y >= AGE_YEAR_MIN; y--) yearOptions.push(y);
+  const installYearReview = (
+    <div
+      className="bg-white border border-gray-200 rounded-2xl overflow-hidden"
+      style={{ marginTop: 8 }}
+    >
+      <div className="px-4 py-2.5 border-b border-gray-100">
+        <span className="text-xs font-black uppercase tracking-wider text-gray-500">
+          {t("Install year")}
+        </span>
+      </div>
+      <div className="p-3 flex flex-col gap-3">
+        {/* Year picker */}
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="install-year-select"
+            className="text-[10px] font-bold uppercase tracking-wider text-gray-400"
+          >
+            {t("Year installed")}
+          </label>
+          <select
+            id="install-year-select"
+            value={installYear ?? ""}
+            onChange={(e) => handleInstallYearChange(e.target.value)}
+            className="w-full text-sm font-bold rounded-lg border px-2 py-2.5 focus:outline-none focus:ring-2"
+            style={{
+              borderColor: installYear == null ? "#9ca3af" : "#1a8754",
+              background: installYear == null ? "#ffffff" : "#f0faf6",
+              color: installYear == null ? "#6b7280" : "#111827",
+              fontStyle: installYear == null ? "italic" : "normal",
+              minHeight: 44,
+            } as React.CSSProperties}
+          >
+            <option value="">{t("Ask homeowner")}</option>
+            {yearOptions.map((y) => (
+              <option key={y} value={y} style={{ fontStyle: "normal", color: "#111827" }}>
+                {y}
+              </option>
+            ))}
+          </select>
+          {installYear == null && (
+            <span className="text-[11px] italic" style={{ color: "#6b7280" }}>
+              {t("We couldn't read the age — ask the homeowner if they know.")}
+            </span>
+          )}
+          {ageIsLegacyEstimate && installYear != null && (
+            <span
+              className="inline-flex items-center self-start text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5"
+              style={{ background: "#e0e7ff", color: "#3730a3" }}
+            >
+              {t("estimated from brand discontinue")}
+            </span>
+          )}
+        </div>
+
+        {/* Age-confidence selector (Sure / Approximate / Unknown) */}
+        <fieldset style={{ border: "none", margin: 0, padding: 0 }}>
+          <legend className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+            {t("How sure are we?")}
+          </legend>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { key: "sure" as const,        label: t("Sure") },
+              { key: "approximate" as const, label: t("Approximate") },
+              { key: "unknown" as const,     label: t("Unknown") },
+            ]).map((opt) => {
+              const selected = ageConfidence === opt.key;
+              return (
+                <label
+                  key={opt.key}
+                  className="flex items-center justify-center text-center rounded-lg cursor-pointer text-xs font-semibold"
+                  style={{
+                    background: selected ? "#1a8754" : "#ffffff",
+                    color: selected ? "#ffffff" : "#374151",
+                    border: selected ? "1.5px solid #1a8754" : "1.5px solid #d1d5db",
+                    padding: "10px 4px",
+                    minHeight: 44,
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="age-confidence"
+                    value={opt.key}
+                    checked={selected}
+                    onChange={() => handleAgeConfidenceChange(opt.key)}
+                    style={{ position: "absolute", opacity: 0, width: 1, height: 1 }}
+                  />
+                  {opt.label}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      </div>
+    </div>
   );
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -1075,6 +1299,9 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             </div>
           )}
 
+          {/* Stage 3A — install-year review (manual path) */}
+          {installYearReview}
+
           <div className="flex gap-3">
             <button
               onClick={handleManualConfirm}
@@ -1407,6 +1634,9 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
           </div>
         </div>
       )}
+
+      {/* Stage 3A — install-year review (photo path) */}
+      {editedUnit && installYearReview}
 
       {/* Confirm */}
       {editedUnit && (
