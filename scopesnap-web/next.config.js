@@ -3,6 +3,8 @@
 
 const API_URL_FOR_CSP = process.env.NEXT_PUBLIC_API_URL || 'https://scopesnap-api-production.up.railway.app';
 
+const { withSentryConfig } = require("@sentry/nextjs");
+
 const nextConfig = {
   async redirects() {
     return [
@@ -85,7 +87,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://*.r2.dev https://img.clerk.com https://images.clerk.dev https://www.gstatic.com https://*.gstatic.com https://clerk.snapai.mainnov.tech https://lh3.googleusercontent.com",
-              `connect-src 'self' ${API_URL_FOR_CSP} https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://us.i.posthog.com https://us-assets.i.posthog.com https://challenges.cloudflare.com https://maps.googleapis.com`,
+              `connect-src 'self' ${API_URL_FOR_CSP} https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://us.i.posthog.com https://us-assets.i.posthog.com https://challenges.cloudflare.com https://maps.googleapis.com https://*.ingest.us.sentry.io`,
               "frame-src 'self' https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://challenges.cloudflare.com",
               "worker-src 'self' blob:",
             ].join("; "),
@@ -96,4 +98,12 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withSentryConfig(nextConfig, {
+  // Build-time metadata for the snapai-web Sentry project. Sourcemap upload is
+  // DISABLED (no SENTRY_AUTH_TOKEN needed) so the build never fails on auth.
+  org: "mainnov",
+  project: "snapai-web",
+  silent: true,
+  sourcemaps: { disable: true },
+  disableLogger: true,
+});
