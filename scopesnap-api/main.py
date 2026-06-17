@@ -49,6 +49,13 @@ import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
+def _sentry_before_send(event, hint):
+    # During audit runs (SNAPAI_AUDIT_MODE=1) drop synthetic events so they
+    # never reach Sentry or count toward quota.
+    if os.environ.get("SNAPAI_AUDIT_MODE") == "1":
+        return None
+    return event
+
 _sentry_dsn = os.environ.get("SENTRY_DSN", "")
 if _sentry_dsn:
     sentry_sdk.init(
@@ -57,6 +64,7 @@ if _sentry_dsn:
         traces_sample_rate=0.1,
         environment=os.environ.get("ENVIRONMENT", "development"),
         release="snapai-api@1.0.0",
+        before_send=_sentry_before_send,
     )
 
 settings = get_settings()
@@ -94,8 +102,12 @@ async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSON
         request.method, request.url.path, exc,
         exc_info=True,
     )
+    # DEC-107: a catch-all exception_handler SUPPRESSES Sentry's auto-capture
+    # (the handled exception never reaches Starlette's ServerErrorMiddleware
+    # where the SDK hooks), so backend 500s were NEVER reaching Sentry. Capture
+    # explicitly. capture_exception is a safe no-op when Sentry is not init'd.
+    sentry_sdk.capture_exception(exc)
     # BUG-009 fix: redact internals in non-development environments.
-    # Sentry captures the full exception in all environments (main.py:46-58).
     if settings.is_development:
         detail = f"{type(exc).__name__}: {exc}"
     else:
@@ -177,6 +189,7 @@ async def health_check():
         "environment": settings.environment,
         "version": "0.1.0",
     }
+
 
 
 # ââ Root ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
