@@ -18,7 +18,7 @@
     "tailwind-merge": "^2.5.2",
     "lucide-react": "^0.454.0",
     "posthog-js": "^1.240.6",
-    "@sentry/nextjs": "^8.0.0",
+    "@sentry/nextjs": "^10.58.0",
     "tesseract.js": "^5.1.1",
     "@supabase/supabase-js": "^2.46.0",
     "@react-google-maps/api": "^2.19.3"
