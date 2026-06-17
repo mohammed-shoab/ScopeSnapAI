@@ -1286,6 +1286,7 @@ async def get_diagnostic_result(
                 # Identify recommended tier
                 rec_tier = next((o.get("tier") for o in raw_opts if o.get("recommended")), "B")
                 tiers = []
+                _rec_meta = None
                 for opt in raw_opts:
                     tier_key = opt.get("tier", "B")
                     tiers.append({
@@ -1295,8 +1296,24 @@ async def get_diagnostic_result(
                         "line_items": opt.get("line_items", []),
                         "recommended": bool(opt.get("recommended", False)),
                     })
+                    # Stage 3C: recommendation metadata is stashed on whichever
+                    # option carries it (the recommended tier at persist time).
+                    if _rec_meta is None and opt.get("recommendation_meta"):
+                        _rec_meta = opt.get("recommendation_meta")
                 if tiers:
-                    repair_plan = {"recommended_tier": rec_tier, "tiers": tiers}
+                    # Stage 3C: surface chooser-gate flag + unit age + the
+                    # "Why this recommendation?" metadata to FaultResolutionScreen.
+                    _requires_chooser = bool(
+                        (_rec_meta or {}).get("requires_user_chooser", False)
+                    )
+                    _unit_age = (_rec_meta or {}).get("unit_age_years")
+                    repair_plan = {
+                        "recommended_tier": rec_tier,
+                        "tiers": tiers,
+                        "requires_user_chooser": _requires_chooser,
+                        "unit_age_years": _unit_age,
+                        "recommendation": _rec_meta,
+                    }
         except Exception as _rp_exc:
             logger.warning("[diagnostic] repair_plan fetch failed (non-fatal): %s", _rp_exc)
 

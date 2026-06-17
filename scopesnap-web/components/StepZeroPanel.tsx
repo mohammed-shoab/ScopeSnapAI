@@ -55,6 +55,10 @@ interface OcrResult {
   source?:            "gemini" | "tesseract" | "manual";
   d7_brand_detected:  boolean;
   d7_brand_name:      string | null;
+  /** Stage 3A — install-year review fields, wired to the fault-card estimate request */
+  install_year?:      number | null;
+  age_source?:        string | null;
+  age_confidence?:    "sure" | "approximate" | "unknown" | null;
 }
 
 interface Props {
@@ -62,6 +66,9 @@ interface Props {
   clerkToken: string | null;
   onConfirm: (result: OcrResult, ambientC: number) => void;
   onSkip: () => void;
+  /** TEST-ONLY: seed a decoded unit to drive the Stage 3A prefill deterministically
+   *  from the dev test-harness (never passed by the real /assess route). */
+  __testSeedUnit?: NameplateUnit | null;
 }
 
 // ── OCR field display config ─────────────────────────────────────────────────
@@ -104,7 +111,7 @@ const ELECTRICAL_SPECS_BY_TONNAGE: Record<number, {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onSkip }: Props) {
+export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onSkip, __testSeedUnit }: Props) {
   const { t } = useLang();
   // BUG-034 Root Cause A fix: get live Clerk JWT instead of relying on prop (which was hardcoded null)
   const { getToken } = useAuth();
@@ -120,6 +127,25 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   const [ambientBucket, setAmbientBucket] = useState<"mild" | "hot" | "extreme">("hot");
   const AMBIENT_C_MAP: Record<"mild" | "hot" | "extreme", number> = { mild: 25, hot: 35, extreme: 40 };
   const [editedUnit,   setEditedUnit]   = useState<NameplateUnit | null>(null);
+
+  // TEST-ONLY: seed a decoded unit (from the dev harness) so Playwright can drive
+  // the Stage 3A install-year prefill without the auth-gated OCR/upload pipeline.
+  useEffect(() => {
+    if (__testSeedUnit) setEditedUnit(__testSeedUnit as NameplateUnit);
+  }, [__testSeedUnit]);
+
+  // ── Stage 3A: install-year + age-confidence review ─────────────────────────
+  // Year picker range 1980–2026. Confidence: Sure / Approximate / Unknown.
+  const AGE_YEAR_MIN = 1980;
+  const AGE_YEAR_MAX = 2026;
+  const [installYear, setInstallYear] = useState<number | null>(null);
+  const [ageConfidence, setAgeConfidence] = useState<"sure" | "approximate" | "unknown">("unknown");
+  // age_source describes WHERE the year came from (drives backend reliable-age gate)
+  const [ageSource, setAgeSource] = useState<string>("unknown");
+  // Legacy-brand estimate badge: shown when year was derived from a discontinued brand midpoint
+  const [ageIsLegacyEstimate, setAgeIsLegacyEstimate] = useState<boolean>(false);
+  // Track whether the tech has manually touched the year/confidence (then we stop auto-prefilling)
+  const ageTouchedRef = useRef<boolean>(false);
 
   const outdoorInputRef = useRef<HTMLInputElement>(null);
   const indoorInputRef  = useRef<HTMLInputElement>(null);
@@ -358,12 +384,106 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
     setEditedManualFields(prev => { const next = new Set(prev); next.add(String(key)); return next; });
   }, []);
 
+  // ── Stage 3A: derive install-year + age confidence from decoder output ──────
+  // Runs when the active unit (photo OCR result OR manual DB-matched unit) changes.
+  // Pre-fills only while the tech has NOT manually overridden the fields.
+  const activeAgeUnit: NameplateUnit | null = editedUnit ?? (manualUnit.series_id || manualUnit.year_of_manufacture !== null ? manualUnit : null);
+  useEffect(() => {
+    if (ageTouchedRef.current) return;            // tech is in control — never clobber edits
+    const unit = activeAgeUnit;
+    if (!unit) return;
+    const decodeConf = typeof unit.confidence === "number" ? unit.confidence : 0;
+    const yr = unit.year_of_manufacture;
+
+    // Legacy brand (discontinued) → pre-fill computed midpoint year (already on the unit),
+    // show an "estimated from brand discontinue" badge, confidence = approximate.
+    if (unit.is_legacy && yr != null) {
+      setInstallYear(yr);
+      setAgeConfidence("approximate");
+      setAgeSource("legacy_brand_age_floor");
+      setAgeIsLegacyEstimate(true);
+      return;
+    }
+
+    // High-confidence decode (>=70) → pre-fill year, confidence = Sure.
+    // Medium (40-69) → pre-fill year, confidence = Approximate.
+    if (yr != null && decodeConf >= 70) {
+      setInstallYear(yr);
+      setAgeConfidence("sure");
+      setAgeSource("serial_decode_high");
+      setAgeIsLegacyEstimate(false);
+      return;
+    }
+    if (yr != null && decodeConf >= 40) {
+      setInstallYear(yr);
+      setAgeConfidence("approximate");
+      setAgeSource("serial_decode_medium");
+      setAgeIsLegacyEstimate(false);
+      return;
+    }
+
+    // Decode failed / low / unknown → leave year BLANK, confidence = unknown.
+    // No yellow highlight, no alarm — just an empty input with an "Ask homeowner" hint.
+    setInstallYear(null);
+    setAgeConfidence("unknown");
+    setAgeSource("unknown");
+    setAgeIsLegacyEstimate(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAgeUnit?.year_of_manufacture, activeAgeUnit?.confidence, activeAgeUnit?.is_legacy, activeAgeUnit?.series_id]);
+
+  /** Stage 3A — user picks/edits the install year. Marks the field as tech-controlled. */
+  const handleInstallYearChange = useCallback((raw: string) => {
+    ageTouchedRef.current = true;
+    setAgeIsLegacyEstimate(false);
+    if (raw === "") {
+      setInstallYear(null);
+      // Blank year → unknown confidence + source (matches backend "unknown" gate).
+      setAgeConfidence("unknown");
+      setAgeSource("unknown");
+      return;
+    }
+    const n = parseInt(raw, 10);
+    if (Number.isNaN(n)) return;
+    setInstallYear(n);
+    // A tech-entered year is a plate/homeowner observation, not a decode.
+    if (ageSource === "unknown") setAgeSource("plate_date");
+  }, [ageSource]);
+
+  /** Stage 3A — user overrides the age-confidence selector. */
+  const handleAgeConfidenceChange = useCallback((c: "sure" | "approximate" | "unknown") => {
+    ageTouchedRef.current = true;
+    setAgeConfidence(c);
+    if (c === "sure" && (ageSource === "unknown" || ageSource === "plate_date")) {
+      setAgeSource("homeowner_sure");
+    } else if (c === "approximate" && (ageSource === "unknown" || ageSource === "plate_date")) {
+      setAgeSource("homeowner_approximate");
+    } else if (c === "unknown") {
+      setAgeSource("unknown");
+    }
+  }, [ageSource]);
+
+  /** Stage 3A — stash the captured age data so the fault-card estimate request can read it. */
+  const persistAgeForEstimate = useCallback((iy: number | null, src: string, conf: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      if (iy == null) {
+        sessionStorage.removeItem("snap_age_capture");
+      } else {
+        sessionStorage.setItem("snap_age_capture", JSON.stringify({
+          install_year: iy, age_source: src, age_confidence: conf,
+        }));
+      }
+    } catch { /* sessionStorage unavailable — non-fatal */ }
+  }, []);
+
   /** Confirm manual entry — wraps manualUnit into an OcrResult */
   const handleManualConfirm = useCallback(() => {
     // PK: bake the picker selection into the outdoor unit before confirming
     const outdoor = isPK
       ? { ...manualUnit, refrigerant: pkRefrigerant, series_type: selectedSeriesType }
       : { ...manualUnit };
+    // Stage 3A: carry install-year + age confidence/source through to the estimate.
+    persistAgeForEstimate(installYear, ageSource, ageConfidence);
     const result: OcrResult = {
       outdoor,
       indoor: null,
@@ -371,9 +491,12 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       capture_method: "manual",
       d7_brand_detected: false,
       d7_brand_name: null,
+      install_year: installYear,
+      age_source: ageSource,
+      age_confidence: ageConfidence,
     };
     onConfirm(result, AMBIENT_C_MAP[ambientBucket]);
-  }, [manualUnit, pkRefrigerant, isPK, onConfirm, ambientBucket]);
+  }, [manualUnit, pkRefrigerant, isPK, onConfirm, ambientBucket, installYear, ageSource, ageConfidence, persistAgeForEstimate]);
 
   // ── Photo selection ─────────────────────────────────────────────────────
 
@@ -552,7 +675,15 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
   const handleConfirm = useCallback(async () => {
     if (!ocrResult || !editedUnit) return;
 
-    const finalResult: OcrResult = { ...ocrResult, outdoor: editedUnit };
+    // Stage 3A: carry install-year + age confidence/source through to the estimate.
+    persistAgeForEstimate(installYear, ageSource, ageConfidence);
+    const finalResult: OcrResult = {
+      ...ocrResult,
+      outdoor: editedUnit,
+      install_year: installYear,
+      age_source: ageSource,
+      age_confidence: ageConfidence,
+    };
 
     // BUG-034: persist uses live JWT (not the null prop)
     if (assessmentId) {
@@ -578,7 +709,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
     }
 
     onConfirm(finalResult, AMBIENT_C_MAP[ambientBucket]);
-  }, [ocrResult, editedUnit, assessmentId, getToken, onConfirm]);
+  }, [ocrResult, editedUnit, assessmentId, getToken, onConfirm, installYear, ageSource, ageConfidence, persistAgeForEstimate]);
 
   // ── Edit field helper ───────────────────────────────────────────────────
 
@@ -593,6 +724,108 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
       });
     },
     []
+  );
+
+  // ── Stage 3A: Install-year + age-confidence review block ───────────────────
+  // Rendered in BOTH the photo-review and manual paths (single-screen UX).
+  // Accessible: <label htmlFor>, <fieldset>/<legend> for the confidence radios,
+  // high-contrast (WCAG AA) badge + hint text, large tappable controls (truck-cab).
+  const yearOptions: number[] = [];
+  for (let y = AGE_YEAR_MAX; y >= AGE_YEAR_MIN; y--) yearOptions.push(y);
+  const installYearReview = (
+    <div
+      className="bg-white border border-gray-200 rounded-2xl overflow-hidden"
+      style={{ marginTop: 8 }}
+    >
+      <div className="px-4 py-2.5 border-b border-gray-100">
+        <span className="text-xs font-black uppercase tracking-wider text-gray-500">
+          {t("Install year")}
+        </span>
+      </div>
+      <div className="p-3 flex flex-col gap-3" data-testid="stage3-age-review">
+        {/* Year picker */}
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="install-year-select"
+            className="text-[10px] font-bold uppercase tracking-wider text-gray-500"
+          >
+            {t("Year installed")}
+          </label>
+          <select
+            id="install-year-select"
+            value={installYear ?? ""}
+            onChange={(e) => handleInstallYearChange(e.target.value)}
+            className="w-full text-sm font-bold rounded-lg border px-2 py-2.5 focus:outline-none focus:ring-2"
+            style={{
+              borderColor: installYear == null ? "#9ca3af" : "#1a8754",
+              background: installYear == null ? "#ffffff" : "#f0faf6",
+              color: installYear == null ? "#6b7280" : "#111827",
+              fontStyle: installYear == null ? "italic" : "normal",
+              minHeight: 44,
+            } as React.CSSProperties}
+          >
+            <option value="">{t("Ask homeowner")}</option>
+            {yearOptions.map((y) => (
+              <option key={y} value={y} style={{ fontStyle: "normal", color: "#111827" }}>
+                {y}
+              </option>
+            ))}
+          </select>
+          {installYear == null && (
+            <span className="text-[11px] italic" style={{ color: "#6b7280" }}>
+              {t("We couldn't read the age — ask the homeowner if they know.")}
+            </span>
+          )}
+          {ageIsLegacyEstimate && installYear != null && (
+            <span
+              className="inline-flex items-center self-start text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5"
+              style={{ background: "#e0e7ff", color: "#3730a3" }}
+            >
+              {t("estimated from brand discontinue")}
+            </span>
+          )}
+        </div>
+
+        {/* Age-confidence selector (Sure / Approximate / Unknown) */}
+        <fieldset style={{ border: "none", margin: 0, padding: 0 }}>
+          <legend className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+            {t("How sure are we?")}
+          </legend>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { key: "sure" as const,        label: t("Sure") },
+              { key: "approximate" as const, label: t("Approximate") },
+              { key: "unknown" as const,     label: t("Unknown") },
+            ]).map((opt) => {
+              const selected = ageConfidence === opt.key;
+              return (
+                <label
+                  key={opt.key}
+                  className="flex items-center justify-center text-center rounded-lg cursor-pointer text-xs font-semibold focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#1a8754]"
+                  style={{
+                    background: selected ? "#1a8754" : "#ffffff",
+                    color: selected ? "#ffffff" : "#374151",
+                    border: selected ? "1.5px solid #1a8754" : "1.5px solid #d1d5db",
+                    padding: "10px 4px",
+                    minHeight: 44,
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name="age-confidence"
+                    value={opt.key}
+                    checked={selected}
+                    onChange={() => handleAgeConfidenceChange(opt.key)}
+                    style={{ position: "absolute", opacity: 0, width: 1, height: 1 }}
+                  />
+                  {opt.label}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
+      </div>
+    </div>
   );
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -705,7 +938,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             <div className="p-3 space-y-2">
               {/* Brand select */}
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">
                   Brand
                 </label>
                 <select
@@ -750,7 +983,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
               {/* Model series search — only shown once brand is selected */}
               {selectedBrand && (
                 <div className="relative">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">
                     Model Series
                   </label>
                   <input
@@ -769,7 +1002,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                     } as React.CSSProperties}
                   />
                   {modelSearching && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-600">
                       …
                     </span>
                   )}
@@ -801,16 +1034,16 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                           </div>
                           <div className="flex gap-3 mt-0.5">
                             {m.seer_rating && (
-                              <span className="text-[10px] text-gray-400">{m.seer_rating} SEER</span>
+                              <span className="text-[10px] text-gray-600">{m.seer_rating} SEER</span>
                             )}
                             {m.tonnage_range && (
-                              <span className="text-[10px] text-gray-400">{m.tonnage_range} ton</span>
+                              <span className="text-[10px] text-gray-600">{m.tonnage_range} ton</span>
                             )}
                             {m.manufacture_years && (
-                              <span className="text-[10px] text-gray-400">{m.manufacture_years}</span>
+                              <span className="text-[10px] text-gray-600">{m.manufacture_years}</span>
                             )}
                             {m.avg_lifespan_years && (
-                              <span className="text-[10px] text-gray-400">{m.avg_lifespan_years}yr avg life</span>
+                              <span className="text-[10px] text-gray-600">{m.avg_lifespan_years}yr avg life</span>
                             )}
                           </div>
                         </button>
@@ -871,7 +1104,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                 </span>
               </div>
               <div className="p-3">
-                <p className="text-[10px] text-gray-400 mb-2">
+                <p className="text-[10px] text-gray-600 mb-2">
                   Check the nameplate or outdoor unit label. If unknown, select "Not Sure".
                 </p>
                 <div className="grid grid-cols-2 gap-2">
@@ -900,7 +1133,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                         >
                           {label}
                         </span>
-                        <span className="text-[10px] text-gray-400 mt-0.5">{desc[ref]}</span>
+                        <span className="text-[10px] text-gray-600 mt-0.5">{desc[ref]}</span>
                       </button>
                     );
                   })}
@@ -918,7 +1151,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                 </span>
               </div>
               <div className="p-3">
-                <p className="text-[10px] text-gray-400 mb-2">
+                <p className="text-[10px] text-gray-600 mb-2">
                   Choose the unit capacity — specs will auto-fill from the brand database.
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -999,7 +1232,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                 return (
                   <div key={key} className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
                         {label}
                         {key === "refrigerant" && !isPK && <span className="text-blue-400 ml-1">(auto)</span>}
                       </span>
@@ -1030,7 +1263,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                         } as React.CSSProperties}
                       />
                       {unit && !isEmpty && (
-                        <span className="absolute right-2 text-[10px] font-bold text-gray-400">{unit}</span>
+                        <span className="absolute right-2 text-[10px] font-bold text-gray-600">{unit}</span>
                       )}
                     </div>
                   </div>
@@ -1075,6 +1308,9 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             </div>
           )}
 
+          {/* Stage 3A — install-year review (manual path) */}
+          {installYearReview}
+
           <div className="flex gap-3">
             <button
               onClick={handleManualConfirm}
@@ -1084,7 +1320,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
               Confirm & Continue
             </button>
           </div>
-          <p className="text-center text-xs text-gray-400">
+          <p className="text-center text-xs text-gray-600">
             {isPK
               ? "Select refrigerant type above for accurate pressure targets"
               : "Year field auto-selects R-22, R-410A, or R-454B"}
@@ -1146,7 +1382,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             <div className="flex flex-col items-center gap-1.5 p-3 text-center">
               <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl">+</div>
               <p className="text-xs font-bold text-gray-700">{t("Outdoor")}</p>
-              <p className="text-[10px] text-gray-400">Required</p>
+              <p className="text-[10px] text-gray-600">Required</p>
             </div>
           )}
           <input
@@ -1177,7 +1413,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             <div className="flex flex-col items-center gap-1.5 p-3 text-center">
               <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl">+</div>
               <p className="text-xs font-bold text-gray-700">{t("Indoor")}</p>
-              <p className="text-[10px] text-gray-400">If accessible</p>
+              <p className="text-[10px] text-gray-600">If accessible</p>
             </div>
           )}
           <input
@@ -1289,7 +1525,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                 ✶ Gemini AI
               </span>
             </div>
-            <span className="text-xs font-mono text-gray-400">{editedUnit.confidence}% confidence</span>
+            <span className="text-xs font-mono text-gray-600">{editedUnit.confidence}% confidence</span>
           </div>
 
           {editedUnit.charging_method && (
@@ -1323,7 +1559,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
               return (
                 <div key={key} className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{label}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600">{label}</span>
                     {needsConfirm && (
                       <span className="text-[9px] font-black px-1 py-0.5 rounded"
                             style={{ background: "#fef9c3", color: "#a16207" }}>?</span>
@@ -1352,7 +1588,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                       } as React.CSSProperties}
                     />
                     {unit && !isEmpty && (
-                      <span className="absolute right-2 text-[10px] font-bold text-gray-400">{unit}</span>
+                      <span className="absolute right-2 text-[10px] font-bold text-gray-600">{unit}</span>
                     )}
                   </div>
                 </div>
@@ -1362,7 +1598,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
 
           {editedUnit.brand_id && (
             <div className="px-4 pb-3">
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-600">
                 Matched: <span className="font-bold text-gray-600 capitalize">{editedUnit.brand_id}</span>
                 {editedUnit.series_id && ` — ${editedUnit.series_id.split("_").slice(1).join(" ")}`}
                 {editedUnit.is_legacy && " (legacy / pre-2010)"}
@@ -1408,6 +1644,9 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
         </div>
       )}
 
+      {/* Stage 3A — install-year review (photo path) */}
+      {editedUnit && installYearReview}
+
       {/* Confirm */}
       {editedUnit && (
         <div className="flex gap-3">
@@ -1421,7 +1660,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
         </div>
       )}
 
-      <p className="text-center text-xs text-gray-400">
+      <p className="text-center text-xs text-gray-600">
         Nameplate specs auto-fill all cards — save time on every call
       </p>
 

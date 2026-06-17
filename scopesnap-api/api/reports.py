@@ -32,6 +32,19 @@ class ApproveRequest(BaseModel):
     selected_option: str  # 'good' | 'better' | 'best'
 
 
+class CorrectAgeRequest(BaseModel):
+    # Homeowners aren't logged in: this endpoint is public (token-gated).
+    # The live frontend posts {install_year, source, corrected_by}; the Stage 3B
+    # plan also allows {corrected_year} or {relative_age_years}. Accept all —
+    # install_year and corrected_year are equivalent (the corrected install year),
+    # relative_age_years derives corrected_year = current_year - relative_age_years.
+    install_year:       Optional[int] = None
+    corrected_year:     Optional[int] = None
+    relative_age_years: Optional[int] = None
+    source:             Optional[str] = None
+    corrected_by:       Optional[str] = "homeowner"
+
+
 # ── GET /api/reports/{report_token} ──────────────────────────────────────────
 
 @router.get("/{report_token}")
@@ -524,4 +537,137 @@ async def approve_report(
         "deposit_amount": estimate.deposit_amount,
         "approved_at": estimate.approved_at.isoformat(),
         "status": "approved",
+    }
+
+
+
+# ── POST /api/reports/{report_token}/correct-age ─────────────────────────────
+# Stage 3B: public (token-gated) homeowner install-year correction.
+# Records the correction + returns a recomputed remaining-life BAND for display.
+# Does NOT mutate the saved estimate snapshot (historical estimates are frozen).
+
+def _remaining_life_band_for_year(install_year: Optional[int],
+                                  avg_lifespan_years: float = 18.0) -> Optional[str]:
+    """Houston-adjusted remaining-life RANGE string (never year-exact).
+
+    Mirrors the frontend recompute: remaining = lifespan - age, rendered as a
+    +/-2 band floored at 0. None when the install year is unknown.
+    """
+    if install_year is None:
+        return None
+    current_year = datetime.now(timezone.utc).year
+    age = max(0, current_year - int(install_year))
+    remaining = max(0.0, float(avg_lifespan_years) - age)
+    lo = max(0, int(round(remaining - 2)))
+    hi = max(lo, int(round(remaining + 2)))
+    return f"{lo}-{hi} years"
+
+
+def _resolve_corrected_year(body: "CorrectAgeRequest") -> Optional[int]:
+    """Resolve the corrected install year from whichever field the client sent.
+
+    Precedence: explicit corrected_year/install_year, else derive from
+    relative_age_years (current_year - relative_age_years). Returns None if none
+    were provided (caller raises 400).
+    """
+    if body.corrected_year is not None:
+        return body.corrected_year
+    if body.install_year is not None:
+        return body.install_year
+    if body.relative_age_years is not None:
+        return datetime.now(timezone.utc).year - int(body.relative_age_years)
+    return None
+
+
+@router.post("/{report_token}/correct-age")
+async def correct_report_age(
+    report_token: str,
+    body: CorrectAgeRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Homeowner corrects the equipment install year (Stage 3B, public).
+
+    - Looks up the estimate by report_token / report_short_id (same lookup as the
+      public report-fetch + approve endpoints).
+    - Reads the ORIGINAL install year + confidence + source from stored data
+      (EquipmentInstance, else assessment.ai_equipment_id).
+    - Fires services.analytics.fire_age_corrected(corrected_by="homeowner") best-effort.
+    - Returns the original/corrected years, signed delta, and a RECOMPUTED
+      remaining-life band (display only) — it never overwrites the saved estimate.
+    """
+    corrected_year = _resolve_corrected_year(body)
+    if corrected_year is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide one of: corrected_year, install_year, or relative_age_years.",
+        )
+
+    result = await db.execute(
+        select(Estimate).where(
+            (Estimate.report_token == report_token) |
+            (Estimate.report_short_id == report_token)
+        )
+    )
+    estimate = result.scalar_one_or_none()
+    if not estimate:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Report not found."
+        )
+
+    # Resolve the assessment + original equipment data (EquipmentInstance first,
+    # then the assessment's stored AI equipment blob).
+    original_year: Optional[int] = None
+    original_confidence = None
+    original_source: Optional[str] = None
+    assessment = None
+    if estimate.assessment_id:
+        a_res = await db.execute(
+            select(Assessment).where(Assessment.id == estimate.assessment_id)
+        )
+        assessment = a_res.scalar_one_or_none()
+
+    if assessment and assessment.equipment_instance_id:
+        eq_res = await db.execute(
+            select(EquipmentInstance).where(
+                EquipmentInstance.id == assessment.equipment_instance_id
+            )
+        )
+        eq = eq_res.scalar_one_or_none()
+        if eq:
+            original_year = eq.install_year
+            original_confidence = (
+                float(eq.ai_confidence) if eq.ai_confidence is not None else None
+            )
+
+    if original_year is None and assessment and assessment.ai_equipment_id:
+        ai_eq = assessment.ai_equipment_id or {}
+        original_year = ai_eq.get("install_year")
+        if original_confidence is None:
+            original_confidence = ai_eq.get("confidence")
+        original_source = ai_eq.get("age_source") or ai_eq.get("source")
+
+    # Best-effort analytics event — never block the response.
+    try:
+        from services.analytics import fire_age_corrected, correction_delta_years
+        fire_age_corrected(
+            assessment_id=str(estimate.assessment_id) if estimate.assessment_id else str(estimate.id),
+            original_year=original_year,
+            corrected_year=corrected_year,
+            original_confidence=original_confidence,
+            original_source=original_source or body.source,
+            corrected_by=body.corrected_by or "homeowner",
+            distinct_id=estimate.report_short_id,
+        )
+        delta = correction_delta_years(original_year, corrected_year)
+    except Exception:
+        try:
+            delta = (corrected_year - original_year) if original_year is not None else None
+        except Exception:
+            delta = None
+
+    return {
+        "original_year": original_year,
+        "corrected_year": corrected_year,
+        "correction_delta_years": delta,
+        "remaining_life_band": _remaining_life_band_for_year(corrected_year),
     }

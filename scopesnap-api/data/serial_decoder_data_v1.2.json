@@ -1,0 +1,3427 @@
+{
+  "metadata": {
+    "version": "1.2",
+    "created": "2026-06-15",
+    "dispatch": "SnapAI Install-Year Decoder + Replace-Decision Data Research Dispatch v1.1 — Track 1",
+    "covered_brands_us": 42,
+    "covered_brands_pk": 15,
+    "covered_variants_per_brand": [
+      "split_ac",
+      "package_unit",
+      "heat_pump",
+      "mini_split"
+    ],
+    "total_brand_records": 57,
+    "total_brand_variant_records": 98,
+    "confidence_distribution_variant_level": {
+      "high": 38,
+      "medium": 29,
+      "low": 18,
+      "medium-low": 7,
+      "very low": 1,
+      "unknown": 5
+    },
+    "cr_substituted_count": 0,
+    "key_corrections": [
+      "Lennox does NOT use YYWW — month is a LETTER (A=Jan..M=Dec skip I); SEO claim rejected.",
+      "Goodman/Amana/Waller-Daikin use 10-digit YYMM (MONTH-based, not week-based).",
+      "Japan-built Daikin ductless DIVERGES from Waller YYMM across 9 styles — must branch.",
+      "SnapAI code bug: Coleman is JCI (use York decoder, NOT Carrier). Heil is ICP (letter+YYWW ICP decoder, NOT Carrier).",
+      "Pioneer mini-split serial NOT decodable — manufacturer-lookup fallback required.",
+      "PK: only Gree/Haier have any published-ish format (US-derived, unverified PK); others = no decodable format -> printed YYYY.MM plate or compressor sub-nameplate; ZERO verified PK serial samples found.",
+      "Cooper&Hunter is GREE-OEM (NOT Sinclair). EcoStar is DWP/Gree-affiliated (NOT Greaves)."
+    ],
+    "sample_verification_wave": "REAL brand-stamped serials added 2026-06-15 (verification wave). FINDING: modern WWYY only fits post-~2000 Carrier-family; older Bryant units use week+year-letter / MMYY / letter-position variants — strict WWYY decoder must fall through for pre-2000 serials.",
+    "field_capture_note": "Brands flagged serial_capture_required_from_field=true have <3 real decoded samples and need field-captured serial/nameplate photos before their decoder confidence can be trusted. PK brands additionally carry a field_collection_task for Murtaza's WhatsApp collection.",
+    "v1_2_changelog": [
+      "ADDED Nortek Global HVAC family (10 brands): Frigidaire/Maytag/Westinghouse/NuTone/Gibson/Tappan (verified, medium/medium-low) + Kelvinator/Philco (unknown, capture-required) + Intertherm/Miller (low, mobile-home).",
+      "Nortek standard serial: 3 letters + 9 digits, year=digits 4-5, month=digits 6-7. Verified via InterNACHI real sample GSD021201683 -> Dec 2002.",
+      "UPGRADED MrCool low -> medium (22-digit Style2 12th-digit year + Style1 week+year; R-454B 5th-Gen disambiguates decade); removed serial_capture flag.",
+      "UPGRADED Friedrich low -> medium-low (post-1987 letter/numeric eras decodable; AKDZ03116=Apr2010, 1801M01258=Jan2018); serial_capture only for pre-1987. CORRECTION: factory month map is G=Jul/L=Nov (dispatch 'L=July' was wrong).",
+      "ADDED 3 legacy aliases: Sears Kenmore (requires_oem_disambiguation), Whirlpool HVAC (decoder_unavailable), Janitrol pre-1982 (alias_to_goodman + pre_1982 suppression).",
+      "Dispatch claim NOT confirmed: Tappan 'MMYY at start/end' — building-center documents only standard Nortek styles. Flagged unverified.",
+      "Nortek 2025+ refrigerant = R-454B (high confidence; Nordyne A2L page + 2025 R-454B spec sheets + Rheem acquisition)."
+    ]
+  },
+  "brands": [
+    {
+      "canonical_name": "Carrier",
+      "parent_corp": "Carrier Global Corporation",
+      "oem_siblings": [
+        "Bryant",
+        "Payne",
+        "Day & Night",
+        "BDP"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "DOCUMENTED for MODERN units: Building Intelligence Center + Carrier Enterprise South Central (TX/Houston Carrier/Bryant/Payne distributor) confirm shared modern WWYY format. CAVEAT: legacy formats DIFFER (Carrier letter-codes vs Bryant/BDP all-numeric YYMM Style 2).",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "WWYY + plant letter + 5-digit sequence. chars1-2=week(01-53), chars3-4=2-digit year, char5=plant letter, then 5 digits. Since 1980.",
+          "modern_example": "2714B12345 -> week 27 of 2014",
+          "modern_year_range": [
+            1980,
+            2026
+          ],
+          "modern_regex": "^(0[1-9]|[1-4][0-9]|5[0-3])(\\d{2})[A-Z]\\d{5}$",
+          "week_position": "chars 1-2",
+          "year_position": "chars 3-4",
+          "legacy_pattern": "Style 6 (1960-79) week+year-letter; Style 4 (1969-79) month-letter+year+5; Style 3 (1980-84 BDP).",
+          "legacy_year_range": [
+            1960,
+            1989
+          ],
+          "nameplate_date_code_alternatives": "Manufacture date often printed plain MM/YYYY near bottom of rating plate.",
+          "edge_cases": [
+            "Decade ambiguity (WWYY 2-digit year)",
+            "Style-1 overlaps Lennox WWYY-style; confirm via 24/25/48/50/58 model prefix",
+            "Canadian legacy units reverse year/month",
+            "Week 53 on some ISO years"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "2714B12345",
+              "claimed": "2014",
+              "decoded": "week27 2014",
+              "agree": true,
+              "source": "Texas Temp Masters (T3)"
+            },
+            {
+              "serial": "4006A17330",
+              "claimed": "2006",
+              "decoded": "week40 2006",
+              "agree": true,
+              "source": "BiC (T2)"
+            },
+            {
+              "serial": "46U152456",
+              "claimed": "1967",
+              "decoded": "week46 1967 (U)",
+              "agree": true,
+              "source": "BiC Style-6 (T2)"
+            }
+          ],
+          "confidence": "high"
+        },
+        "heat_pump": {
+          "modern_pattern": "Identical WWYY+letter+5 (25xx/50xx family).",
+          "modern_regex": "^(0[1-9]|[1-4][0-9]|5[0-3])\\d{2}[A-Z]\\d{5}$",
+          "week_position": "chars 1-2",
+          "year_position": "chars 3-4",
+          "edge_cases": [
+            "Same as split_ac"
+          ],
+          "confidence": "high"
+        },
+        "package_unit": {
+          "modern_pattern": "Identical WWYY. Families 48 (gas-pack)/50 (packaged HP). Plate on cabinet EXTERIOR near electrical panel.",
+          "modern_example": "1620A12345 -> week16 2020",
+          "modern_regex": "^(0[1-9]|[1-4][0-9]|5[0-3])\\d{2}[A-Z]\\d{5}$",
+          "week_position": "chars 1-2",
+          "year_position": "chars 3-4",
+          "edge_cases": [
+            "Package plate layout differs; rooftop plate can face curb",
+            "Common on Houston slab homes"
+          ],
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/carrier-hvac-age/ (T2)",
+        "https://cesctechsupport.com/serial-number-decoder/ (T4)",
+        "https://texastempmasters.com/blog/carrier-serial-number-age (T3)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "canonical_name": "Bryant",
+      "parent_corp": "Carrier Global Corporation",
+      "oem_siblings": [
+        "Carrier",
+        "Payne",
+        "Day & Night",
+        "BDP"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "DOCUMENTED identical to Carrier for modern WWYY. Legacy Style 2 all-numeric YYMM differs from Carrier.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "WWYY + plant letter + 5 digits, identical to Carrier (~95% rebadged).",
+          "modern_example": "3515E23456 -> week35 2015",
+          "modern_year_range": [
+            1980,
+            2026
+          ],
+          "modern_regex": "^(0[1-9]|[1-4][0-9]|5[0-3])\\d{2}[A-Z]\\d{5}$",
+          "week_position": "chars 1-2",
+          "year_position": "chars 3-4",
+          "legacy_pattern": "Style 2 (1980s): 9-char ALL-NUMERIC YYMM (yr pos1-2, month pos3-4) e.g. 850304091=Mar1985.",
+          "legacy_year_range": [
+            1960,
+            1989
+          ],
+          "edge_cases": [
+            "Legacy Style 2 is YYMM year-first (opposite of modern)",
+            "Decade ambiguity",
+            "Modern WWYY only fits post-~2000 units; older serials use week+year-letter / MMYY variants (real-sample finding 2026-06-15)"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "2804E06345 (decode via modern Carrier WWYY equivalent)",
+              "decoded": "week28 2004 — modern WWYY",
+              "claimed": "2004",
+              "agree": true,
+              "source": "JustAnswer Payne-family WWYY (T2)"
+            },
+            {
+              "serial": "1297X63948",
+              "decoded": "Dec 1997 — older MMYY (12=month) variant, NOT modern WWYY",
+              "claimed": "Dec 1997",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "08D5678 (model 505BB...)",
+              "decoded": "Aug 1975 — pre-1980s letter-position variant",
+              "claimed": "Aug 1975",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "850304091",
+              "claimed": "1985",
+              "decoded": "Mar 1985",
+              "agree": true,
+              "source": "BiC (T2)"
+            },
+            {
+              "serial": "2W13270",
+              "claimed": "1969",
+              "decoded": "week2 1969 (W)",
+              "agree": true,
+              "source": "BiC (T2)"
+            }
+          ],
+          "confidence": "high"
+        },
+        "heat_pump": {
+          "modern_pattern": "Identical WWYY (Evolution/Preferred/Legacy).",
+          "modern_regex": "^(0[1-9]|[1-4][0-9]|5[0-3])\\d{2}[A-Z]\\d{5}$",
+          "confidence": "high"
+        },
+        "package_unit": {
+          "modern_pattern": "Identical WWYY; plate on cabinet exterior.",
+          "modern_regex": "^(0[1-9]|[1-4][0-9]|5[0-3])\\d{2}[A-Z]\\d{5}$",
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/carrier-hvac-age/ (T2)",
+        "https://texastempmasters.com/blog/carrier-serial-number-age (T3)",
+        "https://hvactraining101.com/ac/brands/bryant/ (T3)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "canonical_name": "Payne",
+      "parent_corp": "Carrier Global Corporation",
+      "oem_siblings": [
+        "Carrier",
+        "Bryant",
+        "Day & Night",
+        "BDP"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Decode RULE documented identical to Carrier modern WWYY. Could NOT find 3 published real Payne serial photos — sample verification rule-consistent only. Payne is value/single-tier.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "WWYY + plant letter + 5 digits, identical to Carrier.",
+          "modern_example": "1218A33445 -> week12 2018 (illustrative)",
+          "modern_year_range": [
+            1980,
+            2026
+          ],
+          "modern_regex": "^(0[1-9]|[1-4][0-9]|5[0-3])\\d{2}[A-Z]\\d{5}$",
+          "week_position": "chars 1-2",
+          "year_position": "chars 3-4",
+          "edge_cases": [
+            "Few published real Payne serials",
+            "Decade ambiguity/Lennox confusion as Carrier",
+            "Modern WWYY only fits post-~2000 units; older serials use week+year-letter / MMYY variants (real-sample finding 2026-06-15)"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "2804E06345 (model PA10JA036-C)",
+              "decoded": "week28 2004 (WWYY)",
+              "claimed": "2004 (human expert; AI-summary wrongly said 2008)",
+              "agree": true,
+              "source": "JustAnswer (T2)"
+            },
+            {
+              "serial": "1797G10291 (model 588ANW...)",
+              "decoded": "week17 1997 (WWYY)",
+              "claimed": "self-consistent",
+              "agree": true,
+              "source": "JustAnswer (T2)"
+            },
+            {
+              "serial": "2304A23165 (model PG8MAA...)",
+              "decoded": "week23 2004 (WWYY)",
+              "claimed": "self-consistent",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            }
+          ],
+          "confidence": "medium"
+        },
+        "heat_pump": {
+          "modern_pattern": "Identical WWYY (PH-series entry HP).",
+          "modern_regex": "^(0[1-9]|[1-4][0-9]|5[0-3])\\d{2}[A-Z]\\d{5}$",
+          "confidence": "medium"
+        },
+        "package_unit": {
+          "modern_pattern": "Identical WWYY; sparse Payne photos.",
+          "modern_regex": "^(0[1-9]|[1-4][0-9]|5[0-3])\\d{2}[A-Z]\\d{5}$",
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://texastempmasters.com/blog/carrier-serial-number-age (T3)",
+        "https://www.building-center.org/carrier-hvac-age/ (T2)",
+        "https://cesctechsupport.com/serial-number-decoder/ (T4)"
+      ],
+      "confidence": "medium"
+    },
+    {
+      "canonical_name": "Trane",
+      "parent_corp": "Trane Technologies",
+      "oem_siblings": [
+        "American Standard"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "N/A (reference brand).",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Numeric date code. 2002-2009: char1=last digit of year, chars2-3=week. 2010+: chars1-2=2-digit year, chars3-4=week.",
+          "modern_example": "10161KEDAA -> 2010 week16; 130313596L -> 2013 week03",
+          "modern_year_range": [
+            2002,
+            2026
+          ],
+          "modern_regex": "2010+: ^(\\d{2})(\\d{2})[A-Z0-9]{2,}.*$ ; 2002-09: ^([0-9])([0-9]{2})[A-Z0-9].*$",
+          "year_position": "2010+: chars1-2; 2002-09: char1 (ambiguous)",
+          "week_position": "2010+: chars3-4; 2002-09: chars2-3",
+          "legacy_pattern": "Letter prefix + week (1983-2001): char1 letter=year (W=1983...Z=2001; S=1986/Z=2001 out-of-sequence), chars2-3=week.",
+          "legacy_year_range": [
+            1983,
+            2001
+          ],
+          "nameplate_date_code_alternatives": "Trane prints explicit 'MFR DATE' (month/year) upper-right — resolves 2002-09 single-digit-year ambiguity.",
+          "edge_cases": [
+            "2002-2009 single-digit year ambiguous — cross-check MFR DATE",
+            "Legacy letters S(1986)/Z(2001) non-sequential",
+            "Multiple pre-1983 styles exist"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "10161KEDAA",
+              "decoded": "2010 week16",
+              "source": "building-center.org (T2)",
+              "agree": true
+            },
+            {
+              "serial": "130313596L",
+              "decoded": "2013 week03",
+              "source": "building-center.org (T2)",
+              "agree": true
+            },
+            {
+              "serial": "F23456789",
+              "decoded": "1991 week23 (F=1991)",
+              "source": "building-center.org (T2)",
+              "agree": true
+            }
+          ],
+          "confidence": "high"
+        },
+        "heat_pump": {
+          "modern_pattern": "Identical scheme.",
+          "confidence": "high"
+        },
+        "package_unit": {
+          "modern_pattern": "Identical scheme; common on Houston slab/no-attic homes.",
+          "confidence": "high"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/trane-hvac-age/ (T2)",
+        "https://inspectorhandbook.com/hvac/american-standard (T2)",
+        "https://www.pickhvac.com/hvac/age-serial-number/trane/ (T3)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "canonical_name": "American Standard",
+      "parent_corp": "Trane Technologies",
+      "oem_siblings": [
+        "Trane"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "IDENTICAL to Trane — DOCUMENTED. AS became Trane 2007; shared parent + same Davidson NC address; matching published date-code charts.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Same as Trane (2002-09 single-digit year+week; 2010+ two-digit year+week).",
+          "modern_example": "8213E... -> 2008 week21; 0813E... -> 2008 week13",
+          "modern_year_range": [
+            2002,
+            2026
+          ],
+          "modern_regex": "same as Trane",
+          "legacy_pattern": "Letter prefix + week 1983-2001 (C1217...=wk17 1988); factory style X96E=May 1996.",
+          "legacy_year_range": [
+            1983,
+            2001
+          ],
+          "nameplate_date_code_alternatives": "Explicit MFR DATE on rating plate.",
+          "edge_cases": [
+            "Same as Trane"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "Z495TH21G",
+              "decoded": "2001 (legacy letter-year Z=2001)",
+              "claimed": "2001 (warranty-lookup cross-checked)",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "(first-letter Z furnace)",
+              "decoded": "2001 (Z=2001; BiC lists Z=1986 — resolved via warranty lookup)",
+              "claimed": "2001",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "(first-letter L condenser)",
+              "decoded": "1996 (legacy L=1996; ANSI date confirmed)",
+              "claimed": "1996",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "C1217...",
+              "decoded": "1988 week17 (C=1988)",
+              "source": "inspectorhandbook.com (T2)",
+              "agree": true
+            }
+          ],
+          "confidence": "high"
+        },
+        "heat_pump": {
+          "modern_pattern": "Identical scheme.",
+          "confidence": "high"
+        },
+        "package_unit": {
+          "modern_pattern": "Identical scheme.",
+          "confidence": "high"
+        }
+      },
+      "source_links": [
+        "https://inspectorhandbook.com/hvac/american-standard (T2)",
+        "https://www.building-center.org/trane-hvac-age/ (T2)",
+        "https://www.pickhvac.com/american-standard-furnace-age-serial-decoder-lifespan/ (T3)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "canonical_name": "Lennox",
+      "parent_corp": "Lennox International Inc.",
+      "oem_siblings": [
+        "Armstrong Air",
+        "AirEase",
+        "Concord",
+        "Aire-Flo",
+        "Ducane (Allied Air, verify)"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Allied Air siblings expected to share convention (BiC) but NOT separately confirmed.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "10-char: 2-digit plant + 2-digit year + 1 MONTH LETTER + 5-char sequence. CORRECTION: Lennox does NOT use YYWW; month is a LETTER (A=Jan..M=Dec skip I). Single convention since 1973.",
+          "modern_example": "5207K24862 -> plant52 year07(2007) K=Oct -> Oct 2007; 1215M1234 -> Dec 2015",
+          "modern_year_range": [
+            1973,
+            2026
+          ],
+          "modern_regex": "^\\d{2}\\d{2}[A-HJ-M]\\w{4,5}$",
+          "year_position": "chars 3-4 (century via model-era)",
+          "week_position": "N/A — month at char 5 (letter)",
+          "month_position": "char5: A=Jan,B=Feb,C=Mar,D=Apr,E=May,F=Jun,G=Jul,H=Aug,J=Sep,K=Oct,L=Nov,M=Dec (I skipped)",
+          "legacy_pattern": "Pre-1973: year pos1-2, month pos3 numeric; or separate stamped MFG field.",
+          "legacy_year_range": [
+            1960,
+            1973
+          ],
+          "nameplate_date_code_alternatives": "Many plates carry explicit 'MFG Date'. Model-series prefix brackets era for century.",
+          "edge_cases": [
+            "I omitted -> K=11th letter=Oct not Sep (common mis-decode)",
+            "Century ambiguity via model-series era",
+            "SEO YYWW-prefix claim REJECTED"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "5207K24862",
+              "decoded": "Oct 2007",
+              "source": "Parts Town+pickhvac (T2/T3)",
+              "agree": true
+            },
+            {
+              "serial": "1215M1234",
+              "decoded": "Dec 2015",
+              "source": "pickhvac (T3)",
+              "agree": true
+            },
+            {
+              "serial": "5899L17212",
+              "decoded": "Nov 1999",
+              "source": "BiC (T2)",
+              "agree": "format-consistent"
+            }
+          ],
+          "confidence": "high"
+        },
+        "heat_pump": {
+          "modern_pattern": "Identical 10-char (ML/EL/SL XP).",
+          "confidence": "high"
+        },
+        "package_unit": {
+          "modern_pattern": "Same 10-char. LRP gas-pack/packaged HP & Raider rooftop. Plate on cabinet/corner post. Only plate LOCATION differs.",
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/lennox-hvac-age/ (T2)",
+        "https://www.partstown.com/cm/resource-center/guides/gd2/lennox-serial-number-lookup (T2)",
+        "https://www.pickhvac.com/hvac/age-serial-number/lennox/ (T3)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "canonical_name": "Goodman",
+      "parent_corp": "Daikin Industries (Waller TX)",
+      "oem_siblings": [
+        "Amana",
+        "Daikin (Waller ducted)"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Reference format; Amana + Waller-built Daikin ducted documented identical.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "10-digit ALL-NUMERIC. digits1-2=year(YY), digits3-4=month(MM). MONTH-based not week-based. Since 1975.",
+          "modern_example": "0408523498 -> Aug 2004; 1609xxxxxx -> Sep 2016",
+          "modern_year_range": [
+            1975,
+            2026
+          ],
+          "modern_regex": "^(\\d{2})(\\d{2})\\d{6}$",
+          "year_position": "digits 1-2",
+          "month_position": "digits 3-4",
+          "legacy_pattern": "None divergent documented.",
+          "legacy_year_range": null,
+          "nameplate_date_code_alternatives": "Rating plate; no separate week code.",
+          "edge_cases": [
+            "Year century: 75-99=1975-1999, 00+=2000+",
+            "Confirm 10 all-numeric before YYMM; non-numeric prefix = different unit"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "0408523498",
+              "claimed": "Aug 2004",
+              "decoded": "2004-08",
+              "agree": true,
+              "source": "PickHVAC (T3)"
+            },
+            {
+              "serial": "1609xxxxxx",
+              "claimed": "Sep 2016",
+              "decoded": "2016-09",
+              "agree": true,
+              "source": "PickHVAC photo (T3)"
+            },
+            {
+              "serial": "recall 1511-1610",
+              "claimed": "Nov2015-Oct2016",
+              "decoded": "consistent",
+              "agree": true,
+              "source": "CPSC 2017 recall (T2)"
+            }
+          ],
+          "confidence": "high"
+        },
+        "heat_pump": {
+          "modern_pattern": "Identical YYMM (all product types).",
+          "confidence": "high"
+        },
+        "package_unit": {
+          "modern_pattern": "Identical YYMM (sample is Goodman packaged AC).",
+          "confidence": "high"
+        }
+      },
+      "source_links": [
+        "https://www.pickhvac.com/hvac/age-serial-number/goodman/ (T3)",
+        "https://www.building-center.org/daikin-hvac-age/ (T2)",
+        "http://www.hvacdecoder.com/goodman-serial-number-decoder.html (T3)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "canonical_name": "Amana",
+      "parent_corp": "Daikin Industries (Waller TX)",
+      "oem_siblings": [
+        "Goodman",
+        "Daikin"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "IDENTICAL to Goodman — documented (Goodman acquired Amana HVAC 1997) + real sample 0803003848. Only 2 owner-verified real serials (3rd doc-based).",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Identical to Goodman: 10-digit all-numeric YYMM.",
+          "modern_example": "0803003848 -> Mar 2008",
+          "modern_year_range": [
+            1997,
+            2026
+          ],
+          "modern_regex": "^(\\d{2})(\\d{2})\\d{6}$",
+          "year_position": "digits 1-2",
+          "month_position": "digits 3-4",
+          "legacy_pattern": "Pre-1997 Amana/Raytheon-era may differ; unknown.",
+          "legacy_year_range": [
+            null,
+            1997
+          ],
+          "edge_cases": [
+            "Don't confuse HVAC Amana (Daikin) with appliance Amana (Whirlpool)",
+            "Century ambiguity as Goodman"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "9706270339 (model RC848a28)",
+              "decoded": "1997 (YYMM first 2=year)",
+              "claimed": "~June 1997",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "998991740222 (12-digit older)",
+              "decoded": "1999 (first 2=year)",
+              "claimed": "1999",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "9601275433 (HP)",
+              "decoded": "1996 (first 2=year)",
+              "claimed": "1996",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "0803003848",
+              "claimed": "2008",
+              "decoded": "Mar 2008",
+              "agree": true,
+              "source": "JustAnswer (T2)"
+            },
+            {
+              "serial": "2108xxxxxx",
+              "claimed": "Aug 2021",
+              "decoded": "2021-08",
+              "agree": true,
+              "source": "docs (T3)"
+            }
+          ],
+          "confidence": "high"
+        },
+        "heat_pump": {
+          "modern_pattern": "Same YYMM (R-32 ALZS5B HP).",
+          "confidence": "high"
+        },
+        "package_unit": {
+          "modern_pattern": "Same YYMM.",
+          "confidence": "high"
+        }
+      },
+      "source_links": [
+        "https://www.pickhvac.com/hvac/age-serial-number/amana/ (T3)",
+        "https://www.justanswer.com/hvac/5oplu (T2)",
+        "https://thedailythrive.org/amana-serial-number-lookup/ (T3)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "canonical_name": "Daikin",
+      "parent_corp": "Daikin Industries",
+      "oem_siblings": [
+        "Goodman",
+        "Amana (Waller ducted only)"
+      ],
+      "market": "US",
+      "category": "ducted+ductless",
+      "sibling_verification_basis": "Waller-built ducted == Goodman YYMM (Style 10). Japan-built ductless DIVERGES across 9 styles — equivalence ONLY for Waller ducted.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "TWO FAMILIES. (A) Waller ducted (Daikin Fit, ducted splits): 10-digit YYMM (Style10). (B) Japan ductless/SkyAir: divergent — letter-prefix (Style2), week-based (3/4/7), letter-coded (5/6/9), or PLATE-PLAINTEXT (Style1 'MFG.DATE YYYY-M').",
+          "modern_example": "Waller 1602393269 -> Feb 2016; Japan Style2 FBOU0905048200 -> May 2009",
+          "modern_year_range": [
+            1971,
+            2026
+          ],
+          "modern_regex": "Waller: ^(\\d{2})(\\d{2})\\d{6}$ ; Japan Style2: ^[A-Z]{4}(\\d{2})(\\d{2})\\d{6}$",
+          "year_position": "Waller digits1-2; Japan Style2 chars5-6",
+          "month_position": "Waller digits3-4; Japan Style2 chars7-8; Styles3/4/7 week-based",
+          "legacy_pattern": "BiC Styles 1-9 (Japan): plate-plaintext/letter-coded/week-based w/ year-charts.",
+          "legacy_year_range": [
+            1971,
+            2016
+          ],
+          "nameplate_date_code_alternatives": "Style1 carries ONLY plaintext 'MFG.DATE YYYY-M'. ALWAYS photograph whole plate.",
+          "edge_cases": [
+            "CRITICAL: Waller=YYMM positional; Japan ductless NOT YYMM",
+            "Decoder must branch: 10 all-numeric->Waller; 4-letter prefix->Style2; else letter charts; else plate plaintext",
+            "Week-based Japan styles need year-chart"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "1602393269",
+              "decoded": "Feb 2016 (Style10)",
+              "source": "BiC (T2)",
+              "agree": true
+            },
+            {
+              "serial": "FBOU0905048200",
+              "decoded": "May 2009 (Style2)",
+              "source": "BiC (T2)",
+              "agree": true
+            },
+            {
+              "serial": "A000129 + plate MFG.DATE 2008-1",
+              "decoded": "Jan 2008 (plate)",
+              "source": "BiC (T2)",
+              "agree": true
+            }
+          ],
+          "confidence": "high"
+        },
+        "heat_pump": {
+          "modern_pattern": "Daikin Fit HP (Waller, R-32) = YYMM. Imported ductless HP = Japan styles.",
+          "confidence": "high"
+        },
+        "package_unit": {
+          "modern_pattern": "Residential packaged (Waller) YYMM; commercial SkyAir/VRV imported = Japan styles.",
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/daikin-hvac-age/ (T2)",
+        "https://www.hvacserialnumber.com/en/how-to/decode-daikin-serial-number (T3)",
+        "https://en.wikipedia.org/wiki/Daikin_Texas_Technology_Park (T2)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "canonical_name": "Rheem",
+      "parent_corp": "Rheem Manufacturing",
+      "oem_siblings": [
+        "Ruud"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Reference brand.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Factory-code letter (F/M/G/W/N) + WWYY (week 2 digits, year 2 digits) + sequence.",
+          "modern_example": "W421724596 -> week42 2017; BL259 M221500247 -> week22 2015",
+          "modern_year_range": [
+            1980,
+            2026
+          ],
+          "modern_regex": "(?i)[FMGWN]\\s?(0[1-9]|[1-4][0-9]|5[0-3])(\\d{2})\\d+",
+          "week_position": "1st-2nd digit after factory letter",
+          "year_position": "3rd-4th digit after factory letter",
+          "legacy_pattern": "Older water-heater-derived: MMYY-first (0804B10488=Aug2004) or all-numeric 9-digit (date last 4 chars).",
+          "legacy_year_range": [
+            null,
+            1975
+          ],
+          "nameplate_date_code_alternatives": "Plate often 'MFD/FAB MM/YYYY'. Rheem online age-lookup.",
+          "edge_cases": [
+            "WW is week not month on modern HVAC",
+            "Factory letter may appear mid-serial (2G7409ADAAF291305686 -> F week29 2013)",
+            "Optional internal spaces",
+            "Older styles encode MONTH"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "W421724596",
+              "claimed": "Oct 2017",
+              "decoded": "week42 2017",
+              "agree": true,
+              "source": "PICKHVAC (T3)"
+            },
+            {
+              "serial": "8231 G030417845",
+              "claimed": "Jan 2004",
+              "decoded": "week03 2004",
+              "agree": true,
+              "source": "PICKHVAC (T3)"
+            },
+            {
+              "serial": "7143W1519143722",
+              "claimed": "Apr 2019 (plate MFD 04/2019)",
+              "decoded": "week15 2019",
+              "agree": true,
+              "source": "PICKHVAC (T3)"
+            }
+          ],
+          "confidence": "high"
+        },
+        "heat_pump": {
+          "modern_pattern": "Identical (Classic/Classic Plus/Prestige RP; 2025 R-454B Endeavor).",
+          "confidence": "high"
+        },
+        "package_unit": {
+          "modern_pattern": "Identical (RSPM AC, RQPM/RQRM HP). Common TX rooftop/slab.",
+          "confidence": "high"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/rheem-hvac-age/ (T2)",
+        "https://www.pickhvac.com/hvac/age-serial-number/rheem/ (T3)",
+        "https://www.rheem.com/how-old-is-my-air-conditioner/ (T4)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "canonical_name": "Ruud",
+      "parent_corp": "Rheem Manufacturing",
+      "oem_siblings": [
+        "Rheem"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "IDENTICAL to Rheem — DOCUMENTARY: BiC publishes byte-identical decode pages; Ruud branded 'by Rheem' on shared chassis; shared rheem.com age-lookup.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Identical to Rheem: factory letter + WWYY + sequence.",
+          "modern_example": "W291013412 -> week29 2010",
+          "modern_year_range": [
+            1980,
+            2026
+          ],
+          "modern_regex": "(?i)[FMGWN]\\s?(0[1-9]|[1-4][0-9]|5[0-3])(\\d{2})\\d+",
+          "week_position": "1st-2nd digit after letter",
+          "year_position": "3rd-4th digit after letter",
+          "legacy_pattern": "Same legacy styles as Rheem.",
+          "edge_cases": [
+            "Identical to Rheem",
+            "Often same chassis, different badge"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "7021m320522061 (model UPKB-024JAZ)",
+              "decoded": "week32 2005 (M=plant)",
+              "claimed": "32nd week 2005 (expert)",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "M2400... (model RCBA-2457GG14)",
+              "decoded": "week24 2000 (M=factory)",
+              "claimed": "24th week 2000 (expert)",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "5428-M180009452 (model RAKA-030JAZ)",
+              "decoded": "M=factory, week18 style",
+              "claimed": "self-consistent",
+              "agree": true,
+              "source": "NACHI/Rheem (T2)"
+            },
+            {
+              "serial": "7351 M280616735",
+              "decoded": "M week28 2006",
+              "source": "BiC Ruud (T2)",
+              "agree": true
+            },
+            {
+              "serial": "OR177 M280700097",
+              "decoded": "M week28 2007",
+              "source": "BiC Ruud (T2)",
+              "agree": true
+            }
+          ],
+          "confidence": "high"
+        },
+        "heat_pump": {
+          "modern_pattern": "Identical (Ruud Endeavor by Rheem R-454B HP).",
+          "confidence": "high"
+        },
+        "package_unit": {
+          "modern_pattern": "Identical.",
+          "confidence": "high"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/ruud-hvac-age/ (T2)",
+        "https://www.building-center.org/rheem-hvac-age/ (T2)",
+        "https://www.theacoutlet.com/rp14ay60aj2na-ruud-endeavor-by-rheem (T3)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "canonical_name": "York",
+      "parent_corp": "Johnson Controls (JCI; residential -> Bosch ~2025)",
+      "oem_siblings": [
+        "Coleman",
+        "Luxaire",
+        "Champion",
+        "Fraser-Johnston",
+        "Guardian"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "York/Coleman/Luxaire share IDENTICAL JCI Style-1 (documented). Shared plant codes N/W/A/S.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "10 chars: Letter(plant)+Digit+Letter(month)+Digit+6 digits. YEAR=combine positions 2&4 (=>20YY). MONTH=position-3 letter (A-M, I/O skipped). Decade hard-coded 2000s post-2004.",
+          "modern_example": "W0K5896070 -> plant W, year(2&4=0,5)=2005, month K",
+          "modern_year_range": [
+            2004,
+            2026
+          ],
+          "modern_regex": "^[A-Z]\\d[A-Z]\\d\\d{6}$",
+          "year_position": "positions 2 and 4 (combined)",
+          "week_position": "N/A — month at position 3 (letter)",
+          "legacy_pattern": "Style 2 (1971-2004): Letter+Letter(month)+Letter(year)+Letter+6 digits; optional parenthesized leading plant letter.",
+          "legacy_year_range": [
+            1971,
+            2004
+          ],
+          "nameplate_date_code_alternatives": "Some plates print explicit MM/YYYY; model number does NOT encode date.",
+          "edge_cases": [
+            "Year combines NON-ADJACENT positions 2&4 (common decoder bug)",
+            "Month chart skips I and O",
+            "Legacy parenthesized leading plant letter"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "EFGM186034 (furnace)",
+              "decoded": "legacy: F=June, G=1998 (consensus)",
+              "claimed": "1998",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "N0L4123456 (documented JCI sample)",
+              "decoded": "N=plant, year 0&4=2004, L=Oct -> Oct 2004",
+              "claimed": "sample",
+              "agree": true,
+              "source": "InterNACHI (John Bowman) (T2)"
+            },
+            {
+              "serial": "W0A9123456 (documented JCI sample)",
+              "decoded": "W=Wichita, 0&9=2009, A=Jan -> Jan 2009",
+              "claimed": "sample",
+              "agree": true,
+              "source": "InterNACHI (T2)"
+            },
+            {
+              "serial": "W0K5896070",
+              "decoded": "2005 (pos2=0,pos4=5) month K",
+              "source": "BiC (T2)",
+              "agree": true
+            },
+            {
+              "serial": "(S)EBHM062202",
+              "decoded": "Style2 legacy (ignore paren S)",
+              "source": "BiC (T2)",
+              "agree": "pattern-documented"
+            }
+          ],
+          "confidence": "high"
+        },
+        "heat_pump": {
+          "modern_pattern": "Same JCI Style-1.",
+          "confidence": "high"
+        },
+        "package_unit": {
+          "modern_pattern": "Same JCI Style-1.",
+          "confidence": "high"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/york-hvac-age/ (T2)",
+        "https://www.pickhvac.com/hvac/age-serial-number/york/ (T3)",
+        "http://www.hvacdecoder.com/york-serial-number-decoder.html (T2)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "canonical_name": "Coleman",
+      "parent_corp": "Johnson Controls (JCI) — NOT Carrier",
+      "oem_siblings": [
+        "York",
+        "Luxaire"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "IDENTICAL to York Style-1 (JCI). CRITICAL: current SnapAI code wrongly reuses CARRIER decoder — WRONG; must use York/JCI decoder. <3 brand-stamped real Coleman serials captured -> overall medium.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Identical to York Style-1: year=pos2&4, month=pos3 letter.",
+          "modern_example": "equiv York W0K5896070 (2005, K=Oct)",
+          "modern_year_range": [
+            2004,
+            2026
+          ],
+          "modern_regex": "^[A-Z]\\d[A-Z]\\d\\d{6}$",
+          "year_position": "positions 2 and 4",
+          "week_position": "N/A — month at position 3",
+          "legacy_pattern": "Pre-2004 JCI Style2; Coleman-Evcon (manufactured-housing) legacy may differ.",
+          "legacy_year_range": [
+            null,
+            2004
+          ],
+          "edge_cases": [
+            "Do NOT apply Carrier decoder",
+            "Coleman-Evcon mobile-home legacy may not follow JCI Style2",
+            "Need >=3 brand-stamped real serials to upgrade"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "020622316 (model BRCS0301BD)",
+              "decoded": "post-Apr-1992 style: 02=2002, 06=June -> June 2002",
+              "claimed": "June 2002 (expert)",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "W0L5033343 (model BRCS0421BDG)",
+              "decoded": "W=Wichita, 0&5=2005, L=Dec -> Dec 2005",
+              "claimed": "Dec 2005 (expert)",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "WOE59195951",
+              "decoded": "W=Wichita, E=May, 5=year-digit -> May 2005",
+              "claimed": "May 2005 (expert)",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "(equiv York W0K5896070)",
+              "decoded": "2005 via JCI identity",
+              "source": "PickHVAC/BiC (T2/T3)",
+              "agree": "sibling-equivalence"
+            }
+          ],
+          "confidence": "high"
+        },
+        "heat_pump": {
+          "modern_pattern": "Same JCI format.",
+          "confidence": "high"
+        },
+        "package_unit": {
+          "modern_pattern": "Same JCI format.",
+          "confidence": "high"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/coleman-hvac-age/ (T2)",
+        "https://hvacpartstore.com/pages/how-to-read-a-coleman-serial-number (T2)",
+        "https://www.pickhvac.com/central-air-conditioner/best/luxaire-coleman/ (T3)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "canonical_name": "Luxaire",
+      "parent_corp": "Johnson Controls (JCI)",
+      "oem_siblings": [
+        "York",
+        "Coleman"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "IDENTICAL to York Style-1 (documented). Format high; overall medium pending >=3 brand-stamped Luxaire serials.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Identical to York: year=pos2&4, month=pos3 letter.",
+          "modern_example": "equiv York W0K5896070 -> 2005",
+          "modern_year_range": [
+            2004,
+            2026
+          ],
+          "modern_regex": "^[A-Z]\\d[A-Z]\\d\\d{6}$",
+          "year_position": "positions 2 and 4",
+          "week_position": "N/A — month at position 3",
+          "legacy_pattern": "Pre-2004 York/JCI Style2.",
+          "legacy_year_range": [
+            null,
+            2004
+          ],
+          "edge_cases": [
+            "Do NOT apply Carrier decoder",
+            "Functional parts York-interchangeable"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "WGMM017024 (model G9T08012UPB13C)",
+              "decoded": "July 2003 (expert)",
+              "claimed": "July 2003",
+              "agree": true,
+              "source": "JustAnswer (T2)"
+            },
+            {
+              "serial": "WOK6912254 (model GM95060B12UP11J)",
+              "decoded": "K=2001 (3rd-letter-year scheme)",
+              "claimed": "2001 (vendor's '<1yr' claim debunked)",
+              "agree": true,
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "(post-2004 JCI sample, year=pos2&4, month=pos3 letter)",
+              "decoded": "per documented York-identical scheme",
+              "claimed": "format-consistent",
+              "agree": true,
+              "source": "InterNACHI (T2)"
+            },
+            {
+              "serial": "(equiv York scheme)",
+              "decoded": "year via pos2&4",
+              "source": "howtolookatahouse/thedailythrive (T2/T3)",
+              "agree": "documented"
+            }
+          ],
+          "confidence": "high"
+        },
+        "heat_pump": {
+          "modern_pattern": "Same JCI format.",
+          "confidence": "high"
+        },
+        "package_unit": {
+          "modern_pattern": "Same JCI format.",
+          "confidence": "high"
+        }
+      },
+      "source_links": [
+        "https://thedailythrive.org/how-to-identify-the-age-of-luxaire-furnace-from-serial-number/ (T3)",
+        "https://www.howtolookatahouse.com luxaire (T2)",
+        "https://www.building-center.org/york-hvac-age/ (T2)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "canonical_name": "Heil",
+      "parent_corp": "International Comfort Products (ICP; Carrier family)",
+      "oem_siblings": [
+        "Tempstar",
+        "Comfortmaker",
+        "Arcoaire",
+        "Day & Night",
+        "KeepRite",
+        "ICP"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Heil uses DISTINCT ICP letter+YYWW shared across ICP brands. CRITICAL: SnapAI code wrongly reuses CARRIER decoder — WRONG; needs dedicated ICP decoder. NOT same as York/JCI either.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Letter(1) + YYWW + sequence. After leading letter: digits2-3=year(YY), digits4-5=week(WW).",
+          "modern_example": "Comfortmaker -> 48th week 1992 (YY=92,WW=48); ICP -> 48th week 2003",
+          "modern_year_range": [
+            1990,
+            2026
+          ],
+          "modern_regex": "^[A-Z]\\d{2}\\d{2}\\d+$",
+          "year_position": "chars 2-3 (after leading letter)",
+          "week_position": "chars 4-5",
+          "legacy_pattern": "Same ICP letter+YYWW back to early 1990s.",
+          "legacy_year_range": [
+            1990,
+            2004
+          ],
+          "nameplate_date_code_alternatives": "Plate printed date when present; model number doesn't encode date.",
+          "edge_cases": [
+            "Two-digit year decade ambiguity — disambiguate via refrigerant/ANSI/condition",
+            "Leading letter is plant code, strip before YYWW",
+            "Structurally DIFFERENT from York AND Carrier — dedicated ICP decoder",
+            "Validate week<=53"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "(Comfortmaker)",
+              "decoded": "48th week 1992",
+              "source": "icptempstarparts.com photo-verified (T2)",
+              "agree": true
+            },
+            {
+              "serial": "(ICP A/C)",
+              "decoded": "48th week 2003",
+              "source": "icptempstarparts.com (T2)",
+              "agree": true
+            },
+            {
+              "serial": "(ICP rooftop)",
+              "decoded": "35th week 2005",
+              "source": "icptempstarparts.com (T2)",
+              "agree": true
+            }
+          ],
+          "confidence": "high"
+        },
+        "heat_pump": {
+          "modern_pattern": "Same ICP letter+YYWW.",
+          "confidence": "high"
+        },
+        "package_unit": {
+          "modern_pattern": "Same ICP letter+YYWW (documented for ICP rooftop).",
+          "confidence": "high"
+        }
+      },
+      "source_links": [
+        "https://icptempstarparts.com/serial-number-nomenclature/ (T2)",
+        "https://inspectorhandbook.com/hvac/heil (T2)",
+        "https://inspectapedia.com/heat/Heil-HVAC-Manuals.php (T2)"
+      ],
+      "confidence": "high"
+    },
+    {
+      "canonical_name": "Mitsubishi Electric",
+      "parent_corp": "Mitsubishi Electric Corp. (US: METUS JV w/ Trane)",
+      "oem_siblings": [],
+      "market": "US",
+      "category": "ducted (P-series/PUZ)+ductless",
+      "sibling_verification_basis": "Distinct Japanese format. Current SnapAI reuse of Lennox decoder is WRONG.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Japanese fiscal-year. Style1: char1=last digit of fiscal year (DECADE AMBIGUOUS), char2=month (1-9=Jan-Sep; X/Y/Z=Oct/Nov/Dec). Style2: serials ending 'T'.",
+          "modern_example": "89D00488D -> year-digit9 month9(Sep); 8XD00488D -> month X=Oct",
+          "modern_year_range": [
+            null,
+            2026
+          ],
+          "modern_regex": "Style1: ^\\d[0-9XYZ].+$ ; Style2: ^\\d{7}\\s?T$",
+          "year_position": "char1 (single digit, decade NOT encoded)",
+          "week_position": "N/A — month at char2",
+          "legacy_pattern": "Same two styles historically.",
+          "legacy_year_range": [
+            null,
+            null
+          ],
+          "nameplate_date_code_alternatives": "STRONGLY PREFER nameplate printed/build date. Fiscal Apr-Mar (Jan-Mar units carry prior year).",
+          "edge_cases": [
+            "DECADE AMBIGUITY dominant: '8'=1998/2008/2018 — disambiguate via refrigerant/ANSI/model gen",
+            "Fiscal-vs-calendar offset",
+            "Month X/Y/Z=Oct/Nov/Dec",
+            "Two incompatible styles",
+            "Do NOT apply York/Carrier/ICP/Lennox decoders"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "3002598T",
+              "decoded": "year-digit 3 -> 2003 or 2013 (decade-ambiguous); T=Thailand",
+              "claimed": "2003 or 2013 (expert)",
+              "agree": "decade-ambiguous by design",
+              "source": "Inspector's Journal (T2)"
+            },
+            {
+              "serial": "0001854T",
+              "decoded": "year-digit 4 -> 2004 or 2014; T=Thailand",
+              "claimed": "2004 (forum)",
+              "agree": "decade-ambiguous",
+              "source": "InterNACHI nachi.org (T2)"
+            },
+            {
+              "serial": "8XD00488D",
+              "decoded": "month X(Oct) year-digit8 (2008/2018)",
+              "source": "BiC (T2)",
+              "agree": "pattern-verified, decade ambiguous"
+            },
+            {
+              "serial": "8001637T",
+              "decoded": "Style2 year-digit8",
+              "source": "BiC (T2)",
+              "agree": true
+            }
+          ],
+          "confidence": "medium"
+        },
+        "heat_pump": {
+          "modern_pattern": "Primary US ducted (P-series PUZ + ducted air handler/hyper-heat). Same serial logic.",
+          "confidence": "medium"
+        },
+        "package_unit": {
+          "status": "not_offered_in_houston",
+          "note": "No conventional residential packaged units in US ducted channel.",
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/mitsubishi-hvac-age/ (T2)",
+        "https://fa-faq.mitsubishielectric.com/faq/show/44878 (T4)",
+        "https://www.mitsubishicomfort.com/commercial/products/p-series-outdoor (T4)"
+      ],
+      "confidence": "medium"
+    },
+    {
+      "canonical_name": "LG",
+      "parent_corp": "LG Electronics",
+      "oem_siblings": [],
+      "market": "US",
+      "category": "mini_split",
+      "sibling_verification_basis": "N/A",
+      "variants": {
+        "mini_split": {
+          "modern_pattern": "[Y][MM]+alphanumeric. char1=year digit (decade NOT encoded), chars2-3=month. Indoor head + outdoor condenser same encoding.",
+          "modern_example": "407HAVN79423 -> month07 July, year-digit4=2024 (date plate confirmed; could be 2014)",
+          "modern_year_range": [
+            2000,
+            2026
+          ],
+          "modern_regex": "^([0-9])(0[1-9]|1[0-2])[A-Z0-9]{6,}$",
+          "year_position": "position 1 (decade ambiguous)",
+          "month_position": "positions 2-3",
+          "legacy_pattern": "Style2 (retired): EQ-prefix, year pos6-10, month pos11.",
+          "nameplate_date_code_alternatives": "Separate UPC tag below main plate prints explicit date — disambiguates decade.",
+          "edge_cases": [
+            "Decade ambiguity (2014 vs 2024)",
+            "EQ-prefix legacy style positionally different"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "407HAVN79423",
+              "decoded": "July 2024 (date plate confirmed)",
+              "source": "building-center.org (T2)",
+              "agree": "medium"
+            },
+            {
+              "serial": "207KRMK0Y171",
+              "decoded": "July 2012 or 2022 (ambiguous)",
+              "source": "BiC (T2)",
+              "agree": "low"
+            }
+          ],
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/lg-hvac-age/ (T2)",
+        "https://www.howtolookatahouse.com lg (T2)",
+        "https://www.lg.com/us/support (T4)"
+      ],
+      "confidence": "medium",
+      "serial_capture_required_from_field": true
+    },
+    {
+      "canonical_name": "Samsung",
+      "parent_corp": "Samsung Electronics",
+      "oem_siblings": [],
+      "market": "US",
+      "category": "mini_split",
+      "sibling_verification_basis": "N/A",
+      "variants": {
+        "mini_split": {
+          "modern_pattern": "Letter-coded year. 15-digit: char8=year letter, char9=month. 11-digit: char4=year letter. Chart 2001-2018 (post-2018 UNDOCUMENTED).",
+          "modern_example": "(appliance proxy) J0V07DDD801404K; NO confirmed mini-split sample",
+          "modern_year_range": [
+            2001,
+            2018
+          ],
+          "modern_regex": "15-digit: ^.{7}([R-Z]|[A-L])[1-9A-C].{6}$",
+          "year_position": "char4 (11-digit) or char8 (15-digit)",
+          "month_position": "next char after year letter (1-9,A=Oct,B=Nov,C=Dec)",
+          "year_letter_chart": "R=2001,T=2002,W=2003,X=2004,Y=2005,A/L=2006,P=2007,Q=2008,S=2009,Z=2010,B=2011,C=2012,D=2013,F=2014,G=2015,H=2016,J=2017,K=2018",
+          "nameplate_date_code_alternatives": "Some Samsung plates print explicit date — unconfirmed for mini-split.",
+          "edge_cases": [
+            "Chart ENDS 2018 — 2019+ UNKNOWN",
+            "Letter set non-monotonic (A/L both=2006)",
+            "All real verified samples are APPLIANCES not mini-splits",
+            "BiC 'Samsung' page combined w/ Panasonic; Style1 is PANASONIC"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "J0V07DDD801404K",
+              "decoded": "~2013 (appliance, chart inconsistency)",
+              "source": "electrical-forensics (T2)",
+              "agree": "low — appliance not mini-split"
+            }
+          ],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://www.electrical-forensics.com/MajorAppliances/SamsungDateCodes.html (T2)",
+        "https://www.building-center.org/samsung-hvac-age/ (T2)",
+        "https://www.howtolookatahouse.com/Blog/Entries/2020/4/samsung-serial (T2)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true
+    },
+    {
+      "canonical_name": "Gree",
+      "parent_corp": "Gree Electric (Zhuhai)",
+      "oem_siblings": [
+        "OEM for many private-label brands"
+      ],
+      "market": "US",
+      "category": "mini_split",
+      "sibling_verification_basis": "Gree builds for many brands; multiple OEM styles coexist.",
+      "variants": {
+        "mini_split": {
+          "modern_pattern": "Manufacture date PRINTED EXPLICITLY on plate as YYYY.MM — NOT reliably serial-encoded. BiC recommends reading printed date.",
+          "modern_example": "plate '2020.05' -> May 2020",
+          "modern_year_range": [
+            2010,
+            2026
+          ],
+          "modern_regex": "date string: ^(20[0-9]{2})[.\\-/](0[1-9]|1[0-2])$ ; serial-position decode NOT reliable",
+          "year_position": "PREFER printed YYYY.MM (digits1-4). Serial-claim positions3-4 (low)",
+          "month_position": "printed MM (digits6-7)",
+          "nameplate_date_code_alternatives": "Explicit YYYY.MM printed date is PRIMARY. Barcode/QR present.",
+          "edge_cases": [
+            "Read printed YYYY.MM not serial",
+            "Multiple OEM formats coexist",
+            "Private-label units (Pioneer) may carry brand plate masking Gree origin"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "(plate) 2020.05",
+              "decoded": "May 2020",
+              "source": "building-center.org (T2)",
+              "agree": "medium"
+            }
+          ],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/gree/ (T2)",
+        "https://www.howtolookatahouse.com gree (T2)",
+        "https://www.greecomfort.com/gree-warranty-registration-search/ (T4)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true
+    },
+    {
+      "canonical_name": "Pioneer",
+      "parent_corp": "Parker Davis HVAC (Miami; Chinese OEM incl Gree-family)",
+      "oem_siblings": [],
+      "market": "US",
+      "category": "mini_split",
+      "sibling_verification_basis": "Chassis from Chinese OEMs.",
+      "variants": {
+        "mini_split": {
+          "modern_pattern": "NOT DECODABLE. ~22-digit barcode 'SN:'. Manufacture date NOT publicly encoded. Indoor & outdoor serials DIFFER (confirmed).",
+          "modern_example": "n/a — no public decode exists",
+          "modern_year_range": null,
+          "modern_regex": "^SN:?[A-Z0-9]{20,24}$ (format only; yields NO date)",
+          "year_position": "NONE — date not encoded",
+          "month_position": "NONE",
+          "nameplate_date_code_alternatives": "EMAIL/CALL Pioneer (prwd@pd-hvac.com / 305-513-4488) for mfg date; check separate date sticker.",
+          "edge_cases": [
+            "Date genuinely NOT homeowner-decodable — manufacturer lookup required",
+            "Indoor vs outdoor serials differ",
+            "Diamante indoor serial hidden behind control-box cover",
+            "Underlying Gree-family date plate may opportunistically carry YYYY.MM"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "n/a",
+              "decoded": "not decodable — definitive negative finding",
+              "source": "howtolookatahouse + Pioneer support (T2/T4)",
+              "agree": "n/a"
+            }
+          ],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://www.howtolookatahouse.com pioneer (T2)",
+        "https://help.pioneerminisplit.com/en-US/locate-model-serial-number-266127 (T4)",
+        "https://www.building-center.org/ (T2)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true
+    },
+    {
+      "canonical_name": "MrCool",
+      "parent_corp": "HVAC Distributing Company LLC",
+      "oem_siblings": [],
+      "market": "US",
+      "category": "mini_split",
+      "sibling_verification_basis": "DIY brand; Gree/Midea-platform chassis historically.",
+      "variants": {
+        "mini_split": {
+          "modern_pattern": "Two documented styles. Style 2 (22-digit): date code positions 12-15 (pos12=single-digit year [decade-ambiguous like Mitsubishi], pos13=month 1-9/A=Oct/B=Nov/C=Dec, pos14-15=day). Style 1 (older short): chars1-2=WEEK, chars3-4=YEAR. Branch on serial length.",
+          "modern_example": "240253122046A200150045 -> pos12-15 '6A20' yr6 Oct day20 (2016/2026); legacy 1920K08283 -> week19 2020",
+          "modern_year_range": [
+            2019,
+            2026
+          ],
+          "modern_regex": "Style2: ^\\d{11}([0-9])([0-9A-C])(\\d{2})\\d{5}$ ; Style1: ^(\\d{2})(\\d{2})[A-Z].+$",
+          "year_position": "Style2 pos12 (single digit, decade-ambiguous); Style1 chars 3-4",
+          "month_position": "Style2 pos13",
+          "nameplate_date_code_alternatives": "Plate UL/AHRI cert year disambiguates decade; MrCool support 270-366-0457.",
+          "edge_cases": [
+            "Two coexisting styles — branch on length",
+            "DIY brand (DTC since ~2017): decade collision not yet occurred in practice",
+            "Component coil/condenser tags may carry shorter codes — fall back to plate-printed 2-digit year + refrigerant",
+            "OEM-built (Mexico assembly), format may shift between generations"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "1920XXK08283 (Style 1)",
+              "decoded": "week19 2020 (chars1-2=week, 3-4=year)",
+              "source": "building-center.org/mrcool-hvac-age (T2)",
+              "agree": true
+            },
+            {
+              "serial": "2402135890267230130069 (Style 2)",
+              "decoded": "date code pos12-15 (BiC illustrative; format-consistent)",
+              "source": "building-center.org/mrcool-hvac-age (T2)",
+              "agree": "format-consistent"
+            },
+            {
+              "serial": "34076575201 (21-digit)",
+              "decoded": "12th digit = year of manufacture",
+              "source": "howtolookatahouse.com MrCool (T2)",
+              "agree": true
+            },
+            {
+              "serial": "real field unit (model MAC16, no full SN)",
+              "decoded": "2020 (inspector read '20' on condenser+coil tags + 2021 inspection sticker)",
+              "source": "forum.nachi.org/t/mrcool-ac-condenser-age/243802 (T2)",
+              "agree": true
+            }
+          ],
+          "confidence": "medium",
+          "week_position": "Style1 chars 1-2 (legacy units only)",
+          "decade_disambiguation": "12th-digit year is decade-ambiguous; disambiguate via refrigerant: 5th-Gen DIY uses R-454B (2024+ => unambiguously 2020s); 4th-Gen and earlier use R-410A. Keep Mitsubishi-style decade_ambiguous flag for future-proofing."
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/mrcool-hvac-age/ (T2)",
+        "https://www.howtolookatahouse.com mrcool (T2)",
+        "https://www.garagejournal.com/forum/threads/3-diy-mr-cool-mini-split-failures.543112/ (T2)",
+        "https://forum.nachi.org/t/mrcool-ac-condenser-age/243802 (T2)",
+        "https://support.mrcool.com/hc/en-us/articles/35412353756564 (T4)"
+      ],
+      "confidence": "medium"
+    },
+    {
+      "canonical_name": "Bosch",
+      "parent_corp": "Bosch Thermotechnology Corp.",
+      "oem_siblings": [
+        "Buderus",
+        "FHP"
+      ],
+      "market": "US",
+      "category": "mini_split",
+      "sibling_verification_basis": "Single serial family across product types.",
+      "variants": {
+        "mini_split": {
+          "modern_pattern": "Style1 (post-2010, Climate 5000 mini-split & IDS ducted): year+month as 3-CHARACTER CODE at positions 5-7, decoded via Bosch CHART (lookup NOT arithmetic). Dashes decorative.",
+          "modern_example": "3540-112-000001-T111M01973 -> chars5-7 '112' -> Bosch chart; 2940-455 -> '455'",
+          "modern_year_range": [
+            2010,
+            2026
+          ],
+          "modern_regex": "^.{4}([A-Z0-9]{3}).*  (3-char date code pos5-7; map via Bosch chart)",
+          "year_position": "positions 5-7 combined (chart lookup)",
+          "month_position": "positions 5-7 combined",
+          "legacy_pattern": "Style2/3 pre-2010: YEAR NOT DECODABLE.",
+          "legacy_year_range": [
+            null,
+            2010
+          ],
+          "nameplate_date_code_alternatives": "Bosch Service Parts portal serial lookup; FD-code on some imported units = separate scheme.",
+          "edge_cases": [
+            "3-char code is CHART LOOKUP not arithmetic — embed Bosch chart",
+            "Strip dashes before pos5-7",
+            "Legacy Style2/3 undecodable — flag 'pre-2010 year unknown'"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "3540-112-000001-T111M01973",
+              "decoded": "code '112' -> chart",
+              "source": "BiC (T2)",
+              "agree": "medium (method)"
+            },
+            {
+              "serial": "2940-455-00015-7735003001",
+              "decoded": "code '455' -> chart",
+              "source": "BiC (T2)",
+              "agree": "medium"
+            }
+          ],
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/bosch-hvac-age/ (T2)",
+        "https://boschwarrantyforms.com Serial-Number-Reference-Guide.pdf (T4)",
+        "https://www.bosch-homecomfort.com/us/en/residential/service/technical-support/serial-number-locator/ (T4)"
+      ],
+      "confidence": "medium",
+      "serial_capture_required_from_field": true
+    },
+    {
+      "canonical_name": "Daikin Mini-Split",
+      "parent_corp": "Daikin Industries (Japan-built ductless)",
+      "oem_siblings": [
+        "Daikin (Waller ducted is DIFFERENT)"
+      ],
+      "market": "US",
+      "category": "mini_split",
+      "sibling_verification_basis": "Japan-built ductless — MUST NOT route to Waller YYMM. Multi-style per BiC.",
+      "variants": {
+        "mini_split": {
+          "modern_pattern": "Multi-style (Japan). Style10 10-digit YYMM (1602393269=Feb2016). Style2: 4-letter prefix+YYMM. Style9: letter-year+letter-month. Style8: char11 letter=year+week. Style1: plate-plaintext only.",
+          "modern_example": "1602393269 -> Feb 2016 (Style10); FBOU0905048200 -> May 2009 (Style2)",
+          "modern_year_range": [
+            2005,
+            2026
+          ],
+          "modern_regex": "Style10: ^(\\d{2})(\\d{2})\\d{6}$ ; Style2: ^[A-Z]{4}(\\d{2})(\\d{2})\\d{6}$ ; Style9: ^([A-Z])([A-Z])\\d{6}$",
+          "year_position": "Style10 pos1-2; Style2 pos5-6; Style9 pos1(letter)",
+          "month_position": "Style10 pos3-4; Style2 pos7-8",
+          "legacy_pattern": "Styles 3/4/5/6/7 (1971-1999): week-based w/ year-charts or letter-coded.",
+          "legacy_year_range": [
+            1971,
+            2010
+          ],
+          "nameplate_date_code_alternatives": "Style1 has NO embedded code — read plaintext 'MFG.DATE YYYY-M'. Indoor head vs outdoor may use DIFFERENT styles.",
+          "edge_cases": [
+            "Indoor vs outdoor may differ",
+            "Style10 YYMM looks like Waller but is Japan-line; confirm via model (FTX/SkyAir/ENTRA)",
+            "4-letter prefix signals Style2",
+            "R-32 2025+ scheme unconfirmed"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "1602393269",
+              "decoded": "Feb 2016",
+              "source": "BiC+hvacserialnumber (T2/T3)",
+              "agree": "medium"
+            },
+            {
+              "serial": "FBOU0905048200",
+              "decoded": "May 2009",
+              "source": "BiC (T2)",
+              "agree": "medium"
+            },
+            {
+              "serial": "A000129+plate MFG.DATE 2008-1",
+              "decoded": "Jan 2008 (plate)",
+              "source": "BiC (T2)",
+              "agree": "medium"
+            }
+          ],
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/daikin-hvac-age/ (T2)",
+        "https://www.hvacserialnumber.com/en/how-to/decode-daikin-serial-number (T3)",
+        "https://www.howtolookatahouse.com/Blog/Entries/2018/7/daikin-serial (T2)"
+      ],
+      "confidence": "medium"
+    },
+    {
+      "canonical_name": "Friedrich",
+      "parent_corp": "Friedrich Air Conditioning Co. (San Antonio TX)",
+      "oem_siblings": [],
+      "market": "US",
+      "category": "mini_split",
+      "sibling_verification_basis": "DISAMBIGUATION TRAP: BiC 'Friedrich HVAC age' page is actually LSB/ClimateMaster geothermal 'Freidrich' — NOT consumer Friedrich. Do not apply ClimateMaster K-prefix styles.",
+      "variants": {
+        "mini_split": {
+          "modern_pattern": "Two documented eras (post-1987). (A) 2000-Nov2017: 4 letters + 5 digits (e.g. AKDZ03116): char1=decade (L=2000s,A=2010s), char2=year (K=0,A=1..J=9), char3=MONTH LETTER (A=Jan..G=Jul,H=Aug,J=Sep,K=Oct,L=Nov,M=Dec), then 5-digit run. (B) Dec2017+: 4 digits + letter + 5 digits (e.g. 1801M01258): chars1-2=year (18=2018), chars3-4=month (01=Jan). Branch on whether serial starts with letters or digits.",
+          "modern_example": "UNVERIFIED — no confirmed real Floating Air serial decoded to known date",
+          "modern_year_range": [
+            1987,
+            2026
+          ],
+          "modern_regex": "TENTATIVE ^(\\d{2})(\\d{2}).*  (YY,MM) — LOW confidence",
+          "year_position": "Letter era (2000-2017): chars 1-2 (decade letter + year letter). Numeric era (Dec2017+): chars 1-2 (numeric YY). Both unambiguous within era.",
+          "month_position": "3-4 (MM) tentative",
+          "nameplate_date_code_alternatives": "Friedrich consumer support / product-resources portal can confirm.",
+          "edge_cases": [
+            "CORRECTION to dispatch: factory mapping is G=July / L=November (dispatch's 'L=July' is WRONG) — use factory table.",
+            "Trap: Building Intelligence Center's 'Friedrich' page is actually ClimateMaster — use howtolookatahouse + official Friedrich PDF + manualslib.",
+            "Format changed at Nov/Dec 2017 (letters -> numeric+letter); branch accordingly.",
+            "Floating Air / Kuhl R-32 mini-split lines may use a separate reference guide.",
+            "serial_capture flag applies ONLY to pre-1987 units."
+          ],
+          "sample_verifications": [
+            {
+              "serial": "AKDZ03116",
+              "decoded": "April 2010 (A=2010s, K=year0=2010, D=April)",
+              "source": "Official Friedrich Serial Number Identification Guide PDF (T4)",
+              "agree": true
+            },
+            {
+              "serial": "1801M01258",
+              "decoded": "Jan 2018 (18=2018, 01=Jan)",
+              "source": "Official Friedrich SN Guide PDF (T4)",
+              "agree": true
+            },
+            {
+              "serial": "factory decoder table (VEA09K25 family)",
+              "decoded": "letter-month scheme G=Jul,H=Aug,J=Sep,K=Oct,L=Nov,M=Dec confirmed",
+              "source": "manualslib.com Friedrich factory parts manual (T2)",
+              "agree": true
+            }
+          ],
+          "confidence": "medium-low",
+          "format_post_1987": "Two documented eras (post-1987). (A) 2000-Nov2017: 4 letters + 5 digits (e.g. AKDZ03116): char1=decade (L=2000s,A=2010s), char2=year (K=0,A=1..J=9), char3=MONTH LETTER (A=Jan..G=Jul,H=Aug,J=Sep,K=Oct,L=Nov,M=Dec), then 5-digit run. (B) Dec2017+: 4 digits + letter + 5 digits (e.g. 1801M01258): chars1-2=year (18=2018), chars3-4=month (01=Jan). Branch on whether serial starts with letters or digits.",
+          "format_pre_1987": "Different/undocumented scheme (brand reorganized as Friedrich Air Conditioning Co. mid-1980s). Pre-1987 units require plate-date or field serial capture."
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/friedrich-hvac-model-number-nomenclature/ (T2)",
+        "http://qualityhomeaircare.com/friedrich-air-conditioner-model-numbers-decoding/ (T3)",
+        "https://www.friedrich.com/consumer/support/faqs-ductless-minisplit (T4)",
+        "https://f.hubspotusercontent40.net/hubfs/1669395/Friedrich-SN-Guide.pdf (T4)",
+        "https://www.howtolookatahouse.com/Blog/Entries/2019/8/friedrich-serial (T2)",
+        "https://www.manualslib.com/manual/53690/Friedrich-H-A09k25-G.html (T2)"
+      ],
+      "confidence": "medium-low",
+      "serial_capture_required_from_field": false
+    },
+    {
+      "canonical_name": "Fujitsu",
+      "parent_corp": "Fujitsu General Ltd (Japan)",
+      "oem_siblings": [],
+      "market": "US",
+      "category": "mini_split",
+      "sibling_verification_basis": "Genuine Fujitsu (not OEM-rebrand).",
+      "variants": {
+        "mini_split": {
+          "modern_pattern": "Serial does NOT encode date (confirmed BiC). Use separate nameplate DATE CODE sticker: YYMM or YYWW. Letter-prefix year hypothesis is for Fujitsu KEYBOARDS only, NOT HVAC.",
+          "modern_example": "nameplate '2308'=Aug 2023; serial LTN019205=confirmed 2014 (source-confirmed mapping, not formula)",
+          "modern_year_range": [
+            2010,
+            2026
+          ],
+          "modern_regex": "datecode: ^(\\d{2})(\\d{2})$ (YYMM or YYWW; value>12 implies week); serial NOT formula-decodable",
+          "year_position": "nameplate datecode digits1-2",
+          "month_position": "nameplate datecode digits3-4 (or week if >12)",
+          "nameplate_date_code_alternatives": "PRIMARY: nameplate DATE CODE. Fujitsu Service 866-952-8324 / Warranty Lookup decode serial->mfg date.",
+          "edge_cases": [
+            "BiC: date NOT encoded in HVAC serial; letter-prefix only 'strongly suspected'",
+            "YYMM vs YYWW ambiguity (pos3-4>12=>week)",
+            "Indoor & outdoor can have different date codes",
+            "Pre-2010 serials largely undecodable"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "LTN019205",
+              "decoded": "2014 (source-confirmed)",
+              "source": "BiC (T1/T2)",
+              "agree": "medium"
+            },
+            {
+              "serial": "KRN016785",
+              "decoded": "2013",
+              "source": "BiC (T2)",
+              "agree": "medium"
+            },
+            {
+              "datecode": "2308",
+              "decoded": "Aug 2023",
+              "source": "qualityhomeaircare (T3)",
+              "agree": "medium"
+            }
+          ],
+          "confidence": "medium-low"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/fujitsu-hvac-age/ (T1/T2)",
+        "https://qualityhomeaircare.com/fujitsu-mini-split-date-code/ (T3)",
+        "https://hvacchecker.com/fujitsu-hvac-age (T3)"
+      ],
+      "confidence": "medium-low",
+      "serial_capture_required_from_field": true
+    },
+    {
+      "canonical_name": "Senville",
+      "parent_corp": "Senville (Montreal; Midea-platform OEM suspected)",
+      "oem_siblings": [
+        "Midea platform"
+      ],
+      "market": "US",
+      "category": "mini_split",
+      "sibling_verification_basis": "Midea lineage practitioner consensus, not officially confirmed. BiC page erroneously lists Daikin contact (page error, NOT Daikin OEM).",
+      "variants": {
+        "mini_split": {
+          "modern_pattern": "~22-digit serial NOT formula-decodable. Read printed 'MFG DATE' field (YYYY-MM/YYMM) on label. If Midea-style serial appears, apply Midea decode.",
+          "modern_example": "3407399160691290120139 -> read on-label MFG DATE field",
+          "modern_year_range": [
+            2014,
+            2026
+          ],
+          "modern_regex": "^\\d{22}$ (NOT date-decodable) — rely on printed MFG DATE field",
+          "year_position": "read printed MFG DATE field",
+          "month_position": "MFG DATE field",
+          "oem_lineage": "Midea-platform suspected (apply Midea V+YYMM or year@12th/month@14th if that serial style appears).",
+          "nameplate_date_code_alternatives": "Printed 'MFG DATE' field; Senville support support@senville.com / 800-242-4935.",
+          "edge_cases": [
+            "22-digit serial NOT publicly formula-decodable",
+            "BiC page Daikin contact = template error",
+            "DIY: install year lags mfg year"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "3407399160691290120139",
+              "decoded": "via MFG DATE field",
+              "source": "BiC (T1) — positions not published",
+              "agree": "low"
+            }
+          ],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/senville-hvac-equipment/ (T1)",
+        "https://www.howtolookatahouse.com senville (T2)",
+        "https://forum.nachi.org/t/aging-out-a-senville-mini-split/156280 (T2)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true
+    },
+    {
+      "canonical_name": "Klimaire",
+      "parent_corp": "Klimaire (Miami distributor; Midea/Gree OEM chassis)",
+      "oem_siblings": [
+        "Midea",
+        "Gree"
+      ],
+      "market": "US",
+      "category": "mini_split",
+      "sibling_verification_basis": "Inherits Midea (and some Gree) OEM serial scheme — the CORRECT decode path.",
+      "variants": {
+        "mini_split": {
+          "modern_pattern": "Midea OEM scheme. Style2: V-prefix + YYMM (digits1-4). Style1: date at 12th digit=year, 14th=month. Gree-built lines: plain YYYY.MM plate.",
+          "modern_example": "V180543529 -> May 2018 (Midea Style2); C703239530315908400008 -> 2015-09 (Midea Style1)",
+          "modern_year_range": [
+            2010,
+            2026
+          ],
+          "modern_regex": "Style2: ^V(\\d{2})(\\d{2})\\d+$ ; Style1: ^[A-Z]\\d{10}(\\d)\\d(\\d)\\d+$ (year@12th, month@14th)",
+          "year_position": "Style2 digits1-2 after V; Style1 12th digit",
+          "month_position": "Style2 digits3-4 after V; Style1 14th digit",
+          "oem_lineage": "Midea (primary) and some Gree (YYYY.MM plate).",
+          "nameplate_date_code_alternatives": "Midea warranty lookup; check which OEM date-style the plate uses.",
+          "edge_cases": [
+            "Midea Style2 ambiguity: some models put year at digits3-4 after V",
+            "Klimaire may ship Midea OR Gree chassis",
+            "Indoor vs outdoor may be different OEM batches"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "V180543529",
+              "decoded": "2018-05",
+              "source": "BiC Midea (T1)",
+              "agree": "medium"
+            },
+            {
+              "serial": "C703239530315908400008",
+              "decoded": "2015-09",
+              "source": "BiC Midea (T1)",
+              "agree": "medium"
+            },
+            {
+              "serial": "2020.05 (Gree plate)",
+              "decoded": "May 2020",
+              "source": "BiC Gree (T1)",
+              "agree": "medium"
+            }
+          ],
+          "confidence": "medium-low"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/midea-hvac/ (T1)",
+        "https://www.building-center.org/gree/ (T1)",
+        "https://www.howtolookatahouse.com midea (T2)"
+      ],
+      "confidence": "medium-low"
+    },
+    {
+      "canonical_name": "Cooper&Hunter",
+      "parent_corp": "Comfortside LLC (Doral FL); GREE-OEM ('powered by Gree')",
+      "oem_siblings": [
+        "Gree"
+      ],
+      "market": "US",
+      "category": "mini_split",
+      "sibling_verification_basis": "CORRECTION: Cooper&Hunter is GREE-OEM ('powered by Gree'), NOT Sinclair (Sinclair is a separate Czech brand — that assumption is UNSUPPORTED). Apply Gree date-plate decode.",
+      "variants": {
+        "mini_split": {
+          "modern_pattern": "Inherits GREE scheme: plain 'YYYY.MM' date printed on plate. Some units carry long Gree alphanumeric serial; reliable field is printed YYYY.MM.",
+          "modern_example": "plate '2020.05' -> May 2020",
+          "modern_year_range": [
+            2010,
+            2026
+          ],
+          "modern_regex": "^(\\d{4})\\.(\\d{2})$ (printed date plate YYYY.MM)",
+          "year_position": "printed date digits1-4",
+          "month_position": "printed date digits6-7",
+          "oem_lineage": "Gree (some value lines Midea-platform error codes).",
+          "nameplate_date_code_alternatives": "C&H serial checker cooperandhunter.com/bd/check-serial; support +1 888-293-9252.",
+          "edge_cases": [
+            "Do NOT assume Sinclair lineage — evidence points to Gree",
+            "Multi-OEM: date-style may vary by line",
+            "Indoor vs outdoor may differ in OEM batch"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "2020.05 (Gree plate)",
+              "decoded": "May 2020",
+              "source": "BiC Gree (T1)",
+              "agree": "medium"
+            }
+          ],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/gree/ (T1)",
+        "https://www.budgetairsupply.com cooper-hunter-powered-by-gree (T3)",
+        "https://cooperandhunter.com/bd/check-serial (T4)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true
+    },
+    {
+      "canonical_name": "Della",
+      "parent_corp": "Della (online-direct; Chinese OEM, Midea/Gree/Tosot suspected)",
+      "oem_siblings": [
+        "Midea/Gree (unconfirmed)"
+      ],
+      "market": "US",
+      "category": "mini_split",
+      "sibling_verification_basis": "OEM genuinely UNCONFIRMED. Weakest-documented brand — ZERO public serial decodes found.",
+      "variants": {
+        "mini_split": {
+          "modern_pattern": "No public Della-specific decode formula. Read printed MFG DATE on plate. If Midea-style (V+YYMM/long) or Gree-style (YYYY.MM) appears, apply that OEM decode.",
+          "modern_example": "UNKNOWN — no documented Della serial decode example",
+          "modern_year_range": [
+            2017,
+            2026
+          ],
+          "modern_regex": "UNKNOWN (estimated: inherits Midea V+YYMM or Gree YYYY.MM)",
+          "year_position": "UNKNOWN — read printed MFG DATE field",
+          "month_position": "UNKNOWN",
+          "oem_lineage": "ESTIMATED/UNCONFIRMED Chinese OEM (Midea or Gree/Tosot plausible).",
+          "nameplate_date_code_alternatives": "Printed MFG DATE field (only reliable method); Della customer support.",
+          "edge_cases": [
+            "OEM lineage unconfirmed — don't assert Midea without nameplate evidence",
+            "Serena 'lifetime' warranty doesn't aid dating",
+            "~10% first-year failure -> warranty swaps mismatch install date"
+          ],
+          "sample_verifications": [],
+          "confidence": "very low"
+        }
+      },
+      "source_links": [
+        "https://www.pickhvac.com/mini-split/best-brands/della/ (T3)",
+        "https://airconditionerlab.com/della-mini-split/ (T3)",
+        "https://www.building-center.org/midea-hvac/ (T1 OEM fallback)"
+      ],
+      "confidence": "very low",
+      "serial_capture_required_from_field": true
+    },
+    {
+      "canonical_name": "Gree (DWP Group)",
+      "parent_corp": "Gree Electric / DWP Group (PK assembler)",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "Gree (DWP sole PK distributor/assembler since 2005); Gree-Daikin JV 2008-09 units ambiguous",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Data plate prints YYYY.MM manufacture date (Gree global standard). Serial has no single decodable Gree-wide format.",
+          "modern_example": "plate '2020.05' -> May 2020. NO verified PK serial decoded to a year.",
+          "modern_regex": "printed date: ^(20[0-2][0-9])\\.(0[1-9]|1[0-2])$ ; serial: no decodable format",
+          "year_position": "printed date positions 1-4 (YYYY); serial unknown",
+          "month_position": "printed date positions 6-7 (MM)",
+          "nameplate_date_code_alternatives": "PRIMARY = printed YYYY.MM. Compressor sub-nameplate (GMCC/Landa/Highly) fallback.",
+          "edge_cases": [
+            "Gray-import (Dubai/Saudi/China) carries Asian-region YYYY.MM, voids PK warranty",
+            "DWP-assembled vs Zhuhai-imported may differ in plate language",
+            "Repainted secondhand units lose date field",
+            "Pre-2018 R-22 fixed-speed common secondhand"
+          ],
+          "sample_verifications": [],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/gree/ (T1)",
+        "https://dwphome.pk/about-us (T4)",
+        "https://en.wikipedia.org/wiki/Gree_Electric (T1)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "Haier Pakistan",
+      "parent_corp": "Haier (large Lahore plant)",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "Haier in-house (Lahore); compressors GMCC/Highly/Haier-own",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "3 styles. Style1 (8-9 char,2 letters): pos1 letter=month, pos2 letter=year. Style2 (18-20): pos14=year,15=month,16=day. Style3 (10-11): pos2-3=year,4-5=month. US-derived charts; PK applicability unverified.",
+          "modern_example": "C1208A320E -> Style3 pos2-3 '12'/pos4-5 '08' (needs Haier chart). No verified PK sample.",
+          "modern_regex": "Style1: ^[A-Z]{2}[0-9]{6}[A-Z]?$ ; Style3: ^[A-Z][0-9]{4}[A-Z][0-9]{3}[A-Z]$ — letter mapping needs chart",
+          "year_position": "Style1 pos2(letter); Style2 pos14; Style3 pos2-3",
+          "month_position": "Style1 pos1(letter); Style2 pos15; Style3 pos4-5",
+          "nameplate_date_code_alternatives": "Mfg date often ALSO printed on plate (preferred). Compressor serial fallback.",
+          "edge_cases": [
+            "Large Lahore plant — PK-produced units may differ from export styles",
+            "Gray-market voids PK warranty",
+            "Letter styles unreadable without Haier chart — OCR alone insufficient",
+            "Secondhand plate degradation in dust/heat"
+          ],
+          "sample_verifications": [],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/haier-hvac-age/ (T1)",
+        "https://www.haierappliances.com/support/support-content/35198 (T1)",
+        "https://www.haier.com/pk/service-support/warranty-declaration/ (T4)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "Dawlance (Arcelik)",
+      "parent_corp": "Arcelik (Karachi/Hyderabad plants)",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "Arcelik (local manufacture); compressors Highly/GMCC/Toshiba-GMCC",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "NO manufacturer-published serial/date decode format. Serial for warranty-registration DB lookup only.",
+          "modern_example": "None findable.",
+          "modern_regex": "no decodable format",
+          "year_position": "unknown",
+          "month_position": "unknown",
+          "nameplate_date_code_alternatives": "Likely printed manufacture date on plate (Arcelik/Turkish practice) but format UNCONFIRMED. Compressor sub-nameplate (Highly/GMCC/Toshiba-GMCC) fallback.",
+          "edge_cases": [
+            "Locally manufactured — PK-specific coding plausible but undocumented",
+            "Gray-import minor (domestic brand); secondhand heavy OLX",
+            "Repainted/refurb units lose plate data",
+            "Older non-inverter R-22 in service"
+          ],
+          "sample_verifications": [],
+          "confidence": "unknown"
+        }
+      },
+      "source_links": [
+        "https://www.dawlance.com.pk/inverter-split-ac (T4)",
+        "https://en.wikipedia.org/wiki/Dawlance (T1)",
+        "https://theazb.com/dawlance-offers-the-longest-4-year-pcb-cards-warranty-in-pakistan (T3)"
+      ],
+      "confidence": "unknown",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "Orient Electronics (Pakistan)",
+      "parent_corp": "Orient Group (Lahore/Maraka assembly)",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "Orient assembles from AUX/China kits in Lahore",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "NO published serial/date format for Orient Electronics PK. CAUTION: web results often return Orient ELECTRIC (India, +91) — DIFFERENT company. Serial = internal warranty registration only.",
+          "modern_example": "None findable.",
+          "modern_regex": "no decodable format",
+          "year_position": "unknown",
+          "month_position": "unknown",
+          "nameplate_date_code_alternatives": "Assembled in Lahore from China kits (AUX/Mitsubishi partnerships). Likely printed production date + China compressor serial (AUX/GMCC/Highly) fallback.",
+          "edge_cases": [
+            "Assembled from Chinese kits — date code may follow AUX OEM convention",
+            "Rebadged AUX-based chassis",
+            "Naming collision: Orient Electronics PK vs Orient Electric India",
+            "Repaint/refurb common in resale"
+          ],
+          "sample_verifications": [],
+          "confidence": "unknown"
+        }
+      },
+      "source_links": [
+        "https://www.orient.com.pk/ (T4)",
+        "https://orient.com.pk/pages/about-us (T4)",
+        "https://www.techjuice.pk orient-groups (T2)"
+      ],
+      "confidence": "unknown",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "PEL (Pak Elektron)",
+      "parent_corp": "Pak Elektron Ltd (local Lahore assembly)",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "Genuine local PEL assembly; imported compressors/components",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "NO publicly documented decodable serial-to-date format. Local Lahore assembler; model code + serial/barcode but no published date scheme.",
+          "modern_example": "Model PINVO-18K JUMBO DC Prime; no verified decodable serial.",
+          "modern_regex": "no decodable format",
+          "year_position": "unknown",
+          "month_position": "unknown",
+          "nameplate_date_code_alternatives": "Check plate for printed mfg date; warranty card/invoice (10-yr compressor warranty -> dealer keeps install date); Chinese compressor plate may show YYYY.MM (compressor date).",
+          "edge_cases": [
+            "Local assembly -> dealer inventory months (build != install)",
+            "Secondhand/repainted PEL units common OLX",
+            "Warranty fraud: dealers back/forward-date install"
+          ],
+          "sample_verifications": [],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://en.wikipedia.org/wiki/PEL_(company) (T1)",
+        "https://eshop.pel.com.pk/collections/inverteron (T4)",
+        "https://malikki.com/page/blog/best-ac-brands-in-pakistan-for-2025-reviewed (T2)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "TCL Pakistan",
+      "parent_corp": "TCL Home Appliances (Chinese OEM)",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "TCL builds own chassis (Gree/Midea rival); imported/CKD in PK",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Chinese-OEM data-plate date. TCL encodes production date in long barcode serial and/or prints separate MFG date on plate. No single public decoder; treat printed date field as reliable.",
+          "modern_example": "Model TCL T3 Pro (TAC-18CHA/...); no verified decodable serial.",
+          "modern_regex": "no decodable format (use printed YYYY.MM/MFG-date field)",
+          "year_position": "unknown / explicit MFG-date field",
+          "month_position": "unknown",
+          "nameplate_date_code_alternatives": "Rating-plate barcode + 'Manufacturing Date' field; compressor plate (GMCC/Landa/Highly) YYYY.MM; carton barcode batch date.",
+          "edge_cases": [
+            "Gray-import TCL carries foreign plates, no PK warranty",
+            "Local CKD vs fully-imported build-date semantics differ",
+            "Secondhand refurb sellers repaint outdoor units"
+          ],
+          "sample_verifications": [],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://support.tcl.com/en_US/how-to-find-my-tcl-unit-information (T1)",
+        "https://electromart.com.pk/brand/tcl/air-conditioner/ (T2)",
+        "https://pakref.com/product-category/air-conditioners/tcl-air-conditioners/ (T2)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "Kenwood Pakistan",
+      "parent_corp": "R&I Electrical Appliances (Pvt) Ltd (licensed local assembly since 2004)",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "R&I Electrical (also owns Homage); UK/De'Longhi heritage branding only; imported Chinese components",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "NO publicly documented decodable serial format. PK Kenwood AC locally assembled (NOT De'Longhi UK kitchen Kenwood). Model + serial/barcode; no published date decoder.",
+          "modern_example": "Model KEL-1870S eLuxury Pro; no verified decodable serial.",
+          "modern_regex": "no decodable format",
+          "year_position": "unknown",
+          "month_position": "unknown",
+          "nameplate_date_code_alternatives": "Plate printed MFG date if present; warranty card (up to 10-yr compressor -> dealer install record); Chinese compressor plate date.",
+          "edge_cases": [
+            "Brand confusion: do NOT apply UK/De'Longhi Kenwood scheme to PK ACs",
+            "Local-assembly inventory lag",
+            "Heavy secondhand; eLuxury cosmetic shells repainted on resale"
+          ],
+          "sample_verifications": [],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://www.scribd.com/document/509518968/Kenwood-Introduction (T2)",
+        "https://www.kenwoodpakistan.pk/pages/about-us (T4)",
+        "https://en.wikipedia.org/wiki/Kenwood_Limited (T1)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "Changhong Ruba",
+      "parent_corp": "Ruba Group (PK) + Sichuan Changhong (China) JV",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "Changhong-engineered; imported/locally-assembled by Ruba; CHiQ shares OEM",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Chinese-OEM (Changhong) data-plate scheme — long barcode serial + possible explicit MFG-date field (YYYY.MM convention). No PK-specific decoder published.",
+          "modern_example": "Model SDH-18SW Pro / SDC-18CW; no verified decodable serial.",
+          "modern_regex": "no decodable format (use printed YYYY.MM/MFG-date field)",
+          "year_position": "unknown / explicit MFG-date field",
+          "month_position": "unknown",
+          "nameplate_date_code_alternatives": "Rating plate barcode + explicit MFG date; compressor plate YYYY.MM; carton batch barcode.",
+          "edge_cases": [
+            "Cheapest mainstream brand -> heavy budget/secondhand churn OLX",
+            "Imported vs locally-assembled may carry different plate styles",
+            "CHiQ vs Changhong Ruba badging on identical OEM chassis"
+          ],
+          "sample_verifications": [],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://changhongruba.com.pk/overview (T4)",
+        "https://priceoye.pk/ac/changhongruba (T2)",
+        "https://www.building-center.org/gree/ (T1, OEM-pattern reference)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "EcoStar",
+      "parent_corp": "DWP Group (Gree-affiliated) — CORRECTION: NOT Greaves",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "DWP Group / Gree-affiliated (NOT Greaves — corrected)",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Chinese-OEM (Gree-affiliated, DWP) data-plate date YYYY.MM. EcoStar is a DWP Group house brand; DWP is the official Gree PK partner/assembler.",
+          "modern_example": "Gree-style plate '2020.05' -> May 2020 (EcoStar-specific serial not verified).",
+          "modern_regex": "no decodable serial format; plate date field: ^(20\\d{2})[.\\-/](0[1-9]|1[0-2])$",
+          "year_position": "plate date first 4 digits (YYYY)",
+          "month_position": "plate date last 2 digits (MM)",
+          "nameplate_date_code_alternatives": "Gree-style YYYY.MM on plate; compressor plate date; DWP warranty/serial registration.",
+          "edge_cases": [
+            "CORRECTION: brief said 'Greaves Pakistan' but EcoStar is a DWP Group brand (Gree-affiliated); NO Greaves link — verify before shipping",
+            "Shares OEM with Gree/possibly Dawlance budget lines",
+            "Budget brand -> high secondhand/repaint churn"
+          ],
+          "sample_verifications": [],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://dwphome.pk/about (T4)",
+        "https://enggpost.com dwp-grees-expanding-footprint (T2)",
+        "https://www.building-center.org/gree/ (T1)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "Samsung Pakistan",
+      "parent_corp": "Samsung Electronics (official PK channel)",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "Samsung official PK channel; global letter-year scheme",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Global Samsung letter-year scheme likely transfers to PK official units. 15-char: char8=year letter; 10-11 char: char4. Chart 2001-2018 (later years undocumented).",
+          "modern_example": "Per global BiC/forensics charts; no PK-sold-unit serial photo confirmed.",
+          "modern_regex": "^[A-Z0-9]{7}([A-Z])[A-Z0-9]{6}[A-Z]$ (year letter pos8; low confidence on PK length)",
+          "year_position": "char8 (15-char) or char4 (10-11 char)",
+          "month_position": "not consistently published — rely on nameplate date if printed",
+          "nameplate_date_code_alternatives": "Samsung plate frequently prints explicit mfg date — check before decoding serial.",
+          "edge_cases": [
+            "Gray-market region-variant prefixes may not match PK stock",
+            "Secondhand/repainted/sanded nameplates -> rely on compressor/PCB date stamps",
+            "Outdoor serial on pipe/control box, indoor on side label — can differ"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "(letter-year chart cross-checked 2001-2018)",
+              "decoded": "consistent",
+              "source": "electrical-forensics/BiC (T2)",
+              "agree": "medium — PK applicability inferred"
+            }
+          ],
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.electrical-forensics.com/MajorAppliances/SamsungDateCodes.html (T2)",
+        "https://www.samsung.com/pk/air-conditioners/all-air-conditioners/ (T1)",
+        "https://pakref.com/shop/air-conditioners/full-dc-inverter-ac/samsung-2-ton-inverter-ac-ar18asf (T3)"
+      ],
+      "confidence": "medium",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "LG Pakistan",
+      "parent_corp": "LG Electronics (official PK channel via Pakref)",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "LG official PK channel (Pakref); global leading-digit scheme; T3 dual-rotary high-ambient compressors",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Global LG leading-digit scheme likely transfers to PK. char1=last digit of year (decade NOT encoded), chars2-3=month. Legacy EQ-style retired.",
+          "modern_example": "407HAVN79423 -> July 2024 or 2014 (decade ambiguous); no PK-market photo confirmed.",
+          "modern_regex": "^([0-9])([0-1][0-9])[A-Z0-9]{8,9}$ (year digit pos1, month pos2-3)",
+          "year_position": "position 1 (last digit of year only)",
+          "month_position": "positions 2-3 (01-12)",
+          "nameplate_date_code_alternatives": "Newer LG units carry separate UPC date tag below plate with full mfg date — preferred over ambiguous leading digit.",
+          "edge_cases": [
+            "Decade ambiguity (2014 vs 2024) core failure mode",
+            "Gray-import LG (Gulf/China spec) different model nomenclature than PK SKUs",
+            "Secondhand: faded thermal UPC date tags illegible in PK heat/dust"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "407HAVN79423",
+              "decoded": "July 2024 (BiC plate-confirmed globally)",
+              "source": "building-center.org (T1)",
+              "agree": "medium — PK applicability inferred"
+            }
+          ],
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/lg-hvac-age/ (T1)",
+        "https://pakref.com/brand/lg/ (T2)",
+        "https://www.electrical-forensics.com/MajorAppliances/LGDateCodes.html (T2)"
+      ],
+      "confidence": "medium",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "Panasonic (Pakistan)",
+      "parent_corp": "Panasonic (locally assembled, PEL after-sales)",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "Panasonic locally assembled in PK; PEL after-sales",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Nameplate prints EXPLICIT 'Production Year' 6-digit YYYYMM (201011 = Nov 2010) alongside model and separate serial. MOST RELIABLE of imported-major group.",
+          "modern_example": "Serial 0789107063 R with Production Year 201011 -> Nov 2010.",
+          "modern_regex": "Production Year field: ^(20[0-9]{2})(0[1-9]|1[0-2])$ (YYYY=group1, MM=group2)",
+          "year_position": "Production Year digits 1-4",
+          "month_position": "Production Year digits 5-6",
+          "nameplate_date_code_alternatives": "The explicit YYYYMM 'Production Year' IS the primary date source — direct read, no ambiguity.",
+          "edge_cases": [
+            "PK units now LOCALLY ASSEMBLED (PEL after-sales) — plate layout may differ from imported Japan/Malaysia stock",
+            "Gray-import Japan-domestic may use JP-market layout",
+            "Pro/AV Panasonic uses A-L month-letter scheme — do NOT apply to ACs"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "ProdYear 201011",
+              "decoded": "Nov 2010 (direct read)",
+              "source": "building-center.org (T1)",
+              "agree": "high (date field); PK-assembled layout unverified"
+            }
+          ],
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/panasonic-hvac-age/ (T1)",
+        "https://help.na.panasonic.com/answers/ (T1)",
+        "https://www.aysonline.pk/panasonic-ac/ (T3)"
+      ],
+      "confidence": "medium",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "Hisense Pakistan",
+      "parent_corp": "Hisense (launched PK ~2024-25 via Airlink; after-sales Smart Climate Solutions)",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "Hisense official PK via Airlink Communication; no documented consumer date code",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "UNKNOWN / undocumented for consumers. No published Hisense AC serial date-code chart found (BiC has no Hisense HVAC page).",
+          "modern_example": "none confirmed.",
+          "modern_regex": "unknown — do not fabricate",
+          "year_position": "unknown",
+          "month_position": "unknown",
+          "nameplate_date_code_alternatives": "Look for explicit manufacture/production date on plate or barcode/box label; Hisense often prints date on packaging/PCB. After-sales (Smart Climate Solutions) may have internal serial->date map.",
+          "edge_cases": [
+            "Formally launched PK ~2024-25 -> installed base skews very new; pre-launch units gray-imported",
+            "Gray vs official-Airlink stock may carry different prefixes",
+            "Treat serial as opaque until a PK unit physically decoded"
+          ],
+          "sample_verifications": [],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://www.brecorder.com/news/amp/40424387 (T2)",
+        "https://hisensepakistan.com/contact/ (T4)",
+        "https://www.climatesolutions.com.pk/top-cities-in-pakistan-offering-official-hisense-after-sales-service-centers/ (T4)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "Daikin (Pakistan)",
+      "parent_corp": "Daikin (Malaysia/Thailand-built imports for PK)",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "Malaysia/Thailand-built premium import; R-32 champion",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Daikin multi-style. PK official units mostly Malaysia/Thai-built (FTKF/FTKC R-32, FTXC). Style2 (4-letter prefix+YYMM) and Style10 (leading YYMM) most relevant; Style1 relies on printed 'MFG. DATE YYYY-M'.",
+          "modern_example": "Style2 FBOU0905048200 -> May 2009; Style10 1602393269 -> Feb 2016. No PK-market nameplate photo verified.",
+          "modern_regex": "Style2: ^[A-Z]{4}(\\d{2})(\\d{2})\\d+$ ; Style10: ^(\\d{2})(\\d{2})\\d{6}$",
+          "year_position": "Style2 chars5-6; Style10 chars1-2",
+          "month_position": "Style2 chars7-8; Style10 chars3-4",
+          "nameplate_date_code_alternatives": "Style1 carries explicit 'MFG. DATE YYYY-M' field — photograph WHOLE plate. SEA-built plates often print separate production-date/lot field.",
+          "edge_cases": [
+            "PK official = Malaysia/Thai-built (NOT Japan, NOT local-assembled)",
+            "Daikin changes coding by plant/line/year — no single regex; fall back to printed MFG DATE",
+            "Japan-built gray imports carry origin-region serial",
+            "China-built (Gree-partnership) units may differ"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "FBOU0905048200",
+              "decoded": "May 2009",
+              "source": "BiC (T1)",
+              "agree": "medium"
+            },
+            {
+              "serial": "1602393269",
+              "decoded": "Feb 2016",
+              "source": "BiC (T1)",
+              "agree": "medium"
+            }
+          ],
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/daikin-hvac-age/ (T1)",
+        "https://www.daikin.com.my/product/ftkf-series-r32/ (T4)",
+        "https://pakref.com/brand/daikin/ (T2)"
+      ],
+      "confidence": "medium",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "Mitsubishi (Pakistan)",
+      "parent_corp": "Mitsubishi Electric AND Mitsubishi Heavy Industries (often conflated in PK)",
+      "market": "PK",
+      "category": "split/inverter_split",
+      "oem_lineage": "Japan/Thailand-built premium import; Electric + Heavy both sold in PK",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Japanese fiscal-year. char1=last digit of fiscal year (DECADE AMBIGUOUS), char2=month (1-9=Jan-Sep; X/Y/Z=Oct/Nov/Dec). Style2: serials ending 'T'. NOTE PK 'Mitsubishi' spans Electric (MSZ/MS) AND Heavy (SRK) — different companies/schemes.",
+          "modern_example": "8XD00488D -> month X(Oct), year-digit8 (2008/2018 ambiguous). No PK nameplate photo verified.",
+          "modern_regex": "Style1: ^(\\d)([1-9XYZ])[A-Z0-9].*$ ; Style2: ^(\\d)\\d{6}\\s?T$",
+          "year_position": "char1 (last digit of fiscal year only — decade NOT encoded)",
+          "month_position": "char2 (1-9, X, Y, Z)",
+          "nameplate_date_code_alternatives": "Use refrigerant type (R-22 vs R-32) on plate as decade disambiguator; some plates carry explicit yyyy/mm.",
+          "edge_cases": [
+            "DECADE AMBIGUITY: '6'=2006/2016 — cross-check refrigerant+condition+ANSI",
+            "Fiscal Apr-Mar offset",
+            "Mitsubishi Electric (MSZ) vs Heavy (SRK) may use DIFFERENT schemes — confirm company first",
+            "char2 can be number OR letter",
+            "Style2 'T'-suffix rule only for serials ending T"
+          ],
+          "sample_verifications": [
+            {
+              "serial": "8XD00488D",
+              "decoded": "Oct, year-digit8 (2008/2018)",
+              "source": "BiC (T1)",
+              "agree": "medium — decade ambiguous"
+            }
+          ],
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/mitsubishi-hvac-age/ (T1)",
+        "https://priceoye.pk/ac/mitsubishi (T3)",
+        "https://yasirelectronics.com/product-category/mitsubishi-air-conditioners/ (T2)"
+      ],
+      "confidence": "medium",
+      "serial_capture_required_from_field": true,
+      "field_collection_task": "Murtaza — collect real serial + full-nameplate photos from PK WhatsApp HVAC contractor groups (Karachi/Lahore/Multan) to build a PK serial-sample corpus; currently ZERO verified PK samples."
+    },
+    {
+      "canonical_name": "Frigidaire HVAC",
+      "parent_corp": "Nortek Global HVAC (formerly Nordyne; Madison Industries; being acquired by Rheem Manufacturing per Sept 2024)",
+      "oem_siblings": [
+        "Maytag HVAC",
+        "Westinghouse HVAC",
+        "NuTone HVAC",
+        "Gibson HVAC",
+        "Tappan HVAC",
+        "Kelvinator HVAC",
+        "Philco HVAC",
+        "Intertherm HVAC",
+        "Miller HVAC",
+        "Nordyne",
+        "Broan"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Nortek standard format documented across the family (building-center per-brand pages + hvacdecoder Nordyne decoder); independently verified by InterNACHI real sample GSD021201683 -> Dec 2002.",
+      "product_lines": [
+        "F-Series premium",
+        "E-Series mid",
+        "W-Series economy",
+        "Essentials Series",
+        "package units"
+      ],
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Nortek standard 12-char serial: 3 letters (plant/division) + 9 digits. Year = digits 4-5, month = digits 6-7.",
+          "modern_example": "FGA030310579 -> 2003-10 (Oct 2003)",
+          "modern_year_range": [
+            1998,
+            2026
+          ],
+          "modern_regex": "^[A-Z]{3}(\\d{2})(\\d{2})\\d{5}$",
+          "year_position": "digits 4-5",
+          "month_position": "digits 6-7",
+          "legacy_pattern": "Single-letter 9-char legacy (year=digits 3-4); dash format (year=digits 4-5). Pre-1998 plates may use obsolete single-letter-month schemes.",
+          "legacy_year_range": [
+            1970,
+            1998
+          ],
+          "nameplate_date_code_alternatives": "Printed manufacture date on data plate when present; refrigerant type as decade anchor.",
+          "decade_disambiguation": "2-digit YY ambiguous; disambiguate via refrigerant: R-22=>pre-2010, R-410A=>2010-2024, R-454B=>2025+ (Nortek chose R-454B); cross-check model era.",
+          "edge_cases": [
+            "Style 2 single-letter 9-char (e.g. F3891 4228): year=digits 3-4 ('89'=1989), month not reliably encoded.",
+            "Style 3 dash format (e.g. G6R9905-05028): year=digits 4-5 ('99'=1999), month=6-7.",
+            "Detect by shape before decoding: triple-alpha+9digit => year 4-5; single-alpha 9-char => year 3-4."
+          ],
+          "sample_verifications": [
+            {
+              "serial": "FGA030310579",
+              "decoded": "2003-10 (Oct 2003)",
+              "source": "building-center.org/frigidaire-hvac-age (T2)",
+              "agree": true
+            },
+            {
+              "serial": "GSD021201683",
+              "decoded": "2002-12 (Dec 2002), Nordyne-family model GS2BA",
+              "source": "forum.nachi.org (T2) — 2 inspectors confirm",
+              "agree": true
+            },
+            {
+              "serial": "JSF050509819",
+              "decoded": "2005-05 (May 2005)",
+              "source": "forum.nachi.org (T2)",
+              "agree": true
+            },
+            {
+              "serial": "KGD091002239",
+              "decoded": "2009-10 (Oct 2009)",
+              "source": "forum.nachi.org (T2)",
+              "agree": true
+            }
+          ],
+          "confidence": "medium"
+        },
+        "package_unit": {
+          "modern_pattern": "Same Nortek 12-char serial (year=4-5, month=6-7).",
+          "note": "howtolookatahouse confirms identical Nortek format on package units; rooftop plate location.",
+          "confidence": "medium"
+        },
+        "heat_pump": {
+          "modern_pattern": "Same Nortek 12-char serial (year=4-5, month=6-7).",
+          "note": "Same family format; reversing-valve replacement cost adder applies.",
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/frigidaire-hvac-age/ (T2)",
+        "https://www.howtolookatahouse.com/Blog/Entries/2018/6/frigidaire-serial (T2)",
+        "https://forum.nachi.org/t/age-of-nordyne-a-c-unit/4372 (T2)"
+      ],
+      "confidence": "medium",
+      "serial_capture_required_from_field": false
+    },
+    {
+      "canonical_name": "Maytag HVAC",
+      "parent_corp": "Nortek Global HVAC (formerly Nordyne; Madison Industries; being acquired by Rheem Manufacturing per Sept 2024)",
+      "oem_siblings": [
+        "Frigidaire HVAC",
+        "Westinghouse HVAC",
+        "NuTone HVAC",
+        "Gibson HVAC",
+        "Tappan HVAC",
+        "Kelvinator HVAC",
+        "Philco HVAC",
+        "Intertherm HVAC",
+        "Miller HVAC",
+        "Nordyne",
+        "Broan"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Nortek standard format documented across the family (building-center per-brand pages + hvacdecoder Nordyne decoder); independently verified by InterNACHI real sample GSD021201683 -> Dec 2002.",
+      "product_lines": [
+        "split AC condensers",
+        "heat pumps",
+        "gas furnaces",
+        "air handlers",
+        "package units"
+      ],
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Nortek standard 12-char serial: 3 letters (plant/division) + 9 digits. Year = digits 4-5, month = digits 6-7.",
+          "modern_example": "FGA030310579 -> 2003-10",
+          "modern_year_range": [
+            1998,
+            2026
+          ],
+          "modern_regex": "^[A-Z]{3}(\\d{2})(\\d{2})\\d{5}$",
+          "year_position": "digits 4-5",
+          "month_position": "digits 6-7",
+          "legacy_pattern": "Single-letter 9-char legacy (year=digits 3-4); dash format (year=digits 4-5). Pre-1998 plates may use obsolete single-letter-month schemes.",
+          "legacy_year_range": [
+            1970,
+            1998
+          ],
+          "nameplate_date_code_alternatives": "Printed manufacture date on data plate when present; refrigerant type as decade anchor.",
+          "decade_disambiguation": "2-digit YY ambiguous; disambiguate via refrigerant: R-22=>pre-2010, R-410A=>2010-2024, R-454B=>2025+ (Nortek chose R-454B); cross-check model era.",
+          "edge_cases": [
+            "Style 2 single-letter 9-char (e.g. F3891 4228): year=digits 3-4 ('89'=1989), month not reliably encoded.",
+            "Style 3 dash format (e.g. G6R9905-05028): year=digits 4-5 ('99'=1999), month=6-7.",
+            "Detect by shape before decoding: triple-alpha+9digit => year 4-5; single-alpha 9-char => year 3-4.",
+            "Maytag HVAC is a Nortek-licensed brand, NOT built by Whirlpool/Maytag appliance division — do NOT use Whirlpool appliance date-letter codes.",
+            "Serial is 3 letters + 9 numbers."
+          ],
+          "sample_verifications": [
+            {
+              "serial": "FGA030310579",
+              "decoded": "2003-10",
+              "source": "building-center.org/maytag-hvac-age (T2)",
+              "agree": true
+            },
+            {
+              "serial": "G6R9905-05028",
+              "decoded": "1999-05 (May 1999)",
+              "source": "building-center.org/maytag-hvac-age + hvacdecoder.com (T2)",
+              "agree": true
+            },
+            {
+              "serial": "GSD021201683",
+              "decoded": "2002-12 (Nordyne sibling)",
+              "source": "forum.nachi.org (T2)",
+              "agree": true
+            }
+          ],
+          "confidence": "medium"
+        },
+        "package_unit": {
+          "modern_pattern": "Same Nortek 12-char serial (year=4-5, month=6-7).",
+          "note": "howtolookatahouse confirms identical Nortek format on package units; rooftop plate location.",
+          "confidence": "medium"
+        },
+        "heat_pump": {
+          "modern_pattern": "Same Nortek 12-char serial (year=4-5, month=6-7).",
+          "note": "Same family format; reversing-valve replacement cost adder applies.",
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/maytag-hvac-age/ (T2)",
+        "https://www.howtolookatahouse.com/Blog/Entries/2020/4/maytag-serial (T2)",
+        "https://www.hvacdecoder.com/nordyne-serial-number-decoder.html (T2)"
+      ],
+      "confidence": "medium",
+      "serial_capture_required_from_field": false
+    },
+    {
+      "canonical_name": "Westinghouse HVAC",
+      "parent_corp": "Nortek Global HVAC (formerly Nordyne; Madison Industries; being acquired by Rheem Manufacturing per Sept 2024)",
+      "oem_siblings": [
+        "Frigidaire HVAC",
+        "Maytag HVAC",
+        "NuTone HVAC",
+        "Gibson HVAC",
+        "Tappan HVAC",
+        "Kelvinator HVAC",
+        "Philco HVAC",
+        "Intertherm HVAC",
+        "Miller HVAC",
+        "Nordyne",
+        "Broan"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Nortek standard format documented across the family (building-center per-brand pages + hvacdecoder Nordyne decoder); independently verified by InterNACHI real sample GSD021201683 -> Dec 2002.",
+      "product_lines": [
+        "split AC condensers",
+        "heat pumps",
+        "gas furnaces",
+        "air handlers",
+        "package units"
+      ],
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Nortek standard 12-char serial: 3 letters (plant/division) + 9 digits. Year = digits 4-5, month = digits 6-7.",
+          "modern_example": "FGA030310579 -> 2003-10 (Style 1)",
+          "modern_year_range": [
+            1998,
+            2026
+          ],
+          "modern_regex": "^[A-Z]{3}(\\d{2})(\\d{2})\\d{5}$",
+          "year_position": "digits 4-5",
+          "month_position": "digits 6-7",
+          "legacy_pattern": "Single-letter 9-char legacy (year=digits 3-4); dash format (year=digits 4-5). Pre-1998 plates may use obsolete single-letter-month schemes.",
+          "legacy_year_range": [
+            1970,
+            1998
+          ],
+          "nameplate_date_code_alternatives": "Printed manufacture date on data plate when present; refrigerant type as decade anchor.",
+          "decade_disambiguation": "2-digit YY ambiguous; disambiguate via refrigerant: R-22=>pre-2010, R-410A=>2010-2024, R-454B=>2025+ (Nortek chose R-454B); cross-check model era.",
+          "edge_cases": [
+            "Style 2 single-letter 9-char (e.g. F3891 4228): year=digits 3-4 ('89'=1989), month not reliably encoded.",
+            "Style 3 dash format (e.g. G6R9905-05028): year=digits 4-5 ('99'=1999), month=6-7.",
+            "Detect by shape before decoding: triple-alpha+9digit => year 4-5; single-alpha 9-char => year 3-4.",
+            "CONFIRMED: some Westinghouse plates use chars 3-4 for year (Style 2 'F3891 4228'=1989) — verify shape before decoding."
+          ],
+          "sample_verifications": [
+            {
+              "serial": "FGA030310579",
+              "decoded": "2003-10 (Style 1)",
+              "source": "building-center.org/westinghouse-hvac-age (T2)",
+              "agree": true
+            },
+            {
+              "serial": "F3891 4228",
+              "decoded": "1989 (Style 2, year=digits 3-4='89'; month not encoded)",
+              "source": "building-center.org/westinghouse-hvac-age (T2)",
+              "agree": true
+            },
+            {
+              "serial": "G6R9905-05028",
+              "decoded": "1999-05 (Style 3)",
+              "source": "building-center.org + hvacdecoder.com (T2)",
+              "agree": true
+            },
+            {
+              "serial": "GSD021201683",
+              "decoded": "2002-12 (Nordyne sibling)",
+              "source": "forum.nachi.org (T2)",
+              "agree": true
+            }
+          ],
+          "confidence": "medium"
+        },
+        "package_unit": {
+          "modern_pattern": "Same Nortek 12-char serial (year=4-5, month=6-7).",
+          "note": "howtolookatahouse confirms identical Nortek format on package units; rooftop plate location.",
+          "confidence": "medium"
+        },
+        "heat_pump": {
+          "modern_pattern": "Same Nortek 12-char serial (year=4-5, month=6-7).",
+          "note": "Same family format; reversing-valve replacement cost adder applies.",
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/westinghouse-hvac-age/ (T2)",
+        "https://www.hvacdecoder.com/nordyne-serial-number-decoder.html (T2)",
+        "https://forum.nachi.org/t/age-of-nordyne-a-c-unit/4372 (T2)"
+      ],
+      "confidence": "medium",
+      "serial_capture_required_from_field": false
+    },
+    {
+      "canonical_name": "NuTone HVAC",
+      "parent_corp": "Nortek Global HVAC (formerly Nordyne; Madison Industries; being acquired by Rheem Manufacturing per Sept 2024)",
+      "oem_siblings": [
+        "Frigidaire HVAC",
+        "Maytag HVAC",
+        "Westinghouse HVAC",
+        "Gibson HVAC",
+        "Tappan HVAC",
+        "Kelvinator HVAC",
+        "Philco HVAC",
+        "Intertherm HVAC",
+        "Miller HVAC",
+        "Nordyne",
+        "Broan"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Nortek standard format documented across the family (building-center per-brand pages + hvacdecoder Nordyne decoder); independently verified by InterNACHI real sample GSD021201683 -> Dec 2002.",
+      "product_lines": [
+        "split AC condensers",
+        "heat pumps",
+        "gas furnaces",
+        "air handlers",
+        "package units"
+      ],
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Nortek standard 12-char serial: 3 letters (plant/division) + 9 digits. Year = digits 4-5, month = digits 6-7.",
+          "modern_example": "FGA030310579 -> 2003-10 (Style 1)",
+          "modern_year_range": [
+            1998,
+            2026
+          ],
+          "modern_regex": "^[A-Z]{3}(\\d{2})(\\d{2})\\d{5}$",
+          "year_position": "digits 4-5",
+          "month_position": "digits 6-7",
+          "legacy_pattern": "Single-letter 9-char legacy (year=digits 3-4); dash format (year=digits 4-5). Pre-1998 plates may use obsolete single-letter-month schemes.",
+          "legacy_year_range": [
+            1970,
+            1998
+          ],
+          "nameplate_date_code_alternatives": "Printed manufacture date on data plate when present; refrigerant type as decade anchor.",
+          "decade_disambiguation": "2-digit YY ambiguous; disambiguate via refrigerant: R-22=>pre-2010, R-410A=>2010-2024, R-454B=>2025+ (Nortek chose R-454B); cross-check model era.",
+          "edge_cases": [
+            "Style 2 single-letter 9-char (e.g. F3891 4228): year=digits 3-4 ('89'=1989), month not reliably encoded.",
+            "Style 3 dash format (e.g. G6R9905-05028): year=digits 4-5 ('99'=1999), month=6-7.",
+            "Detect by shape before decoding: triple-alpha+9digit => year 4-5; single-alpha 9-char => year 3-4.",
+            "Branch: if char3 ALPHA -> year=chars 4-5; if char3 NUMERIC -> year=chars 3-4.",
+            "NuTone also sells bath fans/ventilation (out of scope) — only residential AC/HP covered."
+          ],
+          "sample_verifications": [
+            {
+              "serial": "FGA030310579",
+              "decoded": "2003-10 (Style 1)",
+              "source": "building-center.org/nutone-hvac-age (T2)",
+              "agree": true
+            },
+            {
+              "serial": "F3891 4228",
+              "decoded": "1989 (char3-numeric branch, year=digits 3-4)",
+              "source": "building-center.org/nutone-hvac-age (T2)",
+              "agree": true
+            }
+          ],
+          "confidence": "medium"
+        },
+        "heat_pump": {
+          "modern_pattern": "Same Nortek 12-char serial (year=4-5, month=6-7).",
+          "note": "Same family format; reversing-valve replacement cost adder applies.",
+          "confidence": "medium"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/nutone-hvac-age/ (T2)",
+        "https://www.howtolookatahouse.com/Blog/Entries/2020/11/nutone-serial (T2)",
+        "https://www.hvacdecoder.com/nordyne-serial-number-decoder.html (T2)"
+      ],
+      "confidence": "medium",
+      "serial_capture_required_from_field": false
+    },
+    {
+      "canonical_name": "Gibson HVAC",
+      "parent_corp": "Nortek Global HVAC (formerly Nordyne; Madison Industries; being acquired by Rheem Manufacturing per Sept 2024)",
+      "oem_siblings": [
+        "Frigidaire HVAC",
+        "Maytag HVAC",
+        "Westinghouse HVAC",
+        "NuTone HVAC",
+        "Tappan HVAC",
+        "Kelvinator HVAC",
+        "Philco HVAC",
+        "Intertherm HVAC",
+        "Miller HVAC",
+        "Nordyne",
+        "Broan"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Nortek standard format documented across the family (building-center per-brand pages + hvacdecoder Nordyne decoder); independently verified by InterNACHI real sample GSD021201683 -> Dec 2002.",
+      "product_lines": [
+        "split AC condensers",
+        "heat pumps",
+        "gas furnaces",
+        "air handlers",
+        "package units"
+      ],
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Nortek standard 12-char serial: 3 letters (plant/division) + 9 digits. Year = digits 4-5, month = digits 6-7.",
+          "modern_example": "JSA060103994 -> 2006-01 (Jan 2006)",
+          "modern_year_range": [
+            1998,
+            2026
+          ],
+          "modern_regex": "^[A-Z]{3}(\\d{2})(\\d{2})\\d{5}$",
+          "year_position": "digits 4-5",
+          "month_position": "digits 6-7",
+          "legacy_pattern": "Single-letter 9-char legacy (year=digits 3-4); dash format (year=digits 4-5). Pre-1998 plates may use obsolete single-letter-month schemes.",
+          "legacy_year_range": [
+            1970,
+            1998
+          ],
+          "nameplate_date_code_alternatives": "Printed manufacture date on data plate when present; refrigerant type as decade anchor.",
+          "decade_disambiguation": "2-digit YY ambiguous; disambiguate via refrigerant: R-22=>pre-2010, R-410A=>2010-2024, R-454B=>2025+ (Nortek chose R-454B); cross-check model era.",
+          "edge_cases": [
+            "Style 2 single-letter 9-char (e.g. F3891 4228): year=digits 3-4 ('89'=1989), month not reliably encoded.",
+            "Style 3 dash format (e.g. G6R9905-05028): year=digits 4-5 ('99'=1999), month=6-7.",
+            "Detect by shape before decoding: triple-alpha+9digit => year 4-5; single-alpha 9-char => year 3-4.",
+            "Some Gibson 'unitary' plates begin with 2 letters rather than 3 (NACHI) — verify field shape."
+          ],
+          "sample_verifications": [
+            {
+              "serial": "JSA060103994",
+              "decoded": "2006-01 (Jan 2006)",
+              "source": "building-center.org/gibson-hvac-age (T2)",
+              "agree": true
+            },
+            {
+              "serial": "JSF050509819",
+              "decoded": "2005-05 (Gibson/Nordyne 'JS' family)",
+              "source": "forum.nachi.org (T2)",
+              "agree": true
+            }
+          ],
+          "confidence": "medium-low"
+        },
+        "heat_pump": {
+          "modern_pattern": "Same Nortek 12-char serial (year=4-5, month=6-7).",
+          "note": "Same family format; reversing-valve replacement cost adder applies.",
+          "confidence": "medium-low"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/gibson-hvac-age/ (T2)",
+        "https://forum.nachi.org/t/age-of-gibson-unitary-ac-unit-2-letters-beginning-serial/226963 (T2)",
+        "https://www.hvacdecoder.com/nordyne-serial-number-decoder.html (T2)"
+      ],
+      "confidence": "medium-low",
+      "serial_capture_required_from_field": false
+    },
+    {
+      "canonical_name": "Tappan HVAC",
+      "parent_corp": "Nortek Global HVAC (formerly Nordyne; Madison Industries; being acquired by Rheem Manufacturing per Sept 2024)",
+      "oem_siblings": [
+        "Frigidaire HVAC",
+        "Maytag HVAC",
+        "Westinghouse HVAC",
+        "NuTone HVAC",
+        "Gibson HVAC",
+        "Kelvinator HVAC",
+        "Philco HVAC",
+        "Intertherm HVAC",
+        "Miller HVAC",
+        "Nordyne",
+        "Broan"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Nortek standard format documented across the family (building-center per-brand pages + hvacdecoder Nordyne decoder); independently verified by InterNACHI real sample GSD021201683 -> Dec 2002.",
+      "product_lines": [
+        "split AC condensers",
+        "heat pumps",
+        "gas furnaces",
+        "air handlers",
+        "package units"
+      ],
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Nortek standard 12-char serial: 3 letters (plant/division) + 9 digits. Year = digits 4-5, month = digits 6-7.",
+          "modern_example": "FGA030310579 -> 2003-10 (Style 1)",
+          "modern_year_range": [
+            1998,
+            2026
+          ],
+          "modern_regex": "^[A-Z]{3}(\\d{2})(\\d{2})\\d{5}$",
+          "year_position": "digits 4-5",
+          "month_position": "digits 6-7",
+          "legacy_pattern": "Single-letter 9-char legacy (year=digits 3-4); dash format (year=digits 4-5). Pre-1998 plates may use obsolete single-letter-month schemes.",
+          "legacy_year_range": [
+            1970,
+            1998
+          ],
+          "nameplate_date_code_alternatives": "Printed manufacture date on data plate when present; refrigerant type as decade anchor.",
+          "decade_disambiguation": "2-digit YY ambiguous; disambiguate via refrigerant: R-22=>pre-2010, R-410A=>2010-2024, R-454B=>2025+ (Nortek chose R-454B); cross-check model era.",
+          "edge_cases": [
+            "Style 2 single-letter 9-char (e.g. F3891 4228): year=digits 3-4 ('89'=1989), month not reliably encoded.",
+            "Style 3 dash format (e.g. G6R9905-05028): year=digits 4-5 ('99'=1999), month=6-7.",
+            "Detect by shape before decoding: triple-alpha+9digit => year 4-5; single-alpha 9-char => year 3-4.",
+            "DISPATCH CLAIM NOT CONFIRMED: building-center Tappan page does NOT document a 'MMYY at start/end' Tappan-specific format — only standard Nortek styles. Treat MMYY claim as unverified; detect by shape."
+          ],
+          "sample_verifications": [
+            {
+              "serial": "FGA030310579",
+              "decoded": "2003-10 (Style 1)",
+              "source": "building-center.org/tappan-hvac-age (T2)",
+              "agree": true
+            },
+            {
+              "serial": "F3891 4228",
+              "decoded": "1989 (Style 2, year=digits 3-4)",
+              "source": "building-center.org/tappan-hvac-age (T2)",
+              "agree": true
+            }
+          ],
+          "confidence": "medium-low"
+        },
+        "heat_pump": {
+          "modern_pattern": "Same Nortek 12-char serial (year=4-5, month=6-7).",
+          "note": "Same family format; reversing-valve replacement cost adder applies.",
+          "confidence": "medium-low"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/tappan-hvac-age/ (T2)",
+        "https://www.hvacdecoder.com/nordyne-serial-number-decoder.html (T2)",
+        "https://www.howtolookatahouse.com/Blog/Entries/2019/5/nortek-serial (T2)"
+      ],
+      "confidence": "medium-low",
+      "serial_capture_required_from_field": false
+    },
+    {
+      "canonical_name": "Kelvinator HVAC",
+      "parent_corp": "Nortek Global HVAC (formerly Nordyne; Madison Industries; being acquired by Rheem Manufacturing per Sept 2024)",
+      "oem_siblings": [
+        "Frigidaire HVAC",
+        "Maytag HVAC",
+        "Westinghouse HVAC",
+        "NuTone HVAC",
+        "Gibson HVAC",
+        "Tappan HVAC",
+        "Philco HVAC",
+        "Intertherm HVAC",
+        "Miller HVAC",
+        "Nordyne",
+        "Broan"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Nortek standard format documented across the family (building-center per-brand pages + hvacdecoder Nordyne decoder); independently verified by InterNACHI real sample GSD021201683 -> Dec 2002.",
+      "product_lines": [
+        "split AC condensers",
+        "heat pumps",
+        "gas furnaces",
+        "air handlers",
+        "package units"
+      ],
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Nortek standard 12-char serial: 3 letters (plant/division) + 9 digits. Year = digits 4-5, month = digits 6-7.",
+          "modern_example": "UNCONFIRMED — no brand-specific real serial located",
+          "modern_year_range": [
+            1998,
+            2026
+          ],
+          "modern_regex": "^[A-Z]{3}(\\d{2})(\\d{2})\\d{5}$",
+          "year_position": "digits 4-5",
+          "month_position": "digits 6-7",
+          "legacy_pattern": "Single-letter 9-char legacy (year=digits 3-4); dash format (year=digits 4-5). Pre-1998 plates may use obsolete single-letter-month schemes.",
+          "legacy_year_range": [
+            1970,
+            1998
+          ],
+          "nameplate_date_code_alternatives": "Printed manufacture date on data plate when present; refrigerant type as decade anchor.",
+          "decade_disambiguation": "2-digit YY ambiguous; disambiguate via refrigerant: R-22=>pre-2010, R-410A=>2010-2024, R-454B=>2025+ (Nortek chose R-454B); cross-check model era.",
+          "edge_cases": [
+            "Style 2 single-letter 9-char (e.g. F3891 4228): year=digits 3-4 ('89'=1989), month not reliably encoded.",
+            "Style 3 dash format (e.g. G6R9905-05028): year=digits 4-5 ('99'=1999), month=6-7.",
+            "Detect by shape before decoding: triple-alpha+9digit => year 4-5; single-alpha 9-char => year 3-4.",
+            "Presumed Nortek-standard format but NO brand-specific sample exists — confidence unknown; route to plate-date/homeowner."
+          ],
+          "sample_verifications": [
+            {
+              "serial": "(none found)",
+              "decoded": "n/a — no Kelvinator-specific HVAC serial sample located",
+              "source": "Nortek sibling lists only (T2)",
+              "agree": null
+            }
+          ],
+          "confidence": "unknown"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/frigidaire-hvac-age/ (T2)",
+        "https://www.nordyne.com/ (T4)",
+        "https://www.hvacdecoder.com/nordyne-serial-number-decoder.html (T2)"
+      ],
+      "confidence": "unknown",
+      "serial_capture_required_from_field": true
+    },
+    {
+      "canonical_name": "Philco HVAC",
+      "parent_corp": "Nortek Global HVAC (formerly Nordyne; Madison Industries; being acquired by Rheem Manufacturing per Sept 2024)",
+      "oem_siblings": [
+        "Frigidaire HVAC",
+        "Maytag HVAC",
+        "Westinghouse HVAC",
+        "NuTone HVAC",
+        "Gibson HVAC",
+        "Tappan HVAC",
+        "Kelvinator HVAC",
+        "Intertherm HVAC",
+        "Miller HVAC",
+        "Nordyne",
+        "Broan"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Nortek standard format documented across the family (building-center per-brand pages + hvacdecoder Nordyne decoder); independently verified by InterNACHI real sample GSD021201683 -> Dec 2002.",
+      "product_lines": [
+        "split AC condensers",
+        "heat pumps",
+        "gas furnaces",
+        "air handlers",
+        "package units"
+      ],
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Nortek standard 12-char serial: 3 letters (plant/division) + 9 digits. Year = digits 4-5, month = digits 6-7.",
+          "modern_example": "UNCONFIRMED — no brand-specific real serial located",
+          "modern_year_range": [
+            1998,
+            2026
+          ],
+          "modern_regex": "^[A-Z]{3}(\\d{2})(\\d{2})\\d{5}$",
+          "year_position": "digits 4-5",
+          "month_position": "digits 6-7",
+          "legacy_pattern": "Single-letter 9-char legacy (year=digits 3-4); dash format (year=digits 4-5). Pre-1998 plates may use obsolete single-letter-month schemes.",
+          "legacy_year_range": [
+            1970,
+            1998
+          ],
+          "nameplate_date_code_alternatives": "Printed manufacture date on data plate when present; refrigerant type as decade anchor.",
+          "decade_disambiguation": "2-digit YY ambiguous; disambiguate via refrigerant: R-22=>pre-2010, R-410A=>2010-2024, R-454B=>2025+ (Nortek chose R-454B); cross-check model era.",
+          "edge_cases": [
+            "Style 2 single-letter 9-char (e.g. F3891 4228): year=digits 3-4 ('89'=1989), month not reliably encoded.",
+            "Style 3 dash format (e.g. G6R9905-05028): year=digits 4-5 ('99'=1999), month=6-7.",
+            "Detect by shape before decoding: triple-alpha+9digit => year 4-5; single-alpha 9-char => year 3-4.",
+            "Very low-volume/legacy brand; format unverified."
+          ],
+          "sample_verifications": [
+            {
+              "serial": "(none found)",
+              "decoded": "n/a — no Philco-specific HVAC serial sample located",
+              "source": "Nortek sibling lists only (T2)",
+              "agree": null
+            }
+          ],
+          "confidence": "unknown"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/frigidaire-hvac-age/ (T2)",
+        "https://www.hvacdecoder.com/nordyne-serial-number-decoder.html (T2)",
+        "https://www.nordyne.com/ (T4)"
+      ],
+      "confidence": "unknown",
+      "serial_capture_required_from_field": true
+    },
+    {
+      "canonical_name": "Intertherm HVAC",
+      "parent_corp": "Nortek Global HVAC (formerly Nordyne; Madison Industries; being acquired by Rheem Manufacturing per Sept 2024)",
+      "oem_siblings": [
+        "Frigidaire HVAC",
+        "Maytag HVAC",
+        "Westinghouse HVAC",
+        "NuTone HVAC",
+        "Gibson HVAC",
+        "Tappan HVAC",
+        "Kelvinator HVAC",
+        "Philco HVAC",
+        "Miller HVAC",
+        "Nordyne",
+        "Broan"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Nortek standard format documented across the family (building-center per-brand pages + hvacdecoder Nordyne decoder); independently verified by InterNACHI real sample GSD021201683 -> Dec 2002.",
+      "product_lines": [
+        "split AC condensers",
+        "heat pumps",
+        "gas furnaces",
+        "air handlers",
+        "package units"
+      ],
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Nortek standard 12-char serial: 3 letters (plant/division) + 9 digits. Year = digits 4-5, month = digits 6-7.",
+          "modern_example": "(no verbatim plate serial captured) -> format = Nortek standard (year 4-5, month 6-7)",
+          "modern_year_range": [
+            1998,
+            2026
+          ],
+          "modern_regex": "^[A-Z]{3}(\\d{2})(\\d{2})\\d{5}$",
+          "year_position": "digits 4-5",
+          "month_position": "digits 6-7",
+          "legacy_pattern": "Single-letter 9-char legacy (year=digits 3-4); dash format (year=digits 4-5). Pre-1998 plates may use obsolete single-letter-month schemes.",
+          "legacy_year_range": [
+            1970,
+            1998
+          ],
+          "nameplate_date_code_alternatives": "Printed manufacture date on data plate when present; refrigerant type as decade anchor.",
+          "decade_disambiguation": "2-digit YY ambiguous; disambiguate via refrigerant: R-22=>pre-2010, R-410A=>2010-2024, R-454B=>2025+ (Nortek chose R-454B); cross-check model era.",
+          "edge_cases": [
+            "Style 2 single-letter 9-char (e.g. F3891 4228): year=digits 3-4 ('89'=1989), month not reliably encoded.",
+            "Style 3 dash format (e.g. G6R9905-05028): year=digits 4-5 ('99'=1999), month=6-7.",
+            "Detect by shape before decoding: triple-alpha+9digit => year 4-5; single-alpha 9-char => year 3-4.",
+            "Mobile/manufactured-home specialty; lower Houston relevance.",
+            "Intertherm WATER-HEATER serials use a different scheme — do not cross-apply."
+          ],
+          "sample_verifications": [
+            {
+              "serial": "(no verbatim plate serial captured)",
+              "decoded": "format = Nortek standard (year 4-5, month 6-7)",
+              "source": "howtolookatahouse Nortek/Miller pages + sibling lists (T2)",
+              "agree": null
+            }
+          ],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/intertherm-hvac-age/ (T2)",
+        "https://www.howtolookatahouse.com/Blog/Entries/2019/5/nortek-serial (T2)",
+        "https://www.stewartchi.com/intertherm.html (T3)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true
+    },
+    {
+      "canonical_name": "Miller HVAC",
+      "parent_corp": "Nortek Global HVAC (formerly Nordyne; Madison Industries; being acquired by Rheem Manufacturing per Sept 2024)",
+      "oem_siblings": [
+        "Frigidaire HVAC",
+        "Maytag HVAC",
+        "Westinghouse HVAC",
+        "NuTone HVAC",
+        "Gibson HVAC",
+        "Tappan HVAC",
+        "Kelvinator HVAC",
+        "Philco HVAC",
+        "Intertherm HVAC",
+        "Nordyne",
+        "Broan"
+      ],
+      "market": "US",
+      "category": "ducted",
+      "sibling_verification_basis": "Nortek standard format documented across the family (building-center per-brand pages + hvacdecoder Nordyne decoder); independently verified by InterNACHI real sample GSD021201683 -> Dec 2002.",
+      "product_lines": [
+        "split AC condensers",
+        "heat pumps",
+        "gas furnaces",
+        "air handlers",
+        "package units"
+      ],
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Nortek standard 12-char serial: 3 letters (plant/division) + 9 digits. Year = digits 4-5, month = digits 6-7.",
+          "modern_example": "(no verbatim plate serial captured) -> format = Nortek standard (year 4-5, month 6-7)",
+          "modern_year_range": [
+            1998,
+            2026
+          ],
+          "modern_regex": "^[A-Z]{3}(\\d{2})(\\d{2})\\d{5}$",
+          "year_position": "digits 4-5",
+          "month_position": "digits 6-7",
+          "legacy_pattern": "Single-letter 9-char legacy (year=digits 3-4); dash format (year=digits 4-5). Pre-1998 plates may use obsolete single-letter-month schemes.",
+          "legacy_year_range": [
+            1970,
+            1998
+          ],
+          "nameplate_date_code_alternatives": "Printed manufacture date on data plate when present; refrigerant type as decade anchor.",
+          "decade_disambiguation": "2-digit YY ambiguous; disambiguate via refrigerant: R-22=>pre-2010, R-410A=>2010-2024, R-454B=>2025+ (Nortek chose R-454B); cross-check model era.",
+          "edge_cases": [
+            "Style 2 single-letter 9-char (e.g. F3891 4228): year=digits 3-4 ('89'=1989), month not reliably encoded.",
+            "Style 3 dash format (e.g. G6R9905-05028): year=digits 4-5 ('99'=1999), month=6-7.",
+            "Detect by shape before decoding: triple-alpha+9digit => year 4-5; single-alpha 9-char => year 3-4.",
+            "Mobile/manufactured-home specialty; format inference only."
+          ],
+          "sample_verifications": [
+            {
+              "serial": "(no verbatim plate serial captured)",
+              "decoded": "format = Nortek standard (year 4-5, month 6-7)",
+              "source": "howtolookatahouse Miller page + sibling lists (T2)",
+              "agree": null
+            }
+          ],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://www.howtolookatahouse.com/Blog/Entries/2018/6/miller-serial (T2)",
+        "https://www.building-center.org/maytag-hvac-age/ (T2)",
+        "https://www.nordyne.com/ (T4)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true
+    },
+    {
+      "canonical_name": "Sears Kenmore HVAC",
+      "parent_corp": "Sears (house brand; OEM-sourced — never a manufacturer)",
+      "oem_siblings": [],
+      "market": "US",
+      "category": "ducted (legacy)",
+      "status": "DISCONTINUED ~2010-2012",
+      "oem_history": [
+        "Goodman/Janitrol-built (some furnaces)",
+        "ICP (International Comfort Products, Lewisburg TN)-built (some units)",
+        "Other OEM partners over time"
+      ],
+      "decoder_strategy": "requires_oem_disambiguation: extract model_prefix -> map to OEM (Goodman/Janitrol or ICP) -> route to that OEM decoder; if prefix unmapped return None reason 'kenmore_oem_unknown' -> plate-date/homeowner.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "No native Kenmore decoder — OEM-dependent. Identify OEM from model_prefix first.",
+          "modern_regex": "n/a (alias)",
+          "year_position": "depends on identified OEM",
+          "nameplate_date_code_alternatives": "Plate-date or homeowner input when OEM unidentifiable.",
+          "edge_cases": [
+            "Model-number prefix encodes the OEM source code (same scheme across Kenmore appliances)."
+          ],
+          "sample_verifications": [],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://inspectapedia.com/heat/Sears-Kenmore-HVAC-Manuals.php (T2)",
+        "https://en.wikipedia.org/wiki/International_Comfort_Products (T2)",
+        "https://highperformancehvac.com/hvac-manufacturers-brands-history/ (T3)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": true,
+      "requires_oem_disambiguation": true
+    },
+    {
+      "canonical_name": "Whirlpool HVAC",
+      "parent_corp": "Whirlpool (exited HVAC ~2000s; later a Watsco-licensed brand)",
+      "oem_siblings": [],
+      "market": "US",
+      "category": "ducted (legacy)",
+      "status": "DISCONTINUED ~2000s",
+      "oem_history": [
+        "Whirlpool owned central HVAC via Heil-Quaker, sold 1986 to Inter-City Gas (became Tempstar/ICP)",
+        "~2002+ Watsco licensed the Whirlpool brand for distribution (brand-licensed, not Whirlpool-built); later discontinued",
+        "No consistent publicly-documented Whirlpool-specific serial decoder across eras"
+      ],
+      "decoder_strategy": "decoder_unavailable + plate_date_or_homeowner_input: no native decoder; route to data-plate manufacture date or homeowner install year.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "No documented Whirlpool HVAC residential decoder.",
+          "modern_regex": "n/a (decoder_unavailable)",
+          "year_position": "n/a",
+          "nameplate_date_code_alternatives": "Plate-printed MM/YYYY or homeowner input.",
+          "edge_cases": [
+            "Two eras (Whirlpool-owned Heil-Quaker pre-1986 vs Watsco-licensed ~2002+)."
+          ],
+          "sample_verifications": [],
+          "confidence": "unknown"
+        }
+      },
+      "source_links": [
+        "https://investors.watsco.com/news-releases/...whirlpool-brand-hvac (T2)",
+        "https://www.beaconsaves.com/blog/who-makes-whirlpool-hvac (T3)",
+        "https://highperformancehvac.com/hvac-manufacturers-brands-history/ (T3)"
+      ],
+      "confidence": "unknown",
+      "serial_capture_required_from_field": true,
+      "decoder_unavailable": true
+    },
+    {
+      "canonical_name": "Janitrol (pre-1982)",
+      "parent_corp": "Absorbed into Goodman 1982 (Goodman retired the name ~1992)",
+      "oem_siblings": [
+        "Goodman (modern)",
+        "Hamilton",
+        "Johnstone"
+      ],
+      "market": "US",
+      "category": "ducted (legacy, ~44+ yrs in 2026)",
+      "status": "ABSORBED INTO GOODMAN 1982",
+      "oem_history": [
+        "Surface Combustion 1927 -> Midland-Ross 1959 -> Laird ~1969 -> Smith Jones -> Goodman 1982",
+        "Post-1982 Janitrol-badged units are effectively Goodman and decode under Goodman YYMM",
+        "Pre-1982 units predate Goodman scheme — Goodman decoder yields unrealistic ages"
+      ],
+      "decoder_strategy": "alias_to_goodman + pre_1982 flag: apply Goodman YYMM decoder; if decoded date <1982 OR implied age >40 yrs, suppress and route to plate-date.",
+      "variants": {
+        "split_ac": {
+          "modern_pattern": "Apply Goodman 10-digit YYMM decoder; suppress unrealistic pre-1982 results.",
+          "modern_regex": "^(\\d{2})(\\d{2})\\d{6}$ (Goodman, post-1982 only)",
+          "year_position": "digits 1-2 (Goodman)",
+          "month_position": "digits 3-4 (Goodman)",
+          "nameplate_date_code_alternatives": "Plate-date for pre-1982 units.",
+          "edge_cases": [
+            "pre_1982=true suppresses unrealistic ages; most surviving units are post-1982 Goodman-era."
+          ],
+          "sample_verifications": [],
+          "confidence": "low"
+        }
+      },
+      "source_links": [
+        "https://www.building-center.org/janitrol-hvac-age/ (T2)",
+        "https://en.wikipedia.org/wiki/Goodman_Global (T2)",
+        "https://hvachistory.com/2025/06/25/janitrol-history/ (T3)"
+      ],
+      "confidence": "low",
+      "serial_capture_required_from_field": false,
+      "alias_to_goodman": true,
+      "pre_1982_supported": true
+    }
+  ],
+  "decoder_implementation_spec": {
+    "language_target": "Python",
+    "input_signature": "decode_serial(brand: str, serial: str, variant: str = 'split_ac') -> Optional[SerialDecodeResult]",
+    "output_fields": [
+      "year",
+      "week",
+      "month",
+      "confidence",
+      "source_pattern_id",
+      "variant"
+    ],
+    "fallback_chain": [
+      "brand+variant-specific decoder",
+      "brand-default (split_ac) decoder if variant decoder absent",
+      "OEM-sibling decoder ONLY if confirmed equivalence (Bryant/Payne<-Carrier modern; American Standard<-Trane; Amana/Waller-Daikin<-Goodman; Ruud<-Rheem; Coleman/Luxaire<-York; Tempstar/Comfortmaker<-Heil ICP)",
+      "printed-plate date extraction (Gree/C&H/EcoStar YYYY.MM; Panasonic YYYYMM; Daikin Style1; Mitsubishi nameplate)",
+      "legacy_model_prefix_lookup",
+      "return None with reason (pioneer_not_decodable / pk_no_format / samsung_post_2018_unknown)"
+    ],
+    "must_not_reuse": {
+      "coleman": "do NOT use Carrier decoder — use York/JCI (year=serial pos2&4, month=pos3 letter)",
+      "heil": "do NOT use Carrier decoder — use ICP letter+YYWW (year=chars2-3, week=chars4-5)",
+      "mitsubishi_electric": "do NOT use Lennox decoder — Japanese fiscal-year single-digit-year scheme",
+      "daikin_ductless": "do NOT use Goodman YYMM — Japan multi-style; branch on prefix/length"
+    },
+    "confidence_field_required": true
+  }
+}

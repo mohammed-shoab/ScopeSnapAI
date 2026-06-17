@@ -73,6 +73,29 @@ const DRAFT_KEY = "snapai_draft_assessment";
 // ─────────────────────────────────────────────────────────────────────────────
 // Inner component (requires useSearchParams — must be inside Suspense)
 // ─────────────────────────────────────────────────────────────────────────────
+// Stage 3A — read the install-year/age data captured on the review screen
+// (StepZeroPanel writes it to sessionStorage on confirm) so the fault-card
+// estimate request can forward age_source + age_confidence to the backend.
+function readAgeCapture(): Record<string, unknown> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = sessionStorage.getItem("snap_age_capture");
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as {
+      install_year?: number | null;
+      age_source?: string | null;
+      age_confidence?: string | null;
+    };
+    const out: Record<string, unknown> = {};
+    if (parsed.install_year != null) out.install_year = parsed.install_year;
+    if (parsed.age_source) out.age_source = parsed.age_source;
+    if (parsed.age_confidence) out.age_confidence = parsed.age_confidence;
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 function AssessPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -317,6 +340,7 @@ function AssessPageInner() {
           card_id: continuation.card_id,
           session_id: continuation.session_id,
           gate_continuation: continuation.gate_continuation,
+          ...readAgeCapture(),
           ...(detectMarket() === "PK" ? { metering_type: meteringType } : {}),
         }),
       });
@@ -359,6 +383,7 @@ function AssessPageInner() {
       const body: Record<string, unknown> = {
         assessment_id: assessmentId,
         card_id: resolvedCardId,
+        ...readAgeCapture(),
         ...(detectMarket() === "PK" ? { metering_type: meteringType } : {}),
       };
       if (diagnosedSessionId) body.session_id = diagnosedSessionId;

@@ -9,6 +9,29 @@
  */
 export const URDU_STRINGS: Record<string, string> = {
 
+  // ── Stage 3: install-year review + homeowner correction ─────────────────────
+  "Install year":                    "تنصیب کا سال",
+  "Year installed":                  "تنصیب کا سال",
+  "Ask homeowner":                   "گھر مالک سے پوچھیں",
+  "We couldn't read the age — ask the homeowner if they know.": "ہم عمر نہیں پڑھ سکے — گھر مالک سے پوچھیں اگر انہیں معلوم ہو۔",
+  "estimated from brand discontinue": "برانڈ بند ہونے سے اندازہ",
+  "How sure are we?":                "ہم کتنے یقینی ہیں؟",
+  "Sure":                            "یقینی",
+  "Approximate":                     "تخمینی",
+  "Unknown":                         "نامعلوم",
+  "Install year shown":              "دکھایا گیا تنصیب کا سال",
+  "Is this correct?":                "کیا یہ درست ہے؟",
+  "Yes, that's right":               "جی ہاں، یہ درست ہے",
+  "No — actual year is":             "نہیں — اصل سال ہے",
+  "I don't know — installed when we bought the house": "مجھے نہیں معلوم — گھر خریدتے وقت لگا تھا",
+  "years ago":                       "سال پہلے",
+  "Updated based on your correction": "آپ کی تصحیح کی بنیاد پر اپ ڈیٹ",
+  "Confirming the age helps us recommend repair vs replacement accurately.": "عمر کی تصدیق ہمیں مرمت بمقابلہ تبدیلی کی درست تجویز میں مدد دیتی ہے۔",
+  "Actual install year":             "اصل تنصیب کا سال",
+  "About how many years ago?":       "تقریباً کتنے سال پہلے؟",
+  "Please enter a valid year.":      "براہ کرم درست سال درج کریں۔",
+  "Thanks — age confirmed.":         "شکریہ — عمر کی تصدیق ہو گئی۔",
+
   // ── Navigation ──────────────────────────────────────────────────────────────
   "Dashboard":                       "ڈیش بورڈ",
   "New Assessment":                  "نئی تشخیص",

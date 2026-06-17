@@ -22,6 +22,7 @@ from db.database import get_db
 from db.models import Assessment, Company, Estimate, EstimateLineItem, FollowUp, Property
 from api.auth import get_current_user, AuthContext
 from api.dependencies import get_tables, MarketTables
+from api.fault_estimate import finalize_replacement_copy
 from config import get_settings
 
 router = APIRouter(prefix="/api/estimates", tags=["estimates"])
@@ -371,6 +372,18 @@ async def refresh_draft_estimate(
     )
     better_data = fc_row.scalar_one_or_none() or {}
 
+    # Brand Decoder finding #1: resolve the [N] age token when re-stamping the
+    # replacement-tier copy. Age provenance was stashed on the recommended option
+    # as recommendation_meta at generation time (fault_estimate.py), so no extra
+    # query is needed.
+    _rec_meta = next(
+        (o.get("recommendation_meta") for o in (estimate.options or [])
+         if isinstance(o, dict) and o.get("recommendation_meta")),
+        {},
+    ) or {}
+    _unit_age = _rec_meta.get("unit_age_years")
+    _reliable_age = bool(_rec_meta.get("reliable_age"))
+
     # Patch description/why_recommended per tier without touching amounts or line_items
     updated_options = []
     for opt in (estimate.options or []):
@@ -384,7 +397,10 @@ async def refresh_draft_estimate(
             why  = better_data.get("why_recommended")
         elif tier == "best":
             if opt.get("is_replacement"):
-                desc = better_data.get("description_best_replacement")
+                desc = finalize_replacement_copy(
+                    better_data.get("description_best_replacement"),
+                    _unit_age, _reliable_age,
+                )
                 why  = better_data.get("why_recommended_best_replacement")
             else:
                 desc = better_data.get("description_best_comprehensive")
