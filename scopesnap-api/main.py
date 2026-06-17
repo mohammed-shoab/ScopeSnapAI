@@ -191,21 +191,6 @@ async def health_check():
     }
 
 
-# -- TEMP Sentry verification (remove after confirming capture) ---------------
-@app.get("/debug/sentry-check", tags=["system"])
-async def _sentry_check():
-    import sentry_sdk as _s
-    try:
-        active = _s.get_client().is_active()
-    except Exception:
-        active = _s.Hub.current.client is not None
-    return {"sentry_initialized": bool(active), "environment": settings.environment}
-
-
-@app.get("/debug/sentry-boom", tags=["system"])
-async def _sentry_boom():
-    raise RuntimeError("SnapAI Sentry verification test error (deliberate)")
-
 
 # ââ Root ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 @app.get("/", tags=["system"])
