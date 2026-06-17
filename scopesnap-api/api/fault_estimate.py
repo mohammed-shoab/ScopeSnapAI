@@ -21,6 +21,7 @@ Company markup applied to all options.
 import json
 import logging
 import math
+import re
 import secrets
 import string
 from typing import Any, Optional
@@ -230,6 +231,40 @@ def replace_recommendation_gate(is_replacement: bool, reliable_age: bool) -> boo
     """Returns requires_user_chooser: True when we'd recommend Full Replacement
     but the age driving it is not reliable. Drives the Stage 3C chooser-gate UI."""
     return bool(is_replacement and not reliable_age)
+
+
+# -- [N] age-token resolution (Brand Decoder finding #1) ----------------------
+# Seed copy in fault_cards.better_option_estimate.description_best_replacement
+# (migrations 021/024) embeds a literal "[N]" placeholder, e.g.
+# "At [N] years old, complete system replacement ...". This resolves it at the
+# point the description is served so the user never sees the raw token.
+_AGE_LEADIN_RE = re.compile(r"^\s*at\s+\[n\]\s+years?\s+old[,:]?\s*", re.IGNORECASE)
+_STRAY_N_RE = re.compile(r"\s*\[n\]\s*", re.IGNORECASE)
+
+
+def finalize_replacement_copy(raw: Optional[str],
+                              unit_age: Optional[int],
+                              reliable_age: bool) -> Optional[str]:
+    """Resolve the [N] age placeholder in replacement-tier copy.
+
+    - reliable age  -> substitute the real number for [N].
+    - unreliable    -> never print a fabricated number: strip the
+                       "At [N] years old, " lead-in entirely (re-capitalising
+                       the new first letter) and scrub any stray [N] token.
+    Passthrough when raw is falsy or contains no token. Consistent with the
+    Stage 2 rule of never fabricating age.
+    """
+    if not raw or "[" not in raw:
+        return raw
+    if "[n]" not in raw.lower():
+        return raw
+    if reliable_age and unit_age:
+        return re.sub(r"\[[Nn]\]", str(unit_age), raw)
+    out = _AGE_LEADIN_RE.sub("", raw)
+    if out != raw and out:
+        out = out[0].upper() + out[1:]
+    out = _STRAY_N_RE.sub(" ", out)
+    return re.sub(r"\s{2,}", " ", out).strip()
 
 
 # -- Five-year cost comparison ------------------------------------------------
@@ -816,6 +851,9 @@ async def generate_fault_card_estimate(
     if unit_age is None and body.install_year:
         unit_age = datetime.now(timezone.utc).year - body.install_year
 
+    # Reliable-age provenance gate (reused for [N] copy resolution + age_str).
+    reliable_age = _has_reliable_age(body.age_source, body.age_confidence, unit_age)
+
     labels = _get_labels(unit_age)
 
     # 1. Load fault card (includes better_option_estimate)
@@ -987,13 +1025,17 @@ async def generate_fault_card_estimate(
         repl_mkup  = round(repl_typical * (markup_mult - 1))
         repl_total = repl_typical + repl_mkup
         fyr        = _five_year_comparison(total_B, repl_total, unit_age)
-        age_str    = f"At {unit_age} years old, " if unit_age else ""
+        # Only state the age when it is reliable (never fabricate -- Stage 2 rule).
+        age_str    = f"At {unit_age} years old, " if (reliable_age and unit_age) else ""
         tiers.append(EstimateTier(
             tier="C", label=labels["best"],
             base_amount=repl_typical, surcharges={}, subtotal=repl_typical,
             markup_amount=repl_mkup, total=repl_total,
             recommended=True, is_replacement=True,
-            description=(better_data or {}).get("description_best_replacement")
+            description=finalize_replacement_copy(
+                    (better_data or {}).get("description_best_replacement"),
+                    unit_age, reliable_age,
+                )
                 or (
                     f"{age_str}complete system replacement eliminates near-term repair risk "
                     "and reduces electricity costs by approximately 30-40%."

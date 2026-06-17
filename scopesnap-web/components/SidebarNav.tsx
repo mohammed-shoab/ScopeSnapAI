@@ -287,7 +287,7 @@ export default function SidebarNav() {
               <div key={section.section}>
                 <div
                   className="px-3 pt-4 pb-1.5 text-[9px] font-bold uppercase tracking-widest"
-                  style={{ color: "rgba(255,255,255,.25)", letterSpacing: "1.2px" }}
+                  style={{ color: "rgba(255,255,255,.6)", letterSpacing: "1.2px" }}
                 >
                   {t(section.section)}
                 </div>
@@ -304,7 +304,7 @@ export default function SidebarNav() {
                       }`}
                       style={{
                         background: isActive(item.href) ? "rgba(26,135,84,.2)" : "transparent",
-                        color: isActive(item.href) ? "white" : "rgba(255,255,255,.55)",
+                        color: isActive(item.href) ? "white" : "rgba(255,255,255,.72)",
                       }}
                     >
                       <span className="w-5 flex-shrink-0 flex items-center justify-center opacity-70">
@@ -328,7 +328,7 @@ export default function SidebarNav() {
             <button
               onClick={() => { setFeedbackOpen(true); setIsMobileOpen(false); }}
               className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all hover:bg-white/5"
-              style={{ color: "rgba(255,255,255,.4)" }}
+              style={{ color: "rgba(255,255,255,.68)" }}
             >
               <span className="w-5 flex-shrink-0 flex items-center justify-center opacity-70">
                 {NavIcons.feedback}
@@ -362,7 +362,7 @@ export default function SidebarNav() {
                       ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}`
                       : user?.emailAddresses?.[0]?.emailAddress ?? "Account"}
                   </div>
-                  <div className="text-[10px] truncate" style={{ color: "rgba(255,255,255,.4)" }}>
+                  <div className="text-[10px] truncate" style={{ color: "rgba(255,255,255,.68)" }}>
                     {user?.firstName && user?.emailAddresses?.[0]?.emailAddress
                       ? user.emailAddresses[0].emailAddress
                       : "Free Trial"}
@@ -374,7 +374,7 @@ export default function SidebarNav() {
                 onClick={handleSignOut}
                 title={t("Log Out")}
                 className="flex-shrink-0 p-2 rounded-lg transition-all hover:bg-white/10 active:bg-white/20"
-                style={{ color: "rgba(255,255,255,.5)" }}
+                style={{ color: "rgba(255,255,255,.7)" }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>

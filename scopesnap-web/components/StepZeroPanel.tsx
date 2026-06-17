@@ -938,7 +938,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             <div className="p-3 space-y-2">
               {/* Brand select */}
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">
                   Brand
                 </label>
                 <select
@@ -983,7 +983,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
               {/* Model series search — only shown once brand is selected */}
               {selectedBrand && (
                 <div className="relative">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1">
                     Model Series
                   </label>
                   <input
@@ -1002,7 +1002,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                     } as React.CSSProperties}
                   />
                   {modelSearching && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-600">
                       …
                     </span>
                   )}
@@ -1034,16 +1034,16 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                           </div>
                           <div className="flex gap-3 mt-0.5">
                             {m.seer_rating && (
-                              <span className="text-[10px] text-gray-400">{m.seer_rating} SEER</span>
+                              <span className="text-[10px] text-gray-600">{m.seer_rating} SEER</span>
                             )}
                             {m.tonnage_range && (
-                              <span className="text-[10px] text-gray-400">{m.tonnage_range} ton</span>
+                              <span className="text-[10px] text-gray-600">{m.tonnage_range} ton</span>
                             )}
                             {m.manufacture_years && (
-                              <span className="text-[10px] text-gray-400">{m.manufacture_years}</span>
+                              <span className="text-[10px] text-gray-600">{m.manufacture_years}</span>
                             )}
                             {m.avg_lifespan_years && (
-                              <span className="text-[10px] text-gray-400">{m.avg_lifespan_years}yr avg life</span>
+                              <span className="text-[10px] text-gray-600">{m.avg_lifespan_years}yr avg life</span>
                             )}
                           </div>
                         </button>
@@ -1104,7 +1104,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                 </span>
               </div>
               <div className="p-3">
-                <p className="text-[10px] text-gray-400 mb-2">
+                <p className="text-[10px] text-gray-600 mb-2">
                   Check the nameplate or outdoor unit label. If unknown, select "Not Sure".
                 </p>
                 <div className="grid grid-cols-2 gap-2">
@@ -1133,7 +1133,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                         >
                           {label}
                         </span>
-                        <span className="text-[10px] text-gray-400 mt-0.5">{desc[ref]}</span>
+                        <span className="text-[10px] text-gray-600 mt-0.5">{desc[ref]}</span>
                       </button>
                     );
                   })}
@@ -1151,7 +1151,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                 </span>
               </div>
               <div className="p-3">
-                <p className="text-[10px] text-gray-400 mb-2">
+                <p className="text-[10px] text-gray-600 mb-2">
                   Choose the unit capacity — specs will auto-fill from the brand database.
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -1232,7 +1232,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                 return (
                   <div key={key} className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600">
                         {label}
                         {key === "refrigerant" && !isPK && <span className="text-blue-400 ml-1">(auto)</span>}
                       </span>
@@ -1263,7 +1263,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                         } as React.CSSProperties}
                       />
                       {unit && !isEmpty && (
-                        <span className="absolute right-2 text-[10px] font-bold text-gray-400">{unit}</span>
+                        <span className="absolute right-2 text-[10px] font-bold text-gray-600">{unit}</span>
                       )}
                     </div>
                   </div>
@@ -1320,7 +1320,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
               Confirm & Continue
             </button>
           </div>
-          <p className="text-center text-xs text-gray-400">
+          <p className="text-center text-xs text-gray-600">
             {isPK
               ? "Select refrigerant type above for accurate pressure targets"
               : "Year field auto-selects R-22, R-410A, or R-454B"}
@@ -1382,7 +1382,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             <div className="flex flex-col items-center gap-1.5 p-3 text-center">
               <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl">+</div>
               <p className="text-xs font-bold text-gray-700">{t("Outdoor")}</p>
-              <p className="text-[10px] text-gray-400">Required</p>
+              <p className="text-[10px] text-gray-600">Required</p>
             </div>
           )}
           <input
@@ -1413,7 +1413,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
             <div className="flex flex-col items-center gap-1.5 p-3 text-center">
               <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl">+</div>
               <p className="text-xs font-bold text-gray-700">{t("Indoor")}</p>
-              <p className="text-[10px] text-gray-400">If accessible</p>
+              <p className="text-[10px] text-gray-600">If accessible</p>
             </div>
           )}
           <input
@@ -1525,7 +1525,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                 ✶ Gemini AI
               </span>
             </div>
-            <span className="text-xs font-mono text-gray-400">{editedUnit.confidence}% confidence</span>
+            <span className="text-xs font-mono text-gray-600">{editedUnit.confidence}% confidence</span>
           </div>
 
           {editedUnit.charging_method && (
@@ -1559,7 +1559,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
               return (
                 <div key={key} className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{label}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600">{label}</span>
                     {needsConfirm && (
                       <span className="text-[9px] font-black px-1 py-0.5 rounded"
                             style={{ background: "#fef9c3", color: "#a16207" }}>?</span>
@@ -1588,7 +1588,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
                       } as React.CSSProperties}
                     />
                     {unit && !isEmpty && (
-                      <span className="absolute right-2 text-[10px] font-bold text-gray-400">{unit}</span>
+                      <span className="absolute right-2 text-[10px] font-bold text-gray-600">{unit}</span>
                     )}
                   </div>
                 </div>
@@ -1598,7 +1598,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
 
           {editedUnit.brand_id && (
             <div className="px-4 pb-3">
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-600">
                 Matched: <span className="font-bold text-gray-600 capitalize">{editedUnit.brand_id}</span>
                 {editedUnit.series_id && ` — ${editedUnit.series_id.split("_").slice(1).join(" ")}`}
                 {editedUnit.is_legacy && " (legacy / pre-2010)"}
@@ -1660,7 +1660,7 @@ export default function StepZeroPanel({ assessmentId, clerkToken, onConfirm, onS
         </div>
       )}
 
-      <p className="text-center text-xs text-gray-400">
+      <p className="text-center text-xs text-gray-600">
         Nameplate specs auto-fill all cards — save time on every call
       </p>
 

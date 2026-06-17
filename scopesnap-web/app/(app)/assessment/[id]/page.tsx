@@ -88,6 +88,15 @@ function fmt(n?: number) {
   return formatCurrency(n);
 }
 
+// Finding #1 safety-net: the [N] age placeholder is resolved server-side, but
+// guard any legacy stored estimate that still carries the raw token.
+function cleanAgeToken(s?: string | null): string {
+  if (!s) return "";
+  let out = s.replace(/^\s*at \[N\] years old[,:]?\s*/i, "");
+  if (out !== s && out) out = out.charAt(0).toUpperCase() + out.slice(1);
+  return out.replace(/\s*\[N\]\s*/gi, " ").replace(/\s{2,}/g, " ").trim();
+}
+
 function fmtHr(n?: number) {
   return n != null ? n.toFixed(1).replace(/\.0$/, "") + "h" : "";
 }
@@ -410,7 +419,16 @@ export default function EstimatePage() {
           }
           setEstimate(data);
           setMarkup(data.markup_percent || 35);
-          if (data.recommended_tier) setRecommendedTier(data.recommended_tier);
+          // Finding #2: default the selected tier (drives the Continue button) to the
+          // engine-recommended option so it matches the REC badge. Tech can still switch.
+          const recOpt = (data.options || []).find(
+            (o) => (o as { recommended?: boolean }).recommended,
+          );
+          const recTier = recOpt?.tier || data.recommended_tier;
+          if (recTier) {
+            setRecommendedTier(recTier);
+            setSelectedTier(recTier);
+          }
           setLoading(false);
           if (data.contractor_pdf_url) setDocsDone(true);
           ph.estimateGenerated(String(id), data.card_name);
@@ -835,7 +853,7 @@ export default function EstimatePage() {
                         </div>
                         <h3 className="font-bold text-base text-text-primary leading-tight">{opt.name}</h3>
                         {opt.description && (
-                          <p className="text-xs text-text-secondary mt-0.5 leading-snug">{opt.description}</p>
+                          <p className="text-xs text-text-secondary mt-0.5 leading-snug">{cleanAgeToken(opt.description)}</p>
                         )}
                       </div>
                       <div className="text-right flex-shrink-0">
