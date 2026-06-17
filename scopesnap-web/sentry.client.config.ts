@@ -17,4 +17,14 @@ Sentry.init({
   ],
   // Don't send errors in development
   enabled: process.env.NEXT_PUBLIC_ENV !== "development",
+  beforeSend(event) {
+    // Drop synthetic events generated during audit runs.
+    if (typeof window !== "undefined") {
+      const isAuditSynthetic =
+        window.location.search.includes("audit_synthetic=1") ||
+        window.sessionStorage.getItem("snapai_audit_mode") === "1";
+      if (isAuditSynthetic) return null;
+    }
+    return event;
+  },
 });

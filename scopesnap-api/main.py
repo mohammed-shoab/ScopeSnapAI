@@ -49,6 +49,13 @@ import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
+def _sentry_before_send(event, hint):
+    # During audit runs (SNAPAI_AUDIT_MODE=1) drop synthetic events so they
+    # never reach Sentry or count toward quota.
+    if os.environ.get("SNAPAI_AUDIT_MODE") == "1":
+        return None
+    return event
+
 _sentry_dsn = os.environ.get("SENTRY_DSN", "")
 if _sentry_dsn:
     sentry_sdk.init(
@@ -57,6 +64,7 @@ if _sentry_dsn:
         traces_sample_rate=0.1,
         environment=os.environ.get("ENVIRONMENT", "development"),
         release="snapai-api@1.0.0",
+        before_send=_sentry_before_send,
     )
 
 settings = get_settings()
