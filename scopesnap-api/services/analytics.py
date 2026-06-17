@@ -64,10 +64,14 @@ def capture(
         client = _get_client()
         if client is None:
             return False
+        props = dict(properties or {})
+        # Tag every backend event with its environment (production/staging) so
+        # one PostHog project cleanly separates the two (free-tier pattern).
+        props.setdefault("environment", os.environ.get("ENVIRONMENT", "development"))
         client.capture(
             distinct_id=distinct_id or "backend",
             event=event,
-            properties=properties or {},
+            properties=props,
         )
         return True
     except Exception:

@@ -40,6 +40,9 @@ if (typeof window !== "undefined" && POSTHOG_KEY) {
     person_profiles: "always",
     // Don't track in dev unless explicitly opted in
     loaded: (ph) => {
+      // Tag every event with its environment so prod + staging stay separable
+      // inside a single PostHog project (free-tier; no separate project needed).
+      ph.register({ environment: process.env.NEXT_PUBLIC_ENV || "unknown" });
       if (process.env.NEXT_PUBLIC_ENV === "development") {
         ph.opt_out_capturing();
       }
