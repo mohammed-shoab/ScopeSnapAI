@@ -424,7 +424,12 @@ export default function EstimatePage() {
           const recOpt = (data.options || []).find(
             (o) => (o as { recommended?: boolean }).recommended,
           );
-          const recTier = recOpt?.tier || data.recommended_tier;
+          const optTiers = new Set((data.options || []).map((o) => o.tier));
+          const recTier =
+            recOpt?.tier ??
+            (data.recommended_tier && optTiers.has(data.recommended_tier)
+              ? data.recommended_tier
+              : undefined);
           if (recTier) {
             setRecommendedTier(recTier);
             setSelectedTier(recTier);
