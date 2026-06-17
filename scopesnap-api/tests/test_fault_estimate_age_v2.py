@@ -27,6 +27,7 @@ def _load_fault_estimate_funcs():
     mod.__dict__["datetime"] = __import__("datetime").datetime
     mod.__dict__["timezone"] = __import__("datetime").timezone
     mod.__dict__["logging"] = __import__("logging")
+    mod.__dict__["re"] = __import__("re")
     # Strip any leftover top-level imports in head to keep exec self-contained.
     head = "\n".join(
         ln for ln in head.splitlines()
