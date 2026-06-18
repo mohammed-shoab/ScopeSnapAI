@@ -203,6 +203,12 @@ async def root():
     }
 
 
+@app.get("/api/__audit_selftest_error", tags=["system"])
+async def _audit_selftest_error():
+    # TEMP QA route: verifies Sentry before_send drop. Remove after testing.
+    raise RuntimeError("audit_selftest_error")
+
+
 # ââ Startup âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 @app.on_event("startup")
 async def on_startup():
