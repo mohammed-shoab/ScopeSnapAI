@@ -42,7 +42,7 @@ function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname.startsWith(p));
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Inject x-pathname into request headers so server layouts can read the
@@ -94,7 +94,7 @@ export async function middleware(request: NextRequest) {
 
     return clerkMiddleware(async (auth, req) => {
       if (isProtectedRoute(req)) {
-        await auth().protect({
+        await auth.protect({
           unauthenticatedUrl: new URL("/sign-in", req.url).toString(),
         });
       }

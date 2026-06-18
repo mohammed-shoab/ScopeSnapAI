@@ -92,42 +92,42 @@ async function proxyRequest(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string[] } }
+  { params }: { params: Promise<{ slug: string[] }> }
 ) {
-  return proxyRequest(request, params.slug);
+  return proxyRequest(request, (await params).slug);
 }
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { slug: string[] } }
+  { params }: { params: Promise<{ slug: string[] }> }
 ) {
-  return proxyRequest(request, params.slug);
+  return proxyRequest(request, (await params).slug);
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { slug: string[] } }
+  { params }: { params: Promise<{ slug: string[] }> }
 ) {
-  return proxyRequest(request, params.slug);
+  return proxyRequest(request, (await params).slug);
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { slug: string[] } }
+  { params }: { params: Promise<{ slug: string[] }> }
 ) {
-  return proxyRequest(request, params.slug);
+  return proxyRequest(request, (await params).slug);
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { slug: string[] } }
+  { params }: { params: Promise<{ slug: string[] }> }
 ) {
-  return proxyRequest(request, params.slug);
+  return proxyRequest(request, (await params).slug);
 }
 
 export async function OPTIONS(
   request: NextRequest,
-  { params }: { params: { slug: string[] } }
+  { params }: { params: Promise<{ slug: string[] }> }
 ) {
-  return proxyRequest(request, params.slug);
+  return proxyRequest(request, (await params).slug);
 }
