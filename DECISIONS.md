@@ -1785,3 +1785,55 @@ const isRec = isMiddleTier;  // backward-compat alias for existing headerBg/badg
 **Dead code note:** `scopesnap-web/lib/tesseractOcr.ts` still exists in the repo but is no longer imported. Safe to delete in a future cleanup commit.
 
 **Commit:** c42cce0 (staging branch, 2026-05-26) | **File:** `scopesnap-web/components/StepZeroPanel.tsx`
+
+---
+
+## DEC-090 — Audit framework: synthetic-event filtering (Sentry/PostHog) shipped to prod; retrospective (2026-06-18)
+
+**Date:** 2026-06-18
+
+**Context:** Activated the audit-framework prerequisites and shipped synthetic-event filtering so
+audit/ZAP runs don't pollute Sentry Issues/quota or PostHog analytics.
+
+**Decisions:**
+1. Synthetic-event filtering is CODE-side (`before_send`/`beforeSend`), not dashboard filters.
+   - Backend (`main.py`): `before_send` returns `None` when env `SNAPAI_AUDIT_MODE=1`.
+   - Frontend (`sentry.client.config.ts`, `PostHogProvider.tsx`): returns `null` when
+     `?audit_synthetic=1` OR `sessionStorage.snapai_audit_mode==='1'`.
+   - Sentry session **replays are NOT gated by `beforeSend`** → replay sample rates are zeroed at
+     init when the audit flag is present.
+2. Audit E2E auth uses Clerk **sign-in tokens** (passwordless) minted with the secret key, plus
+   `@clerk/testing` Testing Tokens (bypass bot detection). Reason: staging sign-in requires an
+   email OTP, and Clerk rejects breached passwords at sign-in. Harness: `SnapAI_Audit_Setup_Artifacts/clerk_e2e_auth_harness.md`.
+3. Railway compute hard cap raised $10 → $15.
+4. Promoted 5 files to prod via `promote-to-prod.sh` equivalent (commit `6f4925a`):
+   `sentry.client.config.ts`, `PostHogProvider.tsx`, `.gitignore`, `dependabot.yml`, `gitleaks.yml`.
+   `main.py` `before_send` was already on prod.
+
+**Corrections to the original setup doc (verified live):**
+- OWASP ZAP image `owasp/zap2docker-stable` is DEPRECATED → `ghcr.io/zaproxy/zaproxy:stable` (use `-h`, not `--help`).
+- Cloudflare Free does NOT include configurable Managed/OWASP rulesets (Pro-only). The prod app
+  `snapai.mainnov.tech` is NOT behind Cloudflare (mainnov.tech = Hostinger DNS; confirms DEC-068). WAF deferred.
+- Sentry Inbound Filters can't drop by an environment tag on any plan → code-side `before_send` drop.
+- PostHog free-tier exclusion is person/cohort-based (can't target an event property) → code-side drop.
+- Repo is `github.com/mohammed-shoab/ScopeSnapAI` (doc said `SnapAIAI`). MFA already enabled.
+
+**Retrospective — what went wrong & how resolved:**
+- Weak/breached test password (`Shoab123`) blocked sign-in via Clerk's compromised-password check
+  → switched audit auth to passwordless sign-in tokens (password now irrelevant).
+- Staging sign-in needs an email OTP → UI automation can't self-serve → sign-in tokens bypass it.
+- URL flag `?audit_synthetic=1` is STRIPPED on Clerk auth redirects, so the filter saw no flag and
+  didn't drop → use `sessionStorage.snapai_audit_mode='1'` (survives redirects); must be set at PAGE INIT.
+- First prod QA fired before the Vercel prod build finished → hit the old build, didn't drop, created
+  one stray prod Sentry error (resolved). Lesson: confirm the target deploy is LIVE before QA.
+- Sentry replay envelope still sent after the error-event drop → added replay-rate suppression.
+
+**Learnings:**
+- Free-tier Sentry/PostHog can't filter synthetic traffic dashboard-side; do it in code.
+- Sentry replays are gated separately from `beforeSend`.
+- For Clerk E2E, use sign-in tokens + Testing Tokens; never depend on UI password/OTP.
+- Audit toggles must be readable at page init and survive auth redirects (sessionStorage > URL param).
+- Always wait for the target deploy to be live before QA-ing it.
+
+**Cross-references:** DEC-004, DEC-022, DEC-027, DEC-068, DEC-070, DEC-075;
+`SnapAI_Audit_Framework_Setup.md`; `SnapAI_Audit_Setup_Artifacts/` (harness, runbook, bundle).

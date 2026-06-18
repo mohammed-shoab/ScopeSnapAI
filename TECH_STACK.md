@@ -1535,3 +1535,24 @@ const isRec = isMiddleTier;  // alias kept for card headerBg/badgeBg/priceColor
 ```
 
 **DEC reference:** DEC-084
+
+---
+
+## 2026-06-18 — Audit framework additions
+
+- **Observability synthetic-event filtering (in prod):** Sentry + PostHog `before_send` drop events
+  during audit runs. Backend toggle = env `SNAPAI_AUDIT_MODE=1` (Railway). Frontend toggle =
+  `?audit_synthetic=1` or `sessionStorage.snapai_audit_mode='1'`. Sentry replay sample rates zeroed
+  when the flag is present at init. Behaviour-neutral when no flag set.
+- **Audit E2E auth:** Clerk **sign-in tokens** (passwordless) + `@clerk/testing` Testing Tokens.
+  Harness: `Personal Claude/SnapAI_Audit_Setup_Artifacts/clerk_e2e_auth_harness.md`. Keys/IDs in
+  repo `.env.test` (gitignored). Flag must be set at page init; URL param is stripped on Clerk auth redirects.
+- **Clerk audit test users:** staging `firm-chamois-61` = `ds.shoab+audit1..5@gmail.com`;
+  prod `scope-snap-ai` = `ds.shoab+audit1, +audit12..15@gmail.com`.
+- **CI / security:** `.github/dependabot.yml` (npm `/scopesnap-web`, pip `/scopesnap-api`, github-actions;
+  weekly) + `.github/workflows/gitleaks.yml` (secret scan on push/PR) on `main`. Local dev CLIs: Semgrep,
+  gitleaks. DAST: Docker + `ghcr.io/zaproxy/zaproxy:stable`.
+- **Railway compute hard cap:** $15 (was $10).
+- **Edge WAF status:** `mainnov.tech` is on **Hostinger DNS — NOT behind Cloudflare** (DEC-068), so no
+  edge WAF on the prod app. Cloudflare Free managed/OWASP rulesets are Pro-only. Free-path migration
+  runbook prepared (`SnapAI_Cloudflare_Free_WAF_Migration_Runbook.md`).

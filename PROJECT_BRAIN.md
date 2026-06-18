@@ -316,3 +316,28 @@ All BUG-D.AUTH fixes are pushed. Local NTFS checkout is BEHIND remote — sync b
 | 2026-05-22 | Houston + PK | COMPLETE ✅ | Zero — verification-only run. Track H Group A fixes (A.3/A.5) confirmed live. All 6 flows PASS. New learnings: WA-32 (address blocks complaint), WA-33 (no client-side fetches), DEC-061 (A.6 scope). | 4db39be |
 | 2026-05-22 | Houston + PK | COMPLETE ✅ | BUG-034 (ServiceChecklist 401 token expiry), BUG-035 (estimates INSERT updated_at), BUG-036 (dead POST /api/estimates/service). All 6 flows PASS both markets. | 4db39be |
 | 2026-05-22 | Houston + PK | 
+---
+
+## 2026-06-18 — Audit framework activated + synthetic-event filtering shipped to PROD
+
+Completed the `SnapAI_Audit_Framework_Setup` prerequisites and shipped the Sentry/PostHog
+synthetic-event filters to production (commit `6f4925a` on `main`).
+
+**Done:**
+- MFA on primary Google account: already enabled (2-Step since Apr 5 + passkey).
+- Railway compute cap raised $10 → $15.
+- GitHub Dependabot enabled (graph/alerts/security/version updates) + `.github/dependabot.yml` on main.
+- gitleaks: CLI (winget) + pre-commit hook + `.github/workflows/gitleaks.yml` on main. Semgrep CLI installed.
+- Docker Desktop + OWASP ZAP image `ghcr.io/zaproxy/zaproxy:stable` (the doc's `owasp/zap2docker-stable` is dead).
+- **Sentry + PostHog `before_send` synthetic-event filters** — drop events during audit runs:
+  - Backend (`scopesnap-api/main.py`): drops when env `SNAPAI_AUDIT_MODE=1`.
+  - Frontend (`sentry.client.config.ts`, `PostHogProvider.tsx`): drops when `?audit_synthetic=1`
+    OR `sessionStorage.snapai_audit_mode==='1'`. Sentry **replays** also suppressed (rates zeroed at init).
+  - QA'd on staging (proven via live network + Sentry Issues), promoted to prod, re-QA'd on prod.
+    Behaviour-neutral under normal operation (pure passthrough unless the audit flag is set).
+- Clerk: 5 audit test users in BOTH apps. Audit auth = Clerk **sign-in tokens** (passwordless, no OTP).
+
+**Deferred by choice:** Cloudflare Free WAF migration (mainnov.tech is on Hostinger DNS, not behind
+Cloudflare). Next build: the `snapai-full-audit` skill itself.
+
+See **DEC-090** for full decisions, corrections, and retrospective.

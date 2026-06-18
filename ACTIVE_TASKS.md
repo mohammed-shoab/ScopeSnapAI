@@ -858,3 +858,23 @@ All 4 Track D frontend files now correctly pass Clerk JWT token to `apiFetch` (D
 
 - [completed] S.7 — Staging environment banner
   - New file: `scopesnap-web/comp
+---
+
+## 2026-06-18 — Audit framework status
+
+**Done:**
+- [x] MFA (already on), Railway cap $15, Dependabot, gitleaks (CLI + pre-commit hook + Action), Semgrep, Docker + ZAP image
+- [x] Sentry/PostHog `before_send` synthetic-event filters: staging QA'd → promoted to prod (`6f4925a`) → prod QA'd
+- [x] Sentry replay suppression in audit mode
+- [x] Clerk: 5 test users in both apps; passwordless sign-in-token auth harness written
+- [x] Brain/DECISIONS/TECH_STACK updated (this change)
+
+**Follow-ups:**
+| Task | Status | Notes |
+|---|---|---|
+| Build the `snapai-full-audit` skill | TODO | The actual audit orchestrator — the finish line |
+| Install `snapai-audit-skills.plugin` (GStack + Superpowers) in Cowork | TODO | Plugin built (in Personal Claude); install via Save plugin |
+| Cloudflare Free WAF: migrate `mainnov.tech` DNS → Cloudflare | TODO | Runbook ready (~1h + 24h propagation) |
+| Remove prod `sk_live_` from any Drive-synced env file | TODO | Security — keep live admin key out of cloud-synced storage |
+| (optional) `beforeSendReplay` if replay-rate zeroing proves insufficient | TODO | Minor |
+| (optional) Prune stray prod PostHog test pageviews from 2026-06-18 QA | TODO | Negligible noise |
