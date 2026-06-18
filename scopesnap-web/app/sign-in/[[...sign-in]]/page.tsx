@@ -63,7 +63,7 @@ export default function SignInPage() {
       {/* Clerk Sign-In Component */}
       <SignIn
         forceRedirectUrl="/dashboard"
-        afterSignUpUrl="/dashboard"
+        signUpForceRedirectUrl="/dashboard"
         appearance={{
           elements: {
             rootBox: { width: "100%", maxWidth: 400 },

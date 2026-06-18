@@ -60,8 +60,8 @@ export default function SignUpPage() {
 
       {/* Clerk Sign-Up Component */}
       <SignUp
-        afterSignUpUrl="/onboarding"
-        redirectUrl="/onboarding"
+        forceRedirectUrl="/onboarding"
+        fallbackRedirectUrl="/onboarding"
         appearance={{
           elements: {
             rootBox: { width: "100%", maxWidth: 400 },

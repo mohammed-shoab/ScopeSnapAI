@@ -544,7 +544,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
             >
               <div style={{ fontSize: 13, lineHeight: 1.5, fontWeight: 600 }}>
                 We&apos;re recommending replacement because we estimate this unit is{" "}
-                {unitAge != null ? `${unitAge}+` : "8+"} years old. The age wasn&apos;t confirmed.
+                {unitAge != null ? `${unitAge}+` : "8+"}{" "}years old. The age wasn&apos;t confirmed.
                 See what we&apos;d recommend if the unit is newer.
               </div>
               <button

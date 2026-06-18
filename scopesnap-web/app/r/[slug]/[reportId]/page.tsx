@@ -13,10 +13,10 @@ import ReportClient from "./ReportClient";
 export const dynamic = "force-dynamic";
 
 interface ReportPageProps {
-  params: {
+  params: Promise<{
     slug: string;      // Company slug e.g. "abc-hvac"
     reportId: string;  // Report short ID e.g. "rpt-0847"
-  };
+  }>;
 }
 
 async function fetchReport(reportId: string) {
@@ -44,7 +44,7 @@ async function fetchReport(reportId: string) {
 
 // Server Component — SSR for fast initial load
 export default async function HomeownerReportPage({ params }: ReportPageProps) {
-  const { reportId } = params;
+  const { reportId } = await params;
 
   const report = await fetchReport(reportId);
 
@@ -62,7 +62,7 @@ export function generateStaticParams() {
 
 // Generate metadata for SEO
 export async function generateMetadata({ params }: ReportPageProps) {
-  const { reportId, slug } = params;
+  const { reportId, slug } = await params;
   const report = await fetchReport(reportId);
 
   const companyName = report?.company?.name || slug.replace(/-/g, " ").replace(/\b\w/g, (l: string) => l.toUpperCase());
