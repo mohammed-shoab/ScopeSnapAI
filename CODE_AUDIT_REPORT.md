@@ -113,9 +113,9 @@ Development convenience vs. strict configuration best practices. The pattern is 
 - ✅ Placeholder values for Stripe and webhook secrets (`sk_test_placeholder`, `whsec_placeholder`)
 - ✅ Empty critical keys: `GEMINI_API_KEY=`, `RESEND_API_KEY=` (not exposed)
 - ⚠️ **Note:** Active test API keys present:
-  - Line 11: `CLERK_SECRET_KEY=sk_test_VhO4cPofHoqMVeRkEMgPAYQWmb06WGb4SbZObgLDu7`
+  - Line 11: `CLERK_SECRET_KEY=sk_test_REDACTED_ROTATE_ME`
   - Line 12: `CLERK_PUBLISHABLE_KEY=pk_test_Z2xvd2luZy1jb3diaXJkLTg5LmNsZXJrLmFjY291bnRzLmRldiQ`
-  - Line 15: `GEMINI_API_KEY=AIzaSyAJ6SSM88y_6GFyflC6ZGhbgS3GXsmSARE`
+  - Line 15: `GEMINI_API_KEY=AIza_REDACTED_ROTATE_ME`
   - **Severity:** These are test/development keys (safe), but `.env` should not be committed
 
 **Configuration Values:**
