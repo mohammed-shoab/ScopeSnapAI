@@ -1,0 +1,51 @@
+version: 2
+updates:
+  # ---- Frontend (Next.js app) ----
+  - package-ecosystem: "npm"
+    directory: "/scopesnap-web"
+    target-branch: "staging"          # bumps flow through staging-first, never straight to main/prod
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Karachi"
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # ---- Backend (FastAPI) ----
+  - package-ecosystem: "pip"
+    directory: "/scopesnap-api"
+    target-branch: "staging"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Karachi"
+    open-pull-requests-limit: 5
+    groups:
+      pip-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # ---- GitHub Actions ----
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "staging"
+    schedule:
+      interval: "monthly"
+    groups:
+      actions-all:
+        patterns: ["*"]

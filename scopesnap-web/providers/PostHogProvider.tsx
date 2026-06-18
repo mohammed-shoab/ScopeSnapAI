@@ -34,6 +34,16 @@ if (typeof window !== "undefined" && POSTHOG_KEY) {
     capture_pageleave: true,
     autocapture: false,      // Manual instrumentation only (less noise, more signal)
     persistence: "localStorage+cookie",
+    before_send: (event) => {
+      // Drop synthetic events during audit runs (browser-side flag).
+      if (event && typeof window !== "undefined") {
+        const isAuditSynthetic =
+          window.location.search.includes("audit_synthetic=1") ||
+          window.sessionStorage.getItem("snapai_audit_mode") === "1";
+        if (isAuditSynthetic) return null;
+      }
+      return event;
+    },
     // Capture events for all users (anonymous + identified).
     // Without this, PostHog's "identified_only" project default silently drops
     // anonymous events even though the user is logged in to the app.

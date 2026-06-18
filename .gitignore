@@ -43,3 +43,6 @@ scopesnap-api/test_write.txt
 
 # TypeScript build info
 *.tsbuildinfo
+
+# Audit framework test credentials (never commit)
+audit_test_user_credentials.env
