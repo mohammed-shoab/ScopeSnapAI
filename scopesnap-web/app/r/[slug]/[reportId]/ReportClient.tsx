@@ -106,6 +106,7 @@ interface Company {
   license_number?: string;
   logo_url?: string;
   custom_branding?: boolean;  // Q.4: always true — PAID_PLANS gate removed. Always show contractor logo.
+  warranty_text?: string | null;  // DEC-088: contractor-controlled warranty terms
 }
 
 interface Report {
@@ -125,6 +126,8 @@ interface Report {
   options: Option[];
   site_visit_fee_text?: string;  // R.8
   seasonal_note?: string;         // R.9 (track-f-a.1)
+  cost_transparency_footer?: string;   // Level 2 — what's included
+  estimate_validity_footer?: string;   // Level 2 — written-estimate validity
   photo_skipped?: boolean;          // B.6 — on-site photo not captured disclosure
 }
 
@@ -641,9 +644,9 @@ export default function ReportClient({ report }: { report: Report }) {
                 </h4>
                 <p style={{ fontSize: 11, color: "#7a7770", margin: "3px 0 0" }}>
                   {condition === "fair"
-                    ? "Functional but one component needs attention to prevent further issues."
+                    ? "Functional, with one component that needs attention soon."
                     : condition === "poor" || condition === "critical"
-                    ? "Needs attention soon to prevent system failure."
+                    ? "Needs attention soon; one or more components are showing significant wear."
                     : condition === "good" || condition === "excellent"
                     ? "Your system is in good shape."
                     : "Assessment complete — see details below."}
@@ -1198,6 +1201,30 @@ export default function ReportClient({ report }: { report: Report }) {
             <p style={{ fontSize: 10, color: "#7a7770", margin: 0, lineHeight: 1.5 }}>
               {report.site_visit_fee_text}
             </p>
+          </div>
+        )}
+        {/* Level 2: contractor warranty terms (DEC-088 — only shown when set) */}
+        {report.company?.warranty_text && (
+          <div style={{ margin: "0 10px 4px", padding: "10px 14px", background: "#f7f6f2", borderRadius: 10, border: "1px solid #e5e2da" }}>
+            <p style={{ fontSize: 10, color: "#7a7770", margin: 0, lineHeight: 1.5 }}>
+              <strong>{report.company?.name ? `${report.company.name} warranty` : "Warranty"}:</strong>{" "}
+              {report.company.warranty_text}
+            </p>
+          </div>
+        )}
+        {/* Level 2: cost transparency + estimate validity footers */}
+        {(report.cost_transparency_footer || report.estimate_validity_footer) && (
+          <div style={{ margin: "0 10px 4px", padding: "10px 14px", background: "#f7f6f2", borderRadius: 10, border: "1px solid #e5e2da" }}>
+            {report.cost_transparency_footer && (
+              <p style={{ fontSize: 10, color: "#7a7770", margin: 0, lineHeight: 1.5 }}>
+                {report.cost_transparency_footer}
+              </p>
+            )}
+            {report.estimate_validity_footer && (
+              <p style={{ fontSize: 10, color: "#7a7770", margin: "6px 0 0", lineHeight: 1.5 }}>
+                {report.estimate_validity_footer}
+              </p>
+            )}
           </div>
         )}
         {/* 5-Year TCO — Track G */}

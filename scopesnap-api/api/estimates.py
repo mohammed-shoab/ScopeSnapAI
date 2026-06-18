@@ -322,6 +322,24 @@ async def get_estimate(
     except Exception:
         data["view_count"] = 0
 
+    # Bug 3: surface the assessment's first photo + overall condition so the
+    # Estimate Builder Present Mode (Slide 1) shows the real unit + a health badge.
+    data["assessment_photo_url"] = None
+    data["assessment_condition"] = None
+    try:
+        if estimate.assessment_id:
+            asmt_res = await db.execute(
+                select(Assessment).where(Assessment.id == estimate.assessment_id)
+            )
+            asmt = asmt_res.scalar_one_or_none()
+            if asmt:
+                photos = asmt.photo_urls or []
+                data["assessment_photo_url"] = photos[0] if photos else None
+                cond = asmt.ai_condition if isinstance(asmt.ai_condition, dict) else {}
+                data["assessment_condition"] = cond.get("overall")
+    except Exception:
+        pass
+
     return data
 
 

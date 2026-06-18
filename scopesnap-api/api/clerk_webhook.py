@@ -313,6 +313,7 @@ async def get_me(
             "phone": auth.company.phone,
             "email": auth.company.email,
             "license_number": auth.company.license_number,
+            "warranty_text": getattr(auth.company, "warranty_text", None),
         },
     }
 
@@ -350,6 +351,15 @@ async def update_company(
         company.state = body["state"]
     if "zip" in body:
         company.zip = body["zip"]
+    if "warranty_text" in body:
+        wt = body["warranty_text"]
+        if wt is not None and len(str(wt)) > 500:
+            raise HTTPException(
+                status_code=422,
+                detail="Warranty terms must be 500 characters or fewer.",
+            )
+        # Empty string normalizes to NULL so no warranty language appears (DEC-088).
+        company.warranty_text = (str(wt).strip() or None) if wt is not None else None
 
     await db.commit()
 
@@ -361,5 +371,6 @@ async def update_company(
             "phone": company.phone,
             "email": company.email,
             "license_number": company.license_number,
+            "warranty_text": company.warranty_text,
         }
     }
