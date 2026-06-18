@@ -21,6 +21,7 @@ Company markup applied to all options.
 import json
 import logging
 import math
+import os
 import re
 import secrets
 import string
@@ -46,11 +47,83 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/estimates", tags=["estimates"])
 
 
+# -- Level 2 line-item wording + replacement breakdown ------------------------
+# DEC-088-compliant copy lives in JSON data files (Codie-authored, board-reviewed
+# 2026-06-18). Loaded once at module import.
+REPLACEMENT_BREAKDOWN_RATIOS = {
+    "equipment": 0.62,
+    "refrigerant": 0.07,
+    "labor": 0.20,
+    "service": 0.11,
+}
+# Taleb safety flag: lets us disable the hardcoded replacement breakdown per
+# deploy (env var) in ~5 min without a code change if a contractor's split is off.
+USE_HARDCODED_REPLACEMENT_RATIOS = (
+    os.environ.get("USE_HARDCODED_REPLACEMENT_RATIOS", "true").lower() == "true"
+)
+
+_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+
+
+def _load_level2_json(filename: str) -> dict:
+    try:
+        with open(os.path.join(_DATA_DIR, filename), "r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Level 2 data load failed for %s: %s", filename, exc)
+        return {}
+
+
+_REPAIR_LINE_ITEMS = {
+    int(card["card_id"]): card
+    for card in _load_level2_json("level2_repair_line_items.json").get("us_fault_cards", [])
+}
+_UNIVERSAL_STRINGS = _load_level2_json("level2_universal_strings.json")
+
+
+def _build_line_items(tier, fc, card_id: int) -> list:
+    """Per-tier line items (Bug 1 + Bug 5 fix).
+
+    - Replacement tier: 4 distinct components split by REPLACEMENT_BREAKDOWN_RATIOS,
+      summing exactly to tier.total (last line absorbs rounding remainder).
+    - Repair tiers: a single line using the Level 2 Option 1 (tier A) or
+      Option 2 (tier B / comprehensive C) wording, priced at tier.total so the
+      line item always equals the displayed total (no markup arithmetic leak).
+    """
+    total = round(float(tier.total), 2)
+
+    if getattr(tier, "is_replacement", False) and USE_HARDCODED_REPLACEMENT_RATIOS:
+        comps = _UNIVERSAL_STRINGS.get("replacement_components") or {}
+        # order -> ratio key mapping (installation is priced from the 'labor' ratio)
+        order = [("equipment", "equipment"), ("refrigerant", "refrigerant"),
+                 ("installation", "labor"), ("service", "service")]
+        items = []
+        running = 0.0
+        for idx, (comp_key, ratio_key) in enumerate(order):
+            if idx < len(order) - 1:
+                amount = round(total * REPLACEMENT_BREAKDOWN_RATIOS[ratio_key], 2)
+                running = round(running + amount, 2)
+            else:
+                amount = round(total - running, 2)  # remainder keeps the sum exact
+            items.append({
+                "description": comps.get(comp_key) or comp_key.title(),
+                "amount": amount,
+                "category": "replacement",
+            })
+        return items
+
+    repair = _REPAIR_LINE_ITEMS.get(int(card_id)) or {}
+    desc = repair.get("option_1") if getattr(tier, "tier", None) == "A" else repair.get("option_2")
+    if not desc:
+        desc = fc.card_name
+    return [{"description": desc, "amount": total, "category": "repair"}]
+
+
 # -- Label sets by unit age ---------------------------------------------------
 
 _LABEL_SETS = [
     {"max_age": 5,   "good": "Fix Today",     "better": "Fix + Peace of Mind",        "best": "Full Service"},
-    {"max_age": 10,  "good": "Fix Today",     "better": "Fix + Prevent Next Failure",  "best": "Consider Replacing"},
+    {"max_age": 10,  "good": "Fix Today",     "better": "Fix + Extend Life",           "best": "Consider Replacing"},
     {"max_age": 15,  "good": "Temporary Fix", "better": "Repair + Extend Life",        "best": "Replace Now"},
     {"max_age": 999, "good": "Emergency Fix", "better": "Last Repair",                 "best": "Replace Immediately"},
 ]
@@ -1037,8 +1110,8 @@ async def generate_fault_card_estimate(
                     unit_age, reliable_age,
                 )
                 or (
-                    f"{age_str}complete system replacement eliminates near-term repair risk "
-                    "and reduces electricity costs by approximately 30-40%."
+                    f"{age_str}a complete system replacement covers the whole system "
+                    "and runs at current efficiency standards."
                 ),
             why_recommended=(better_data or {}).get("why_recommended_best_replacement"),
             five_year_comparison=fyr,
@@ -1145,7 +1218,7 @@ async def generate_fault_card_estimate(
                         "recommendation_reason": t.recommendation_reason,
                         "recommendation_source": t.recommendation_source,
                         "five_year_comparison": t.five_year_comparison,
-                        "line_items": [{"description": fc.card_name, "amount": float(t.base_amount), "category": "repair"}],
+                        "line_items": _build_line_items(t, fc, body.card_id),
                     }
                     for t in tiers
                 ]
