@@ -57,6 +57,30 @@ interface PresentModeProps {
   selectedTier: string;
   onClose: () => void;
   onSelectTier: (tier: string) => void;
+  /** Bug 3: real assessment photo for Slide 1 (falls back to SVG when absent). */
+  photoUrl?: string;
+  /** Bug 3: overall condition rating — drives the Slide 1 health badge. */
+  conditionRating?: string;
+}
+
+// Level 2 "Why this matters" footers (Codie-authored, DEC-088 compliant).
+// Canonical source — these are frontend-only and intentionally NOT duplicated
+// in a backend JSON (avoids the two-sources-of-truth drift Rob flagged).
+const PRESENT_FOOTERS = {
+  repair: "Repairs address the diagnosed fault and return the system to working order. Your contractor can walk you through what each option includes.",
+  replacement: "A new system runs at current efficiency standards. Your contractor installs it, registers it with the manufacturer, and configures it for your home.",
+  default: "Each option below is priced for the work it includes. Compare them with your contractor and choose what fits your home and budget.",
+};
+
+// Map a condition string -> badge label + color (Bug 3).
+function conditionBadge(rating?: string): { label: string; color: string } | null {
+  if (!rating) return null;
+  const r = rating.toLowerCase();
+  if (r.includes("critical")) return { label: "CRITICAL", color: "#c62828" };
+  if (r.includes("poor")) return { label: "POOR", color: "#c4600a" };
+  if (r.includes("fair")) return { label: "FAIR", color: "#e6a817" };
+  if (r.includes("good") || r.includes("excellent")) return { label: "GOOD", color: "#1a8754" };
+  return null;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -152,7 +176,12 @@ function HealthGauge({ score, color, label }: { score: number; color: string; la
 }
 
 // ─── Slide 1 — Annotated Photo ─────────────────────────────────────────────
-function Slide1Photo({ issues }: { issues: Array<{label: string; severity: "red"|"orange"|"yellow"}> }) {
+function Slide1Photo({ issues, photoUrl, badge, footer }: {
+  issues: Array<{label: string; severity: "red"|"orange"|"yellow"}>;
+  photoUrl?: string;
+  badge?: { label: string; color: string } | null;
+  footer?: string;
+}) {
   const CALLOUT_POSITIONS = [
     { top: "18%", left: "15%" },
     { top: "22%", right: "12%" },
@@ -167,7 +196,26 @@ function Slide1Photo({ issues }: { issues: Array<{label: string; severity: "red"
       <div className="flex-1 relative flex items-center justify-center overflow-hidden"
         style={{ background: "linear-gradient(180deg,#0d0d0b 0%,#1a1a18 100%)" }}>
 
-        {/* Placeholder equipment SVG */}
+        {/* Health badge (Bug 3) */}
+        {badge && (
+          <div
+            className="absolute top-3 right-3 z-10 text-white text-[11px] font-extrabold px-2.5 py-1 rounded-full"
+            style={{ background: badge.color, letterSpacing: "0.05em" }}
+          >
+            {badge.label}
+          </div>
+        )}
+
+        {/* Bug 3: real assessment photo when available, else SVG placeholder */}
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photoUrl}
+            alt="Assessed equipment"
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ opacity: 0.92 }}
+          />
+        ) : (
         <svg width="200" height="160" viewBox="0 0 200 160" fill="none" opacity="0.7">
           {/* AC unit outline */}
           <rect x="20" y="30" width="160" height="110" rx="8" stroke="#4a4a48" strokeWidth="2" fill="#2a2a28"/>
@@ -186,6 +234,7 @@ function Slide1Photo({ issues }: { issues: Array<{label: string; severity: "red"
           <line x1="100" y1="67" x2="100" y2="103" stroke="#3a3a38" strokeWidth="1"/>
           <line x1="82" y1="85" x2="118" y2="85" stroke="#3a3a38" strokeWidth="1"/>
         </svg>
+        )}
 
         {/* Animated callout dots */}
         {issues.slice(0, 4).map((issue, i) => {
@@ -204,7 +253,7 @@ function Slide1Photo({ issues }: { issues: Array<{label: string; severity: "red"
                 className="text-white text-[10px] font-bold px-2 py-0.5 rounded-full"
                 style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", maxWidth: 100, lineHeight: 1.3 }}
               >
-                {issue.label.length > 18 ? issue.label.slice(0, 16) + "…" : issue.label}
+                {issue.label.length > 28 ? issue.label.slice(0, 27) + "…" : issue.label}
               </span>
             </div>
           );
@@ -219,6 +268,12 @@ function Slide1Photo({ issues }: { issues: Array<{label: string; severity: "red"
           {issues.length} issue{issues.length !== 1 ? "s" : ""} identified
         </p>
         <p className="text-white/50 text-xs">Swipe to see full breakdown →</p>
+        {footer && (
+          <p className="text-white/70 text-[11px] leading-snug pt-2 border-t border-white/10 mt-2">
+            <span className="font-bold uppercase tracking-wide text-white/50">Why this matters: </span>
+            {footer}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -369,7 +424,7 @@ function Slide4Value({ estimate, selectedTier }: { estimate: EstimateData; selec
 }
 
 // ─── Main PresentMode Component ────────────────────────────────────────────
-export default function PresentMode({ estimate, selectedTier, onClose, onSelectTier }: PresentModeProps) {
+export default function PresentMode({ estimate, selectedTier, onClose, onSelectTier, photoUrl, conditionRating }: PresentModeProps) {
   const [slide, setSlide] = useState(0);
   const totalSlides = 4;
 
@@ -391,8 +446,16 @@ export default function PresentMode({ estimate, selectedTier, onClose, onSelectT
 
   const issues = deriveIssues(estimate.options || []);
 
+  // Bug 3: health badge from condition; "Why this matters" footer by tier.
+  const badge = conditionBadge(conditionRating)
+    || { label: healthScore(estimate.options || []).label, color: healthScore(estimate.options || []).color };
+  const selectedOpt = (estimate.options || []).find((o) => o.tier === selectedTier);
+  const slide1Footer = selectedOpt
+    ? (selectedOpt.tier === "C" ? PRESENT_FOOTERS.replacement : PRESENT_FOOTERS.repair)
+    : PRESENT_FOOTERS.default;
+
   const SLIDES = [
-    { title: "Diagnosis", component: <Slide1Photo issues={issues} /> },
+    { title: "Diagnosis", component: <Slide1Photo issues={issues} photoUrl={photoUrl} badge={badge} footer={slide1Footer} /> },
     { title: "Health", component: <Slide2Health estimate={estimate} /> },
     { title: "Options", component: <Slide3Options estimate={estimate} selectedTier={selectedTier} onSelectTier={onSelectTier} /> },
     { title: "Value", component: <Slide4Value estimate={estimate} selectedTier={selectedTier} /> },

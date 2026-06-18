@@ -1,0 +1,20 @@
+{
+  "_note": "Universal (fault-agnostic) strings. DEC-088 compliant. 'warranty' appears only in the warranty_ui block, which IS the contractor-controlled field DEC-088 permits. Board-reviewed 2026-06-18: replacement service line now names the action + 'full factory coverage' for homeowner clarity (avoids unqualified warranty promise).",
+  "replacement_components": {
+    "equipment": "New high-efficiency HVAC system, matched to your home's load",
+    "refrigerant": "Factory refrigerant charge, set to manufacturer spec",
+    "installation": "Professional installation, including electrical and refrigerant line connections",
+    "service": "Old unit removal and haul-away, permit, and registration of the new system with the manufacturer"
+  },
+  "footers": {
+    "cost_transparency": "This estimate covers parts, labor, and the service items listed for each option. Ask your contractor about anything not shown here.",
+    "estimate_validity": "This is a written estimate based on the diagnosed condition. The final price may change if on-site work uncovers conditions different from those assessed."
+  },
+  "warranty_ui": {
+    "section_label": "Warranty terms",
+    "field_placeholder": "e.g., 30-day labor, 1-year parts",
+    "helper_text": "If filled in, this appears on the homeowner report under your name. Leave blank to omit any warranty mention.",
+    "validation_error": "Warranty terms must be 500 characters or fewer.",
+    "default_behavior": "Leave blank to omit warranty terms from the homeowner report."
+  }
+}

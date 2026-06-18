@@ -6,6 +6,9 @@ The report_token in the URL is the security layer.
 WP-06: Full report data + approval implementation.
 """
 
+import json
+import logging
+import os
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -24,6 +27,19 @@ from db.models import (
 )
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
+
+logger = logging.getLogger(__name__)
+
+# Level 2 footer disclaimers (Codie-authored, DEC-088 compliant). Loaded once.
+try:
+    _L2_UNIVERSAL = json.load(open(
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), "data",
+                     "level2_universal_strings.json"), encoding="utf-8"
+    ))
+    _L2_FOOTERS = _L2_UNIVERSAL.get("footers", {}) or {}
+except Exception as _exc:  # pragma: no cover - defensive
+    logging.getLogger(__name__).warning("Level 2 footers load failed: %s", _exc)
+    _L2_FOOTERS = {}
 
 
 # ── Request Models ────────────────────────────────────────────────────────────
@@ -310,6 +326,9 @@ async def get_public_report(
             "email": company.email,
             "license_number": company.license_number,
             "custom_branding": True,
+            # DEC-088: contractor-controlled warranty terms. Only shown when the
+            # owner has filled the field in; None/blank => no warranty language.
+            "warranty_text": (getattr(company, "warranty_text", None) or None),
         }
 
     # ── Build response ────────────────────────────────────────────────────────
@@ -348,6 +367,12 @@ async def get_public_report(
         # R.8: Site visit fee footer disclaimer (US default; PK follow-up in Track P)
         # Future: read from company.site_visit_fee_text when column is added
         "site_visit_fee_text": "Diagnostic visit fee $89 — waived upon repair approval.",
+
+        # Level 2 footer disclaimers (cost transparency + written-estimate
+        # validity). Conservative, FTC §5-aware wording; "final price may vary"
+        # is permitted industry practice, not a statutory requirement.
+        "cost_transparency_footer": _L2_FOOTERS.get("cost_transparency"),
+        "estimate_validity_footer": _L2_FOOTERS.get("estimate_validity"),
 
         # R.9 (track-f-a.1): Seasonal labor surcharge disclosure for homeowner report.
         # Reads estimate.seasonal_modifier_pct (frozen at generation time, migration 029).

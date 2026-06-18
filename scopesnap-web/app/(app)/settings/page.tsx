@@ -35,6 +35,7 @@ interface CompanyData {
   city: string | null;
   state: string | null;
   zip: string | null;
+  warranty_text: string | null;
   plan: string;
 }
 
@@ -57,6 +58,7 @@ export default function SettingsPage() {
     city: "",
     state: "",
     zip: "",
+    warranty_text: "",
   });
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
@@ -83,6 +85,7 @@ export default function SettingsPage() {
               city: data.company.city || "",
               state: data.company.state || "",
               zip: data.company.zip || "",
+              warranty_text: data.company.warranty_text || "",
             });
           }
           setLoading(false);
@@ -334,6 +337,24 @@ export default function SettingsPage() {
                     className="w-full border border-surface-border rounded-ss px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green disabled:bg-surface-bg disabled:text-text-secondary"
                   />
                 </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="text-[9px] font-bold uppercase tracking-widest font-mono text-text-secondary block mb-2">
+                  Warranty terms
+                </label>
+                <input
+                  type="text"
+                  value={form.warranty_text}
+                  maxLength={500}
+                  onChange={(e) => setForm({ ...form, warranty_text: e.target.value })}
+                  disabled={!isOwner}
+                  placeholder="e.g., 30-day labor, 1-year parts"
+                  className="w-full border border-surface-border rounded-ss px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green disabled:bg-surface-bg disabled:text-text-secondary"
+                />
+                <p className="text-[10px] text-text-secondary mt-1.5 leading-snug">
+                  If filled in, this appears on the homeowner report under your name. Leave blank to omit any warranty mention.
+                </p>
               </div>
             </div>
 
