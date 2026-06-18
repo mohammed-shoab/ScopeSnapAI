@@ -11,6 +11,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
+import logging
 import time
 import httpx
 from jose import jwt as jose_jwt, JWTError
@@ -21,6 +22,7 @@ from config import get_settings
 
 settings = get_settings()
 security = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
 
 # ── JWKS Cache (avoid fetching on every request) ───────────────────────────────
 _jwks_cache: Optional[dict] = None
@@ -176,8 +178,8 @@ async def _load_auth_context(clerk_user_id: str, db: AsyncSession) -> AuthContex
     user = result.scalar_one_or_none()
 
     if not user:
-        # Auto-provision: fetch user details from Clerk API and create DB records
-        # This handles cases where the user.created webhook did not fire
+        # Auto-provision: fetch user details from Clerk API and create DB records.
+        # This handles cases where the user.created webhook did not fire.
         try:
             async with _httpx.AsyncClient() as client:
                 resp = await client.get(
@@ -200,16 +202,25 @@ async def _load_auth_context(clerk_user_id: str, db: AsyncSession) -> AuthContex
                 from api.clerk_webhook import _provision_user
                 await _provision_user(clerk_user_id, email, name, db)
                 logger.info(f"[auth] Auto-provisioned user {clerk_user_id} via Clerk API fallback")
-
-                # Reload
-                result = await db.execute(
-                    select(User).where(User.clerk_user_id == clerk_user_id)
-                )
-                user = result.scalar_one_or_none()
             else:
                 logger.warning(f"[auth] Clerk API returned {resp.status_code} for {clerk_user_id}")
         except Exception as exc:
+            # Provision can fail because a concurrent user.created webhook already
+            # created this user (duplicate-key race) — that is NOT fatal. Log it and
+            # fall through to the re-query below, which picks up the existing row.
+            # Roll back first so a failed transaction doesn't poison the re-query.
             logger.error(f"[auth] Auto-provision failed for {clerk_user_id}: {exc}")
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+
+        # Always re-query after the provision attempt — the user may now exist,
+        # whether it was created here or by a racing webhook.
+        result = await db.execute(
+            select(User).where(User.clerk_user_id == clerk_user_id)
+        )
+        user = result.scalar_one_or_none()
 
     if not user:
         raise HTTPException(
