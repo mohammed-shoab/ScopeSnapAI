@@ -10,7 +10,7 @@
  */
 
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 import ReportClient from "@/app/r/[slug]/[reportId]/ReportClient";
 
 const DEFAULT_REPORT = {
@@ -33,6 +33,11 @@ const DEFAULT_REPORT = {
 
 function HarnessInner() {
   const params = useSearchParams();
+  // React 19 hydration-safe: search params are unavailable during SSR, so render
+  // nothing until mounted to keep the server and first client render identical.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
   const raw = params.get("f");
   let report = DEFAULT_REPORT;
   if (raw) {
