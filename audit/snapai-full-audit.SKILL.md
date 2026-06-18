@@ -100,7 +100,12 @@ scoped and safe modes have NO schedule restriction (their staging impact is mino
 ## Phase 1 -- Pre-deploy work (varies by mode)
 
 ### Scoped mode (per-PR audit)
-- Run `python -m pytest scopesnap-api/` -- invoke via bash (pytest is installed as a module; not on PATH)
+- Run the API tests in a **Python 3.12 venv** (NOT host Python 3.14 -- `psycopg2-binary==2.9.9`
+  has no 3.14 wheel and won't install). Setup once: `py -3.12 -m venv C:\tmp\apienv` then
+  `C:\tmp\apienv\Scripts\python -m pip install -r scopesnap-api/requirements.txt pytest pytest-asyncio`.
+  Run: `C:\tmp\apienv\Scripts\python -m pytest scopesnap-api/tests -q`. (Baseline 2026-06-18: 122 pass;
+  test_fault_estimate_age_v2.py + test_stage4_5.py error at collection via their own exec-loader --
+  pre-existing, exclude with `--ignore` until fixed.)
 - Run the **audit harness** Playwright suite (the Next.js app does NOT declare `@playwright/test`,
   so authenticated flows live in the isolated `audit/` folder):
   `cd audit && npm install --include=dev && npm test`
