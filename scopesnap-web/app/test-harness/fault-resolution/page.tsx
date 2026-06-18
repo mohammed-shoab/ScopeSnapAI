@@ -13,7 +13,7 @@
  */
 
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 import FaultResolutionScreen, { type DiagnosticResult } from "@/components/FaultResolutionScreen";
 
 const DEFAULT_CHOOSER_GATE: DiagnosticResult = {
@@ -65,6 +65,11 @@ const DEFAULT_CHOOSER_GATE: DiagnosticResult = {
 
 function HarnessInner() {
   const params = useSearchParams();
+  // React 19 hydration-safe: search params are unavailable during SSR, so render
+  // nothing until mounted to keep the server and first client render identical.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
   const raw = params.get("f");
   let data = DEFAULT_CHOOSER_GATE;
   if (raw) {
