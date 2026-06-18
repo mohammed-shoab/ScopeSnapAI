@@ -1221,12 +1221,25 @@ export default function EstimatePage() {
                   <div className="p-3 bg-surface-secondary rounded-xl">
                     <p className="text-xs text-text-secondary font-semibold mb-2">Report URL</p>
                     <div className="flex items-center gap-2">
-                      <code className="flex-1 text-xs font-mono text-brand-green break-all truncate">
+                      <a
+                        href={estimate.homeowner_report_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 text-xs font-mono text-brand-green break-all truncate underline hover:opacity-80"
+                      >
                         {estimate.homeowner_report_url}
-                      </code>
+                      </a>
+                      <a
+                        href={estimate.homeowner_report_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-semibold text-brand-green hover:underline whitespace-nowrap ml-2"
+                      >
+                        Preview
+                      </a>
                       <button
                         onClick={() => navigator.clipboard.writeText(estimate.homeowner_report_url || "")}
-                        className="text-xs font-semibold text-brand-green hover:underline whitespace-nowrap ml-2"
+                        className="text-xs font-semibold text-brand-green hover:underline whitespace-nowrap"
                       >
                         Copy
                       </button>
@@ -1458,16 +1471,31 @@ export default function EstimatePage() {
                 <div className="card p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold">Report Link</p>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(estimate.homeowner_report_url!)}
-                      className="text-xs text-brand-green font-semibold hover:underline"
-                    >
-                      Copy
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <a
+                        href={estimate.homeowner_report_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-brand-green font-semibold hover:underline"
+                      >
+                        Preview
+                      </a>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(estimate.homeowner_report_url!)}
+                        className="text-xs text-brand-green font-semibold hover:underline"
+                      >
+                        Copy
+                      </button>
+                    </div>
                   </div>
-                  <div className="bg-surface-secondary rounded-lg p-3 font-mono text-xs text-brand-green break-all">
+                  <a
+                    href={estimate.homeowner_report_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block bg-surface-secondary rounded-lg p-3 font-mono text-xs text-brand-green break-all underline hover:opacity-80"
+                  >
                     {estimate.homeowner_report_url}
-                  </div>
+                  </a>
                 </div>
               )}
 
