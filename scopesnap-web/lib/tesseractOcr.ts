@@ -224,8 +224,13 @@ function parseYear(text: string, serialNumber: string | null): number | null {
   return null;
 }
 
+function escapeRegExp(s: string): string {
+  // Prevent ReDoS / malformed patterns when building a dynamic RegExp from a label.
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function parseAmps(text: string, label: string): number | null {
-  const p = new RegExp(label + "[:\\s]*([\\d.]+)\\s*A?", "i");
+  const p = new RegExp(escapeRegExp(label) + "[:\\s]*([\\d.]+)\\s*A?", "i");
   const m = text.match(p);
   return m ? parseFloat(m[1]) : null;
 }

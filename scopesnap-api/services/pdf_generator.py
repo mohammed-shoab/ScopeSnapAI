@@ -15,6 +15,34 @@ from pathlib import Path
 from typing import Optional
 
 
+def _is_safe_remote_url(url: str) -> bool:
+    """SSRF guard: allow only http(s) URLs whose host resolves to a public IP.
+    Blocks private/loopback/link-local (incl. cloud metadata 169.254.169.254),
+    reserved, multicast and unspecified addresses."""
+    try:
+        import ipaddress as _ip
+        import socket as _socket
+        from urllib.parse import urlparse as _urlparse
+
+        parsed = _urlparse(url)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            return False
+        for res in _socket.getaddrinfo(parsed.hostname, None):
+            ip = _ip.ip_address(res[4][0])
+            if (
+                ip.is_private
+                or ip.is_loopback
+                or ip.is_link_local
+                or ip.is_reserved
+                or ip.is_multicast
+                or ip.is_unspecified
+            ):
+                return False
+        return True
+    except Exception:
+        return False
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Pure-Python PDF Writer
 # Generates valid PDF 1.4 output using only Python stdlib (io, struct, etc.)
@@ -405,7 +433,7 @@ def _fetch_and_annotate_photo(photo_url: str, issues: list, max_w: int = 516):
         import urllib.request as _urlreq
         import io as _io
 
-        if not photo_url or not photo_url.startswith("http"):
+        if not photo_url or not _is_safe_remote_url(photo_url):
             return None
 
         # ── Fetch ─────────────────────────────────────────────────────────────
@@ -474,7 +502,7 @@ def _fetch_photo(url: str):
         import io as _io
         from PIL import Image as _PILImage
 
-        if not url or not url.startswith("http"):
+        if not url or not _is_safe_remote_url(url):
             return None, None, None
 
         req = _urlreq.Request(url, headers={"User-Agent": "SnapAI-PDF/1.0"})

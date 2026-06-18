@@ -1,0 +1,12 @@
+# Semgrep ignore for ScopeSnapAI.
+# Alembic migrations are static DDL/seed SQL (not request-driven), so the raw-SQL
+# (avoid-sqlalchemy-text / formatted-sql-query) rules produce expected, non-exploitable
+# noise there. Runtime API code is still scanned.
+scopesnap-api/db/migrations/
+
+# Vendored / generated
+node_modules/
+.pnpm-store/
+.next/
+test-results/
+playwright-report/
