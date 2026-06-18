@@ -4,3 +4,10 @@ test-results/
 playwright-report/
 .env
 .env.*
+# local probe/util scripts (not part of the harness)
+*_probe.mjs
+list_users.mjs
+set_pw.mjs
+create_test_user.mjs
+check_*.mjs
+run*.log
