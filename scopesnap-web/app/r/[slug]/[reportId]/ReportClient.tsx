@@ -867,8 +867,8 @@ export default function ReportClient({ report }: { report: Report }) {
                       </details>
                     )}
 
-                    {/* Line items when selected */}
-                    {isSelected && opt.line_items && opt.line_items.length > 0 && (
+                    {/* Line items — shown for every tier so homeowners can compare what each option includes */}
+                    {opt.line_items && opt.line_items.length > 0 && (
                       <div style={{ marginTop: 10, borderTop: "1px solid #c8efda", paddingTop: 10 }}>
                         {opt.line_items.map((item, j) => (
                           <div
