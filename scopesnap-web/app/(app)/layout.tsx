@@ -39,7 +39,7 @@ export default async function AppLayout({
       // can immediately experience the app. Profile setup is accessible from Settings.
       // Skip this check when already on /onboarding or /assess to avoid redirect loops.
       const { headers } = await import("next/headers");
-      const pathname = headers().get("x-pathname") ?? "";
+      const pathname = (await headers()).get("x-pathname") ?? "";
       const skipPaths = ["/onboarding", "/assess", "/settings"];
       if (!skipPaths.some((p) => pathname.startsWith(p))) {
         const token = await getToken();

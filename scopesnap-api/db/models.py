@@ -74,6 +74,11 @@ class Company(Base):
         DateTime(timezone=True), nullable=True,
     )
 
+    # Contractor-controlled warranty terms shown on the homeowner report under
+    # the contractor's name (DEC-088: the only sanctioned use of "warranty").
+    # NULL/blank = no warranty language appears anywhere on the report.
+    warranty_text: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

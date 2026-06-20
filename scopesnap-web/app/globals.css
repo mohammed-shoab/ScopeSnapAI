@@ -200,4 +200,6 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* Dashed circle animation for annotated photos */
-@keyframes dashRot
+@keyframes dashRot {
+  to { transform: rotate(360deg); }
+}

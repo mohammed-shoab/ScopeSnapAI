@@ -30,7 +30,7 @@ type FiveYearComparisonProps = {
 
 const OPTION_LABELS: Record<string, string> = {
   A: "Fix Today",
-  B: "Fix + Prevent",
+  B: "Fix + Extend Life",
   C: "Consider Replace",
 };
 

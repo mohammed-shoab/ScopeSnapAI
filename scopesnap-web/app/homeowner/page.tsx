@@ -176,7 +176,7 @@ export default function HomeownerLandingPage() {
             },
             {
               tier: "Better",
-              label: "Fix + prevent",
+              label: "Fix + extend life",
               color: "text-brand-green",
               bg: "bg-brand-green-light",
               border: "border-brand-green",

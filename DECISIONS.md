@@ -1788,134 +1788,52 @@ const isRec = isMiddleTier;  // backward-compat alias for existing headerBg/badg
 
 ---
 
-### DEC-091 — Migrate database to us-east-1 (co-locate with backend); staging done, prod pending (2026-06-08)
+## DEC-090 — Audit framework: synthetic-event filtering (Sentry/PostHog) shipped to prod; retrospective (2026-06-18)
 
-**Decision:** Move the Supabase database from Tokyo (`ap-northeast-1`) to Virginia (`us-east-1`) to co-locate with the Railway US East backend, eliminating a ~1,300 ms cross-Pacific round-trip on every query. Stay at $0 (Free/NANO) by never exceeding the 2-active-project free limit (pause old before creating new).
+**Date:** 2026-06-18
 
-**Context:** A speed audit measured DB queries at ~1,300 ms each (backend Virginia → DB Tokyo). `/health` (one SELECT 1) took ~2 s; real API calls 3,000–3,755 ms. Confirmed the prod + staging Supabase projects were both in ap-northeast-1 while Railway is US East.
+**Context:** Activated the audit-framework prerequisites and shipped synthetic-event filtering so
+audit/ZAP runs don't pollute Sentry Issues/quota or PostHog analytics.
 
-**What we did (STAGING):** Created `snapai-staging-use1` (us-east-1), restored the verified Tokyo-staging pg_dump into it (57 tables / 41,163 rows, 0 diff, incl `research` marketing schema), swapped Railway staging DATABASE_URL, paused old Tokyo staging as rollback. Also tuned the pool (DEC rationale below) and added an app_events partial index.
+**Decisions:**
+1. Synthetic-event filtering is CODE-side (`before_send`/`beforeSend`), not dashboard filters.
+   - Backend (`main.py`): `before_send` returns `None` when env `SNAPAI_AUDIT_MODE=1`.
+   - Frontend (`sentry.client.config.ts`, `PostHogProvider.tsx`): returns `null` when
+     `?audit_synthetic=1` OR `sessionStorage.snapai_audit_mode==='1'`.
+   - Sentry session **replays are NOT gated by `beforeSend`** → replay sample rates are zeroed at
+     init when the audit flag is present.
+2. Audit E2E auth uses Clerk **sign-in tokens** (passwordless) minted with the secret key, plus
+   `@clerk/testing` Testing Tokens (bypass bot detection). Reason: staging sign-in requires an
+   email OTP, and Clerk rejects breached passwords at sign-in. Harness: `SnapAI_Audit_Setup_Artifacts/clerk_e2e_auth_harness.md`.
+3. Railway compute hard cap raised $10 → $15.
+4. Promoted 5 files to prod via `promote-to-prod.sh` equivalent (commit `6f4925a`):
+   `sentry.client.config.ts`, `PostHogProvider.tsx`, `.gitignore`, `dependabot.yml`, `gitleaks.yml`.
+   `main.py` `before_send` was already on prod.
 
-**Pool tuning:** Removed `pool_pre_ping` (extra SELECT 1 per checkout — pointless at <10 ms latency), added `pool_recycle=1800`, `pool_size=5`/`max_overflow=5` (max 10, under the 15-conn session-pooler cap). Result: DB query ~35 ms → ~18 ms; `/api/events` ~1,050 ms → ~417 ms.
+**Corrections to the original setup doc (verified live):**
+- OWASP ZAP image `owasp/zap2docker-stable` is DEPRECATED → `ghcr.io/zaproxy/zaproxy:stable` (use `-h`, not `--help`).
+- Cloudflare Free does NOT include configurable Managed/OWASP rulesets (Pro-only). The prod app
+  `snapai.mainnov.tech` is NOT behind Cloudflare (mainnov.tech = Hostinger DNS; confirms DEC-068). WAF deferred.
+- Sentry Inbound Filters can't drop by an environment tag on any plan → code-side `before_send` drop.
+- PostHog free-tier exclusion is person/cohort-based (can't target an event property) → code-side drop.
+- Repo is `github.com/mohammed-shoab/ScopeSnapAI` (doc said `SnapAIAI`). MFA already enabled.
 
-**Result:** DB query ~1,300 ms → ~18 ms. Dashboard TTFB 2,462 → 726 ms. Data verified byte-identical (app reads confirmed: equipment_models, estimates, diagnoses all exact vs DB).
+**Retrospective — what went wrong & how resolved:**
+- Weak/breached test password (`Shoab123`) blocked sign-in via Clerk's compromised-password check
+  → switched audit auth to passwordless sign-in tokens (password now irrelevant).
+- Staging sign-in needs an email OTP → UI automation can't self-serve → sign-in tokens bypass it.
+- URL flag `?audit_synthetic=1` is STRIPPED on Clerk auth redirects, so the filter saw no flag and
+  didn't drop → use `sessionStorage.snapai_audit_mode='1'` (survives redirects); must be set at PAGE INIT.
+- First prod QA fired before the Vercel prod build finished → hit the old build, didn't drop, created
+  one stray prod Sentry error (resolved). Lesson: confirm the target deploy is LIVE before QA.
+- Sentry replay envelope still sent after the error-event drop → added replay-rate suppression.
 
-**Still open / TODO for PROD:** prod (`scopesnap`, Tokyo) not yet migrated — repeat recipe with a fresh prod pg_dump, swap prod DATABASE_URL during a low-traffic window. Convert the app_events index into an Alembic migration so prod gets it. Rollback = re-point DATABASE_URL at the (paused) Tokyo project + unpause.
+**Learnings:**
+- Free-tier Sentry/PostHog can't filter synthetic traffic dashboard-side; do it in code.
+- Sentry replays are gated separately from `beforeSend`.
+- For Clerk E2E, use sign-in tokens + Testing Tokens; never depend on UI password/OTP.
+- Audit toggles must be readable at page init and survive auth redirects (sessionStorage > URL param).
+- Always wait for the target deploy to be live before QA-ing it.
 
-**Trade-off:** us-east-1 is farther from PK (Pakistan) users than Tokyo, BUT the backend is in US East for both markets, so co-locating the DB with the backend helps BOTH markets (the slow hop was backend↔DB, not user↔backend). No PK downside.
-
----
-
-## DEC-092 (2026-06-09): PK broke after Tokyo→Virginia migration — 5 of 6 `pak_*_v` views missing from restore
-
-**Symptom:** PK diagnostic/estimate flow + `pk-staging` returned "API offline / Failed to fetch". US unaffected, both envs.
-
-**Root cause:** The PK market path (`api/dependencies.py` → `MarketTables`) queries **views** — `pak_fault_cards_v`, `pak_error_codes_v`, `pak_labor_rates_v`, `pak_replacement_costs_v`, `pak_lifecycle_rules_v` (+ `pak_operating_targets_v`) — that remap `pak_*` base-table columns (pkr_est_*, code, description…) to the US-compatible names the shared SQL expects (price_list_*, error_code, meaning…). These 5 views were created **out of band** (NOT in Alembic — only `pak_operating_targets_v` is, in migration 036). The Tokyo **staging** dump never contained the other 5 (they never existed in Tokyo staging); the Tokyo **prod** dump contained all 6. So after the restore, Virginia **staging** had only `pak_operating_targets_v` → every PK view query hit "relation does not exist" → backend **503 with no CORS headers** (the WA-21 escaped-exception pattern) → browser shows "Failed to fetch", which looked like a CORS/connectivity bug but was a missing-relation bug.
-
-**Why the data-integrity check missed it:** views have no rows of their own; the migration verification compared **base-table row counts** only. **LESSON: migration verification must also diff views, functions, and sequences — not just table row counts.**
-
-**Fix (2026-06-09):** Recreated the 5 missing views in Virginia **staging** (`kikhhnanuwzocwcpzutr`) from the prod backup `backups/prod_fresh_20260608_164020.sql.gz` via `CREATE OR REPLACE VIEW`. Verified each returns correct PK data (fault_cards 16, error_codes 17, labor_rates 1, replacement_costs 4, lifecycle_rules 0 by design `WHERE false`, operating_targets 12). Post-fix Postgres logs are clean. Virginia **prod** (`zpsoprffaujswywtsgzy`) already had all 6 views (restored from the prod dump) — **no prod DB change required**.
-
-**Prevention TODO:** add these 5 views to an Alembic migration so any future restore/migration recreates them automatically (they are currently fragile — absent from version control).
-
-**Separate, still-open observations (NOT the view bug):**
-- Dashboard "Recent Assessments" (`/api/estimates`, `/api/analytics/estimates-summary`) uses shared ORM tables, not the views; its "API offline" persisted post-fix with a clean DB → app-layer or browser-side, needs the Railway/Sentry traceback to close.
-- `pk.snapai.mainnov.tech` (PROD) sign-in renders the **DEV Clerk** instance ("ScopeSnapAI Staging", `firm-chamois-61.accounts.dev`) — possible prod Clerk-instance misconfiguration on the PK prod domain; flag for review.
-
-### UPDATE 2026-06-09 — PK prod misconfig CONFIRMED (was "possible" above)
-Verified by reading the deployed builds' Clerk publishable key + CSP API target:
-- **US prod** `snapai.mainnov.tech` → `pk_live_` Clerk + `scopesnap-api-production` ✅ correct.
-- **PK prod** `pk.snapai.mainnov.tech` → `pk_test_` (DEV) Clerk + `scopesnap-api-staging` ❌ — it is serving the **staging build/env**, not production.
-Implication: pk.snapai has been running against the **staging** backend + staging DB + dev Clerk. So (a) the 2026-06-09 staging view fix also benefits pk.snapai, and (b) the real remedy is to re-point the pk.snapai prod domain to the production Vercel deployment/env (prod Clerk `pk_live_` + `scopesnap-api-production`). Needs Vercel domain/env access.
-
-### UPDATE 2026-06-09b — pk.snapai mechanism nailed (Vercel verified)
-Vercel `scope-snap-ai` (prod project) env vars are CORRECT, scope "All Environments":
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = pk_live_…` (clerk.snapai.mainnov.tech)
-- `NEXT_PUBLIC_API_URL = https://scopesnap-api-production.up.railway.app`
-Both `pk.snapai.mainnov.tech` and `snapai.mainnov.tech` are connected domains on this project (Production). `snapai` serves the current prod build correctly. `pk.snapai` serves a STALE build (pk_test_ dev Clerk + scopesnap-api-staging) — it is aliased to an old deployment built before the env vars were corrected (API_URL updated Mar 22, Clerk key updated Apr 4). It never re-aliased to a current production deployment.
-**Consequence to flag before fixing:** pk.snapai has therefore been running on STAGING the whole time — dev Clerk accounts + Virginia-STAGING DB. Re-pointing it to the current prod build moves it to pk_live Clerk + prod API + Virginia-PROD DB. Any existing pk.snapai tester accounts/data live in the staging instance and won't carry over. For pre-launch beta this is likely negligible, but it's the owner's call.
-**Fix options:** (a) redeploy `scope-snap-ai` production (re-aliases all prod domains; US unaffected since its build is already correct), or (b) re-assign the pk.snapai domain to the production deployment/branch via Vercel → project → Settings → Domains → Edit. Either makes pk.snapai serve pk_live + prod API.
-
-### UPDATE 2026-06-09c — PK FULLY RESOLVED (live-verified)
-All three PK issues fixed and verified live:
-1. **DB views (DEC-092):** 5 missing `pak_*_v` views recreated in Virginia staging; Virginia prod already had all 6. Codified in Alembic migration `037_pak_market_views.py`, committed to staging + main (idempotent no-op on current DBs; protects future restores).
-2. **pk.snapai on wrong build:** the production PK domain was aliased to a stale deployment (dev Clerk + staging API). Fixed via Vercel → scope-snap-ai → Settings → Domains → pk.snapai → Edit → Save (re-aliased to current production deployment 03d80cb). pk.snapai now serves `pk_live_` Clerk + `scopesnap-api-production` + Virginia-prod DB. **No rebuild needed** (which sidestepped the E404 build failure below). US prod untouched.
-3. **Dashboard "API offline":** root cause was a STALE SERVICE WORKER (snapai-shell-v2) carried over from the old build, intercepting `/api/*` calls and failing them — NOT backend CORS. Cleared via unregister + cache delete; dashboard then loaded real prod data (rpt-0456, rpt-688001, rpt-9515, rpt-547105, rpt-5025). 
-
-**Live-verified:** pk.snapai/dashboard renders production assessments end-to-end.
-
-**Caveats / open follow-ups:**
-- **Returning PK users** who visited the old pk.snapai may still hold the stale SW and could see "API offline" until it updates / they hard-refresh. A clean way to force all clients to refresh is to bump the SW cache name (v2→v3) on the next frontend deploy — BUT see next item.
-- **Frontend prod builds currently FAIL** with `npm error code E404` (a dependency version was pulled from the npm registry). Fresh Vercel production builds error at `npm install --legacy-peer-deps`. The live prod deployment (03d80cb, May 29) still works, but no NEW frontend changes can ship to prod until the bad dependency is pinned/updated in package.json/package-lock.json. This must be fixed before any SW-version bump or frontend change.
-- **pk-staging** likely has the same stale-SW symptom (lower priority; staging). Staging DB now has the views.
-
-### UPDATE 2026-06-09d — E404 re-characterized (NOT blocking normal deploys)
-Checked the Vercel deployments list: my `037` main commit built a NEW production deployment `36e23fd` (Ready, 2m3s) and the staging commit `064354c` (Ready). Only the **manual "Redeploy with build cache OFF"** errored on E404. Conclusion: **normal git-push deploys succeed** (they reuse the build cache and skip the failing clean `npm install`). The `npm error E404` only occurs on a **from-scratch reinstall** (a dependency version is missing from the npm registry, but it's still in Vercel's build cache). 
-- **Severity: LOW** — shipping frontend changes works today. The latent risk is that if the build cache is ever evicted/invalidated, a clean rebuild will fail until the yanked dependency is pinned/updated in scopesnap-web/package.json + package-lock.json.
-- The exact 404'ing package wasn't captured (Vercel build-log UI kept freezing the browser; sandbox `npm install` was too slow to finish). To find it: open the failed deploy `HS8BeUq…` build log and read the `npm error 404 ... is not in this registry` line, then bump that dep.
-
-### UPDATE 2026-06-09e — SW staleness RESOLVED + deployed
-Bumped sw.js CACHE_NAME snapai-shell-v2 → v3, committed to staging + main. The main production build (58f973f, "fix(pwa): bump SW cache v2→v3") built **Ready** via a normal cache-backed deploy (further confirming the E404 only affects no-cache rebuilds). Live-verified: pk.snapai serves sw.js with CACHE_NAME=snapai-shell-v3 + railway passthrough. Returning clients now force-update on next visit (skipWaiting + clients.claim + old-cache purge in the activate handler), clearing the stale-SW "API offline" for good. Staging build queued.
-**Net: all PK issues fully resolved & deployed. Only remaining open item is the LOW-priority E404 (clean-rebuild only; normal deploys work).**
-
-### UPDATE 2026-06-09f — E404 "cleanup" + TRUE root causes of PK flapping (all fixed & live-verified)
-The E404 was investigated and turned out to be a **transient npm-registry blip** (a clean `npm install --legacy-peer-deps` completed with 0 errors, 595 pkgs). While hardening it, two REAL root causes of the recurring PK breakage were found and fixed:
-
-1. **No lockfile → non-deterministic builds.** Repo had only package.json (vercel.json runs `npm install --legacy-peer-deps`), so every clean build re-resolved "latest matching" and was exposed to transient registry issues + drift. FIX: generated + committed `scopesnap-web/package-lock.json` (pins the exact versions prod runs: next@14.2.15, react@18.3.1, @clerk/nextjs@5.7.6, @supabase/supabase-js@2.108.0). Verified on staging (Ready) then promoted to main (Ready). Deterministic builds now.
-
-2. **Service worker intercepted API calls.** sw.js did `event.respondWith(fetch(event.request))` for /api/ + cross-origin — that re-fetch failed on the PK origin (while direct browser fetch returned 200 + data), causing the recurring "API offline" whenever the SW controlled the page. FIX: SW **v4** now `return`s without respondWith for API/cross-origin → browser handles natively. Live-verified: pk.snapai dashboard loads real data WITH the v4 SW controlling the page.
-
-3. **THE big one — `vercel.json` had a hardcoded `"alias": ["pk.snapai.mainnov.tech"]`.** Because BOTH the prod project (scope-snap-ai, builds main) and the staging project (scopesnap-web-staging, builds staging) build this same vercel.json, **every staging deploy stole pk.snapai to the staging build (dev Clerk + staging API) and every prod deploy stole it back** — the actual cause of pk.snapai flapping all session. FIX: removed the `alias` from vercel.json on BOTH branches; pk.snapai is now governed solely by the Vercel Domains setting (assigned to scope-snap-ai prod). Re-asserted via Domains → Save. Live-verified: pk.snapai = pk_live Clerk + scopesnap-api-production, and it will STAY (no alias to steal it).
-
-**FINAL STATE: all PK issues fully resolved, deployed, and DURABLE. US untouched throughout.**
-
----
-
-## 2026-06-09 — Low-priority cleanup done (items 1 & 3) + after-QA
-- ✅ **Item 1 — pool tuning promoted to PROD:** `db/database.py` on main now matches staging (pool_size 5, max_overflow 5, pool_recycle 1800, dropped pool_pre_ping). Commit `5bd8c4c`. Prod backend redeployed, `/health` ok, db connected — new pool works on prod.
-- ✅ **Item 3 — app_events index codified:** migration **038** (`038_app_events_report_viewed_index.py`, idempotent CREATE INDEX IF NOT EXISTS for `ix_app_events_report_viewed_short_id`) committed to staging + main. Both backends ran it — **both DBs now at Alembic 038, index present.** Protects the index against future restores (same lesson as the pak_*_v views).
-- ⏳ **Item 2 — delete the two PAUSED Tokyo Supabase projects:** NOT done — permanently deleting a database is a prohibited action for the AI, so this is an **owner action**. Backups are safe in `ScopeSnapAI/backups/` (see TECH_STACK "PRE-MIGRATION TOKYO BACKUPS"). Steps for owner: Supabase dashboard → each Tokyo project (`scopesnap` ap-northeast-1 + `snapai-staging` ap-northeast-1) → Settings → General → Delete project. Safe once you're confident prod is stable. ($0 either way — paused projects don't bill.)
-- **AFTER-QA (post all 3 changes):** prod + staging `/health` = ok/db-connected; both DBs Alembic **038** with the index present; PK prod dashboard renders real data (rpt-0456…) — **no regression**.
-
----
-
-## 2026-06-10 — Free automated DB backups to Cloudflare R2 (DEC-094)
-
-### DEC-094 — Daily pg_dump of both Virginia DBs → private Cloudflare R2 bucket (2026-06-10)
-**Why:** Supabase free tier keeps **0-day backup retention** and permanently deletes data after an extended pause. The GitHub Actions keepalive pings prevent the pause, but a single missed ping risked data loss. DEC-094 adds an independent, off-platform safety net at $0.
-
-**What runs:** `.github/workflows/db-backup-r2.yml` (on `main`). Schedule `0 3 * * *` (daily 03:00 UTC) + `workflow_dispatch`. Steps: install PG17 client → `pg_dump` PROD → `pg_dump` STAGING → verify. Each dump is plain SQL (`--no-owner --no-privileges --quote-all-identifiers`), gzipped, uploaded via `aws s3 cp` (preinstalled on the runner) to bucket `snapai-db-backups` under `prod/` and `staging/` prefixes.
-
-**Cloudflare R2 setup (account `0c1bfa87134c7a6688d7eaf4410bf86a`):**
-- Bucket **`snapai-db-backups`** — region **ENAM** (co-located w/ Virginia us-east-1 DBs), **Standard** storage class, **public access DISABLED** (private).
-- **Object Lifecycle Rule** `delete-after-14-days` → auto-deletes objects 14 days after upload (no manual cleanup).
-- Scoped API token **`snapai-db-backups-rw`** — Object Read & Write, **this bucket only**, no expiry. (Least-privilege: cannot touch the app's `scopesnap-uploads` / `scopesnap-uploads-staging` buckets.)
-- **Cost = $0.** Free tier is 10 GB storage / 1M Class A / 10M Class B ops / **$0 egress**. Our load: ~0.2 MB prod + ~2 MB staging per day, ~2 writes/day. Orders of magnitude inside free. (R2 does require a card-on-file to enable — already done on this account.)
-
-**GitHub repo secrets (names only — values are secret):** `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT` (=`https://0c1bfa87134c7a6688d7eaf4410bf86a.r2.cloudflarestorage.com`), `SUPABASE_DB_URL_PROD`, `SUPABASE_DB_URL_STAGING`.
-- ⚠️ **Do NOT confuse with the older `CLOUDFLARE_R2_*` secrets** (CLOUDFLARE_R2_ACCESS_KEY / _SECRET_KEY / _ACCOUNT_ID / _BUCKET, added ~2 months prior) — those belong to the **app's uploads** bucket and a different token. The backup workflow uses ONLY the `R2_*` + `SUPABASE_DB_URL_*` names above.
-
-**GOTCHAS LEARNED (cost 2 failed runs before green):**
-1. **pg_dump version must be ≥ server version.** `ubuntu-latest` ships pg_dump **16**, but the Supabase server is **17.6** → `error: aborting because of server version mismatch`. Fix: `apt-get install postgresql-client-17` AND call the **explicit binary** `/usr/lib/postgresql/17/bin/pg_dump` (the `pg_wrapper` at `/usr/bin/pg_dump` still resolved to 16). Set via job env `PGDUMP`.
-2. **Use the Session pooler, NOT the Transaction pooler.** First staging attempt used the Transaction-pooler string (**port 6543**, username collapsed to `postgres`) → `FATAL: password authentication failed for user "postgres"`. pg_dump needs **Session pooler** (port **5432**, username `postgres.<project-ref>`, IPv4-reachable from GitHub). Prod worked first try because it had the correct Session-pooler URL.
-3. **workflow_dispatch only appears once the workflow file is on the default branch (`main`).** Pushed via git worktree from `origin/main` (then a contents-API edit for the fix) — the local working tree is a stale, dirty `staging` checkout, so never commit the backup file from there.
-
-**VERIFIED 2026-06-10:** run `27296950101` = **success** (all 6 steps green). Bucket listing from the run: `prod/prod_20260610_1742.sql.gz` (228 KB), `prod/prod_20260610_1821.sql.gz` (228 KB), `staging/staging_20260610_1821.sql.gz` (2.1 MB). Post-change, both backends `/health` = `ok` / `db: connected` (prod `scopesnap-api-production.up.railway.app`, staging `scopesnap-api-staging.up.railway.app`) — the staging password/secret update did **not** break Railway staging.
-
-**Restore how-to:** download the `.sql.gz` from R2 → `gunzip` → `psql "<target Session-pooler URL>" -f dump.sql`. Plain SQL, owner/privilege-stripped, so it restores cleanly into any empty DB.
-
-**Still open (separate):** the Healthchecks "Keepalive B DOWN" alert — the two keepalive workflows still ping the **deleted Tokyo** Supabase URLs via the old `SUPABASE_PROD_URL` / `SUPABASE_STAGING_URL` secrets, so their `if: success()` heartbeat never fires. App is fine. Fix later: repoint those 4 keepalive secrets to the Virginia projects, or retire the keepalives now that R2 backups exist.
-
-**Note:** `scopesnap-api.up.railway.app` (bare) returns a Railway "Application not found" 404 — it is **stale**. The live prod backend is **`scopesnap-api-production.up.railway.app`**.
-
-### 2026-06-10 — Keepalive "DOWN" RESOLVED (DEC-094 follow-up)
-Root cause confirmed from run logs: keepalive-supabase-B failed with `curl: (6) Could not resolve host: quqrvnoguofbjacrxcim.supabase.co` — the 4 keepalive secrets still pointed at the **deleted Tokyo** projects, so the ping failed and the `if: success()` Healthchecks heartbeat never fired → DOWN.
-
-**Fix:** repointed all 4 keepalive secrets to the Virginia (us-east-1) projects (values fetched via Supabase MCP; updated through the GitHub Secrets API with libsodium sealed-box encryption — the anon keys are publishable/public):
-- `SUPABASE_PROD_URL`    = `https://zpsoprffaujswywtsgzy.supabase.co` (snapai-prod-use1)
-- `SUPABASE_STAGING_URL` = `https://kikhhnanuwzocwcpzutr.supabase.co` (snapai-staging-use1)
-- `SUPABASE_PROD_ANON_KEY` / `SUPABASE_STAGING_ANON_KEY` = each project's legacy anon JWT.
-
-**Verified 2026-06-10:** manually dispatched both keepalive-supabase-A and -B → both **success**; steps Ping production / Ping staging / Heartbeat(Healthchecks.io) all green. Both Healthchecks checks flip DOWN→UP. Twice-weekly schedule restored (A = Sun 02:00 UTC, B = Wed 14:00 UTC).
-
-Note: keepalive is now somewhat redundant with the daily R2 backup (which pg_dumps both DBs daily = stronger DB-activity keepalive), but it's kept for the independent Healthchecks "did the scheduled job run" monitor.
+**Cross-references:** DEC-004, DEC-022, DEC-027, DEC-068, DEC-070, DEC-075;
+`SnapAI_Audit_Framework_Setup.md`; `SnapAI_Audit_Setup_Artifacts/` (harness, runbook, bundle).

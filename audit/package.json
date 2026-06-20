@@ -1,0 +1,15 @@
+{
+  "name": "snapai-audit-harness",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Isolated audit harness for the snapai-full-audit skill (Playwright + Clerk passwordless sign-in tokens + k6 load script). NOT part of the Next.js app build — kept separate so it never affects scopesnap-web deps or Vercel builds.",
+  "scripts": {
+    "test": "playwright test",
+    "install-browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@clerk/testing": "^1.4.0",
+    "@clerk/backend": "^1.21.0"
+  }
+}

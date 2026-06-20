@@ -1,0 +1,23 @@
+# gitleaks config for ScopeSnapAI — extends defaults, allowlists known false positives.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public-by-design keys, documented placeholders, and vendored caches"
+paths = [
+  '''\.pnpm-store/''',
+  '''node_modules/''',
+  '''\.next/''',
+  '''package-lock\.json''',
+  '''pnpm-lock\.yaml''',
+]
+regexes = [
+  # Clerk publishable keys ship to the browser (NEXT_PUBLIC_*) — not secret.
+  '''pk_(test|live)_[A-Za-z0-9]+''',
+  # PostHog project API keys are public (NEXT_PUBLIC_POSTHOG_KEY).
+  '''phc_[A-Za-z0-9]+''',
+  # Documented placeholders / dummies / redactions in docs and test config.
+  '''sk_(test|live)_(placeholder|dummy0*|REDACTED[A-Z_]*)''',
+  '''whsec_placeholder''',
+  '''(REDACTED_ROTATE_ME|X{8,}|your_key_here)''',
+]

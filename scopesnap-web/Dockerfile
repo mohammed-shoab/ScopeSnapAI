@@ -21,6 +21,8 @@ COPY . .
 EXPOSE 3000
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
+# nosemgrep: missing-user -- dev-only image for local docker-compose (hot reload needs
+# root to write into the bind-mounted /app on Windows). The production stage runs as USER nextjs.
 CMD ["npm", "run", "dev"]
 
 # ── Stage 3: Production build ─────────────────────────────────────────────────
