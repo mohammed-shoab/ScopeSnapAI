@@ -61,3 +61,37 @@
 - Python API tests need a **Python 3.12 venv** (psycopg2-binary has no 3.14 wheel).
 - semgrep runs via `python -m semgrep`; `semgrep.exe` is intermittently blocked by Device Guard.
 - ZAP needs the Vercel bypass **header** injected via a ZAP automation-plan replacer (cookie/query-param don't persist through the spider). Plan at `C:\tmp\zapwork\plan.yaml`.
+
+
+## F. FULL MODE (non-destructive) — deep review + perf (2026-06-20)
+
+> ZAP *active* scan + write payloads were SKIPPED to protect shared staging data.
+> k6 = read-only load; deep review = static analysis (no app impact).
+
+### Perf baseline (k6, read-only GET staging homepage, 20 VUs / 60s)
+- 920 requests, **0 failures (100%)**, ~15 req/s.
+- Latency: median 281ms, **p95 330ms**, max 1.7s (cold-start blip). Thresholds passed.
+- Verdict: staging holds up under modest concurrent read load. (Vercel auto-scales; not a deep backend stress test.)
+
+### Deep review — 3 highest-risk areas (logic/security beyond SAST/DAST). NEW — triage:
+
+**Payments/Stripe** (solid: price tampering not possible; webhook signature gates correct; auth enforced):
+- **[High]** Open redirect: client-controlled `success_url`/`cancel_url` passed to Stripe unvalidated (`payments.py` ~34/99, `billing.py` ~124/131). Validate host == `frontend_url`.
+- **[Med]** No webhook idempotency/replay protection (no processed-events table); billing handler re-applies plan on every redelivery (`payments.py:154`, `billing.py:262`).
+- **[Med]** In `environment=development`, an unsigned POST to the Stripe webhook can flip an estimate to `deposit_paid`. Hard-set `environment=production` on all deploys (defaults to "development" in `config.py:26`).
+
+**Auth/Clerk** (solid: JWT+webhook verified; dev-bypass gated; no IDOR on authenticated /{id} routes):
+- **[High]** `GET /api/estimates/process-followups` (+ `process_followups_early`) are **UNAUTHENTICATED, all-tenant, and send email** (`estimates.py` ~264/160). Add a cron-secret check — anyone can trigger mass outbound email + follow-up side effects.
+- **[Med]** JWKS "fallback to first key" on `kid` mismatch (`auth.py` ~97) — reject instead.
+- **[Low]** `verify_aud=False` (`auth.py` ~115).
+
+**US/PK market isolation:**
+- **[High]** Public report route mixes trusted `estimate.market` (currency) with spoofable `X-Market` header (fault-card table) (`reports.py` ~228). Tenant tables are shared (company_id boundary, not market). Resolve market from `estimate.market` for ALL table selection.
+- **[Med]** Market resolved from client `X-Market` header on authenticated writes (`dependencies.py` ~65) → a company can pull the OTHER market's pricing/reference data into its estimates (financial integrity). Derive market from company/host; treat header as advisory.
+- **[Low]** `report_short_id` = `rpt-`+4 digits (~10k space) accepted on public report + approve routes, no rate limit (`reports.py` ~92/449) → brute-forceable PII read + approve. Use only the long token, or rate-limit + lengthen.
+
+### Top full-mode fixes
+1. Authenticate cron endpoints (`process-followups*`) — **High**.
+2. Validate Stripe redirect URLs against `frontend_url` (open redirect) — **High**.
+3. Derive market from a trusted source (not `X-Market`) + drop public `report_short_id` brute-force surface — **High/Med**.
+Plus: webhook idempotency table; reject JWKS `kid` mismatch; confirm `environment=production` on all deploys.

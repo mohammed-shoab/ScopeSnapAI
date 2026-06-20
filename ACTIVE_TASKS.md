@@ -887,3 +887,8 @@ All 4 Track D frontend files now correctly pass Clerk JWT token to `apiFetch` (D
 - [ ] (project) Remove script-src unsafe-inline via Clerk nonce middleware + strict-dynamic
 - [ ] (optional) Gate localhost CORS origins behind settings.environment
 - [ ] Fix 2 API test files failing collection (exec loader missing os/__file__)
+
+- [ ] [High] Authenticate cron endpoints process-followups / process_followups_early (currently unauth, all-tenant, send email)
+- [ ] [High] Validate Stripe success_url/cancel_url against frontend_url (open redirect)
+- [ ] [High] Resolve market from estimate.market/company not X-Market header (report route + authed writes)
+- [ ] [Med] Stripe webhook idempotency table; [Med] reject JWKS kid-mismatch; [Low] rate-limit/lengthen report_short_id
