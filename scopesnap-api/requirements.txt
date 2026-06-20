@@ -8,7 +8,7 @@ python-multipart==0.0.32
 pillow==10.4.0
 weasyprint==62.3
 httpx==0.28.1
-pydantic-settings==2.14.1
+pydantic-settings==2.14.2
 google-generativeai==0.8.6
 stripe==10.12.0
 resend==2.32.2
