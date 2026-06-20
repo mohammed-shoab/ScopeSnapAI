@@ -82,6 +82,8 @@ interface EstimateData {
   view_count?: number;
   card_name?: string;
   recommended_tier?: string;
+  assessment_photo_url?: string | null;   // Bug 3: real photo for Present Mode Slide 1
+  assessment_condition?: string | null;    // Bug 3: overall condition for health badge
 }
 
 function fmt(n?: number) {
@@ -688,9 +690,16 @@ export default function EstimatePage() {
             <span className="font-semibold text-brand-green">Sent</span>
           </div>
           {estimate.homeowner_report_url && (
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-sm items-center gap-2">
               <span className="text-text-secondary">Report URL</span>
-              <span className="font-mono text-xs text-brand-green truncate">{estimate.homeowner_report_url}</span>
+              <a
+                href={estimate.homeowner_report_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-xs text-brand-green truncate underline hover:opacity-80"
+              >
+                {estimate.homeowner_report_url}
+              </a>
             </div>
           )}
         </div>
@@ -708,6 +717,8 @@ export default function EstimatePage() {
         <PresentMode
           estimate={estimate}
           selectedTier={selectedTier}
+          photoUrl={estimate.assessment_photo_url || undefined}
+          conditionRating={estimate.assessment_condition || estimate.recommended_tier || undefined}
           onClose={() => setPresenting(false)}
           onSelectTier={(tier) => { setSelectedTier(tier); setPresenting(false); }}
         />
@@ -1222,12 +1233,25 @@ export default function EstimatePage() {
                   <div className="p-3 bg-surface-secondary rounded-xl">
                     <p className="text-xs text-text-secondary font-semibold mb-2">Report URL</p>
                     <div className="flex items-center gap-2">
-                      <code className="flex-1 text-xs font-mono text-brand-green break-all truncate">
+                      <a
+                        href={estimate.homeowner_report_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 text-xs font-mono text-brand-green break-all truncate underline hover:opacity-80"
+                      >
                         {estimate.homeowner_report_url}
-                      </code>
+                      </a>
+                      <a
+                        href={estimate.homeowner_report_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-semibold text-brand-green hover:underline whitespace-nowrap ml-2"
+                      >
+                        Preview
+                      </a>
                       <button
                         onClick={() => navigator.clipboard.writeText(estimate.homeowner_report_url || "")}
-                        className="text-xs font-semibold text-brand-green hover:underline whitespace-nowrap ml-2"
+                        className="text-xs font-semibold text-brand-green hover:underline whitespace-nowrap"
                       >
                         Copy
                       </button>
@@ -1371,15 +1395,30 @@ export default function EstimatePage() {
               </p>
               {estimate.homeowner_report_url && (
                 <>
-                  <div className="bg-surface-secondary rounded-xl p-3 font-mono text-xs text-brand-green break-all text-left">
-                    {estimate.homeowner_report_url}
-                  </div>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(estimate.homeowner_report_url!)}
-                    className="w-full border border-brand-green text-brand-green font-bold py-3 rounded-xl text-sm hover:bg-green-50 transition-colors"
+                  <a
+                    href={estimate.homeowner_report_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block bg-surface-secondary rounded-xl p-3 font-mono text-xs text-brand-green break-all text-left underline hover:opacity-80"
                   >
-                    Copy Report Link
-                  </button>
+                    {estimate.homeowner_report_url}
+                  </a>
+                  <div className="flex gap-2">
+                    <a
+                      href={estimate.homeowner_report_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 border border-brand-green text-brand-green font-bold py-3 rounded-xl text-sm text-center hover:bg-green-50 transition-colors"
+                    >
+                      Preview
+                    </a>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(estimate.homeowner_report_url!)}
+                      className="flex-1 border border-brand-green text-brand-green font-bold py-3 rounded-xl text-sm hover:bg-green-50 transition-colors"
+                    >
+                      Copy Report Link
+                    </button>
+                  </div>
                 </>
               )}
               <button
@@ -1457,16 +1496,31 @@ export default function EstimatePage() {
                 <div className="card p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold">{t("Report Link")}</p>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(estimate.homeowner_report_url!)}
-                      className="text-xs text-brand-green font-semibold hover:underline"
-                    >
-                      {t("Copy")}
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <a
+                        href={estimate.homeowner_report_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-brand-green font-semibold hover:underline"
+                      >
+                        Preview
+                      </a>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(estimate.homeowner_report_url!)}
+                        className="text-xs text-brand-green font-semibold hover:underline"
+                      >
+                        {t("Copy")}
+                      </button>
+                    </div>
                   </div>
-                  <div className="bg-surface-secondary rounded-lg p-3 font-mono text-xs text-brand-green break-all">
+                  <a
+                    href={estimate.homeowner_report_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block bg-surface-secondary rounded-lg p-3 font-mono text-xs text-brand-green break-all underline hover:opacity-80"
+                  >
                     {estimate.homeowner_report_url}
-                  </div>
+                  </a>
                 </div>
               )}
 
