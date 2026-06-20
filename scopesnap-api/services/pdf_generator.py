@@ -893,4 +893,3 @@ def _draw_footer(p: _PdfWriter, M: float, RX: float, co_name: str, co_phone: str
 
 def build_estimate_context_from_api_response(api_response: dict) -> dict:
     return api_response
-                                                                                                                     
