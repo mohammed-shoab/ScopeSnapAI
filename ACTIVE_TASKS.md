@@ -878,3 +878,12 @@ All 4 Track D frontend files now correctly pass Clerk JWT token to `apiFetch` (D
 | Remove prod `sk_live_` from any Drive-synced env file | TODO | Security — keep live admin key out of cloud-synced storage |
 | (optional) `beforeSendReplay` if replay-rate zeroing proves insufficient | TODO | Minor |
 | (optional) Prune stray prod PostHog test pageviews from 2026-06-18 QA | TODO | Negligible noise |
+
+
+## Security audit follow-ups (2026-06-20, see SECURITY_AUDIT_FINDINGS.md)
+- [ ] Rotate 3 leaked dev keys (Clerk sk_test glowing-cowbird-89, Gemini, Roboflow) — still in git history
+- [ ] Env drift: add NEXT_PUBLIC_SUPABASE_URL/ANON_KEY (staging values) + NEXT_TELEMETRY_DISABLED to staging Vercel; fix prod CLERK_SECRET_KEY Needs-Attention
+- [ ] Apply SRI (experimental.sri sha384) during a watched staging build
+- [ ] (project) Remove script-src unsafe-inline via Clerk nonce middleware + strict-dynamic
+- [ ] (optional) Gate localhost CORS origins behind settings.environment
+- [ ] Fix 2 API test files failing collection (exec loader missing os/__file__)
