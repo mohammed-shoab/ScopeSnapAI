@@ -95,3 +95,9 @@
 2. Validate Stripe redirect URLs against `frontend_url` (open redirect) — **High**.
 3. Derive market from a trusted source (not `X-Market`) + drop public `report_short_id` brute-force surface — **High/Med**.
 Plus: webhook idempotency table; reject JWKS `kid` mismatch; confirm `environment=production` on all deploys.
+
+
+## G. Remediated from full-mode deep review (commit a89aef8, staging)
+- [x] **[High] Unauthenticated cron email endpoints** - added `verify_cron_secret` dependency on both `/process-followups` handlers. Backward-compatible: enforces `X-Cron-Secret` only once `CRON_SECRET` env is set (warns + allows until then, so the existing scheduler keeps working). ACTION: set `CRON_SECRET` in Railway + add the header to the scheduler caller to fail closed.
+- [x] **[High] Stripe open redirect** - `_safe_redirect()` guard on success_url/cancel_url in payments.py + billing.py; client URLs honored only if host is a SnapAI domain, else safe default.
+- Verified: py_compile clean + 122 unit tests pass. STILL OPEN (need product/migration decisions): market-from-header refactor, report_short_id brute-force surface, webhook idempotency table, JWKS kid-mismatch reject.
