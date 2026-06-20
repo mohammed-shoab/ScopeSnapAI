@@ -22,7 +22,7 @@ svix==1.95.2
 onnxruntime==1.27.0       # YOLO inference via ONNX — 50MB, no PyTorch needed
 xgboost>=2.0.0            # Sensor fault detection model (90.09% accuracy)
 joblib>=1.5.3             # Loading .pkl model files
-numpy>=1.24.0             # Feature engineering for sensor model + ONNX preprocessing
+numpy>=1.26.4             # Feature engineering for sensor model + ONNX preprocessing
 sentry-sdk[fastapi]==2.63.0
 slowapi==0.1.10            # Rate limiting for Gemini/AI endpoints
 openpyxl>=3.1.0              # WS-A: read SnapAI_HVAC_Master_Price_List_2026.xlsx in load_repo.py
