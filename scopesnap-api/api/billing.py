@@ -130,9 +130,25 @@ async def create_subscription_checkout(
     plan = PLANS[body.plan_id]
     company = auth.company
     base_url = settings.frontend_url or "http://localhost:3000"
+    from urllib.parse import urlparse as _urlparse
+    _allowed_redirect_hosts = {
+        _urlparse(base_url).netloc,
+        "snapai.mainnov.tech", "pk.snapai.mainnov.tech",
+        "staging.snapai.mainnov.tech", "pk-staging.snapai.mainnov.tech",
+    }
 
-    success_url = body.success_url or f"{base_url}/billing/success?plan={body.plan_id}"
-    cancel_url = body.cancel_url or f"{base_url}/billing"
+    def _safe_redirect(candidate, default):
+        """Open-redirect guard: only honor a client-supplied URL if its host is ours."""
+        if not candidate:
+            return default
+        try:
+            host = _urlparse(candidate).netloc
+        except Exception:
+            return default
+        return candidate if host in _allowed_redirect_hosts else default
+
+    success_url = _safe_redirect(body.success_url, f"{base_url}/billing/success?plan={body.plan_id}")
+    cancel_url = _safe_redirect(body.cancel_url, f"{base_url}/billing")
 
     # ── Mock mode (no real Stripe key) ───────────────────────────────────────
     from services.payment import _is_real_stripe_key

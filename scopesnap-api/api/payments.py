@@ -97,8 +97,25 @@ async def create_checkout(
     # Build redirect URLs
     from config import get_settings as _gs; _settings = _gs()
     base = _settings.frontend_url.rstrip("/")
-    success_url = body.success_url or f"{base}/payment-success?estimate={estimate_id}&session_id={{CHECKOUT_SESSION_ID}}"
-    cancel_url = body.cancel_url or f"{base}/r/hvac/{estimate.report_short_id}"
+    from urllib.parse import urlparse as _urlparse
+    _allowed_redirect_hosts = {
+        _urlparse(base).netloc,
+        "snapai.mainnov.tech", "pk.snapai.mainnov.tech",
+        "staging.snapai.mainnov.tech", "pk-staging.snapai.mainnov.tech",
+    }
+
+    def _safe_redirect(candidate, default):
+        """Open-redirect guard: only honor a client-supplied URL if its host is ours."""
+        if not candidate:
+            return default
+        try:
+            host = _urlparse(candidate).netloc
+        except Exception:
+            return default
+        return candidate if host in _allowed_redirect_hosts else default
+
+    success_url = _safe_redirect(body.success_url, f"{base}/payment-success?estimate={estimate_id}&session_id={{CHECKOUT_SESSION_ID}}")
+    cancel_url = _safe_redirect(body.cancel_url, f"{base}/r/hvac/{estimate.report_short_id}")
 
     # Create Stripe Checkout session
     payment_service = get_payment_service()
