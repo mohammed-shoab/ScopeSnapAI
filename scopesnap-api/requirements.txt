@@ -25,4 +25,4 @@ joblib>=1.5.3             # Loading .pkl model files
 numpy>=1.24.0             # Feature engineering for sensor model + ONNX preprocessing
 sentry-sdk[fastapi]==2.63.0
 slowapi==0.1.10            # Rate limiting for Gemini/AI endpoints
-openpyxl>=3.1.0              # WS-A: read SnapAI_HVAC_Master_Price_List_2026.xlsx in load_repo.py
+openpyxl>=3.1.5              # WS-A: read SnapAI_HVAC_Master_Price_List_2026.xlsx in load_repo.py
