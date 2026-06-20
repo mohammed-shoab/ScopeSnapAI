@@ -53,6 +53,8 @@ const nextConfig = {
       },
     ],
   },
+  // Hardening (ZAP): stop leaking the framework in X-Powered-By.
+  poweredByHeader: false,
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
@@ -90,6 +92,11 @@ const nextConfig = {
               `connect-src 'self' ${API_URL_FOR_CSP} https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://us.i.posthog.com https://us-assets.i.posthog.com https://challenges.cloudflare.com https://maps.googleapis.com https://*.ingest.us.sentry.io`,
               "frame-src 'self' https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://challenges.cloudflare.com",
               "worker-src 'self' blob:",
+              // Hardening (ZAP "no fallback"): these directives do NOT inherit default-src.
+              "object-src 'none'",
+              "base-uri 'self'",
+              "frame-ancestors 'none'",
+              "form-action 'self'",
             ].join("; "),
           },
         ],
