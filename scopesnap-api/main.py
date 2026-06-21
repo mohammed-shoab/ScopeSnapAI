@@ -13,7 +13,7 @@ import logging
 _main_logger = logging.getLogger(__name__)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from pathlib import Path
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -146,6 +146,28 @@ app.add_middleware(
 # this mount is a harmless no-op fallback.
 uploads_dir = Path(settings.upload_dir)
 uploads_dir.mkdir(parents=True, exist_ok=True)
+
+
+# Bug 2 follow-up: friendly handler for contractor-PDF links. When PDF generation
+# fails the estimate stores a "...-unavailable.pdf" URL; without this it 404s with
+# no explanation. Registered BEFORE the /files mount so it intercepts that path,
+# while still serving real local PDFs (dev/staging LocalStorage) for other names.
+@app.get("/files/pdfs/{filename}", tags=["files"])
+async def serve_or_explain_pdf(filename: str):
+    if filename.endswith("-unavailable.pdf"):
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": "This estimate's PDF isn't ready yet. Re-open the "
+                          "estimate and tap “Generate Documents” to create it."
+            },
+        )
+    fpath = uploads_dir / "pdfs" / filename
+    if fpath.is_file():
+        return FileResponse(str(fpath), media_type="application/pdf")
+    return JSONResponse(status_code=404, content={"detail": "File not found"})
+
+
 app.mount("/files", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 # ââ API Routers âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
