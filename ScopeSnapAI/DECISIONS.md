@@ -3,7 +3,8 @@
 > This file records decisions made during development that have lasting impact on how the codebase works.
 > Future AI sessions: read this before proposing architecture changes or writing migrations.
 >
-> Last updated: 2026-05-24 (Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. Houston full flow PASS (rpt-e198935c USD estimate), PK staging backend PASS (environment:staging, R-410A pressure-targets). | DEC-080 added — Stage 6 Vercel staging domain-level gitBranch rewire; DEC-067 marked SUPERSEDED. | Previously: DEC-071 added -- Stripe test-mode GAP from Stage 2 cost audit. | DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
+> Last updated: 2026-05-27 — DEC-081 through DEC-093 added (BUG numbering, promote process, Vercel team URL, single Vercel project, Next.js DOM cache, CSS text-transform innerText, StepZeroPanel JWT, OCR waterfall, A/B test localStorage, audit-before-implement, git config, CDP timeout, Clerk cross-env sessions). WA-30 through WA-47 added to TECH_STACK.md.
+> Previously updated: 2026-05-24 (Stage 7 Staging E2E QA COMPLETE. DEC-070 ACTIVE. Houston full flow PASS (rpt-e198935c USD estimate), PK staging backend PASS (environment:staging, R-410A pressure-targets). | DEC-080 added — Stage 6 Vercel staging domain-level gitBranch rewire; DEC-067 marked SUPERSEDED. | Previously: DEC-071 added -- Stripe test-mode GAP from Stage 2 cost audit. | DEC-065 body added — never commit package-lock.json; DEC-066 added — stamp estimates.market at creation; merge conflict in DEC-062/063/064 resolved; DEC-063, DEC-064 added — /api/models/all response shape; pak_operating_targets is PSI table)
 
 ---
 
@@ -1586,3 +1587,284 @@ Used browser-session-authenticated calls (relative URL from within vercel.com ta
 - Both have one empty `--allow-empty` verification commit; no functional code changes
 
 **Cross-references:** DEC-067 (superseded), DEC-074 (Vercel staging = Preview deployments), DEC-070 (staging-first workflow)
+
+---
+
+## DEC-081 — BUG numbering must be checked against git log before assigning (2026-05-27)
+
+**Discovery:** BUG-034 was assigned to two separate bugs. The original BUG-034 is the ServiceChecklist 401 token-expiry fix (commit `0140c83`, 2026-05-22). The nameplate OCR fix was incorrectly labeled BUG-034 in commits — the canonical number is **BUG-045**.
+
+**Rule:** Before labeling any new bug, run:
+```bash
+git log --oneline --all | grep -i "BUG-0" | sort
+```
+Take the highest number + 1. Never re-use a number. The commit message mismatch creates permanent confusion in git history and brain files.
+
+**Cross-reference:** ACTIVE_TASKS.md — "Note on bug numbering" section under BUG-045.
+
+---
+
+## DEC-082 — `scripts/promote-to-prod.sh` does not exist — use manual git merge (2026-05-27)
+
+**Discovery:** PROJECT_BRAIN.md and the DEC-070 workflow both reference `scripts/promote-to-prod.sh <files>`. This script was never created. Running it produces "No such file or directory".
+
+**Correct manual promote process (run from /tmp clone):**
+```bash
+cd /tmp/snapai_tmp/scopesnap-web
+git config user.email "ds.shoab@gmail.com"
+git config user.name "Shoab"
+git checkout main
+git pull origin main          # sync before merge
+git merge staging --no-ff -m "merge(prod): <description> — QA verified YYYY-MM-DD both markets"
+git push origin main
+```
+Vercel auto-deploys `snapai.mainnov.tech` and `pk.snapai.mainnov.tech` on push to `main`.
+
+**Impact:** Update any documentation that references the script. The manual process is the source of truth.
+
+---
+
+## DEC-083 — Vercel team URL is `mohammed-shoabs-projects-7844119e`, NOT `mohammed-shoabs-projects` (2026-05-27)
+
+**Discovery:** Navigating to `vercel.com/mohammed-shoabs-projects/scopesnap-web/deployments` returns 404. The correct team slug includes the random suffix.
+
+**Correct URLs:**
+- Dashboard: `https://vercel.com/mohammed-shoabs-projects-7844119e`
+- Deployments: `https://vercel.com/mohammed-shoabs-projects-7844119e/scopesnap-web-staging/deployments`
+- Specific deploy: `https://vercel.com/mohammed-shoabs-projects-7844119e/scopesnap-web-staging/<deployId>`
+
+**Rule:** Always use the full team slug with the `-7844119e` suffix.
+
+---
+
+## DEC-084 — Single Vercel project `scopesnap-web-staging` serves ALL four domains (2026-05-27)
+
+**Discovery:** The reference to `scope-snap-ai` as the production Vercel project in PROJECT_BRAIN.md is stale. The live push of `main` branch deployed via `scopesnap-web-staging` project and confirmed `snapai.mainnov.tech` as the target domain.
+
+**Actual setup:**
+- Project: `scopesnap-web-staging` (ID: `prj_vq1rWfPN9tD3k82OLFjfIxmNdULc`)
+- `main` branch → Production-env build → serves `snapai.mainnov.tech` + `pk.snapai.mainnov.tech`
+- `staging` branch → domain-level gitBranch → serves `staging.snapai.mainnov.tech` + `pk-staging.snapai.mainnov.tech` + `scopesnap-web-staging.vercel.app`
+
+**Impact:** There is ONE Vercel project for the entire frontend. Any reference to a separate `scope-snap-ai` production project is incorrect and should be updated.
+
+---
+
+## DEC-085 — Next.js client-side router caches component state; use fetch() for prod content verification (2026-05-27)
+
+**Discovery:** After a Vercel deploy, navigating to a page in Chrome and checking `document.body.innerText` can return stale content from the Next.js client-side router's component cache. Even `window.location.reload(true)` does not reliably flush this. The server IS serving the new HTML, but the browser renders the cached component tree.
+
+**Authoritative verification method for page content on prod:**
+```javascript
+const resp = await fetch('https://snapai.mainnov.tech/tech', { cache: 'no-store' });
+const html = await resp.text();
+const hasNewCopy = html.includes('Snap the nameplate in the truck');
+```
+A `cache: 'no-store'` fetch bypasses both browser cache and Vercel CDN edge cache and returns exactly what the server renders.
+
+**For redirect verification (4.14):** Browser navigation IS the authoritative test. Navigate to the page and confirm `window.location.pathname === '/dashboard'`.
+
+**Rule:** For content checks use `fetch(url, {cache:'no-store'})`. For behavior checks (redirects, auth gates) use browser navigation.
+
+---
+
+## DEC-086 — `innerText` returns CSS-transformed text; use `.toUpperCase()` for uppercase elements (2026-05-27)
+
+**Discovery:** Checking `document.body.innerText.includes("Built for Houston contractors first")` returned `false` on the `/tech` page. The element renders correctly, but CSS `text-transform: uppercase` causes `innerText` to return `"BUILT FOR HOUSTON CONTRACTORS FIRST"`.
+
+**Rule:** When checking `innerText` for strings that may be CSS-uppercased:
+```javascript
+body.toUpperCase().includes("BUILT FOR HOUSTON CONTRACTORS FIRST")
+// OR
+body.includes("Snap the nameplate") // lowercase strings are safe
+```
+Always check what the element actually contains via `el.innerText` before writing string checks.
+
+---
+
+## DEC-087 — StepZeroPanel must self-source Clerk JWT on every OCR request (BUG-045, 2026-05-27)
+
+**Discovery (BUG-045):** The original OCR implementation passed a pre-baked JWT as a prop or called `getToken()` once at component mount. Clerk JWTs expire in 60 seconds. Any OCR attempt after token expiry silently failed with a 401.
+
+**Fix:** StepZeroPanel calls `getToken()` immediately before each OCR API request — not once at mount, not via prop. Pattern:
+```typescript
+const token = await getToken();
+const resp = await fetch('/api/ocr/nameplate', {
+  headers: { Authorization: `Bearer ${token}`, 'X-Market': market }
+});
+```
+
+**Rule (WA-9 extension):** `apiFetch` never auto-injects JWT (WA-9). For StepZeroPanel specifically: always get a fresh token inline, never cache the result of `getToken()` across requests.
+
+---
+
+## DEC-088 — OCR waterfall is 4-tier with field-level confidence gating (BUG-045, 2026-05-27)
+
+**Architecture (live on main as of commit `3f06f0b`):**
+- Tier 1: Gemini direct — fast, best results on clean nameplate photos
+- Tier 2: Gemini with image enhancement — slower, handles dirty/angled plates
+- Tier 3: DB brand lookup — matches make/model fragments to `brands` table
+- Tier 4: Manual entry fallback — user types fields; photo persists as context strip
+
+**Field-level confidence gating:** Each field (make, model, year, refrigerant) has its own confidence score. Tier 1 partial results (e.g. make=high, year=low) are supplemented by Tier 2/3 for low-confidence fields only. This avoids re-running the full waterfall when most fields are already confident.
+
+**Note:** `brands.series` is empty for all 15 US brands. Tier 3 DB lookup is structurally correct but returns little useful data until series data is backfilled.
+
+---
+
+## DEC-089 — A/B test variant stored in `snap_sz_variant` localStorage key (BUG-045, 2026-05-27)
+
+**Implementation (live as of commit `25492dc`):**
+- New user sees either `"control"` or `"variant_a"` StepZero layout
+- Assignment stored in `localStorage.setItem('snap_sz_variant', variant)`
+- Assigned once on first StepZero view; subsequent visits read the stored value
+- PostHog event: `ab_test_variant_assigned` fires on assignment with `{variant, market}` props
+- Returning user localStorage path stored in `snap_sz_path`; used by Scenario D (DEC-089b)
+
+**Rule:** Do NOT reassign the variant on subsequent visits. Read `localStorage.getItem('snap_sz_variant')` first; only assign if null.
+
+---
+
+## DEC-090 — Always audit existing work before implementing any fix prompt (2026-05-27)
+
+**Discovery:** The BUG-034 fix prompt covered 15 scope items (4.1–4.15). Before writing any code, reading all 5 brain files + git log revealed that items 4.1–4.12 (BUG-045: JWT auth, Tesseract removal, 4-tier waterfall, PostHog telemetry, A/B test) were already complete and live on production. Only 4.13, 4.14, 4.15 required implementation. This pre-flight audit saved several hours of duplicate work.
+
+**Mandatory pre-flight for any fix/feature prompt:**
+1. Read all 5 brain files
+2. `git log --oneline -20` on main to see recent commits
+3. Match each scope item against commits — mark DONE before touching any code
+4. Only implement items not already live
+
+**Rule:** "Already done" is always better than "done again wrong".
+
+---
+
+## DEC-091 — `git config user.email` + `user.name` must be set after every `/tmp` clone (2026-05-27)
+
+**Discovery:** After cloning to `/tmp/snapai_tmp`, the first `git commit` attempt failed with "Author identity unknown". The /tmp clone starts with no user identity.
+
+**Fix — always run immediately after clone:**
+```bash
+git config user.email "ds.shoab@gmail.com"
+git config user.name "Shoab"
+```
+
+**Why DEC-004 doesn't cover this:** DEC-004 says use /tmp clone for all git ops. It doesn't mention that user identity must be re-set every time. Now it does.
+
+---
+
+## DEC-092 — CDP `javascript_tool` times out at 45s; never await >30s in a single call (2026-05-27)
+
+**Discovery:** A polling loop using `await new Promise(r => setTimeout(r, 5000))` iterated 36 times (180s total) in a single `javascript_tool` call. CDP `Runtime.evaluate` timed out at 45 seconds, returning "renderer may be frozen or unresponsive".
+
+**Rule:** Never put a total wait time >30s inside a single `javascript_tool` call. For waiting on Vercel builds:
+1. Use `mcp__workspace__bash` with `sleep 45` (max timeout allowed)
+2. Then navigate + re-check with a fresh `javascript_tool` call
+3. Or poll by re-calling navigate + javascript_tool in separate tool turns
+
+**Implication:** Vercel builds (~2min) require multiple tool call cycles with a wait between each.
+
+---
+
+## DEC-093 — Clerk staging and prod use separate apps; sessions are NOT shared cross-environment (2026-05-27)
+
+**Clarification of DEC-047:** DEC-047 states "Login on snapai.mainnov.tech also logs in pk.snapai.mainnov.tech." This is correct — both production domains use the same Clerk `pk_live_` app, so one session covers both.
+
+**But:** Staging uses a separate Clerk app (`firm-chamois-61`, `pk_test_` keys). Even though staging domains are *.mainnov.tech subdomains, the different Clerk app means different session cookies. Signing in on `staging.snapai.mainnov.tech` does NOT give a session on `snapai.mainnov.tech`, and vice versa.
+
+**Summary:**
+- US prod + PK prod: same Clerk app (`pk_live_`) → one login covers both ✅
+- US staging + PK staging: same Clerk staging app (`pk_test_`) → one login covers both ✅
+- Prod vs staging: DIFFERENT Clerk apps → separate sessions, no cross-env login ✅
+
+---
+
+## 2026-06-10 — Free automated DB backups to Cloudflare R2 (DEC-094)
+
+### DEC-094 — Daily pg_dump of both Virginia DBs → private Cloudflare R2 bucket (2026-06-10)
+**Why:** Supabase free tier keeps **0-day backup retention** and permanently deletes data after an extended pause. The GitHub Actions keepalive pings prevent the pause, but a single missed ping risked data loss. DEC-094 adds an independent, off-platform safety net at $0.
+
+**What runs:** `.github/workflows/db-backup-r2.yml` (on `main`). Schedule `0 3 * * *` (daily 03:00 UTC) + `workflow_dispatch`. Steps: install PG17 client → `pg_dump` PROD → `pg_dump` STAGING → verify. Each dump is plain SQL (`--no-owner --no-privileges --quote-all-identifiers`), gzipped, uploaded via `aws s3 cp` (preinstalled on the runner) to bucket `snapai-db-backups` under `prod/` and `staging/` prefixes.
+
+**Cloudflare R2 setup (account `0c1bfa87134c7a6688d7eaf4410bf86a`):**
+- Bucket **`snapai-db-backups`** — region **ENAM** (co-located w/ Virginia us-east-1 DBs), **Standard** storage class, **public access DISABLED** (private).
+- **Object Lifecycle Rule** `delete-after-14-days` → auto-deletes objects 14 days after upload (no manual cleanup).
+- Scoped API token **`snapai-db-backups-rw`** — Object Read & Write, **this bucket only**, no expiry. (Least-privilege: cannot touch the app's `scopesnap-uploads` / `scopesnap-uploads-staging` buckets.)
+- **Cost = $0.** Free tier is 10 GB storage / 1M Class A / 10M Class B ops / **$0 egress**. Our load: ~0.2 MB prod + ~2 MB staging per day, ~2 writes/day. Orders of magnitude inside free. (R2 does require a card-on-file to enable — already done on this account.)
+
+**GitHub repo secrets (names only — values are secret):** `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ENDPOINT` (=`https://0c1bfa87134c7a6688d7eaf4410bf86a.r2.cloudflarestorage.com`), `SUPABASE_DB_URL_PROD`, `SUPABASE_DB_URL_STAGING`.
+- ⚠️ **Do NOT confuse with the older `CLOUDFLARE_R2_*` secrets** (CLOUDFLARE_R2_ACCESS_KEY / _SECRET_KEY / _ACCOUNT_ID / _BUCKET, added ~2 months prior) — those belong to the **app's uploads** bucket and a different token. The backup workflow uses ONLY the `R2_*` + `SUPABASE_DB_URL_*` names above.
+
+**GOTCHAS LEARNED (cost 2 failed runs before green):**
+1. **pg_dump version must be ≥ server version.** `ubuntu-latest` ships pg_dump **16**, but the Supabase server is **17.6** → `error: aborting because of server version mismatch`. Fix: `apt-get install postgresql-client-17` AND call the **explicit binary** `/usr/lib/postgresql/17/bin/pg_dump` (the `pg_wrapper` at `/usr/bin/pg_dump` still resolved to 16). Set via job env `PGDUMP`.
+2. **Use the Session pooler, NOT the Transaction pooler.** First staging attempt used the Transaction-pooler string (**port 6543**, username collapsed to `postgres`) → `FATAL: password authentication failed for user "postgres"`. pg_dump needs **Session pooler** (port **5432**, username `postgres.<project-ref>`, IPv4-reachable from GitHub). Prod worked first try because it had the correct Session-pooler URL.
+3. **workflow_dispatch only appears once the workflow file is on the default branch (`main`).** Pushed via git worktree from `origin/main` (then a contents-API edit for the fix) — the local working tree is a stale, dirty `staging` checkout, so never commit the backup file from there.
+
+**VERIFIED 2026-06-10:** run `27296950101` = **success** (all 6 steps green). Bucket listing from the run: `prod/prod_20260610_1742.sql.gz` (228 KB), `prod/prod_20260610_1821.sql.gz` (228 KB), `staging/staging_20260610_1821.sql.gz` (2.1 MB). Post-change, both backends `/health` = `ok` / `db: connected` (prod `scopesnap-api-production.up.railway.app`, staging `scopesnap-api-staging.up.railway.app`) — the staging password/secret update did **not** break Railway staging.
+
+**Restore how-to:** download the `.sql.gz` from R2 → `gunzip` → `psql "<target Session-pooler URL>" -f dump.sql`. Plain SQL, owner/privilege-stripped, so it restores cleanly into any empty DB.
+
+**Still open (separate):** the Healthchecks "Keepalive B DOWN" alert — the two keepalive workflows still ping the **deleted Tokyo** Supabase URLs via the old `SUPABASE_PROD_URL` / `SUPABASE_STAGING_URL` secrets, so their `if: success()` heartbeat never fires. App is fine. Fix later: repoint those 4 keepalive secrets to the Virginia projects, or retire the keepalives now that R2 backups exist.
+
+**Note:** `scopesnap-api.up.railway.app` (bare) returns a Railway "Application not found" 404 — it is **stale**. The live prod backend is **`scopesnap-api-production.up.railway.app`**.
+
+### 2026-06-10 — Keepalive "DOWN" RESOLVED (DEC-094 follow-up)
+Root cause confirmed from run logs: keepalive-supabase-B failed with `curl: (6) Could not resolve host: quqrvnoguofbjacrxcim.supabase.co` — the 4 keepalive secrets still pointed at the **deleted Tokyo** projects, so the ping failed and the `if: success()` Healthchecks heartbeat never fired → DOWN.
+
+**Fix:** repointed all 4 keepalive secrets to the Virginia (us-east-1) projects (values fetched via Supabase MCP; updated through the GitHub Secrets API with libsodium sealed-box encryption — the anon keys are publishable/public):
+- `SUPABASE_PROD_URL`    = `https://zpsoprffaujswywtsgzy.supabase.co` (snapai-prod-use1)
+- `SUPABASE_STAGING_URL` = `https://kikhhnanuwzocwcpzutr.supabase.co` (snapai-staging-use1)
+- `SUPABASE_PROD_ANON_KEY` / `SUPABASE_STAGING_ANON_KEY` = each project's legacy anon JWT.
+
+**Verified 2026-06-10:** manually dispatched both keepalive-supabase-A and -B → both **success**; steps Ping production / Ping staging / Heartbeat(Healthchecks.io) all green. Both Healthchecks checks flip DOWN→UP. Twice-weekly schedule restored (A = Sun 02:00 UTC, B = Wed 14:00 UTC).
+
+Note: keepalive is now somewhat redundant with the daily R2 backup (which pg_dumps both DBs daily = stronger DB-activity keepalive), but it's kept for the independent Healthchecks "did the scheduled job run" monitor.
+## DEC-095 — Audit remediation batch 2: authed market trust, strict-CSP nonce, report-link hardening, SRI accepted (2026-06-21)
+
+Closes the remaining open items from the full-audit deep review (items #3-#7),
+implemented and verified on staging (branch audit/remediation-batch-2 -> staging).
+
+- **#4 Authenticated market trust (High).** Market for AUTHENTICATED requests was
+  resolved from the spoofable `X-Market` header, letting a logged-in company pull
+  the other market's pricing/reference tables into its own estimate. Fix: new
+  trusted `companies.market` column (migration 043), stamped at provision time
+  from the request host; `AuthContext.market`; new `get_company_tables` dependency
+  resolving tables from the company's own market. 13 authenticated call sites
+  flipped off the header (assessments, diagnostic x6, error_code x2, estimates,
+  fault_estimate, recommend, ocr). Public/unauthed routes (`get_public_diagnosis`,
+  `get_public_report`, model seeding) intentionally still use the header. Backfill:
+  existing rows default 'US'; verified staging = 4 companies, all US, 0 PK, so no
+  PK company mis-resolves. ACTION on prod promote: confirm/backfill any PK company
+  (`UPDATE companies SET market='PK' WHERE ...`) before flipping prod.
+- **#5/#9 Strict-CSP nonce (Med).** Replaced the static `script-src 'unsafe-inline'`
+  CSP with Clerk v7 strict CSP: `clerkMiddleware` now runs on every request with
+  `contentSecurityPolicy.strict` (per-request nonce + `'strict-dynamic'`), exposed
+  via `x-nonce`; `<ClerkProvider dynamic>`; nonce on the inline SW script; static
+  CSP removed from next.config.js (Clerk is the single CSP source). `'unsafe-eval'`
+  kept (Google Maps) and `style-src 'unsafe-inline'` kept (Clerk/Maps). NOTE: the
+  literal `'unsafe-inline'` token remains in script-src as Clerk's deliberate
+  legacy-browser fallback, but is IGNORED by modern browsers because
+  `'strict-dynamic'` is present (the Google-recommended backwards-compatible strict
+  CSP). Verified on staging: header carries strict-dynamic+nonce (single source),
+  auth harness PASS (Clerk login->dashboard), public report renders, Google Maps is
+  bundle-injected via createElement+appendChild so strict-dynamic trusts it via
+  propagation.
+- **#6 Report-link hardening (Low).** New report links now emit the strong 32-char
+  `report_token` instead of the guessable `rpt-####` short id (3 email fallbacks);
+  short-id lookup stays resolvable so existing customer links keep working.
+  Rate-limiting (DEC from batch 1) remains the brute-force mitigation. Changing the
+  public URL scheme to invalidate old short-id links is deferred as a product call.
+- **#3 SRI (Low) — ACCEPTED, not pursued.** No stable non-experimental path on
+  Next.js 16; `experimental.sri` has a known CDN integrity-mismatch bug
+  (vercel/next.js#91633) that broke Clerk at runtime here and was reverted. The
+  strict-dynamic+nonce CSP (#5) covers the same script-injection threat class.
+- **#7 Brain-doc divergence — RECONCILED.** Root cause was CRLF-vs-LF noise (now
+  fixed by `.gitattributes *.md text eol=lf`). `ScopeSnapAI/DECISIONS.md` and
+  `ScopeSnapAI/TECH_STACK.md` (main was a clean superset) adopted from main on
+  staging; both `PROJECT_BRAIN.md` files (bidirectional divergence) were unioned
+  losslessly (heading-count verified, both sides' unique sections preserved).
+  Next free decision number after this entry is DEC-096.
+
+Verification: backend py_compile + app import + 145/145 pytest pass; migration 043
+live on staging DB (head=043); frontend tsc 0 errors; auth harness PASS; CSP header
++ Maps loader checked in-browser. Not yet promoted to prod (staging-only this round).

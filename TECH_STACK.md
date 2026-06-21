@@ -1565,4 +1565,11 @@ const isRec = isMiddleTier;  // alias kept for card headerBg/badgeBg/priceColor
 - JWKS: a `kid` with no matching key is now rejected (no fallback to keys[0]).
 - Public report market derived from trusted `estimate.market`, not the spoofable `X-Market` header.
 - SRI (`experimental.sri`) attempted + REVERTED - blocked Next 16 bundle scripts at runtime on Vercel (broke Clerk). Needs a non-experimental approach.
+
+### 2026-06-21 (batch 2) - remaining audit items completed on staging (DEC-095)
+- Authed market trust: `companies.market` column (migration 043) + `AuthContext.market` + `get_company_tables`; 13 authed routes resolve market from the company, not the `X-Market` header. Public routes still use the header. Staging backfill: all 4 companies US, 0 PK.
+- CSP: static `script-src 'unsafe-inline'` replaced by Clerk strict-CSP nonce + `'strict-dynamic'` (clerkMiddleware on every request; ClerkProvider dynamic; nonce on inline SW script; static CSP removed from next.config.js). `'unsafe-eval'` + `style-src 'unsafe-inline'` kept. The `'unsafe-inline'` token remains in script-src as Clerk's legacy fallback but is neutralized by strict-dynamic on modern browsers.
+- Report links: new links emit the strong `report_token`; legacy `rpt-####` short id stays resolvable (no broken customer links).
+- SRI: ACCEPTED as a Next 16 stack limitation (no stable non-experimental path; CSP nonce covers the threat).
+- Brain-doc divergence: root cause was CRLF noise, fixed by `.gitattributes`. DECISIONS/TECH_STACK adopted from main (superset); both PROJECT_BRAIN.md unioned losslessly.
 - Infra map: API staging = scopesnap-api-staging.up.railway.app (Railway "staging" env <- staging branch); API prod = scopesnap-api-production.up.railway.app (<- main). DBs: snapai-staging-use1 / snapai-prod-use1. Vercel: scopesnap-web-staging (<- staging) / scope-snap-ai (<- main).
