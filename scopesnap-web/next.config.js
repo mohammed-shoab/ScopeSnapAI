@@ -55,6 +55,11 @@ const nextConfig = {
   },
   // Hardening (ZAP): stop leaking the framework in X-Powered-By.
   poweredByHeader: false,
+  // Hardening (ZAP): Subresource Integrity for first-party Next.js bundle scripts.
+  // Verification gate = a clean staging Vercel build (experimental flag).
+  experimental: {
+    sri: { algorithm: "sha384" },
+  },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
