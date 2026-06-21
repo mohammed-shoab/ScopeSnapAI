@@ -21,7 +21,8 @@ Usage in any endpoint:
 
 from dataclasses import dataclass
 from typing import Optional
-from fastapi import Header
+from fastapi import Header, Depends
+from api.auth import get_current_user
 
 
 @dataclass(frozen=True)
@@ -90,3 +91,10 @@ def tables_for_market(market):
     if market and str(market).strip().upper() == "PK":
         return _PK_TABLES
     return _US_TABLES
+
+
+# Authenticated, header-independent market resolution (audit finding #4).
+# Public/unauthed routes keep get_tables/get_market (header); AUTHED routes use this.
+def get_company_tables(auth=Depends(get_current_user)) -> MarketTables:
+    """MarketTables for the authenticated companys trusted market (not the header)."""
+    return tables_for_market(getattr(auth, "market", "US"))

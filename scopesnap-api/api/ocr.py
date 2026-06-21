@@ -29,7 +29,7 @@ from sqlalchemy import select, update
 from db.database import get_db
 from db.models import Assessment, EquipmentModel
 from api.auth import get_current_user, AuthContext
-from api.dependencies import get_market
+from api.dependencies import get_market  # noqa: F401  (kept for any future header-based use)
 from services.vision import get_vision_service, VisionAnalysisError
 from services.serial_decoder import decode_serial
 from prompts.nameplate_ocr import NAMEPLATE_OCR_PROMPT
@@ -369,13 +369,13 @@ async def save_nameplate(
     assessment_id: str,
     body: NameplateSaveRequest,
     auth: AuthContext = Depends(get_current_user),
-    market: str = Depends(get_market),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Persist the OCR result (after tech edits) on the assessment record.
     Also updates equipment_instance with detected brand/tonnage/year if found.
     """
+    market = auth.market  # trusted server-side market, not the X-Market header (#4)
     # Verify assessment belongs to this company
     result = await db.execute(
         select(Assessment).where(

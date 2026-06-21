@@ -79,6 +79,11 @@ class Company(Base):
     # NULL/blank = no warranty language appears anywhere on the report.
     warranty_text: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
+    # Trusted server-side market ('US'|'PK'). Authenticated requests resolve
+    # market-dependent tables from THIS, never the spoofable X-Market header
+    # (audit finding #4, migration 043). Existing/legacy rows default to 'US'.
+    market: Mapped[str] = mapped_column(String(2), nullable=False, server_default="US")
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

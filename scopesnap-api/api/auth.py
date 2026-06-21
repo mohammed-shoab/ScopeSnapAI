@@ -65,6 +65,8 @@ class AuthContext:
         self.role = user.role
         self.is_owner = user.role == "owner"
         self.is_admin = user.role in ("owner", "admin")
+        # Trusted server-side market ('US'|'PK') for authed market resolution (#4).
+        self.market = (getattr(company, "market", None) or "US")
 
 
 # ── Token Verification ────────────────────────────────────────────────────────

@@ -23,7 +23,7 @@ from api.auth import get_current_user, AuthContext
 from services.storage import get_storage
 from services.vision import get_vision_service, VisionAnalysisError
 from prompts.equipment_analysis import EQUIPMENT_ANALYSIS_PROMPT
-from api.dependencies import get_tables, MarketTables
+from api.dependencies import get_company_tables, MarketTables
 from config import get_settings
 from rate_limit import limiter
 
@@ -984,7 +984,7 @@ async def list_assessments(
     offset: int = 0,
     filter_status: Optional[str] = None,
     auth: AuthContext = Depends(get_current_user),
-    tables: MarketTables = Depends(get_tables),
+    tables: MarketTables = Depends(get_company_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """Lists all assessments for the current company with enriched customer + fault data.

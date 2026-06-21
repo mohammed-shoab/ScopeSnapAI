@@ -83,25 +83,9 @@ const nextConfig = {
             key: "Permissions-Policy",
             value: "camera=(self), microphone=(), geolocation=()",
           },
-          {
-            // CSP — maps.googleapis.com + maps.gstatic.com added for Google Maps JS API (Stage 3 / DEC-076)
-            key: "Content-Security-Policy",
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://us-assets.i.posthog.com https://challenges.cloudflare.com https://maps.googleapis.com https://maps.gstatic.com",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https://*.r2.dev https://img.clerk.com https://images.clerk.dev https://www.gstatic.com https://*.gstatic.com https://clerk.snapai.mainnov.tech https://lh3.googleusercontent.com",
-              `connect-src 'self' ${API_URL_FOR_CSP} https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://us.i.posthog.com https://us-assets.i.posthog.com https://challenges.cloudflare.com https://maps.googleapis.com https://*.ingest.us.sentry.io`,
-              "frame-src 'self' https://clerk.snapai.mainnov.tech https://*.clerk.accounts.dev https://challenges.cloudflare.com",
-              "worker-src 'self' blob:",
-              // Hardening (ZAP "no fallback"): these directives do NOT inherit default-src.
-              "object-src 'none'",
-              "base-uri 'self'",
-              "frame-ancestors 'none'",
-              "form-action 'self'",
-            ].join("; "),
-          },
+          // CSP is now emitted by Clerk's middleware (proxy.ts) with a per-request
+          // nonce + 'strict-dynamic' (audit finding #5/#9) — single source of truth.
+          // The static CSP (script-src 'unsafe-inline') was removed here.
         ],
       },
     ];
