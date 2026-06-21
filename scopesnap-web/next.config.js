@@ -55,11 +55,9 @@ const nextConfig = {
   },
   // Hardening (ZAP): stop leaking the framework in X-Powered-By.
   poweredByHeader: false,
-  // Hardening (ZAP): Subresource Integrity for first-party Next.js bundle scripts.
-  // Verification gate = a clean staging Vercel build (experimental flag).
-  experimental: {
-    sri: { algorithm: "sha384" },
-  },
+  // NOTE: experimental.sri (SRI) was tried and REVERTED — it blocked the Next.js
+  // bundle scripts at runtime on Vercel (Clerk failed to load, sign-in broke),
+  // even though the build succeeded. Needs a different approach; see findings doc.
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
