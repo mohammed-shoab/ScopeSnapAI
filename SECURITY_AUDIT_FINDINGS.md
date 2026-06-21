@@ -122,3 +122,6 @@ Fixed + verified on staging (pending prod promote):
 - key rotation (#1) → DONE: Gemini leaked key already deleted; Clerk dev `sk_test` (glowing-cowbird-89) rolled; Roboflow key rolled.
 - CRON_SECRET (#2) → DONE: set on prod; `/process-followups` now returns 401 without the header (verified live).
 - prod promote (#3) → DONE: commit 5ea756e (file-level per DEC-070), QA'd green.
+
+## Full destructive DAST (ZAP active scan) — 2026-06-21
+Ran the active (attack) scan against staging that was skipped last round (spider 80 URLs + active scan, 7m21s). Result: **0 High/Critical**, 4 Medium, 1 Low, 4 Info. All Mediums are known/accepted: CSP unsafe-eval (Maps), CSP style-src unsafe-inline (Clerk/Maps), Cross-Domain Misconfig on /_next/static (Vercel CDN asset CORS, no data), and SRI-missing (#3, accepted). ZAP did NOT flag script-src unsafe-inline = strict-dynamic (#5) neutralized it. No SQLi/XSS/injection. Authed API surface was covered by the manual deep review (3 Highs, all fixed) since ZAP cannot do the Clerk OTP login.
