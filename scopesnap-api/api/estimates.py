@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Header, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
@@ -26,6 +26,25 @@ from api.fault_estimate import finalize_replacement_copy
 from config import get_settings
 
 router = APIRouter(prefix="/api/estimates", tags=["estimates"])
+
+
+def verify_cron_secret(x_cron_secret: str | None = Header(default=None)):
+    """WP-09 cron auth for /process-followups. If CRON_SECRET is configured, a
+    matching X-Cron-Secret header is required. If it is NOT configured, the call
+    is allowed but a warning is logged — so the existing scheduler keeps working
+    until the secret is set and the caller is updated (then it fails closed)."""
+    expected = (get_settings().cron_secret or "").strip()
+    if not expected:
+        import logging
+        logging.getLogger(__name__).warning(
+            "process-followups is UNAUTHENTICATED: set CRON_SECRET to require X-Cron-Secret."
+        )
+        return
+    if not x_cron_secret or x_cron_secret != expected:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing cron secret",
+        )
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -142,6 +161,7 @@ class UpdateEstimateRequest(BaseModel):
 @router.get("/process-followups")
 async def process_followups_early(
     db: AsyncSession = Depends(get_db),
+    _cron: None = Depends(verify_cron_secret),
 ):
     """
     WP-09: Cron endpoint — processes due follow-up emails.
@@ -948,6 +968,7 @@ async def send_estimate(
 @router.get("/process-followups")
 async def process_followups(
     db: AsyncSession = Depends(get_db),
+    _cron: None = Depends(verify_cron_secret),
 ):
     """
     WP-09: Cron endpoint — processes due follow-up emails.

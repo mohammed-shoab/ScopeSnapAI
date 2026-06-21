@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
     report_base_url: str = "http://localhost:3000/r"
 
+    # ── Cron auth (WP-09 follow-up endpoints) ──
+    # If set, GET /api/estimates/process-followups requires header X-Cron-Secret.
+    cron_secret: str = ""
+
 
 @lru_cache()
 def get_settings() -> Settings:

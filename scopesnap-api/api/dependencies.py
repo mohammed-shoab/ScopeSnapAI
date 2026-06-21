@@ -82,3 +82,11 @@ def get_market(x_market: Optional[str] = Header(None)) -> str:
     if x_market and x_market.strip().upper() == "PK":
         return "PK"
     return "US"
+
+
+# Trusted market -> tables mapping. Use with a TRUSTED source (e.g. estimate.market),
+# not the spoofable X-Market header, when selecting market-dependent tables.
+def tables_for_market(market):
+    if market and str(market).strip().upper() == "PK":
+        return _PK_TABLES
+    return _US_TABLES
