@@ -111,7 +111,13 @@ async def _send_welcome_email(email: str, name: str) -> None:
     print(f"[Welcome Email] Sent to {email}")
 
 
-async def _provision_user(clerk_user_id: str, email: str, name: str, db: AsyncSession) -> dict:
+def _market_from_host(host) -> str:
+    """Trusted market from the request host: pk. / pk-staging. (pk-) => PK, else US."""
+    h = (host or "").strip().lower()
+    return "PK" if (h.startswith("pk.") or h.startswith("pk-")) else "US"
+
+
+async def _provision_user(clerk_user_id: str, email: str, name: str, db: AsyncSession, market: str = "US") -> dict:
     """
     Creates Company + User records for a new Clerk user.
     Idempotent: if user already exists, returns existing records.
@@ -137,6 +143,7 @@ async def _provision_user(clerk_user_id: str, email: str, name: str, db: AsyncSe
         monthly_estimate_limit=10,
         monthly_estimate_count=0,
         settings={},
+        market=(market or "US").strip().upper() if (market or "").strip().upper() in ("US", "PK") else "US",
     )
     db.add(company)
     await db.flush()  # Get company.id
@@ -228,7 +235,7 @@ async def clerk_webhook(
         if not clerk_user_id:
             raise HTTPException(status_code=400, detail="Missing user ID in webhook payload.")
 
-        result = await _provision_user(clerk_user_id, email, name, db)
+        result = await _provision_user(clerk_user_id, email, name, db, market=_market_from_host(request.headers.get("host")))
 
         # ── Send welcome email via Resend ─────────────────────────────────────
         try:

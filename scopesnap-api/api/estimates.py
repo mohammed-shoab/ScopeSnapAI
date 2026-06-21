@@ -21,7 +21,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from db.database import get_db
 from db.models import Assessment, Company, Estimate, EstimateLineItem, FollowUp, Property
 from api.auth import get_current_user, AuthContext
-from api.dependencies import get_tables, MarketTables
+from api.dependencies import get_company_tables, MarketTables
 from api.fault_estimate import finalize_replacement_copy
 from config import get_settings
 
@@ -235,7 +235,7 @@ async def process_followups_early(
             )
         else:
             slug = company.slug if company else "hvac"
-            report_url = f"{base_url}/r/{slug}/{estimate.report_short_id}"
+            report_url = f"{base_url}/r/{slug}/{estimate.report_token}"
 
         # ── WS-M3: Tech confirmation email (goes to technician, not homeowner) ──
         if is_tech_confirm:
@@ -310,7 +310,7 @@ async def get_estimate(
     estimate_id: str,
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    tables: MarketTables = Depends(get_tables),
+    tables: MarketTables = Depends(get_company_tables),
 ):
     """Returns full estimate including all Good/Better/Best options and line items."""
     result = await db.execute(
@@ -907,7 +907,7 @@ async def send_estimate(
         )
     else:
         slug = company.slug if company else "hvac"
-        report_url = f"{base_url}/r/{slug}/{estimate.report_short_id}"
+        report_url = f"{base_url}/r/{slug}/{estimate.report_token}"
 
     # ── Send email ────────────────────────────────────────────────────────────
     sender = get_email_sender()
@@ -1055,7 +1055,7 @@ async def process_followups(
             )
         else:
             slug = company.slug if company else "hvac"
-            report_url = f"{base_url}/r/{slug}/{estimate.report_short_id}"
+            report_url = f"{base_url}/r/{slug}/{estimate.report_token}"
 
         try:
             await sender.send_follow_up(

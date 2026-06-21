@@ -21,7 +21,7 @@ from sqlalchemy import text
 
 from db.database import get_db
 from api.auth import get_current_user, AuthContext
-from api.dependencies import get_tables, MarketTables
+from api.dependencies import get_company_tables, MarketTables
 from api.events import record_event, EventPayload
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ async def lookup_error_code(
     brand: str = Query(..., description="Brand name or family (e.g. 'carrier', 'mitsubishi', 'goodman')"),
     code: str = Query(..., description="Error code (e.g. 'U4', '4_flash', 'E9')"),
     auth: AuthContext = Depends(get_current_user),
-    tables: MarketTables = Depends(get_tables),
+    tables: MarketTables = Depends(get_company_tables),
     db: AsyncSession = Depends(get_db),
     request=None,
 ):
@@ -175,7 +175,7 @@ async def lookup_error_code(
 @router.get("/brands", response_model=list[BrandFamily])
 async def list_error_code_brands(
     auth: AuthContext = Depends(get_current_user),
-    tables: MarketTables = Depends(get_tables),
+    tables: MarketTables = Depends(get_company_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """

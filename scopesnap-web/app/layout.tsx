@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import { PostHogProvider } from "@/providers/PostHogProvider";
 import "./globals.css";
@@ -36,11 +37,12 @@ export const viewport: Viewport = {
   themeColor: "#1a8754",  viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en">
       <head>
@@ -55,12 +57,13 @@ export default function RootLayout({
       </head>
       <body className="bg-surface-bg text-text-primary font-sans antialiased">
         <PostHogProvider>
-          <ClerkProvider>
+          <ClerkProvider dynamic>
           {children}
           </ClerkProvider>
         </PostHogProvider>
         {/* PWA Service Worker Registration */}
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
