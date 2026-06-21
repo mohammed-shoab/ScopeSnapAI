@@ -11,7 +11,7 @@ Endpoints:
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, text
 from typing import Optional
 
 from db.database import get_db
@@ -215,6 +215,22 @@ async def stripe_webhook(
 
     event_type = event.get("type") if isinstance(event, dict) else getattr(event, "type", None)
     event_data = event.get("data", {}) if isinstance(event, dict) else getattr(event, "data", {})
+
+    # Idempotency / replay protection: a re-delivered or replayed Stripe event
+    # must not re-apply payment state. Record the event id; short-circuit if seen.
+    event_id = event.get("id") if isinstance(event, dict) else getattr(event, "id", None)
+    if event_id:
+        _seen = await db.execute(
+            text('SELECT 1 FROM "processed_webhook_events" WHERE "event_id" = :eid'),
+            {"eid": event_id},
+        )
+        if _seen.scalar() is not None:
+            return {"received": True, "action": "already_processed", "event_id": event_id}
+        await db.execute(
+            text('INSERT INTO "processed_webhook_events" ("event_id") VALUES (:eid)'),
+            {"eid": event_id},
+        )
+        await db.commit()
 
     # ── Handle checkout.session.completed ─────────────────────────────────────
     if event_type == "checkout.session.completed":

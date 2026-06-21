@@ -22,6 +22,9 @@ def _load_fault_estimate_funcs():
     cut = src.index("# -- Request / Response models")
     head = src[:cut]
     mod = types.ModuleType("fe_head")
+    mod.__dict__["__file__"] = path
+    mod.__dict__["__name__"] = "fe_head"
+    mod.__dict__["os"] = __import__("os")
     mod.__dict__["Optional"] = __import__("typing").Optional
     mod.__dict__["math"] = __import__("math")
     mod.__dict__["datetime"] = __import__("datetime").datetime
