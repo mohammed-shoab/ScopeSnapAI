@@ -37,7 +37,7 @@ from db.database import get_db
 from db.models import Estimate, Assessment
 from api.auth import get_current_user, AuthContext
 from api.recommend import get_recommended_tier_internal
-from api.dependencies import get_tables, MarketTables
+from api.dependencies import get_company_tables, MarketTables
 from services.condition_signals import derive_condition_signal_from_assessment
 from services import brand_data_loader
 from services.analytics import capture_event
@@ -911,7 +911,7 @@ def _extract_brand_tier_variant(asmt) -> tuple:
 async def generate_fault_card_estimate(
     body: FaultCardEstimateRequest,
     auth: AuthContext = Depends(get_current_user),
-    tables: MarketTables = Depends(get_tables),
+    tables: MarketTables = Depends(get_company_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """

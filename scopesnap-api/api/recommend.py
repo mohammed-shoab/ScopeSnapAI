@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from db.database import get_db
 from api.auth import get_current_user, AuthContext
-from api.dependencies import get_tables, MarketTables
+from api.dependencies import get_company_tables, MarketTables
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/estimates", tags=["estimates"])
@@ -102,7 +102,7 @@ async def get_recommended_tier(
     age_years: Optional[float] = Query(None, description="Unit age in years (from Step Zero OCR)"),
     condition_signal: Optional[str] = Query(None, description="Condition signal (e.g. photo_confirmed_pitting, under_warranty)"),
     auth: AuthContext = Depends(get_current_user),
-    tables: MarketTables = Depends(get_tables),
+    tables: MarketTables = Depends(get_company_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """

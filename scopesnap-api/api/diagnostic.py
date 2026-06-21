@@ -28,7 +28,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import AuthContext, get_current_user
-from api.dependencies import get_tables, MarketTables
+from api.dependencies import get_tables, get_company_tables, MarketTables
 from db.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -818,7 +818,7 @@ async def _process_branch(
 async def start_session(
     body: StartSessionRequest,
     auth: AuthContext = Depends(get_current_user),
-    tables: MarketTables = Depends(get_tables),
+    tables: MarketTables = Depends(get_company_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -900,7 +900,7 @@ async def submit_answer(
     session_id: str,
     body: AnswerRequest,
     auth: AuthContext = Depends(get_current_user),
-    tables: MarketTables = Depends(get_tables),
+    tables: MarketTables = Depends(get_company_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -1138,7 +1138,7 @@ async def list_questions(
 async def undo_step(
     session_id: str = Path(...),
     auth: AuthContext = Depends(get_current_user),
-    tables: MarketTables = Depends(get_tables),
+    tables: MarketTables = Depends(get_company_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -1180,7 +1180,7 @@ async def undo_step(
 async def resume_session(
     session_id: str = Path(...),
     auth: AuthContext = Depends(get_current_user),
-    tables: MarketTables = Depends(get_tables),
+    tables: MarketTables = Depends(get_company_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -1207,7 +1207,7 @@ async def resume_session(
 async def get_diagnostic_result(
     session_id: str = Path(...),
     auth: AuthContext = Depends(get_current_user),
-    tables: MarketTables = Depends(get_tables),
+    tables: MarketTables = Depends(get_company_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -1379,7 +1379,7 @@ async def list_diagnoses(
     limit: int = 20,
     cursor: Optional[str] = None,
     auth: AuthContext = Depends(get_current_user),
-    tables: MarketTables = Depends(get_tables),
+    tables: MarketTables = Depends(get_company_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """
