@@ -96,8 +96,8 @@ async def verify_clerk_token(token: str) -> dict:
 
     # Find the matching public key by kid
     key_data = next((k for k in keys if k.get("kid") == kid), None)
-    if not key_data and keys:
-        key_data = keys[0]  # Fallback: use first key if no kid match
+    # SECURITY: reject a kid with no matching JWKS key — never fall back to an
+    # arbitrary key (key-rotation / key-confusion safety).
     if not key_data:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

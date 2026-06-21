@@ -47,6 +47,9 @@ def _load_fault_estimate_head():
     sys.modules["fe45_head"] = mod
     import dataclasses
     mod.__dict__.update({
+        "__file__": path,
+        "__name__": "fe45_head",
+        "os": __import__("os"),
         "Optional": __import__("typing").Optional,
         "Any": __import__("typing").Any,
         "math": __import__("math"),

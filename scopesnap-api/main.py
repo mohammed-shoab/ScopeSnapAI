@@ -119,17 +119,22 @@ async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSON
 app.add_middleware(SlowAPIMiddleware)
 
 # ââ CORS ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        settings.frontend_url,
-        "https://snapai.mainnov.tech",
-        "https://pk.snapai.mainnov.tech",
-        "https://staging.snapai.mainnov.tech",      # staging US market
-        "https://pk-staging.snapai.mainnov.tech",   # staging PK market
+_cors_allow_origins = [
+    settings.frontend_url,
+    "https://snapai.mainnov.tech",
+    "https://pk.snapai.mainnov.tech",
+    "https://staging.snapai.mainnov.tech",      # staging US market
+    "https://pk-staging.snapai.mainnov.tech",   # staging PK market
+]
+# Local dev origins only outside production (dev/staging keep them).
+if settings.environment != "production":
+    _cors_allow_origins += [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-    ],
+    ]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

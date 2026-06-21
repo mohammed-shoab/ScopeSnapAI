@@ -12,13 +12,14 @@ import os
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from rate_limit import limiter
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 import sentry_sdk
 from sqlalchemy import select, text
 
-from api.dependencies import get_tables, MarketTables
+from api.dependencies import get_tables, MarketTables, tables_for_market
 from api.estimates import _enrich_tco_from_db
 from db.database import get_db
 from db.models import (
@@ -64,7 +65,9 @@ class CorrectAgeRequest(BaseModel):
 # ── GET /api/reports/{report_token} ──────────────────────────────────────────
 
 @router.get("/{report_token}")
+@limiter.limit("30/minute")  # throttle report_short_id brute-force enumeration (PII) per IP
 async def get_public_report(
+    request: Request,
     report_token: str,
     db: AsyncSession = Depends(get_db),
     tables: MarketTables = Depends(get_tables),
@@ -225,7 +228,11 @@ async def get_public_report(
     issues_data = []
     if (diagnostic_resolved and ds_row
             and complaint not in ("service", "tune_up", "maintenance")):
-        fc_table = "pak_fault_cards" if tables.market == "PK" else tables.fault_cards
+        # Trusted market: select market-dependent tables from estimate.market (the
+        # market this estimate was priced in), NOT the spoofable X-Market header on
+        # this public route. Mirrors the currency stamp which already trusts it.
+        report_tables = tables_for_market(getattr(estimate, "market", "US") or "US")
+        fc_table = "pak_fault_cards" if report_tables.market == "PK" else report_tables.fault_cards
         fc_result = await db.execute(
             text(f"SELECT card_name FROM {fc_table} WHERE card_id = :cid LIMIT 1"),
             {"cid": ds_row[0]},
@@ -425,7 +432,9 @@ async def get_public_report(
 # ── POST /api/reports/{report_token}/approve ──────────────────────────────────
 
 @router.post("/{report_token}/approve")
+@limiter.limit("10/minute")  # tighter cap on the state-changing approve-by-short_id path
 async def approve_report(
+    request: Request,
     report_token: str,
     body: ApproveRequest,
     db: AsyncSession = Depends(get_db),

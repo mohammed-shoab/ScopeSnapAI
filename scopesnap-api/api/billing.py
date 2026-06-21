@@ -18,7 +18,7 @@ Endpoints:
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, text
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -295,6 +295,7 @@ async def stripe_billing_webhook(
             )
             event_type = event.type
             event_data = event.data.object
+            event_id = getattr(event, "id", None)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Webhook error: {e}")
     else:
@@ -302,8 +303,24 @@ async def stripe_billing_webhook(
             raw = _json.loads(payload)
             event_type = raw.get("type")
             event_data = raw.get("data", {}).get("object", {})
+            event_id = raw.get("id")
         except Exception:
             raise HTTPException(status_code=400, detail="Invalid payload.")
+
+    # Idempotency / replay protection: re-delivered/replayed events must not
+    # re-apply subscription state. Record the event id; short-circuit if seen.
+    if event_id:
+        _seen = await db.execute(
+            text('SELECT 1 FROM "processed_webhook_events" WHERE "event_id" = :eid'),
+            {"eid": event_id},
+        )
+        if _seen.scalar() is not None:
+            return {"received": True, "action": "already_processed", "event_id": event_id}
+        await db.execute(
+            text('INSERT INTO "processed_webhook_events" ("event_id") VALUES (:eid)'),
+            {"eid": event_id},
+        )
+        await db.commit()
 
     # ── checkout.session.completed (subscription) ─────────────────────────────
     if event_type == "checkout.session.completed":
