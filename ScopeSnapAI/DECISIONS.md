@@ -1819,3 +1819,52 @@ Root cause confirmed from run logs: keepalive-supabase-B failed with `curl: (6) 
 **Verified 2026-06-10:** manually dispatched both keepalive-supabase-A and -B → both **success**; steps Ping production / Ping staging / Heartbeat(Healthchecks.io) all green. Both Healthchecks checks flip DOWN→UP. Twice-weekly schedule restored (A = Sun 02:00 UTC, B = Wed 14:00 UTC).
 
 Note: keepalive is now somewhat redundant with the daily R2 backup (which pg_dumps both DBs daily = stronger DB-activity keepalive), but it's kept for the independent Healthchecks "did the scheduled job run" monitor.
+## DEC-095 — Audit remediation batch 2: authed market trust, strict-CSP nonce, report-link hardening, SRI accepted (2026-06-21)
+
+Closes the remaining open items from the full-audit deep review (items #3-#7),
+implemented and verified on staging (branch audit/remediation-batch-2 -> staging).
+
+- **#4 Authenticated market trust (High).** Market for AUTHENTICATED requests was
+  resolved from the spoofable `X-Market` header, letting a logged-in company pull
+  the other market's pricing/reference tables into its own estimate. Fix: new
+  trusted `companies.market` column (migration 043), stamped at provision time
+  from the request host; `AuthContext.market`; new `get_company_tables` dependency
+  resolving tables from the company's own market. 13 authenticated call sites
+  flipped off the header (assessments, diagnostic x6, error_code x2, estimates,
+  fault_estimate, recommend, ocr). Public/unauthed routes (`get_public_diagnosis`,
+  `get_public_report`, model seeding) intentionally still use the header. Backfill:
+  existing rows default 'US'; verified staging = 4 companies, all US, 0 PK, so no
+  PK company mis-resolves. ACTION on prod promote: confirm/backfill any PK company
+  (`UPDATE companies SET market='PK' WHERE ...`) before flipping prod.
+- **#5/#9 Strict-CSP nonce (Med).** Replaced the static `script-src 'unsafe-inline'`
+  CSP with Clerk v7 strict CSP: `clerkMiddleware` now runs on every request with
+  `contentSecurityPolicy.strict` (per-request nonce + `'strict-dynamic'`), exposed
+  via `x-nonce`; `<ClerkProvider dynamic>`; nonce on the inline SW script; static
+  CSP removed from next.config.js (Clerk is the single CSP source). `'unsafe-eval'`
+  kept (Google Maps) and `style-src 'unsafe-inline'` kept (Clerk/Maps). NOTE: the
+  literal `'unsafe-inline'` token remains in script-src as Clerk's deliberate
+  legacy-browser fallback, but is IGNORED by modern browsers because
+  `'strict-dynamic'` is present (the Google-recommended backwards-compatible strict
+  CSP). Verified on staging: header carries strict-dynamic+nonce (single source),
+  auth harness PASS (Clerk login->dashboard), public report renders, Google Maps is
+  bundle-injected via createElement+appendChild so strict-dynamic trusts it via
+  propagation.
+- **#6 Report-link hardening (Low).** New report links now emit the strong 32-char
+  `report_token` instead of the guessable `rpt-####` short id (3 email fallbacks);
+  short-id lookup stays resolvable so existing customer links keep working.
+  Rate-limiting (DEC from batch 1) remains the brute-force mitigation. Changing the
+  public URL scheme to invalidate old short-id links is deferred as a product call.
+- **#3 SRI (Low) — ACCEPTED, not pursued.** No stable non-experimental path on
+  Next.js 16; `experimental.sri` has a known CDN integrity-mismatch bug
+  (vercel/next.js#91633) that broke Clerk at runtime here and was reverted. The
+  strict-dynamic+nonce CSP (#5) covers the same script-injection threat class.
+- **#7 Brain-doc divergence — RECONCILED.** Root cause was CRLF-vs-LF noise (now
+  fixed by `.gitattributes *.md text eol=lf`). `ScopeSnapAI/DECISIONS.md` and
+  `ScopeSnapAI/TECH_STACK.md` (main was a clean superset) adopted from main on
+  staging; both `PROJECT_BRAIN.md` files (bidirectional divergence) were unioned
+  losslessly (heading-count verified, both sides' unique sections preserved).
+  Next free decision number after this entry is DEC-096.
+
+Verification: backend py_compile + app import + 145/145 pytest pass; migration 043
+live on staging DB (head=043); frontend tsc 0 errors; auth harness PASS; CSP header
++ Maps loader checked in-browser. PROMOTED TO PROD 2026-06-21 (commit 5ea756e, file-level per DEC-070). Prod QA green: migration 043 live (15/15 US, 0 PK); authed X-Market:PK spoof returns US value (defeated); CSP strict-dynamic+nonce live + Clerk auth + Maps OK; CRON_SECRET set (/process-followups -> 401); all 3 leaked keys rotated. Audit close-out complete.
