@@ -125,3 +125,11 @@ Fixed + verified on staging (pending prod promote):
 
 ## Full destructive DAST (ZAP active scan) — 2026-06-21
 Ran the active (attack) scan against staging that was skipped last round (spider 80 URLs + active scan, 7m21s). Result: **0 High/Critical**, 4 Medium, 1 Low, 4 Info. All Mediums are known/accepted: CSP unsafe-eval (Maps), CSP style-src unsafe-inline (Clerk/Maps), Cross-Domain Misconfig on /_next/static (Vercel CDN asset CORS, no data), and SRI-missing (#3, accepted). ZAP did NOT flag script-src unsafe-inline = strict-dynamic (#5) neutralized it. No SQLi/XSS/injection. Authed API surface was covered by the manual deep review (3 Highs, all fixed) since ZAP cannot do the Clerk OTP login.
+
+## Full 24-step audit from scratch — 2026-06-21 (mode=full, both markets)
+Ran the complete full-mode audit (user override of off-hours gate, Sunday). Scope: US + PK staging.
+- pytest: 145 passed. gitleaks: 3 (the rotated keys in git HISTORY — values now dead). semgrep: 39 (30 ERROR avoid-sqlalchemy-text = table-name interpolation from trusted MarketTables/hardcoded constants with bound :params, NOT injectable; 9 WARN = already-mitigated SSRF/ReDoS + test-only exec). 0 new actionable SAST.
+- ZAP ACTIVE scan BOTH markets (staging + pk-staging): 0 High, 10 Medium (all known/accepted: unsafe-eval, _next CORS, SRI), 0 new. strict-dynamic confirmed neutralizing script-src unsafe-inline on both.
+- Functional both-market: PK PSI thresholds correct (R-410A 125-145@40C, R-22 78-88, R-32 120-140); Urdu glyphs render clean (no boxes); CSP nonce live on both domains; market isolation intact.
+- k6 staged (uncapped): 50 VUs 8.1% fail / 200 VUs 62.5% / 500 VUs 83.1%, p95 505-639ms. CAPACITY CEILING: Hobby-tier single Railway instance saturates ~50-200 concurrent (refuses excess; successful reqs fast). Not a defect; irrelevant at current beta load. Recommend horizontal scaling before real traffic.
+- Promote gate: schema parity 043=043 (staging=prod), code parity (staging=main), both-market smoke PASS, isolation PASS. GO — but audit found nothing to fix, so no promote needed (staging already mirrors prod).
