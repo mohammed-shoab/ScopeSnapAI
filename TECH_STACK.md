@@ -1556,3 +1556,13 @@ const isRec = isMiddleTier;  // alias kept for card headerBg/badgeBg/priceColor
 - **Edge WAF status:** `mainnov.tech` is on **Hostinger DNS — NOT behind Cloudflare** (DEC-068), so no
   edge WAF on the prod app. Cloudflare Free managed/OWASP rulesets are Pro-only. Free-path migration
   runbook prepared (`SnapAI_Cloudflare_Free_WAF_Migration_Runbook.md`).
+
+
+## 2026-06-21 - Security remediation additions (staging; pending prod promote)
+- New table `processed_webhook_events` (Stripe webhook idempotency, migration 042).
+- Public report routes (`/r/{token}`, `/{token}/approve`) rate-limited via slowapi (30/min and 10/min per IP).
+- CORS: localhost origins gated to non-production envs only.
+- JWKS: a `kid` with no matching key is now rejected (no fallback to keys[0]).
+- Public report market derived from trusted `estimate.market`, not the spoofable `X-Market` header.
+- SRI (`experimental.sri`) attempted + REVERTED - blocked Next 16 bundle scripts at runtime on Vercel (broke Clerk). Needs a non-experimental approach.
+- Infra map: API staging = scopesnap-api-staging.up.railway.app (Railway "staging" env <- staging branch); API prod = scopesnap-api-production.up.railway.app (<- main). DBs: snapai-staging-use1 / snapai-prod-use1. Vercel: scopesnap-web-staging (<- staging) / scope-snap-ai (<- main).

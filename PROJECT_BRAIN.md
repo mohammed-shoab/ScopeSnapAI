@@ -341,3 +341,12 @@ synthetic-event filters to production (commit `6f4925a` on `main`).
 Cloudflare). Next build: the `snapai-full-audit` skill itself.
 
 See **DEC-090** for full decisions, corrections, and retrospective.
+
+
+## 2026-06-21 - Security remediation batch QA (staging)
+snapai-full-audit follow-ups remediated + merged to staging (detail in SECURITY_AUDIT_FINDINGS.md section H).
+- Fixed on staging (pending prod promote): rate-limit public report/approve routes (#5); Stripe webhook idempotency (#7, migration 042 + processed_webhook_events table); public report trusts estimate.market not X-Market (#4 partial); JWKS kid-mismatch reject (#10); CORS localhost gated to non-prod + 2 broken API test loaders fixed (#11).
+- QA: 145 API unit tests pass (was 122), full app import clean, Vercel staging build Ready, Clerk login harness PASS -> /dashboard, staging API (scopesnap-api-staging) Online, alembic_version=042, processed_webhook_events table present.
+- Caught + REVERTED an SRI regression: experimental.sri broke Next bundle script loading at runtime on Vercel (Clerk failed to load, sign-in broke) despite a clean build.
+- Pending YOU: rotate 3 leaked keys (#1), set CRON_SECRET + update caller (#2), promote staging->prod (#3). Open (decisions): authed-side market trust via company.market column, CSP nonce migration (#9), report_short_id URL scheme.
+- Infra map confirmed: API staging = scopesnap-api-staging.up.railway.app (Railway env "staging" <- staging branch); API prod = scopesnap-api-production.up.railway.app (<- main). DBs: snapai-staging-use1 (now alembic 042) / snapai-prod-use1 (still 041 until promote). Vercel staging = scopesnap-web-staging (<- staging branch, Preview deploys).

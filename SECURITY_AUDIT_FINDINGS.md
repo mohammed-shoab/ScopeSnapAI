@@ -101,3 +101,17 @@ Plus: webhook idempotency table; reject JWKS `kid` mismatch; confirm `environmen
 - [x] **[High] Unauthenticated cron email endpoints** - added `verify_cron_secret` dependency on both `/process-followups` handlers. Backward-compatible: enforces `X-Cron-Secret` only once `CRON_SECRET` env is set (warns + allows until then, so the existing scheduler keeps working). ACTION: set `CRON_SECRET` in Railway + add the header to the scheduler caller to fail closed.
 - [x] **[High] Stripe open redirect** - `_safe_redirect()` guard on success_url/cancel_url in payments.py + billing.py; client URLs honored only if host is a SnapAI domain, else safe default.
 - Verified: py_compile clean + 122 unit tests pass. STILL OPEN (need product/migration decisions): market-from-header refactor, report_short_id brute-force surface, webhook idempotency table, JWKS kid-mismatch reject.
+
+
+## H. Remediation batch applied to staging (2026-06-20/21)
+Merged to staging (35531ee, 24f8185 -> merge 51c506e; SRI reverted 3152e5a). QA: 145 API unit tests pass, full app import clean, Vercel staging build Ready, Clerk login harness PASS -> /dashboard, staging API (scopesnap-api-staging) Online, migration 042 applied (alembic_version=042, processed_webhook_events present).
+
+Fixed + verified on staging (pending prod promote):
+- [x] #5 Rate-limit public report + approve routes (slowapi 30/min, 10/min per IP).
+- [x] #7 Stripe webhook idempotency (processed_webhook_events table, migration 042; dedupe in payments.py + billing.py).
+- [x] #4 (partial) Public report route trusts estimate.market (not spoofable X-Market). NOTE: host-based market for AUTHED requests NOT done - the API is a separate domain and never sees the pk. host; needs a company.market column instead. Deferred.
+- [x] #10 JWKS kid-mismatch rejected (no fallback). verify_aud left False (no audience configured - enabling would reject all tokens).
+- [x] #11 CORS localhost origins gated to non-production; 2 broken API test loaders fixed (145 tests now pass, was 122).
+- [~] #8 SRI: TRIED -> REVERTED. experimental.sri broke Next bundle script loading at runtime on Vercel (Clerk failed to load, sign-in broke) despite a clean build. Needs a different approach.
+
+Still open (need product/migration decisions or YOUR action): #4 authed-side market trust (company.market column), #9 CSP nonce migration (Clerk strict CSP - structural proxy.ts rewrite + browser QA), report_short_id URL scheme, key rotation (#1), CRON_SECRET set + caller update (#2), prod promote (#3).
