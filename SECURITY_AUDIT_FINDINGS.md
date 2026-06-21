@@ -114,4 +114,11 @@ Fixed + verified on staging (pending prod promote):
 - [x] #11 CORS localhost origins gated to non-production; 2 broken API test loaders fixed (145 tests now pass, was 122).
 - [~] #8 SRI: TRIED -> REVERTED. experimental.sri broke Next bundle script loading at runtime on Vercel (Clerk failed to load, sign-in broke) despite a clean build. Needs a different approach.
 
-Still open (need product/migration decisions or YOUR action): #4 authed-side market trust (company.market column), #9 CSP nonce migration (Clerk strict CSP - structural proxy.ts rewrite + browser QA), report_short_id URL scheme, key rotation (#1), CRON_SECRET set + caller update (#2), prod promote (#3).
+~~Still open~~ **ALL RESOLVED — 2026-06-21 (batch 2, DEC-095, prod commit 5ea756e):**
+- #4 authed-side market trust → DONE: `companies.market` column (migration 043, live on staging+prod, all companies US/0 PK), `get_company_tables` on 13 authed routes. Verified live: spoofed `X-Market:PK` on an authed route returns the US value (spoof defeated) on both staging and prod.
+- #9 CSP nonce migration → DONE: Clerk strict-CSP nonce + `strict-dynamic` live on staging+prod; auth + Google Maps verified working in-browser (Maps `LOADED_ALLOWED_BY_CSP`, 0 violations).
+- report_short_id → DONE (non-breaking): new links emit the strong token; old short-id links still resolve. URL-scheme invalidation left as a product call.
+- #3 SRI → ACCEPTED (no stable non-experimental path on Next 16; CSP nonce covers the threat).
+- key rotation (#1) → DONE: Gemini leaked key already deleted; Clerk dev `sk_test` (glowing-cowbird-89) rolled; Roboflow key rolled.
+- CRON_SECRET (#2) → DONE: set on prod; `/process-followups` now returns 401 without the header (verified live).
+- prod promote (#3) → DONE: commit 5ea756e (file-level per DEC-070), QA'd green.

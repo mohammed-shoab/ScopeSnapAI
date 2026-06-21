@@ -1867,4 +1867,4 @@ implemented and verified on staging (branch audit/remediation-batch-2 -> staging
 
 Verification: backend py_compile + app import + 145/145 pytest pass; migration 043
 live on staging DB (head=043); frontend tsc 0 errors; auth harness PASS; CSP header
-+ Maps loader checked in-browser. Not yet promoted to prod (staging-only this round).
++ Maps loader checked in-browser. PROMOTED TO PROD 2026-06-21 (commit 5ea756e, file-level per DEC-070). Prod QA green: migration 043 live (15/15 US, 0 PK); authed X-Market:PK spoof returns US value (defeated); CSP strict-dynamic+nonce live + Clerk auth + Maps OK; CRON_SECRET set (/process-followups -> 401); all 3 leaked keys rotated. Audit close-out complete.
