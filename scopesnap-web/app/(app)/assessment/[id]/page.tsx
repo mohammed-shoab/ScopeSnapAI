@@ -803,6 +803,11 @@ export default function EstimatePage() {
                 <div className="flex justify-between text-xs text-text-secondary mt-1">
                   <span>0%</span><span>50%</span><span>100%</span>
                 </div>
+                {markup > 100 && (
+                  <p className="mt-3 text-xs text-brand-red bg-brand-red-light rounded-lg px-3 py-2">
+                    ⚠ Markup is over 100% — the homeowner total is more than double your cost. Double-check this is intended before sending.
+                  </p>
+                )}
               </div>
             )}
           </div>

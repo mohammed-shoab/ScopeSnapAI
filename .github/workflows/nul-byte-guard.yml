@@ -1,0 +1,31 @@
+name: NUL-byte guard
+
+# Guards against the source-file corruption that silently broke PDF generation
+# (pdf_generator.py carried 117 trailing NUL bytes -> SyntaxError on import).
+# Fails CI if any tracked source file contains an embedded NUL byte.
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  nul-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan tracked source files for NUL bytes
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(git ls-files '*.py' '*.ts' '*.tsx' '*.js' '*.jsx' '*.json' '*.md' '*.css' '*.scss' '*.yml' '*.yaml' '*.html' '*.txt')
+          bad=0
+          for f in "${files[@]}"; do
+            if LC_ALL=C grep -qP '\x00' "$f"; then
+              echo "::error file=$f::contains embedded NUL byte(s) (corruption/truncation)"
+              bad=1
+            fi
+          done
+          if [ "$bad" -ne 0 ]; then
+            echo "❌ One or more source files contain NUL bytes. This usually means a truncated/corrupted write. Fix before merging."
+            exit 1
+          fi
+          echo "✅ No NUL bytes found in tracked source files."
