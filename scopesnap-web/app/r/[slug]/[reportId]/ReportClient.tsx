@@ -16,13 +16,19 @@ import FiveYearComparison, { type TierTCO } from "@/components/FiveYearCompariso
 function ReportQRCode({ reportShortId }: { reportShortId: string }) {
   // A.5 fix: lazy initializer computes URL synchronously on first render so
   // QR image is present when the browser print dialog opens (no useEffect delay).
-  const [qrUrl] = useState(() => {
-    if (typeof window === "undefined") return "";
+  // Compute the QR URL after mount, NOT in a lazy useState initializer: that
+  // initializer produced "" on the server but a real URL on the client, so the
+  // server rendered null while the client rendered the <img> — a hydration
+  // mismatch (React #418). Deferring to useEffect makes SSR + first client
+  // render identical (null); the QR appears right after mount, still well before
+  // the user opens the print dialog (preserves the A.5 intent).
+  const [qrUrl, setQrUrl] = useState("");
+  useEffect(() => {
     const reportUrl = window.location.href.split("?")[0];
     const trackingUrl = `${reportUrl}?utm_source=report&utm_medium=qr&utm_campaign=${reportShortId}`;
     const encoded = encodeURIComponent(trackingUrl);
-    return `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encoded}&color=1a8754&bgcolor=ffffff&margin=4`;
-  });
+    setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encoded}&color=1a8754&bgcolor=ffffff&margin=4`);
+  }, [reportShortId]);
 
   if (!qrUrl) return null;
 
