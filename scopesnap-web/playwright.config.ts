@@ -26,7 +26,11 @@ export default defineConfig({
     ["list"],
   ],
   use: {
-    baseURL: process.env.BASE_URL || "http://localhost:3000",
+    // Use 127.0.0.1 (not "localhost"): newer Playwright/Chromium can fail to
+    // resolve "localhost" in CI (ERR_NAME_NOT_RESOLVED) even though Node's
+    // webServer health-check resolves it fine — which is exactly what reddened
+    // this suite. 127.0.0.1 is unambiguous and reaches the `next dev` server.
+    baseURL: process.env.BASE_URL || "http://127.0.0.1:3000",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
@@ -46,8 +50,8 @@ export default defineConfig({
   webServer: process.env.BASE_URL
     ? undefined
     : {
-        command: "npm run dev",
-        url: "http://localhost:3000",
+        command: "npm run dev -- -H 127.0.0.1",
+        url: "http://127.0.0.1:3000",
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
         env: {
