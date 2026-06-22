@@ -6,6 +6,11 @@ const API_URL_FOR_CSP = process.env.NEXT_PUBLIC_API_URL || 'https://scopesnap-ap
 const { withSentryConfig } = require("@sentry/nextjs");
 
 const nextConfig = {
+  // Next 16 blocks cross-origin access to /_next/* dev resources (HMR, chunks)
+  // from hosts not listed here. The Playwright e2e suite reaches the dev server
+  // via 127.0.0.1/localhost, which were getting blocked -> page scripts failed
+  // -> navigations died (this is what reddened playwright-e2e.yml). Dev-only.
+  allowedDevOrigins: ["localhost", "127.0.0.1"],
   async redirects() {
     return [
       {

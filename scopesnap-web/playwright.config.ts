@@ -26,28 +26,12 @@ export default defineConfig({
     ["list"],
   ],
   use: {
-    // Use 127.0.0.1 (not "localhost"): newer Playwright/Chromium can fail to
-    // resolve "localhost" in CI (ERR_NAME_NOT_RESOLVED) even though Node's
-    // webServer health-check resolves it fine — which is exactly what reddened
-    // this suite. 127.0.0.1 is unambiguous and reaches the `next dev` server.
     baseURL: process.env.BASE_URL || "http://127.0.0.1:3000",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     actionTimeout: 10_000,
     navigationTimeout: 30_000,
-    // Force Chromium to talk DIRECTLY to the loopback dev server. If the CI
-    // environment has any HTTP(S) proxy configured, Chromium routes 127.0.0.1
-    // through it and the proxy can't reach loopback -> net::ERR_NAME_NOT_RESOLVED
-    // (which is impossible as a real DNS error on an IP — the tell that it's a
-    // proxy). --no-proxy-server + a wildcard bypass make it go direct.
-    launchOptions: {
-      args: [
-        "--no-proxy-server",
-        "--proxy-bypass-list=*",
-        "--host-resolver-rules=MAP localhost 127.0.0.1",
-      ],
-    },
   },
   projects: [
     {
@@ -62,9 +46,6 @@ export default defineConfig({
   webServer: process.env.BASE_URL
     ? undefined
     : {
-        // Bind next dev to all interfaces (0.0.0.0) so it's reachable on the IPv4
-        // loopback 127.0.0.1 by BOTH Node's health-check and Chromium. ("localhost"
-        // failed Chromium DNS in CI; npm's `-- -H` forwarding failed to bind at all.)
         command: "npx next dev -H 0.0.0.0 -p 3000",
         url: "http://127.0.0.1:3000",
         reuseExistingServer: !process.env.CI,
