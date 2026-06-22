@@ -10,6 +10,7 @@
  *   <LanguageToggle />   — just drop it anywhere inside LanguageProvider
  */
 
+import { useState, useEffect } from "react";
 import { detectMarket } from "@/lib/market";
 import { useLang } from "@/lib/language-context";
 
@@ -17,8 +18,17 @@ export default function LanguageToggle() {
   // Hooks must be called unconditionally before any early return
   const { lang, toggleLang } = useLang();
 
+  // Defer the market check until after mount. detectMarket() returns "US" on the
+  // server (no window) but "PK" on the client, so checking it during render made
+  // the server emit null while the client emitted this button — a hydration
+  // mismatch (React #418) on PK pages. Gating on `mounted` makes the server and
+  // first client render identical (both null); the toggle appears right after
+  // mount on PK. US is unchanged (always null).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Only show for Pakistan market
-  if (detectMarket() !== "PK") return null;
+  if (!mounted || detectMarket() !== "PK") return null;
 
   const isUrdu = lang === "ur";
 
