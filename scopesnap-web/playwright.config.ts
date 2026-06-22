@@ -36,6 +36,18 @@ export default defineConfig({
     video: "retain-on-failure",
     actionTimeout: 10_000,
     navigationTimeout: 30_000,
+    // Force Chromium to talk DIRECTLY to the loopback dev server. If the CI
+    // environment has any HTTP(S) proxy configured, Chromium routes 127.0.0.1
+    // through it and the proxy can't reach loopback -> net::ERR_NAME_NOT_RESOLVED
+    // (which is impossible as a real DNS error on an IP — the tell that it's a
+    // proxy). --no-proxy-server + a wildcard bypass make it go direct.
+    launchOptions: {
+      args: [
+        "--no-proxy-server",
+        "--proxy-bypass-list=*",
+        "--host-resolver-rules=MAP localhost 127.0.0.1",
+      ],
+    },
   },
   projects: [
     {
