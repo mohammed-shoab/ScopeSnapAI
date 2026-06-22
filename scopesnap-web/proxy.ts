@@ -99,6 +99,12 @@ export default clerkMiddleware(
     return NextResponse.next({ request: { headers: requestHeaders } });
   },
   {
+    // Strict CSP (per-request nonce + 'strict-dynamic') applies in staging + prod
+    // ONLY. In dev — including the Playwright CI's `npm run dev` (NEXT_PUBLIC_ENV=
+    // development) — strict CSP has no 'unsafe-inline' and breaks Next.js dev-mode
+    // HMR/bootstrap, which is what turned the playwright-e2e.yml suite red. So give
+    // clerkMiddleware no CSP options in dev (Clerk injects no CSP without this opt).
+    ...(IS_DEV ? {} : {
     contentSecurityPolicy: {
       strict: true,
       // Merged with Clerk's defaults — list ONLY the SnapAI third-party hosts.
@@ -143,6 +149,7 @@ export default clerkMiddleware(
         "form-action": ["'self'"],
       },
     },
+    }),
   },
 );
 
