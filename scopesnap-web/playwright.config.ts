@@ -50,7 +50,10 @@ export default defineConfig({
   webServer: process.env.BASE_URL
     ? undefined
     : {
-        command: "npm run dev -- -H 127.0.0.1",
+        // Bind next dev to all interfaces (0.0.0.0) so it's reachable on the IPv4
+        // loopback 127.0.0.1 by BOTH Node's health-check and Chromium. ("localhost"
+        // failed Chromium DNS in CI; npm's `-- -H` forwarding failed to bind at all.)
+        command: "npx next dev -H 0.0.0.0 -p 3000",
         url: "http://127.0.0.1:3000",
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
