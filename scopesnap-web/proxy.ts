@@ -99,6 +99,12 @@ export default clerkMiddleware(
     return NextResponse.next({ request: { headers: requestHeaders } });
   },
   {
+    // Strict CSP (per-request nonce + 'strict-dynamic') applies in staging + prod
+    // ONLY. In dev — including the Playwright CI's `npm run dev` (NEXT_PUBLIC_ENV=
+    // development) — strict CSP has no 'unsafe-inline' and breaks Next.js dev-mode
+    // HMR/bootstrap, which is what turned the playwright-e2e.yml suite red. So give
+    // clerkMiddleware no CSP options in dev (Clerk injects no CSP without this opt).
+    ...(IS_DEV ? {} : {
     contentSecurityPolicy: {
       strict: true,
       // Merged with Clerk's defaults — list ONLY the SnapAI third-party hosts.
@@ -143,6 +149,7 @@ export default clerkMiddleware(
         "form-action": ["'self'"],
       },
     },
+    }),
   },
 );
 
@@ -151,7 +158,16 @@ export const config = {
     /*
      * Match all request paths except static files:
      * /_next/static, /_next/image, .ico, .png, .jpg, etc.
+     *
+     * EXCLUDE /test-harness/* — these are dev-only e2e mount points (app/
+     * test-harness/*). clerkMiddleware runs a dev-browser handshake that 302s to
+     * the Clerk FAPI domain derived from the publishable key; under the e2e
+     * dummy key that domain (clerk.example.com) doesn't resolve, so every
+     * Chromium navigation died with net::ERR_NAME_NOT_RESOLVED — the sole cause
+     * of the red playwright-e2e.yml suite. Skipping the matcher keeps Clerk off
+     * these routes entirely. No prod impact: /test-harness is not a real app
+     * route and carries no auth/market logic.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|test-harness|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$).*)",
   ],
 };
