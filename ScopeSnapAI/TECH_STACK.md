@@ -1602,3 +1602,17 @@ Omitting this causes "Author identity unknown" on the first commit attempt.
 **Restore:** download `.sql.gz` from R2 → `gunzip` → `psql "<Session-pooler URL>" -f dump.sql`.
 
 **Pre-migration Tokyo dumps** remain in `ScopeSnapAI/backups/` (the only copy of pre-Virginia-migration data) — do not delete that folder.
+
+## Ops verification + AI gotchas — 2026-06-24 (verified live by opening each dashboard)
+
+**CI `playwright-e2e.yml` is GREEN.** Run #56 (staging `724fdf7`) + #57 (main `b09f155`) both "completed successfully" (runs #54/#55 were the pre-fix reds). Prior root cause (red since the Next16/Clerk-v7 migration): `/test-harness/*` was matched by `clerkMiddleware`, and Clerk v7's dev-browser handshake 302'd to the FAPI domain from the e2e dummy `pk_test` (`clerk.example.com`, which doesn't resolve) -> `ERR_NAME_NOT_RESOLVED`. Fixed by excluding `test-harness` from the `proxy.ts` matcher (DEC-125).
+
+**GOTCHA - do NOT judge CI health from Gmail.** GitHub Actions emails on **failure only**; a green run sends **no** email, so the inbox always lags at the last red run. A future AI checking mail will wrongly conclude CI is broken (this happened 2026-06-24). Always verify live: GitHub Actions UI or `gh run list --workflow=playwright-e2e.yml`.
+
+**Two SEPARATE Playwright suites - don't conflate:** (1) **app e2e** = `scopesnap-web/tests/e2e`, run by `playwright-e2e.yml` (CI installs `@playwright/test@1.61` in-CI; the app does NOT declare it). (2) **audit harness** = `audit/` folder (`@playwright/test ^1.49` + `@clerk/testing`), run by the `snapai-full-audit` skill. Fixing one does not touch the other.
+
+**CSP is dev-gated:** `proxy.ts` uses `...(IS_DEV ? {} : { contentSecurityPolicy })` - the strict nonce + `strict-dynamic` CSP applies in staging+prod, and is a no-op in dev (it broke Next HMR). Layered on top of the audit #5 CSP-nonce work; both intact.
+
+**OPEN - Supabase advisor ERROR (both DBs):** `public.processed_webhook_events` (added in migration 042) has **RLS DISABLED**, so it's exposed via the public PostgREST API - unlike every sibling table (RLS-enabled-no-policy = denied via REST; the app uses direct asyncpg). Fix = `ALTER TABLE processed_webhook_events ENABLE ROW LEVEL SECURITY;` on staging + prod.
+
+**Verified service state 2026-06-24:** prod + staging healthy on both markets; Alembic head **043**; CI green; Vercel Hobby usage well within free limits (Fluid CPU 38m/4h, 35K/1M edge requests, 30K/1M fn invocations); Railway `scopesnap-api` Online. Sentry (org `mainnov`) = 3 unresolved: (a) Hydration on PK report `/r/...` - React #418 fixes `a26e10e`/`e344b49` shipped ~24h ago, last-seen now ~1d, monitor then resolve; (b) UnhandledRejection `/tech` "Object Not Found Matching Id" = browser-extension noise, not app code; (c) `SNAPAI-MIG-NEXT16-STG-...` `/dashboard` = migration test artifact (resolvable).
