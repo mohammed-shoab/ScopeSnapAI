@@ -17,6 +17,11 @@ Sentry.init({
   replaysSessionSampleRate: __isAuditSynthetic ? 0 : 0.01,   // 1% of normal sessions recorded
   environment: process.env.NEXT_PUBLIC_ENV || "production",
   release: "snapai-web@1.0.0",
+  // Drop known bot/extension noise (CefSharp engine behind Outlook "Safe Links" URL scanning).
+  ignoreErrors: [
+    /Object Not Found Matching Id:\d+, MethodName:update/,
+    "Non-Error promise rejection captured with value: Object Not Found Matching Id",
+  ],
   integrations: [
     Sentry.replayIntegration(),
   ],
@@ -30,6 +35,9 @@ Sentry.init({
         window.sessionStorage.getItem("snapai_audit_mode") === "1";
       if (isAuditSynthetic) return null;
     }
+    // CefSharp / Outlook Safe-Links bot noise (not real users) — defense-in-depth alongside ignoreErrors.
+    const _v = event.exception?.values?.[0]?.value || event.message || "";
+    if (typeof _v === "string" && _v.includes("Object Not Found Matching Id:")) return null;
     return event;
   },
 });

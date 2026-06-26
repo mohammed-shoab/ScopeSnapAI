@@ -323,7 +323,7 @@ async def _generate_service_estimate(
     # Unique report short ID (retry on collision)
     short_id = None
     for _ in range(10):
-        candidate = "rpt-" + "".join(secrets.choice(_string.digits) for _ in range(4))
+        candidate = "rpt-" + "".join(secrets.choice(_string.digits) for _ in range(6))
         clash = await db.execute(
             text("SELECT id FROM estimates WHERE report_short_id = :sid LIMIT 1"),
             {"sid": candidate},
@@ -332,7 +332,7 @@ async def _generate_service_estimate(
             short_id = candidate
             break
     if not short_id:
-        short_id = f"rpt-{uuid.uuid4().hex[:4]}"
+        short_id = f"rpt-{uuid.uuid4().hex[:6]}"
 
     report_token = secrets.token_urlsafe(32)[:32]
     now = datetime.now(timezone.utc)
