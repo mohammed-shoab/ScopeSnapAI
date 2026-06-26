@@ -614,7 +614,9 @@ def _resolve_corrected_year(body: "CorrectAgeRequest") -> Optional[int]:
 
 
 @router.post("/{report_token}/correct-age")
+@limiter.limit("30/minute")  # throttle short_id enumeration oracle on the public correct-age route
 async def correct_report_age(
+    request: Request,
     report_token: str,
     body: CorrectAgeRequest,
     db: AsyncSession = Depends(get_db),

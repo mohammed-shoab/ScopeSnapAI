@@ -55,8 +55,8 @@ def _make_report_token(n: int = 32) -> str:
 
 
 def _make_report_short_id() -> str:
-    """Generates human-readable short ID like 'rpt-0847'."""
-    digits = "".join(secrets.choice(string.digits) for _ in range(4))
+    """Generates human-readable short ID like 'rpt-084712' (6 digits, ~1M space; BUG-030b)."""
+    digits = "".join(secrets.choice(string.digits) for _ in range(6))
     return f"rpt-{digits}"
 
 
