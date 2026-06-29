@@ -1,12 +1,12 @@
-fastapi==0.138.0
+fastapi==0.138.1
 uvicorn[standard]==0.49.0
-boto3==1.43.34
+boto3==1.43.36
 sqlalchemy[asyncio]==2.0.51
 asyncpg==0.31.0
-alembic==1.18.4
+alembic==1.18.5
 python-multipart==0.0.32
 pillow==12.2.0
-weasyprint==68.0
+weasyprint==68.1
 httpx==0.28.1
 pydantic-settings==2.14.2
 google-generativeai==0.8.6
@@ -15,7 +15,7 @@ resend==2.32.2
 python-jose[cryptography]==3.5.0
 psycopg2-binary==2.9.12
 python-dotenv==1.2.2
-svix==1.96.0
+svix==1.96.1
 
 # AI Cascade dependencies
 # ultralytics/PyTorch (~2GB) excluded — ONNX Runtime used for inference instead
