@@ -1,5 +1,5 @@
 /**
- * SnapAI — Sentry Frontend Error Tracking
+ * SnapAI — Sentry client instrumentation (Turbopack: instrumentation-client.ts replaces sentry.client.config.ts)
  * Catches unhandled errors in the browser and reports them to Sentry.
  * DSN set via NEXT_PUBLIC_SENTRY_DSN environment variable.
  */
@@ -41,3 +41,6 @@ Sentry.init({
     return event;
   },
 });
+
+// Next 16/Turbopack: capture client-side router navigations for tracing.
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

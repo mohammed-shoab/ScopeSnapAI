@@ -33,16 +33,6 @@ const nextConfig = {
   },
   serverExternalPackages: ['crypto-js'],
   output: process.env.NEXT_STANDALONE === "true" ? "standalone" : undefined,
-  webpack: (config, { dev }) => {
-    if (dev) {
-      config.watchOptions = {
-        ...config.watchOptions,
-        poll: 1000,
-        aggregateTimeout: 300,
-      };
-    }
-    return config;
-  },
   images: {
     remotePatterns: [
       {
@@ -104,5 +94,4 @@ module.exports = withSentryConfig(nextConfig, {
   project: "snapai-web",
   silent: true,
   sourcemaps: { disable: true },
-  disableLogger: true,
 });
