@@ -1,0 +1,20 @@
+# Gitleaks config for ScopeSnapAI
+# Extends the FULL default gitleaks ruleset (useDefault = true) and adds a
+# narrow allowlist for publishable, client-exposed keys that are safe to commit.
+#
+# Added 2026-07-02 (see DEC-128): NEXT_PUBLIC_POSTHOG_KEY is a PostHog PROJECT
+# key (phc_...). PostHog project keys are shipped in the browser bundle by
+# design and are visible to every visitor -- they are NOT secrets. All real
+# secret rules remain active via [extend] useDefault = true.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Publishable PostHog client keys (NEXT_PUBLIC_POSTHOG_KEY / phc_) are in-browser by design and are not secrets"
+regexTarget = "line"
+regexes = [
+  '''NEXT_PUBLIC_POSTHOG_KEY''',
+  '''ph_phc_[a-zA-Z0-9]{10,}''',
+  '''phc_[a-zA-Z0-9]{20,}''',
+]
