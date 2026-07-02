@@ -249,3 +249,11 @@ Summary: Both markets share one Railway instance and one Supabase project.
 Market isolation is achieved at the *query* level (pak_* tables) rather than
 infrastructure level. This keeps costs minimal (one Railway service, one
 Supabase project) while allowing fully independent data per market.
+
+---
+
+> ⚠️ **MARKET POLICY (2026-06-22, see DEC-123) — READ FIRST.**
+> **US (Houston) is the ONLY production market. PK (pk.snapai.mainnov.tech) is a DORMANT TEST market** ("another set of eyes"), not an intended market.
+> Homeowner reports rendering in **USD ($) even on the PK frontend is EXPECTED and correct — NOT a bug.** Do not "fix" it.
+> Cause: company `market` is US for all signups (Clerk webhook can't see the frontend host → defaults US); reports use the trusted `estimate.market` (US), builder uses hostname (₨) → visible mismatch, by design.
+> If a PK test ever needs ₨: one-row data fix only — `UPDATE companies SET market='PK' WHERE slug='<slug>';` (intentionally NOT applied). Do NOT remove PK code or change the report to use hostname.
