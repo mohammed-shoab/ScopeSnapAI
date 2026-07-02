@@ -2,48 +2,72 @@
 
 ---
 
-## Algo Bias Fix — fault_severity×age_bucket Matrix — COMPLETE + LIVE 2026-05-29
+## Session 2026-06-29 (PM) — Turbopack PROMOTED TO PROD (DEC-113)
 
-**Problem:** `_should_recommend_replacement()` in `fault_estimate.py` had `_REPLACEMENT_TRIGGER_AGE = 8` — any AC ≥ 8 years old unconditionally got Tier C (Replace System) recommended, regardless of fault severity. Mid-life units (8-14 yr) with a minor capacitor swap got "Replace System" — directly contradicting the "no upsell" marketing claim.
+**DONE this session:**
+- Promoted Turbopack to prod (scoped overlay, main `66699a05`): next.config.js (webpack()/disableLogger removed), package.json build `next build`, instrumentation-client.ts + instrumentation.ts, deleted sentry.client.config.ts. Prod already had audit work + migrations 042-044, so nothing else shipped.
+- Verified prod: Vercel Turbopack build green (both projects), e2e CI green, /health ok, /api/version 1.2, §5 Sentry delivers under Turbopack (ingest 200), landing + Clerk v7 sign-in render, proxy.ts auth works, no console errors (US+PK).
+- Both staging + prod now on Turbopack. Tailwind v3 retained (works under Turbopack).
 
-**Fix:** Replaced the pure-age trigger with a 3×3 (age_bucket × fault_severity) matrix in `_compute_recommended_tier()`. Added `urgency_rules` + `severity_thresholds` to `ac_data_repo.json`. Fixed `ReportClient.tsx` `isRec` fallback. Followed DEC-070 staging-first workflow end-to-end.
+**OPEN / follow-ups:**
 
-**Files changed:**
-- `scopesnap-api/api/fault_estimate.py` — new `_compute_recommended_tier()` matrix + `recommendation` metadata in response
-- `scopesnap-api/data/ac_data_repo.json` — `urgency_rules` + `severity_thresholds` added to `lifecycle_rules` section
-- `scopesnap-web/app/r/[slug]/[reportId]/ReportClient.tsx` — removed `|| opt.tier === "better"` hardcoded fallback
+| Priority | Item | Owner | Notes |
+|----------|------|-------|-------|
+| LOW (watch) | Turbopack prod bake | snapai-dev | Watch Sentry a few days for any Turbopack-specific frontend issues. |
+| LOW | Resolve deliberate §5 test markers | Shoab/snapai-dev | SNAPAI-TURBOPACK-STG/PROD markers created during verification; resolve in Sentry when convenient (browser Sentry session was expired this run). |
 
-**9/9 Test Cases PASS on production:**
+---
 
-| TC | Card | Age | Expected | Bucket | Severity | Result |
-|----|------|-----|----------|--------|----------|--------|
-| TC1 | Capacitor (easy) | 5 yr | A | young | easy | ✅ A |
-| TC2 | Compressor (major) | 5 yr | B | young | major | ✅ B |
-| TC3 | Capacitor (easy) | 10 yr | A | mid_life | easy | ✅ A — KEY CASE |
-| TC4 | Blower Motor (medium) | 10 yr | B | mid_life | medium | ✅ B |
-| TC5 | Compressor (major) | 10 yr | C | mid_life | major | ✅ C |
-| TC6 | Capacitor (easy) | 16 yr | B | end_of_life | easy | ✅ B |
-| TC7 | Compressor (major) | 16 yr | C | end_of_life | major | ✅ C |
-| TC8 | Blower Motor (medium) | 16 yr | C | end_of_life | medium | ✅ C |
-| TC9 | Capacitor (easy) | 8 yr | A | mid_life | easy | ✅ A |
+## Session 2026-06-29 — Turbopack adopted on STAGING (DEC-113)
 
-**Git state:**
-- Feature branch: `fix/algo-bias-age-x-severity` at `e7904e2`
-- `staging` HEAD: `38036c0` (Merge fix/algo-bias-age-x-severity)
-- `main` HEAD: `03d80cb` (promote: algo bias fix from staging to main)
-- No DB migration — code + JSON change only
+**DONE this session:**
+- Adopted Turbopack on staging (PR #23, merge `a43c681`): build `next build --webpack` -> `next build`; Sentry -> `instrumentation-client.ts` + `instrumentation.ts` (deleted sentry.client.config.ts, removed disableLogger); removed next.config `webpack()` block.
+- Tailwind v3.4 builds clean under Turbopack (no v4 upgrade needed). Clean build, zero warnings.
+- Verified: Vercel Turbopack builds green (both projects), staging e2e CI run #65 green, local Turbopack build + e2e 34 passed, §5 Sentry delivers under Turbopack (ingest 200, nextjs/10.62.0 via instrumentation-client.ts).
+- Pre-check: prod healthy after ~9-day Next 16 bake (/health ok, /api/version 1.2).
 
-**Workflow steps completed:**
-1. ✅ Branch `fix/algo-bias-age-x-severity` off `staging`
-2. ✅ Implement fix (Python matrix + JSON + frontend)
-3. ✅ Validate JSON + ast.parse, merge to staging, Railway auto-deploy
-4. ✅ Manual smoke test on staging (3 key scenarios)
-5. ✅ All 9 TC verified on staging
-6. ✅ Mirror check: git diff main..staging clean, Railway env vars match
-7. ✅ Promote to main, 9/9 TC verified on production
-8. ✅ Brain files + tracker updated (this entry)
+**OPEN / follow-ups:**
 
-**Decision:** DEC-090 added to PROJECT_BRAIN.md. WA-49 added. Marketing team unblocked.
+| Priority | Item | Owner | Notes |
+|----------|------|-------|-------|
+| MED | **Promote Turbopack to prod** | Shoab | Gated. Staging verified green on Turbopack; prod still `next build --webpack` until go. Separate prod promote (staging-first done). |
+| LOW (watch) | Turbopack dev hot-reload | snapai-dev | Removed the dev `webpack()` polling block; if local hot-reload breaks in Docker/WSL, add top-level `watchOptions: { pollIntervalMs: 1000 }` or `next dev --webpack`. |
+
+---
+
+## Session 2026-06-29 -- Dependabot weekly triage + PROMOTED TO PROD
+
+**DONE this session:**
+- Weekly Dependabot triage (scheduled task `snapai-dependabot-triage`): 2 open PRs, both staging-targeted grouped minor/patch with green CI + clean mergeable_state -> MERGED both to `staging`.
+  - #21 pip-minor-patch (`scopesnap-api/requirements.txt`): fastapi 0.138.0->0.138.1, boto3 1.43.34->1.43.36, alembic 1.18.4->1.18.5, weasyprint 68.0->68.1, svix 1.96.0->1.96.1.
+  - #22 npm-minor-patch (`scopesnap-web`): @clerk/nextjs 7.5.7->7.5.9, posthog-js 1.391.2->1.395.0, @sentry/nextjs 10.59.0->10.62.0, autoprefixer 10.0.1->10.5.2.
+- Staging QA PASS: Playwright E2E + backend pytest + gitleaks + NUL-byte all green (merge commits f1e858d / 59d15b2); /health ok, /api/version 1.2, /api/models/all US+PK 200, both staging fronts 200.
+- PROMOTED TO PROD (DEC-070 file-scoped overlay): `main` 8d618fd -> **d9ae18e**, 3 files (requirements.txt, package.json, package-lock.json). Deps-only, no migration, prod-runtime-neutral.
+- Prod QA PASS: main CI green on d9ae18e (Playwright E2E + pytest + gitleaks + NUL-byte); Railway prod /health ok (environment production, clean boot on bumped deps); /api/version 1.2; /api/models/all US+PK 200; both prod fronts (snapai.mainnov.tech + pk.snapai.mainnov.tech) 200.
+
+**OPEN / follow-ups (DATED):**
+
+| Priority | Item | Owner | Notes |
+|----------|------|-------|-------|
+| LOW | **Dependabot security advisory #34 (moderate)** | Shoab | GitHub flagged 1 moderate advisory on the default branch during the prod push. Pre-existing transitive, NOT from this week's bumps. Review: github.com/mohammed-shoab/ScopeSnapAI/security/dependabot/34 |
+| LOW (watch) | Turbopack adoption (DEC-113) | snapai-dev | Still PLANNED; unaffected by this dep bump. |
+
+---
+
+## Playwright e2e CI (`playwright-e2e.yml`) — RED→GREEN + PROMOTED TO PROD — 2026-06-22 (DEC-125)
+
+| Item | Result |
+|------|--------|
+| Root cause | Clerk v7 `clerkMiddleware` ran a dev-browser handshake on the dev-only `/test-harness/*` routes → 302 to the FAPI domain in the publishable key; under the e2e dummy key that domain is `clerk.example.com` (non-resolving), so every Chromium nav died `net::ERR_NAME_NOT_RESOLVED`. RED since the Next 16/React 19/Clerk v7 migration (Clerk v5 didn't do this handshake). Loopback/proxy/IPv6 were red herrings. |
+| Diagnosis method | Reproduced locally on Windows with the bundled Chromium; isolated the true failing URL via `page.on('requestfailed')` (printed `https://clerk.example.com/v1/client/handshake?...`). A trivial Node server proved Chromium reaches every loopback fine. |
+| Fix (3 files, prod-runtime-neutral) | `proxy.ts`: exclude `test-harness` from the middleware matcher + dev-gate strict CSP (`IS_DEV ? {} : { contentSecurityPolicy }`). `next.config.js`: `allowedDevOrigins`. `playwright.config.ts`: dropped the misdiagnosed proxy/host-resolver launch args. |
+| Staging | CI run #56 (`724fdf7`) = **completed successfully, 34/34** (17 specs × 2 projects: chromium + mobile-chrome). Staging QA clean (dashboard renders through middleware, sign-in→dashboard auth redirect, Clerk under strict CSP, **zero console errors**, test-harness renders a full report). |
+| Prod | Promoted `main` **`b09f155`** (file-scoped overlay per DEC-102; in prod `IS_DEV` is false so strict CSP is unchanged — only dev/test-harness routing changes). Prod QA clean (dashboard + real data, auth redirect, no new console errors). |
+| Docs | DEC-125 in DECISIONS.md; TECH_STACK.md Playwright-CI section + PROJECT_BRAIN.md header + this entry all updated 2026-06-22. |
+| `snapai-qa` skill | Phase 1.5 fixed (clone URL `SnapAIAI`→`ScopeSnapAI`, pnpm→npm, install `@playwright/test@1.61.0`, drop the `PLAYWRIGHT_BASE_URL_*` vars the config never read; added an "Option A = check CI status" path) + repackaged as `snapai-qa.skill` (Drive `Personal Claude/Skills/` for cross-laptop install). |
+| Note | The `audit/` harness Playwright (`snapai-audit-harness`, used by `snapai-full-audit`) is a SEPARATE suite — fixing this CI does not touch it. |
+
+**Git state:** staging `724fdf7` → main `b09f155` — PROMOTED TO PRODUCTION 2026-06-22 ✅
 
 ---
 
@@ -67,7 +91,178 @@
 
 ---
 
-## Last QA Run
+## Session 2026-06-20 — Full release PROMOTED TO PROD + Dependabot triage (DEC-112)
+
+**DONE this session:**
+- Promoted the full staging release to PROD (main commit `5b092eb653`): Next 16/React 19/Clerk v7 migration + accumulated Brand-Decoder/audit work + migrations 037-041 (041 new to prod) + Dependabot backend bumps. File-scoped overlay incl new package-lock.json + middleware.ts->proxy.ts delete.
+- Verified prod: e2e CI #32 green; Vercel prod build green; Railway backend green (alembic 041 applied, clean boot); /health ok; /api/version 1.2; Sentry v10 delivering on Next 16 prod (ingest 200); dashboard clean (resolved deliberate test markers).
+- Dependabot: closed stale main-targeted #2-#6 (superseded); merged staging #7 (CI actions), #9 (pip group 18 bumps), #11 (joblib); #8 already closed; #10/#12/#13 deferred to Dependabot rebase. Backend pytest 122 passed against bumped deps.
+- Vercel staging DSN confirmed set; Sentry watch clean.
+
+**OPEN / follow-ups (DATED):**
+
+| Priority | Item | Owner | Notes |
+|----------|------|-------|-------|
+| MED | **Turbopack adoption (DEC-113)** | snapai-dev | PLANNED, not started. Earliest start **2026-06-27** (after ~1wk Next16 prod bake); target **2026-06-27 -> 2026-07-11**. Prereqs: Sentry -> instrumentation-client.ts + drop disableLogger; Tailwind v3-under-Turbopack spike or v4; remove next.config webpack() block; flip to `next build`. Staging-first. |
+| LOW (watch) | Next 16 prod bake | snapai-dev | Watch Sentry ~1 week post-2026-06-20 for any React 19/Clerk v7 prod regressions before starting Turbopack. |
+| LOW | Dependabot rebase #10/#12/#13 | Dependabot | numpy/openpyxl/xgboost floor bumps; auto-rebase after #9/#11. |
+
+---
+
+## Session 2026-06-18 (PM2) — Next 16 / React 19 / Clerk v7 migration (DEC-112)
+
+**DONE this session:**
+- Migrated scopesnap-web: Next 14.2.15->16.2.9, React ^18->^19, @clerk/nextjs ^5.7.2->^7.5.3, eslint ^8->^9, eslint-config-next 16.2.9 (sentry already ^10.58.0).
+- Next 16 async APIs (awaited params/headers); middleware.ts->proxy.ts + Clerk v7 `auth.protect()`; SignIn/SignUp prop renames; tsconfig baseUrl; build `next build --webpack`; globals.css `@keyframes dashRot` fix.
+- Fixed React-19/Next-16 bugs: chooser-gate "16+years old" missing space (SWC trims space after `{expr}`) -> explicit `{" "}`; `useSearchParams` SSR hydration mismatch -> mounted-guards in both test harnesses.
+- Fixed pre-existing staging failure: `ReportClient` now renders every tier's line items (removed `isSelected` gate) — bug-fixes-day1 e2e.
+- Verified: tsc 0 errors; Vercel prod build green; e2e 34 passed; staging CI run #29 green; backend `/api/version` 1.2; Sentry v10 delivering on Next 16 staging build.
+- Merged `feat/next16-react19-clerk7` -> staging (PR #14, `ba7e479`); staging deployed.
+- Dependabot: closed stale main-targeted #2-#6 (superseded); merged staging-targeted #7 (CI actions), #9 (pip group, 18 backend bumps), #11 (joblib). #8 already closed (Next 16 conflict). #10/#12/#13 (numpy/openpyxl/xgboost floor bumps) deferred to Dependabot rebase (requirements.txt conflict after #9/#11).
+
+**OPEN / follow-ups:**
+
+| Priority | Item | Owner | Notes |
+|----------|------|-------|-------|
+| HIGH | Promote Next 16 / React 19 / Clerk v7 to prod | Shoab | Gated — deferred. Staging verified green; prod still Next 14 until go. |
+| MED | Backend QA after pip-group merge (#9) | snapai-dev | 18 backend bumps incl fastapi 0.115->0.137, uvicorn 0.30->0.49 landed on staging — verify /health + pytest. |
+| MED | Adopt Turbopack | snapai-dev | Currently `--webpack`; revisit after reconciling webpack config + Tailwind v3 postcss. |
+| LOW | Dependabot rebase #10/#12/#13 | Dependabot | numpy/openpyxl/xgboost floor bumps conflicted post-#9/#11 merge; will auto-rebase. |
+
+---
+
+## Session 2026-06-18 (PM) — Dependabot / dependency upgrades (DEC-110)
+
+**DONE this session:**
+- ✅ Triaged the 5 open Dependabot PRs live (labels were misleading — #2/#4 were a Sentry v8→v10 MAJOR, not minor).
+- ✅ Landed on staging (`550cd50`) → prod (`8541182`): `@sentry/nextjs ^8→^10.58.0`, `@opentelemetry/core 2.8.0`, `dompurify 3.4.11` (one regenerated lockfile). CI green (staging #15, prod #18).
+- ✅ §5 Sentry RE-PROVEN both envs after the major bump — ingest 200, SDK 10.58.0, events tagged staging + production (`SNAPAI-WEB-2`, resolved). Dashboard clean. Prod `/api/version` still 1.2.
+- ✅ `dependabot.yml` policy committed to staging (target staging, group minor+patch, ignore majors, security on) — already byte-identical on main via audit-session `6f4925a`.
+
+**OPEN / shelved:**
+
+| Priority | Item | Owner | Notes |
+|----------|------|-------|-------|
+| MEDIUM | **React 19 / Next 16 / Clerk v7 migration epic** (Dependabot #5 next 14→16, #3 @clerk/nextjs 5→7) | snapai-dev | Both fail npm install on peer conflicts — both need React 19 (we pin `react ^18`). Deliberate multi-day migration: also Turbopack-default vs our next.config webpack block, middleware→proxy, async cookies()/headers()/params, Clerk v6/7 compat. Sentry v10 (a prerequisite) already done. Prod stays on Next 14 until done. |
+| LOW | **Close the 5 stale main-targeted Dependabot PRs** | Shoab / Dependabot | #2/#4/#6 superseded by the landed bumps; #5/#3 shelved (ignored by new policy). Dependabot should auto-reconcile on next run (Mon 06:00 PKT) now that main targets staging. |
+| LOW | **npm audit: 7 advisories (1 crit/5 high/1 mod)** | snapai-dev | Pre-existing transitive, not introduced by this change. `audit fix --force` makes breaking changes — needs a deliberate pass. |
+| LOW (watch) | **Sentry post-deploy watch** | snapai-dev | Dashboard clean immediately post-deploy; keep an eye 15–30 min for any v10-related frontend errors. |
+
+---
+
+## Session 2026-06-18 — Observability audit + auth fix (DEC-106–109)
+
+**DONE this session:**
+- ✅ **Backend Sentry capture fixed** — catch-all handler now calls `sentry_sdk.capture_exception` (DEC-107, `09a5a87`→prod `e4eaf1b`). Proven `SNAPAI-API-17`.
+- ✅ **Frontend Sentry wired + live** — `withSentryConfig` + CSP ingest allow + `NEXT_PUBLIC_SENTRY_DSN` on staging Vercel (DEC-108, `17ae165`→prod `390d54b`). Proven `SNAPAI-WEB-1`.
+- ✅ **Gmail + Sentry-dashboard error audit** — emails all map to resolved/historical; the dashboard (not the emails) surfaced 8 real unresolved issues. Lesson logged: audit the platform, not the alert emails.
+- ✅ **`SNAPAI-API-Z` auth bug fixed** (undefined `logger` + duplicate-provision race) — DEC-109, staging `37faefed` → prod `d432caad`. Live both envs, prod `/health` ok + `/api/version` 1.2. Had sat unresolved since the 2026-05-23 isolation audit (~4 weeks).
+- ✅ **Sentry dashboard cleaned** — all 8 then-unresolved issues Resolved (Resolve, not Archive, to keep regression detection). Dashboard now empty all projects/envs.
+- ✅ **Gemini billing verified live** — balance $9.97 healthy; 429 "credits depleted" errors were historical (topped up $10 Jun 7, expires Jul 1 2027); active key `SnapAI Backend Key 2026-06` (`...y2tg`).
+- ✅ **Brain files updated** — PROJECT_BRAIN banner, TECH_STACK (Sentry/Gemini/Dependabot corrections), DECISIONS (DEC-106–109), this entry.
+
+**OPEN — Shoab-owned:**
+
+| Priority | Item | Owner | Notes |
+|----------|------|-------|-------|
+| MEDIUM | **Enable Gemini auto-reload** (AI Studio → Billing → "Set up auto-reload") | Shoab | Auto-reload is OFF. When the $9.97 prepay balance depletes, OCR 429s again with no auto-refill. Payment-method change — Claude can't do it. |
+| LOW | **Fix or close Dependabot bump PRs** (`next` 14→16, `js-cookie`/`@clerk`) | Shoab / snapai-dev | Preview builds fail (breaking changes) → "Failed preview deployment" emails. Benign — never touch live prod/staging. PRs can't merge until breaking changes resolved. |
+| LOW (watch) | **Watch `SNAPAI-API-Z` stays quiet on Sentry** | snapai-dev | Auth fix can't be synthetically triggered (needs a real new-user Clerk login). Sentry silence on this issue is the proof-of-fix signal. |
+| LOW (optional) | **Make double-provision airtight** | snapai-dev | Fix made the webhook+fallback race non-fatal; ideally only one path should provision a signup. Cleanup, not urgent. |
+
+NOTE: the older backlog task "Enable GitHub Dependabot" is now DONE — Dependabot is active and opening PRs.
+
+---
+
+## Last QA Run — /snapai-qa on PRODUCTION (2026-06-17 PM)
+- **Target: PROD** (snapai.mainnov.tech). Run after Brand Decoder v1.2 promote (main `f70b6276`).
+- **Phase 2 backend — PASS:** `/health` ok (db connected, environment:production); `/api/version` decoder/replace/brand_data **1.2** + `analytics_enabled:true`; prod DB (`zpsoprffaujswywtsgzy`) market data intact — **58 US brands / 15 PK brands**, York+Gree present, 19 US + 16 PK fault cards, **57 brands carry serial_decodable** (migration 039 backfill on prod); PSI thresholds **R-410A PK 125-145 ✓, R-32 PK 120-140 ✓** (R-22 US 60-82 vs skill-ref 88 — minor pre-existing reference nuance, not Brand-Decoder, not a regression); alembic head **040**.
+- **Phase 1 UI (US prod, logged in) — PASS:** Flow 1 Not Cooling full diagnostic → Refrigerant Leak (High Conf) → estimate **rpt-592468** USD, **Finding-1 `[N]`→"At 18 years old…" substituted**, **Finding-2 Continue="Replace Immediately ($6,480)"=★REC**; Flow 6 nameplate manual entry inline-edit works; Flow 7 env-banner **correctly ABSENT** on prod (host=snapai.mainnov.tech, no StagingBanner, frontend PostHog env=`production`). a11y SidebarNav contrast clean.
+- **Phase 1.5/1.6 — PASS (cited):** Playwright/axe CI run #5 on main `f70b6276` = **success 26/26** (the workflow triggers on push to staging AND main); backend pytest **120 passed** this session (`d7dbc2a8`, after fixing the `re`-loader regression); tsc clean via CI build.
+- **Phase 1 UI (PK prod) — PASS (Shoab kept prod logged in; US+PK prod SHARE the same Clerk prod app, so the session carried over — no separate PK login needed).** Fresh PK diagnostic on pk.snapai.mainnov.tech: Gree (DWP Group), 1.5-ton, **R-410A** selector, install 2008 + Sure → Not Cooling → outdoor running YES → 55 PSI → **Refrigerant Undercharge/Leak (High Conf)** with PK-specific copy (soap-solution leak detect; "R-32 dominant in new PK split ACs, not interchangeable with R-410A") → estimate **rpt-076836** in **PKR**: ₨4,725 / ₨8,775 / ₨135,000. **Finding-1 LIVE:** Full Replacement reads "**At 18 years old**, complete system replacement shifts to R-32 or R-410A…" (real age, no `[N]`). **Finding-2 LIVE:** Continue = "Replace Immediately (₨135,000)" = ★REC. PK market routing (brands/fault-cards/currency) all correct on prod.
+- **BOTH MARKETS now fully verified on production.** NOT individually re-run on prod: US Flows 2-5 (Service/Tune-Up, Water Dripping, Not Turning On) — covered by staging snapai-qa-master + identical promoted build. Skill's Phase 1.5 clone recipe is stale (pnpm/`SnapAIAI`/git@ SSH/`pak_diagnostic_questions`) — used real GitHub Actions CI + Supabase prod DB instead.
+- **Minor obs (non-blocking):** opening a draft estimate's PDF before "Send" returns `estimate-rpt-…-unavailable.pdf` (PDFs generate on Send, not on draft) — expected behavior, noted.
+- **Bugs found: 0** on prod. **QA result: PASS — both markets verified live on production.**
+
+## Previous Last QA Run (snapai-qa-master, staging)
+- Date: 2026-06-16
+- Layers run: 1 (pre-deploy code), 2 (staging), 3 (promote-gate readiness), 5 (brain update). Layer 4 N/A — prod held for go.
+- Markets: Houston + PK (both)
+- Result: Layer 1 PASS (backend pytest 94/94; a11y PASS static WCAG AA — 5 issues fixed; Playwright SKIPPED — no browser binary in sandbox; quality-playbook SKIPPED — protocols not generated) | Layer 2 PASS (US+PK API/data routing + schema + backfill 57 + version cols; **Chrome UI audit on US staging: 3A StepZeroPanel install-year+confidence+Ask-homeowner+refrigerant-by-year hint, 3B report correction 3 paths, 3C chooser-gate banner + show-the-math panel (remaining-life band 1-4yrs, 5 weighted factors 0.78) all render LIVE; real-page console clean**; PK UI SKIPPED — separate Clerk login; isolation SKIPPED — authed writes) | Layer 3 NO-GO (checkpoint 2 schema parity: staging 040 vs prod 038 BY DESIGN — 039+040 intentionally not promoted; checkpoints 3,6 SKIPPED — no Railway/Vercel env+log tools)
+- Chrome audit findings (LOW, non-blocking): dev-only /test-harness/report throws React #418/#422 hydration (client-mounts SSR component; prod-guarded, returns null in prod); harness report fixture shows "Approve undefined"/"—" (fixture lacks option totals); PK footer em-dash mojibake "â" (pre-existing, not Stage 3).
+- Bugs found: 0 new this run (build-time: duplicate alembic 036 + PK serial_decodable — both fixed in-loop earlier)
+- Bugs fixed in-loop: 0 (this run)
+- Notable findings: Brand-Decoder v1.2 Stages 1-6 + glue live on staging (tip 01ef5d0, head 040). analytics_enabled=false (POSTHOG_API_KEY unset on Railway staging — owner action). Interactive UI QA blocked by Vercel SSO; covered by Stage 7 field walkthrough. Prod held for explicit go.
+
+## ✅ PROD PROMOTION COMPLETE — 2026-06-17 (main tip `f70b6276`)
+
+Shoab gave the "go". Promoted `staging → main` and verified prod live.
+
+- **Promote method:** file-scoped overlay of staging's blobs onto main's tree (60 files) via GitHub trees API, base_tree=main so main-only files preserved. **Excluded** `package-lock.json` (main already has its verified deterministic lock — DEC supersedes old "no lock" note; package.json unchanged) + 2 root brain docs. Pre-flight verified the divergence was safe: main was ahead 15 / behind 31; the only direct-on-main hotfixes (`public/sw.js`, `vercel.json`) were byte-identical to staging, so no revert risk. New main commit `f70b6276`.
+- **Prod backend (Railway `pacific-exploration` → production):** deploy ACTIVE + successful. `/api/version` → decoder/replace/brand_data **1.2**; `/health` ok, `environment:production`, db connected. **Prod DB alembic head = `040`** (confirmed via Supabase prod `zpsoprffaujswywtsgzy`; migration 040 columns `decoder_version`/`replace_logic_version` present on `assessments`). Under `start.sh` `set -e`, the new code serving = migrations 039+040 passed.
+- **Prod frontend (Vercel):** Playwright E2E CI run #5 on `main` @ f70b6276 = **success** (build clean + 26 e2e/axe pass) → Vercel prod build is green. Playwright now runs on every push to BOTH staging and main.
+- **PostHog on prod:** **DONE.** Set `POSTHOG_API_KEY` (publishable phc_ key) on Railway prod env → redeployed → `/api/version analytics_enabled:true` (verified with a cache-buster; plain polls were returning a CACHED old-container response — note for future). `ENVIRONMENT=production` already set (so backend events tag `environment:production`). Frontend PostHog key already on prod Vercel + env-tag code now deployed.
+- **Live prod-UI QA — ✅ DONE (Shoab kept prod logged in; Google SSO passthrough).** Fresh prod diagnostic: Carrier, 3-ton, install **2008** + **Sure** → Not Cooling → outdoor running YES → 55 PSI → Refrigerant Leak (High Conf) → estimate **rpt-592468** (`snapai.mainnov.tech`, USD). **Finding #1 confirmed LIVE on prod:** Full Replacement ★REC reads **"At 18 years old, complete system replacement eliminates near-term repair risk and reduces electricity costs by 30-40%. New 10-year manufacturer warranty included."** (real age substituted, no `[N]`). **Finding #2 confirmed:** Continue button = **"Continue with Replace Immediately ($6,480)"** (= ★REC tier). **a11y:** SidebarNav contrast rendering clean on prod.
+- **Frontend PostHog env tag — ✅ CONFIRMED on prod:** localStorage `ph_phc_…_posthog.environment = "production"`, so `NEXT_PUBLIC_ENV=production` is set on prod Vercel and frontend events tag `environment:production`. Same publishable key as backend (single-project split-by-environment design working end-to-end).
+- **PROD PROMOTION FULLY VERIFIED — nothing left to build, deploy, or QA.** Remaining items are optional/owner-only: full quality-playbook engine (separate run), Stage 7 human field test (real tech on real phone), and passive 24h Sentry/PostHog monitoring.
+
+## Post-Ride-Along Hardening + Audit — 2026-06-17 (staging tip `d3ef968`)
+
+Commits on `staging` (all CI Playwright E2E green): `d0be96c` (findings 1+2 + a11y + finalize test) → `3c7f2fb` (market data-isolation tests) → `d3ef968` (Finding-2 fallback hardening).
+
+**Quality audit (focused spec-audit / Council-of-Three spirit on the change surface, since full 6-phase quality-playbook engine is a separate standalone run):** independent adversarial review of the 4 changed files.
+- Verified SAFE: `finalize_replacement_copy` (no fabricated age, no stray `[N]`, no crash on None/empty/mid-sentence token; `re` import present); `estimates.refresh_draft_estimate` meta extraction (defaults safe for legacy estimates); `cleanAgeToken` TS; Finding-2 analytics (`selectedTier !== recommendedTier` override event now fires only on real overrides — not a regression).
+- **1 HIGH found + FIXED (`d3ef968`):** Finding-2's `data.recommended_tier` fallback was unvalidated. `recOpt.tier` is always a real option tier, but the fallback could set `selectedTier` to a value matching no option on the un-normalized `/estimate/[id]` route (A/B/C vs good/better/best domain mismatch) when no option carries `recommended`. Now guarded with `optTiers.has(...)` in both builders.
+- LOW (no action, current behavior preferable): `unit_age=0` + reliable strips the lead-in rather than printing "At 0 years old" — sensible UX.
+
+**Data-isolation write tests (`scopesnap-api/tests/test_market_isolation.py`, 17 pass):** pin the cross-market contamination invariant on the `get_tables` routing boundary — PK request never resolves a US table (or vice versa) for any market-specific table; resolver is frozen; defaults to US safely; case/whitespace-insensitive PK detection. Closes the previously-skipped isolation gap.
+
+**Full quality-playbook engine (6 phases + 4 iteration strategies, generates a `quality/` artifact tree):** NOT run end-to-end — it is a large standalone engagement. Recommended as a dedicated follow-up run (`python3 -m bin.run_playbook scopesnap-api`) when desired. The focused audit above covers the actual change surface.
+
+## Verification close-out (items 3/4/5) — 2026-06-17
+
+- **Item 5 (full backend pytest) — DONE, and caught a real regression.** Cloned scopesnap-api@staging + ran the suite: it was NOT clean — `test_fault_estimate_age_v2.py` failed at collection because its `_load_fault_estimate_funcs()` head-loader injects a fixed name set (Optional/math/datetime/timezone/logging) but NOT `re`, and the Finding-1 fix added `re`-using helpers in that head region → `NameError: name 're' is not defined`. Frontend Playwright CI is backend-blind so it didn't catch this. **Fixed** (`d7dbc2a8`): inject `re` into the loader. Suite now **120 passed, 0 errors** (was 105 passed + 1 collection error). New tests confirmed: test_finalize_replacement_copy 9/9, test_market_isolation 17/17.
+- **Item 3 ([N] substitution path) + Item 4 (US side) — LIVE-VERIFIED on US staging.** Fresh diagnostic: Carrier, 3-ton, install **2008** + confidence **Sure** (reliable age) → Not Cooling → 55 PSI → Refrigerant Leak (High Conf) → estimate `rpt-925795` (`staging.snapai.mainnov.tech`, USD). Full Replacement ★REC reads **"At 18 years old, complete system replacement."** (substitution path — real age, not `[N]`, not stripped). Continue button = **"Continue with Replace Immediately ($6,480)"** (= ★REC tier). Both findings confirmed on US with the reliable-age substitution branch.
+
+Staging tip after all fixes: **`d7dbc2a8`**.
+
+## Stage 7 Ride-Along (assistant-driven Chrome, US + PK staging) — 2026-06-17
+
+Full human-style click-through of both markets end-to-end. **Both markets PASS the complete diagnostic flow.**
+
+| Surface | US staging | PK staging |
+|---------|-----------|-----------|
+| Brand list / serial entry | ✅ | ✅ (Gree etc.) |
+| Refrigerant-by-year selector | ✅ R-22/R-410A/R-32 | ✅ R-22/R-410A/R-32 |
+| Stage 3A install-year + confidence | ✅ | ✅ (year 2015, Sure) |
+| Diagnostic → fault card | ✅ Refrigerant Undercharge/Leak (High Conf) | ✅ same + PK-specific copy (soap-solution leak detect; "R-32 dominant in new PK splits, not interchangeable w/ R-410A") |
+| Estimate currency | ✅ USD ($) | ✅ **PKR (₨)** — ₨4,725 / ₨8,775 / ₨135,000 |
+| PostHog event on run | ✅ 204, tagged `environment:staging` | ✅ 204, tagged `environment:staging` |
+| Urdu toggle | n/a | ✅ present (`اردو میں تبدیل کریں`); homeowner surfaces translated |
+
+**FIXED + DEPLOYED to staging 2026-06-17 (commit `d0be96c`, base `de1ec7d`; CI run #3 Playwright E2E green — build + 26 e2e/axe pass):**
+- **Finding #1 ([N] age token) — server-side + strip fallback (Shoab-approved).** New `finalize_replacement_copy()` in `fault_estimate.py`: substitutes the real age when `_has_reliable_age()` is true, strips the "At [N] years old," lead-in when not (never fabricates age — Stage 2 rule). Applied at BOTH backend write sites: fault-card generation (`fault_estimate.py`) and the draft re-stamp path (`estimates.refresh_draft_estimate`, reading `unit_age`/`reliable_age` from the persisted `recommendation_meta`). Frontend `cleanAgeToken()` safety-net guards legacy stored estimates. Covers estimate builder + PDF + homeowner report (all render the persisted `tier.description`). Unit test: `scopesnap-api/tests/test_finalize_replacement_copy.py` (8 cases, logic verified standalone). **LIVE-VERIFIED on PK staging:** Full Replacement now reads "Complete system replacement shifts to R-32 or R-410A…" — no `[N]`.
+- **Finding #2 (Continue tier) — default to ★REC (Shoab-approved).** Builder now pre-selects the option flagged `recommended` so the Continue button matches the ★REC badge (was hard-defaulting to the middle "better" tier). Fixed in both `/assessment/[id]` and `/estimate/[id]` builders. **LIVE-VERIFIED on PK staging:** button now reads "Continue with Replace Now (₨135,000)" (was "Repair + Extend Life").
+- **A11y contrast (pre-existing chrome debt, WCAG AA):** `StepZeroPanel` spec-grid labels `text-gray-400` (2.53:1) → `text-gray-600`; `SidebarNav` white-opacity text bumped (.25/.4/.5/.55 → .6/.68/.7/.72). Live-rendered clean; CI axe tests still green.
+
+_Original finding notes (now resolved):_
+1. **`[N]` age placeholder not interpolated** in the Full-Replacement tier description ("At [N] years old, complete system replacement…"). Appears on US **and** PK identically. **Root cause:** literal `[N]` is seeded in the DB fault-card descriptions via **migrations 021 (US) + 024 (PK)** — both predate Stage 1-7 (039/040). The estimate-builder frontend renders the raw DB `description_best_replacement` field with **no `[N]→age` substitution anywhere in scopesnap-web**. My Stage 2 backend path (`fault_estimate.py:998`, `f"{age_str}…"`) interpolates age correctly — the estimate builder simply doesn't use that path. → maps to existing AGE-CAPTURE backlog; small fix = substitute `[N]` with unit age in the estimate-builder render (or strip the token).
+2. **Continue button defaults to the MIDDLE tier** ("Continue with Repair + Extend Life") while Full Replacement is the ★REC. Appears on US + PK. Pre-existing estimate-builder default-selection UX (prior REPAIR-REPLACE ticket area), untouched by Stage 1-7. UX observation, not a data bug.
+
+Neither blocks prod promotion. Both should be logged as backlog tickets.
+
+## Brand Decoder v1.2 — STATUS (2026-06-17)
+
+**DONE on `staging` (all 7 plan stages):** serial decoder + data loader + gemini disambiguator (Stage 1, migration 039); age-handling reconciliation (Stage 2); shadow replace score + PostHog shadow eval (Stage 4); version stamping + `/api/version` + migration 040 (Stage 5); install_year audit + `age_corrected` (Stage 6); frontend 3A/3B/3C (Stage 3); glue (repair_plan recommendation_meta + correct-age endpoint); constraint-#8 refrigerant_for_year. **Tests: 94 backend pytest + 26 Playwright e2e/axe green.** UI verified live in Chrome (US). Permanent Playwright CI added (`.github/workflows/playwright-e2e.yml`, run #1 success). Staging Alembic head 040.
+
+**WHAT'S LEFT (all owner / external — no unbuilt code):**
+1. **Prod promotion — HELD for Shoab's "go".** On go: file-scoped promote `staging→main` at staging tip **`d7dbc2a8`** (incl the `re`-loader test fix + 2 new test files) (scopesnap-api decoder files + migrations 039/040 + estimates.py + the 2 new test files + scopesnap-web Stage 3 + the 2 estimate builders + StepZeroPanel + SidebarNav; **EXCLUDE `scopesnap-web/package-lock.json`** — DEC-065/099), confirm Railway prod runs `alembic upgrade head`→040, `/api/version`→1.2 on prod, then Chrome prod QA of 3A/3B/3C + the 2 fixed findings ([N] resolved, Continue=★REC) + watch Sentry/PostHog 24h. ~20-30 min.
+2. **PostHog (single-project `environment`-tag setup) — STAGING DONE + LIVE-VERIFIED 2026-06-17, PROD pending promote.** ✅ Staging Railway `POSTHOG_API_KEY` set → `/api/version analytics_enabled:true`. ✅ Staging Vercel (`scopesnap-web-staging`) `NEXT_PUBLIC_POSTHOG_KEY` added (Prod+Preview) + redeployed. ✅ Prod Vercel (`scope-snap-ai`) already had the key (All Environments). ✅ `environment`-tag code on staging (`de1ec7d`). ✅ **LIVE-VERIFIED via Chrome ride-along (US + PK):** authed diagnostics run end-to-end fired PostHog events (network 204s) tagged `environment:staging` (localStorage super-property confirmed both markets). **Prod-promote runbook additions:** (a) set **`POSTHOG_API_KEY`** on the **Railway PROD environment** (`pacific-exploration` → scopesnap-api → environment **production** → Variables → New Variable → `POSTHOG_API_KEY` = `phc_…` → Deploy) — deferred because prod backend has no shadow code until promote; (b) the `environment`-tag frontend/backend code rides to prod with the promote (no separate step). Key value = the PROD PostHog project token `phc_A5spSA…` (publishable; same key for Vercel frontend + Railway backend).
+3. **Stage 7 field walkthrough** — a real Houston tech runs a full staging diagnostic on their own phone (kit: `SnapAI_Stage7_Field_Walkthrough_Kit_2026-06-16.md`). Owner-scheduled. **NOTE:** assistant-driven Chrome ride-along already completed on both markets (see Stage 7 Ride-Along block below); the owner field test remains as the human-on-real-phone validation.
+4. **PK interactive UI QA — ✅ DONE 2026-06-17** (Shoab logged the assistant into pk-staging Clerk). Full PK diagnostic verified live: PK brand list (Gree etc.), R-22/R-410A/R-32 refrigerant selector, Stage 3A install-year + confidence, market-appropriate diagnostic copy (soap-solution leak detect, "R-32 dominant in new PK splits, not interchangeable with R-410A"), and **PKR (₨) currency confirmed** on the estimate (₨4,725 / ₨8,775 / ₨135,000). Urdu toggle present (`اردو میں تبدیل کریں`); homeowner surfaces translated, estimate-builder is tech-side English by design.
+5. **a11y backlog (separate from Stage 3):** axe surfaced PRE-EXISTING contrast debt in app chrome (sidebar nav, StepZero spec-grid `text-gray-400` labels at 2.53:1, `—` placeholder inputs at 2.22:1, "dev mode" badge). Not Brand-Decoder; track + fix later.
+
+## Previous Last QA Run
 - Date: 2026-05-27
 - Layers run: 2 (staging formal), 4 (post-deploy production)
 - Markets: Houston + PK (both)
@@ -860,35 +1055,90 @@ All 4 Track D frontend files now correctly pass Clerk JWT token to `apiFetch` (D
   - New file: `scopesnap-web/comp
 ---
 
-## 2026-06-18 — Audit framework status
+## OPEN — 2026-06-08 — PRODUCTION DATABASE MIGRATION (us-east-1) — NOT STARTED
 
-**Done:**
-- [x] MFA (already on), Railway cap $15, Dependabot, gitleaks (CLI + pre-commit hook + Action), Semgrep, Docker + ZAP image
-- [x] Sentry/PostHog `before_send` synthetic-event filters: staging QA'd → promoted to prod (`6f4925a`) → prod QA'd
-- [x] Sentry replay suppression in audit mode
-- [x] Clerk: 5 test users in both apps; passwordless sign-in-token auth harness written
-- [x] Brain/DECISIONS/TECH_STACK updated (this change)
+Staging DB was migrated Tokyo→Virginia (us-east-1) successfully (DEC-091; details in PROJECT_BRAIN/TECH_STACK/DECISIONS). **PROD still runs on Supabase Tokyo (`scopesnap` / quqrvnoguofbjacrxcim) and must be migrated the same way** to get the ~70x DB-latency win on production. Proven recipe: take a fresh prod pg_dump → create a us-east-1 Supabase project → restore → swap Railway PROD DATABASE_URL during a low-traffic window → verify → watch Sentry 30 min. Also: add the `ix_app_events_report_viewed_short_id` index as a real Alembic migration so prod gets it. Backups for both envs are in ScopeSnapAI/backups/ (2026-06-08).
 
-**Follow-ups:**
-| Task | Status | Notes |
-|---|---|---|
-| Build the `snapai-full-audit` skill | TODO | The actual audit orchestrator — the finish line |
-| Install `snapai-audit-skills.plugin` (GStack + Superpowers) in Cowork | TODO | Plugin built (in Personal Claude); install via Save plugin |
-| Cloudflare Free WAF: migrate `mainnov.tech` DNS → Cloudflare | TODO | Runbook ready (~1h + 24h propagation) |
-| Remove prod `sk_live_` from any Drive-synced env file | TODO | Security — keep live admin key out of cloud-synced storage |
-| (optional) `beforeSendReplay` if replay-rate zeroing proves insufficient | TODO | Minor |
-| (optional) Prune stray prod PostHog test pageviews from 2026-06-18 QA | TODO | Negligible noise |
+## UPDATE 2026-06-08 (later) — PROD MIGRATION DONE ✅
+Production DB migrated to us-east-1 (`snapai-prod-use1`/zpsoprffaujswywtsgzy). Prod DB query 1,307ms→18ms. Verified byte-exact (0 diff). Tokyo-prod kept as rollback (paused or hot). Remaining: promote pool-tuning commit to `main`; make app_events index an Alembic migration; retire paused Tokyo projects after sign-off.
 
+## OPEN BUG (found 2026-06-08 during post-migration QA) — PK FRONTENDS CANNOT REACH API
+Both PK frontends — pk.snapai.mainnov.tech (prod) AND pk-staging.snapai.mainnov.tech (staging) — show "API offline / Could not reach the API". Diagnosis: the API fetch is blocked CLIENT-SIDE (request never appears in the network log → "TypeError: Failed to fetch"). NOT CORS (backend CORS allowlist includes both pk origins; CORS-blocked requests would still appear in network). NOT the backend (healthy; US frontends reach the same API fine). NOT the DB migration (backend-only change). Killing the service worker + clearing caches did NOT fix it. Most likely a Content-Security-Policy `connect-src` directive on the PK frontend build that omits the API domain (scopesnap-api-*.up.railway.app), or a broken service-worker fetch handler (cf. DEC-079 SW passthrough). US frontends (snapai / staging.snapai) work fine — so this is PK-frontend-specific config. NOTE: in the pre-migration audit a raw fetch from the pk-staging origin DID reach the API, so this may have regressed at the frontend layer independently, or is SW-state dependent. PK DATA + BACKEND are verified correct (pak_ tables byte-exact in both Virginia DBs; backend serves X-Market=PK → 73 models). FIX LIKELY IN: scopesnap-web next.config.js CSP connect-src and/or sw.js for the PK build. Until fixed, PK users see "API offline".
 
-## Security audit follow-ups (2026-06-20, see SECURITY_AUDIT_FINDINGS.md)
-- [ ] Rotate 3 leaked dev keys (Clerk sk_test glowing-cowbird-89, Gemini, Roboflow) — still in git history
-- [ ] Env drift: add NEXT_PUBLIC_SUPABASE_URL/ANON_KEY (staging values) + NEXT_TELEMETRY_DISABLED to staging Vercel; fix prod CLERK_SECRET_KEY Needs-Attention
-- [ ] Apply SRI (experimental.sri sha384) during a watched staging build
-- [ ] (project) Remove script-src unsafe-inline via Clerk nonce middleware + strict-dynamic
-- [ ] (optional) Gate localhost CORS origins behind settings.environment
-- [ ] Fix 2 API test files failing collection (exec loader missing os/__file__)
+---
 
-- [ ] [High] Authenticate cron endpoints process-followups / process_followups_early (currently unauth, all-tenant, send email)
-- [ ] [High] Validate Stripe success_url/cancel_url against frontend_url (open redirect)
-- [ ] [High] Resolve market from estimate.market/company not X-Market header (report route + authed writes)
-- [ ] [Med] Stripe webhook idempotency table; [Med] reject JWKS kid-mismatch; [Low] rate-limit/lengthen report_short_id
+### 2026-06-09 — PK "API offline" ROOT-CAUSED + staging FIXED (see DEC-092)
+- **Root cause:** migration restore dropped 5 of 6 `pak_*_v` views (pak_fault_cards_v, pak_error_codes_v, pak_labor_rates_v, pak_replacement_costs_v, pak_lifecycle_rules_v). PK market path queries these views; missing → 503 no-CORS → "Failed to fetch". US unaffected.
+- **DONE:** recreated all 5 views in Virginia **staging** from the prod backup; verified correct PK data; DB logs clean. Virginia **prod** already had all 6 — no change needed.
+- **OPEN #1:** add the 5 views to an Alembic migration (currently not version-controlled — fragile to future restores).
+- **OPEN #2:** dashboard "Recent Assessments" (`/api/estimates`, `/api/analytics`) still shows "API offline" — uses shared tables not views; DB clean; needs Railway/Sentry traceback (app-layer or browser-side).
+- **OPEN #3:** `pk.snapai` (PROD) sign-in shows DEV Clerk ("ScopeSnapAI Staging", firm-chamois-61.accounts.dev) — verify prod Clerk wiring on the PK prod domain.
+- **PROCESS FIX:** future migration verification must diff views/functions/sequences, not just table row counts.
+
+---
+
+## QA RUN — 2026-06-09 (snapai-qa, all 4 surfaces)
+
+**Surfaces:** US prod (snapai.mainnov.tech), PK prod (pk.snapai.mainnov.tech), US staging (staging.snapai.mainnov.tech), PK staging (pk-staging.snapai.mainnov.tech). **Outcome: PASS.**
+
+**Backend health:** prod + staging `/health` → `{"status":"ok","db":"connected"}`.
+
+**Engine data (BOTH Virginia DBs at Alembic 037):**
+- equipment_models 76; fault_cards US 19 / PK 16 (view == base); operating_targets US 8 / PK 12 (ambient-aware per DEC migration 036).
+- PSI thresholds @35°C: US R-410A 115–140 (128 PSI → NORMAL ✓); PK R-410A 115–135 (130 PSI → NOR
+---
+
+## 2026-06-20 — Day 1-5 Estimate Builder bug fixes: STATUS
+
+**RESOLVED (live on staging + prod):**
+- [x] Bug 1 — markup leak: line items now sum to displayed total
+- [x] Bug 3 — PresentMode Slide 1: real photo + health badge + footer + 28-char truncation
+- [x] Bug 4 — report URL clickable + Preview button (in the LIVE `assessment/[id]` builder)
+- [x] Bug 5 — replacement semantics: 4 distinct component line items
+- [x] Level 2 wording shipped (57 DEC-088-compliant strings)
+- [x] Warranty field: Alembic 041 + Settings UI + homeowner-report render
+- [x] DEC-088 enforcement: 6 pre-existing banned-word strings scrubbed
+
+**DEFERRED / BACKLOG:**
+- [ ] **Bug 2 — PDF 404:** `/files/pdfs/...-unavailable.pdf` has no route handler; needs Railway-log root-cause (generation exception vs R2 upload). Add a friendly 503 handler + fix the generator.
+- [ ] **DEC-113 — Turbopack CSS/PostCSS migration** (frontend builds via webpack for now).
+- [ ] Clean up: `estimate/[id]/page.tsx` is dead/legacy — consider deleting to avoid future wrong-file edits.
+- [ ] Level 3 PK English wording / Level 4 PK Urdu (deferred per PK Market Positioning).
+- [ ] Per-contractor markup warning at >100% (Taleb mitigation, separate ticket).
+
+**Last QA:** 2026-06-20, staging + prod, Houston market, Bug 1/3/4/5 + Level 2 + warranty verified live in-browser. Build green (Vercel). Bug 2 deferred.
+
+---
+
+## 2026-06-20 (update) — Bug 2 (PDF 404) RESOLVED
+
+Root cause: `scopesnap-api/services/pdf_generator.py` had **117 trailing NUL bytes** at EOF, so `from services.pdf_generator import generate_contractor_pdf` raised `SyntaxError: source code string cannot contain null bytes` → `_pdf_available=False` → every contractor PDF fell back to `/files/pdfs/...-unavailable.pdf` (404). The nulls were trailing padding (no code lost). Stripped them; module now imports.
+
+- [x] **Bug 2 — PDF 404: RESOLVED.** Verified on prod: PDF generates (5.4 KB), uploads to Cloudflare R2, public URL serves a valid `%PDF-` file. Commits: staging `0cc5eb7`, main `94737c2`.
+- Note: **staging** still returns a `localhost:8000` PDF URL because Railway *staging* has no `R2_*` env vars (falls back to LocalStorage). Prod has R2 configured and works. To make staging PDFs externally accessible, set `R2_ACCOUNT_ID/R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY/R2_BUCKET_NAME/R2_PUBLIC_URL` on the Railway staging environment (optional — staging is test data).
+- Follow-up (low priority): add a friendly 503 route handler for any legacy `…-unavailable.pdf` links; consider a CI guard against NUL bytes in source files (this repo has a history of truncation/corruption — DEC-005/027).
+
+**All 5 Estimate Builder bugs are now resolved and live on prod.**
+
+---
+
+## 2026-06-20 (final) — Cleanups + full QA (both markets, staging + prod)
+
+**Cleanups shipped:**
+- [x] Deleted dead `scopesnap-web/app/(app)/estimate/[id]/page.tsx` — staging `75234ec`, prod `767932b`. The `/estimate/[id]` route now redirects to `/assessment/[id]` (no 404). Live builder remains `/assessment/[id]`.
+- [x] Reverted the staging-only `lucide-react 0.454→0.577` downgrade (restored the Dependabot bump). Verified 0.577 builds green on Vercel. NOT promoted to prod — prod was always 0.454 (no downgrade of mine to remove there); staging-ahead-of-prod on lucide is the normal Dependabot state.
+
+**Full /snapai-qa results:**
+- Backend (staging + prod, BOTH markets): health OK, db connected, version 1.2, market routing correct (US→Carrier/Bryant/Amana; PK→Gree/Dawlance/Haier), PK PSI thresholds correct (R-410A 145 / R-22 88 / R-32 140). PASS.
+- US frontend (staging + prod): Estimate Builder bugs all live, Bug 4 clickable URL + Preview present, no regression after cleanups. PASS.
+- Bug 2 PDF: prod generates 5.4 KB → Cloudflare R2 → valid `%PDF-`. PASS. (Staging uses LocalStorage/localhost — no R2 creds set on Railway staging.)
+- PK frontend (staging + prod): loads with Urdu/RTL UI + STAGING banner; API reachable (200s); market-correct.
+
+**OPEN FINDING (not from this work, pre-existing):**
+- PK dashboard throws **React #418 hydration error** (same chunk on PK staging AND PK prod) — a React 19 migration artifact (DEC-112/113). Symptom: can intermittently show "API offline" for recent assessments even though the API is healthy (prod loaded assessments fine). NOT caused by the Day 1-5 work or the cleanups. Recommend the migration owner fix the PK (RTL/Urdu) dashboard hydration mismatch as part of DEC-113.
+
+**Bottom line: all 5 Estimate Builder bugs + Level 2 wording + warranty are live and QA-verified on prod (US). PK backend is correct; PK frontend has one pre-existing migration hydration warning to follow up.**
+
+---
+
+## 2026-0
