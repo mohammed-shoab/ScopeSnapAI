@@ -1,57 +1,45 @@
-ALL 16 WORK PACKAGES COMPLETE. 16/16 done.
+# SnapAI — Current Live State
 
-WP-01: Project Scaffolding ✅
-WP-02: Photo Upload + Vision AI ✅
-WP-03: Equipment DB + Matcher ✅
-WP-04: Estimate Generator ✅
-WP-05: PDF Report Generator ✅
-WP-06: Homeowner Web Report ✅
-WP-07: Email Delivery ✅
-WP-08: Tech Dashboard (Frontend) ✅
-WP-09: Send Estimate + Follow-ups ✅
-WP-10: Stripe Payment Deposit ✅
-WP-11: Clerk Auth Integration ✅
-WP-12: Integration Testing ✅
-WP-13: Cloud Deployment (Fly.io + Docker) ✅
-WP-14: Analytics Dashboard ✅
-WP-15: Stripe Subscription Billing ✅
-WP-16: Company Onboarding Flow ✅
+**As of:** 2026-07-06
+**Live prod:** https://snapai.mainnov.tech (US) · https://pk.snapai.mainnov.tech (PK, dormant per DEC-123)
+**Alembic head:** 034 (verify via live Supabase per DEC-129)
+**Latest DEC:** DEC-129
+**Boards:** @board + @nav standing on (all SnapAI chats)
 
 ---
 
-## QA / Beta Readiness
+## Current focus (4 active workstreams)
 
-BUG-006: Vercel TypeScript build failure (card_name) — RESOLVED ✅ (commit ee86b4a, 2026-05-11)
-Vercel deploy: READY ✅ (snapai.mainnov.tech)
+1. **Legal cover + wordings update** — remediating v2 deep audit findings (LLM prompt rewrites `cascade_prompts.py` + `homeowner_narrative.py`, ToS deployment at `/tos`, homeowner-page rewrite for DTPA §17.42 compliance, PDF template disclaimer block, in-app Output disclaimer). Owner: Shoab + Alfred (legal chat).
+2. **Adding new complaint cards** — Tier A per Bryan's proposal (Cards #20 Under-Airflow, #22 Latent Deficit, #23 Thermostat, #24 Oversizing + Airflow Assessment sub-flow + Comfort Complaint tab J + superheat/subcool discrimination on Card #8). Owner: Shoab + Bryan (product chat).
+3. **Brain files cleanup + future system** — active this session, per `SnapAI_Brain_Files_Management_Plan_2026-07-05.md`. Owner: Shoab + Karpathy/Rob.
+4. **TikTok video marketing** — upcoming, not yet scoped. Owner: Shoab + Azhan.
 
-Beta Readiness Gate (2026-05-11): 9/9 complaint types PASS ✅
-  Service/Tune-Up ✅ | Not Cooling ✅ | Not Heating ✅ | Intermittent Shutdown ✅
-  Water Dripping ✅ | Not Turning On ✅ | Making Noise ✅ | High Electric Bill ✅ | Error Code ✅
+## Open blockers
 
-BETA STATUS: GREEN — Ready for beta user onboarding ✅
+1. Texas SaaS attorney engagement pending (Baker Botts / Winstead / Jackson Walker — not yet contacted).
+2. Tech E&O insurance broker quotes pending (Hiscox / Founder Shield / Vouch — not yet contacted).
+3. Tier A start date not yet formally committed (waiting on legal chat's Layer 1-4 landing first).
+4. TikTok workstream not yet scoped (owner, tools, budget TBD).
+5. Card #21 Heat Exchanger = Tier D indefinite hold (6 gates must clear — legal chat).
 
----
+## Recent milestones (last 7 days)
 
-## Diagnostic Engine Bug Fixes — 2026-05-11
+- **2026-07-06 (later):** Brain files Phase 2 + Phase 3 executed — router updated, pre-commit hook, weekly audit scheduled, session log pattern adopted. Full deep narrative: `session_logs/SESSION_LOG_2026-07-06_brain_files_cleanup.md`.
+- **2026-07-06:** Brain files Commits 1-3 executed (DECISIONS.md em-dash sweep 54 headers, WORKFLOW.md Section 1 rewrite, MARKET_GUIDE.md DEC-123 banner).
+- **2026-07-05:** v7 branching diagnostic tree HTML built (`SnapAI_Decision_Tree_v7_full_diagram.html`).
+- **2026-07-05:** Deep legal audit v2 completed — 12 Critical + 11 High findings across LLM prompts, DB schema, PDF template, homeowner emails.
+- **2026-07-05:** Legal + product chat handoffs prepared (verbatim transcripts + continuation prompts saved to `ScopeSnapAI/`).
+- **2026-07-05:** Brain files audit + management plan drafted (`SnapAI_Brain_and_Tree_Audit_2026-07-05.md`, `SnapAI_Brain_Files_Management_Plan_2026-07-05.md`).
+- **2026-07-05:** Brain files backup created at `_brain_backup_2026-07-06/` (12 files, SHA-256 verified).
 
-Beta gate: GREEN ✅ (all 9 complaint types reach valid resolution)
+## Key files (pointers, not content — see PROJECT_BRAIN.md for architecture facts)
 
-### Fixed this session
+- CRITICAL RULES table: PROJECT_BRAIN.md first 20 lines
+- Legal continuation: `SnapAI_Legal_Discussion_Continuation_Prompt.md`
+- Product continuation: `SnapAI_Product_Discussion_Continuation_Prompt.md`
+- Brain files plan: `SnapAI_Brain_Files_Management_Plan_2026-07-05.md`
 
-| Bug | Complaint / Step | Root Cause | Status |
-|-----|-----------------|------------|--------|
-| #10 | Service → svc-8-run | 3 issues: missing endpoint, unhandled exception, bad idempotency check | ✅ FIXED |
-| #11 | Not Cooling → q3-contactor | No voltage handler in classifyReading() → branchKey always "ok" | ✅ FIXED |
-| #12 | Water Dripping → Outdoor | phase_2_gate with null card_id → 422; no questions configured | ✅ FIXED |
-| #13 | Not Heating → q4-flame-sensor | type "micro_amps" (underscore) ≠ "microamps"; missing "low"/"ok" keys | ✅ FIXED |
-| #9  | Error Code → q4-reset → NO | Dead-end escalation (wsg3 removed repair path) | ✅ FIXED |
-| Untested | Not Turning On → q2-no-power | Same voltage threshold bug as #11 | ✅ FIXED |
-| Untested | Making Noise → Banging → q4 | over_rla had both resolve_card AND escalate:true | ✅ FIXED |
-| Untested | Making Noise → Hissing | phase_2_gate (same as #12) | ✅ FIXED |
+## Auto-updated
 
-### Files changed
-
-- `scopesnap-api/api/diagnostic.py` — photo_branch_map support, service_complete try/except, idempotency fix, missing endpoints + GET session body
-- `scopesnap-web/components/diagnostic/ReadingInput.tsx` — voltage type handler (no_power / power_passes_normal)
-- `scopesnap-api/db/migrations/versions/014_bug_fixes_5_bugs.py` — all branch_logic + reading_spec data fixes
-- `scopesnap-api/main.py` — removed 3 non-existent module imports (ImportError on startup)
+Last modified: 2026-07-06 by Cowork session (brain files cleanup Phase 1)

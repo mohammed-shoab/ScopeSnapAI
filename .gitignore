@@ -43,3 +43,12 @@ scopesnap-api/test_write.txt
 
 # TypeScript build info
 *.tsbuildinfo
+
+# Audit framework test credentials (never commit)
+audit_test_user_credentials.env
+
+# Audit E2E env (never commit)
+.env.test
+
+# Brain-file backup snapshots (temporary safety nets, not for git history)
+_brain_backup_*/

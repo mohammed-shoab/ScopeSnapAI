@@ -270,7 +270,7 @@ Any file showing a net deletion (more `-` than `+` lines) near the end is likely
 
 ---
 
-## DEC-014 -- Staging Environment Architecture (2026-05-19)
+## DEC-014 — Staging Environment Architecture (2026-05-19)
 
 **Decision:** Full parallel staging environment before any further production changes.
 
@@ -288,7 +288,7 @@ Any file showing a net deletion (more `-` than `+` lines) near the end is likely
 
 ---
 
-## DEC-015 -- Keepalive workflows prevent Supabase free-tier pauses (2026-05-19)
+## DEC-015 — Keepalive workflows prevent Supabase free-tier pauses (2026-05-19)
 
 **Decision:** Two GitHub Actions workflows ping both prod and staging Supabase on alternating days.
 - `keepalive-supabase-A.yml` -- every Sunday 02:00 UTC
@@ -299,7 +299,7 @@ Any file showing a net deletion (more `-` than `+` lines) near the end is likely
 
 ---
 
-## DEC-016 -- Legacy estimate engine deleted (2026-05-19)
+## DEC-016 — Legacy estimate engine deleted (2026-05-19)
 
 **Decision:** `services/estimate_engine.py` deleted. `POST /api/estimates/generate` removed.
 
@@ -309,25 +309,25 @@ Any file showing a net deletion (more `-` than `+` lines) near the end is likely
 
 ---
 
-## DEC-017 -- condition_signals vocabulary v1 strings are immutable (2026-05-20)
+## DEC-017 — condition_signals vocabulary v1 strings are immutable (2026-05-20)
 
 **Decision:** Existing condition_signal strings MUST NOT be renamed -- breaks lifecycle_rules backward compatibility. New signals can be added freely. See DEC-024 for full vocabulary.
 
 ---
 
-## DEC-018 -- diagnosis_feedback table is shared (no pak_ variant) (2026-05-20)
+## DEC-018 — diagnosis_feedback table is shared (no pak_ variant) (2026-05-20)
 
 **Decision:** Single `diagnosis_feedback` table for both markets. FK references `diagnostic_sessions.id` (already shared). Market derivable via assessment_id join for analytics.
 
 ---
 
-## DEC-019 -- DiagnosticFlow resolved -> /diagnoses/<id>, not evidence phase (2026-05-20)
+## DEC-019 — DiagnosticFlow resolved -> /diagnoses/<id>, not evidence phase (2026-05-20)
 
 **Decision:** Fault card resolution navigates to `/diagnoses/<session_id>` (FaultResolutionScreen). Estimate still reachable from Assessments list. "Generate estimate from here" deferred to v1.5.
 
 ---
 
-## DEC-020 -- pak_pricing_tiers table structure (2026-05-20)
+## DEC-020 — pak_pricing_tiers table structure (2026-05-20)
 
 **Decision:** PK pricing uses dedicated `pak_pricing_tiers` table (45 rows: 15 cards x 3 tiers). Columns: `card_id`, `tier` (good/better/best), `label_en`, `label_ur`, `description_en`, `description_ur`, `parts_pkr`, `labor_pkr`, `total_pkr`.
 
@@ -335,13 +335,13 @@ Any file showing a net deletion (more `-` than `+` lines) near the end is likely
 
 ---
 
-## DEC-021 -- pak_fault_card_descriptions + pak_fault_card_urdu_descriptions (2026-05-20)
+## DEC-021 — pak_fault_card_descriptions + pak_fault_card_urdu_descriptions (2026-05-20)
 
 **Decision:** Separate tables for PK fault card bilingual content. Allows independent updates to English vs Urdu without touching pak_fault_cards main data.
 
 ---
 
-## DEC-022 -- Desktop Commander bat-file pattern for Windows-side git (2026-05-20)
+## DEC-022 — Desktop Commander bat-file pattern for Windows-side git (2026-05-20)
 
 **Decision:** When Linux sandbox cannot reach git (NTFS lock), use Desktop Commander .bat files on the Windows side.
 - Write bat to `C:\fixNNN.bat` (no spaces in path)
@@ -352,7 +352,7 @@ Any file showing a net deletion (more `-` than `+` lines) near the end is likely
 
 ---
 
-## DEC-023 -- NEXT_PUBLIC_ENV=staging controls staging-specific behaviour (2026-05-20)
+## DEC-023 — NEXT_PUBLIC_ENV=staging controls staging-specific behaviour (2026-05-20)
 
 **Decision:** `NEXT_PUBLIC_ENV=staging` drives three behaviours:
 1. `StagingBanner.tsx` renders amber bar
@@ -362,7 +362,7 @@ Any file showing a net deletion (more `-` than `+` lines) near the end is likely
 **Never** set `NEXT_PUBLIC_ENV=staging` on the production Vercel project.
 
 
-## DEC-024 -- Recommendation engine condition_signal vocabulary v1 (2026-05-20)
+## DEC-024 — Recommendation engine condition_signal vocabulary v1 (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -393,7 +393,7 @@ Implemented in services/condition_signals.py (Track REC.2).
 lifecycle_rules lookup. If derivation fails, falls back to "default" silently (try/except).
 
 
-## DEC-025 -- Track D: single diagnosis_feedback table for both markets (2026-05-20)
+## DEC-025 — Track D: single diagnosis_feedback table for both markets (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -409,7 +409,7 @@ via join if market segmentation is needed in analytics.
 
 ---
 
-## DEC-026 -- Track D: diagnosis screen replaces evidence phase for all resolutions (2026-05-20)
+## DEC-026 — Track D: diagnosis screen replaces evidence phase for all resolutions (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -432,7 +432,7 @@ exists for non-diagnostic-resolved assessments (e.g., service/tune_up) but is no
 from the diagnostic resolution path.
 
 
-## DEC-027 -- NTFS truncation affects ALL files with Unicode, not just emoji-containing TSX (2026-05-20)
+## DEC-027 — NTFS truncation affects ALL files with Unicode, not just emoji-containing TSX (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -470,7 +470,7 @@ wc -l file.py  # compare to expected line count
 
 ---
 
-## DEC-028 -- git index corruption recovery: use git fast-import to bypass index (2026-05-20)
+## DEC-028 — git index corruption recovery: use git fast-import to bypass index (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -516,7 +516,7 @@ git push origin main
 
 ---
 
-## DEC-029 -- companies table has NO market column; market routing is always header-based (2026-05-20)
+## DEC-029 — companies table has NO market column; market routing is always header-based (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -545,7 +545,7 @@ The `X-Market` header must be sent by the client. See DEC-030.
 
 ---
 
-## DEC-030b -- Raw fetch() calls on public pages must explicitly send X-Market header (2026-05-20)
+## DEC-030b — Raw fetch() calls on public pages must explicitly send X-Market header (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -574,7 +574,7 @@ Each result should either use `apiFetch` or explicitly pass `X-Market`.
 
 ---
 
-## DEC-031 -- QA must verify code on disk, not just task list status (2026-05-20)
+## DEC-031 — QA must verify code on disk, not just task list status (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -608,7 +608,7 @@ wc -l scopesnap-api/api/diagnostic.py
 every route that was supposed to be added. Task list status alone is not sufficient proof.
 ---
 
-## DEC-036 -- SQLAlchemy 2.0 silently drops ORM constructor kwargs for unmapped columns (2026-05-20)
+## DEC-036 — SQLAlchemy 2.0 silently drops ORM constructor kwargs for unmapped columns (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -643,7 +643,7 @@ print(result.scalar())  # Must NOT be server_default if Python passed a value
 
 ---
 
-## DEC-037 -- FaultResolutionScreen.handleContinue must be async and create estimate before navigating (2026-05-20)
+## DEC-037 — FaultResolutionScreen.handleContinue must be async and create estimate before navigating (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -735,7 +735,7 @@ point they enter Present Mode. Using it as `recommendedTier` is functionally equ
 avoids adding a new prop to EstimateData.
 
 
-## DEC-043 -- alembic_version can be ahead of actual schema (2026-05-21)
+## DEC-043 — alembic_version can be ahead of actual schema (2026-05-21)
 
 **Date:** 2026-05-21
 
@@ -768,7 +768,7 @@ migrations in the chain between the last known-good Railway deploy and the curre
 
 ---
 
-## DEC-044 -- Python replace() write can silently truncate the end of long files (BUG-027) (2026-05-21)
+## DEC-044 — Python replace() write can silently truncate the end of long files (BUG-027) (2026-05-21)
 
 **Date:** 2026-05-21
 
@@ -811,7 +811,7 @@ to recover the original, identified missing tail, used Edit tool to restore it, 
 
 ---
 
-## DEC-045 -- Railway "Online" dashboard status does NOT mean the service is healthy (2026-05-21)
+## DEC-045 — Railway "Online" dashboard status does NOT mean the service is healthy (2026-05-21)
 
 **Date:** 2026-05-21
 
@@ -837,7 +837,7 @@ traceback before attempting any other fixes.
 
 ---
 
-## DEC-046 -- Cherry-pick fails with add/add conflicts when remote has moved ahead (2026-05-21)
+## DEC-046 — Cherry-pick fails with add/add conflicts when remote has moved ahead (2026-05-21)
 
 **Date:** 2026-05-21
 
@@ -859,7 +859,7 @@ This is faster and safer than resolving cherry-pick conflicts.
 
 ---
 
-## DEC-047 -- Clerk session is shared across *.mainnov.tech subdomains (2026-05-21)
+## DEC-047 — Clerk session is shared across *.mainnov.tech subdomains (2026-05-21)
 
 **Date:** 2026-05-21
 
@@ -878,7 +878,7 @@ gives instant access — no re-login needed.
 
 ---
 
-## DEC-048 -- Claude Chrome extension tab group resets between sessions (2026-05-21)
+## DEC-048 — Claude Chrome extension tab group resets between sessions (2026-05-21)
 
 **Date:** 2026-05-21
 
@@ -886,7 +886,7 @@ gives instant access — no re-login needed.
 
 ---
 
-## DEC-049 -- Estimate option tiers stored as "A"/"B"/"C" -- NOT "good"/"better"/"best" (2026-05-21)
+## DEC-049 — Estimate option tiers stored as "A"/"B"/"C" -- NOT "good"/"better"/"best" (2026-05-21)
  — ✅ RESOLVED 2026-05-24: unified to Good/Better/Best across all surfaces; isRec → opt.recommended
 
 **Date:** 2026-05-21
@@ -927,7 +927,7 @@ if body.selected_option not in ("good", "better", "best", "A", "B", "C"):
 
 ---
 
-## DEC-050 -- Desktop Commander Python subprocess is the reliable git pattern for Windows (2026-05-21)
+## DEC-050 — Desktop Commander Python subprocess is the reliable git pattern for Windows (2026-05-21)
 
 **Date:** 2026-05-21
 
@@ -974,7 +974,7 @@ is what causes `index.lock` failures.
 
 ---
 
-## DEC-051 -- BUG-031 OPEN: Staging banner visible on pk.snapai.mainnov.tech (2026-05-21)
+## DEC-051 — BUG-031 OPEN: Staging banner visible on pk.snapai.mainnov.tech (2026-05-21)
 
 **Date:** 2026-05-21
 
@@ -997,7 +997,7 @@ project's environment variables to confirm `NEXT_PUBLIC_ENV` is absent or set to
 
 ---
 
-## DEC-032 -- estimate/[id] route is dead code; real estimate builder is assessment/[id] (2026-05-20)
+## DEC-032 — estimate/[id] route is dead code; real estimate builder is assessment/[id] (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -1015,7 +1015,7 @@ from the Assessments list, from email links) should point to `/assessment/[id]`.
 
 ---
 
-## DEC-033 -- pak_fault_cards (and pak_fault_cards_v) use card_id as the PK business key (2026-05-20)
+## DEC-033 — pak_fault_cards (and pak_fault_cards_v) use card_id as the PK business key (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -1042,7 +1042,7 @@ WHERE fc.id = :cid
 
 ---
 
-## DEC-052 -- Track DX: structured alternative fault card picker (DX.9) (2026-05-20)
+## DEC-052 — Track DX: structured alternative fault card picker (DX.9) (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -1064,7 +1064,7 @@ session context). This feeds back into future fault card probability calibration
 
 ---
 
-## DEC-053 -- Track DX: "Mark as Solved" button removed from FaultResolutionScreen (2026-05-20)
+## DEC-053 — Track DX: "Mark as Solved" button removed from FaultResolutionScreen (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -1082,7 +1082,7 @@ Grep for this string before any FaultResolutionScreen edit to confirm it stays a
 
 ---
 
-## DEC-054 -- Track DX: self-graduating UI thresholds (DX.12) (2026-05-20)
+## DEC-054 — Track DX: self-graduating UI thresholds (DX.12) (2026-05-20)
 
 **Date:** 2026-05-20
 
@@ -1108,7 +1108,7 @@ Cross-device sync deferred to v1.5.
 
 ---
 
-## DEC-055 -- Track F A.3: canonical definition of "Sent" estimate count on dashboard (2026-05-21)
+## DEC-055 — Track F A.3: canonical definition of "Sent" estimate count on dashboard (2026-05-21)
 
 **Date:** 2026-05-21
 
@@ -1130,7 +1130,7 @@ alone as a proxy for sent count.
 
 ---
 
-## DEC-056 -- BUG-033: Service/Tune-Up photo skip buttons absent from deployed DOM (2026-05-21) ✅ RESOLVED
+## DEC-056 — BUG-033: Service/Tune-Up photo skip buttons absent from deployed DOM (2026-05-21) ✅ RESOLVED
 
 **Date:** 2026-05-21
 **Status:** RESOLVED — commit `23e3019`
@@ -1430,7 +1430,7 @@ switches contexts.
 
 ---
 
-## DEC-072 -- BUG-040: CAST(:options AS jsonb) required for JSONB column INSERT in raw SQLAlchemy (2026-05-23)
+## DEC-072 — BUG-040: CAST(:options AS jsonb) required for JSONB column INSERT in raw SQLAlchemy (2026-05-23)
 
 **Date:** 2026-05-23
 
@@ -1448,7 +1448,7 @@ switches contexts.
 
 ---
 
-## DEC-073 -- BUG-041: NEXT_PUBLIC_ENV=staging on production Vercel is a recurring trap (2026-05-23)
+## DEC-073 — BUG-041: NEXT_PUBLIC_ENV=staging on production Vercel is a recurring trap (2026-05-23)
 
 **Date:** 2026-05-23
 
@@ -1467,7 +1467,7 @@ switches contexts.
 
 ---
 
-## DEC-074 -- Stage 4 audit: Vercel staging custom domains are Preview branch deployments, not Production env builds (2026-05-23)
+## DEC-074 — Stage 4 audit: Vercel staging custom domains are Preview branch deployments, not Production env builds (2026-05-23)
 
 **Date:** 2026-05-23 (Stage 4 Staging Isolation Audit)
 
@@ -1483,7 +1483,7 @@ switches contexts.
 
 ---
 
-## DEC-075 -- Stage 4 audit: Railway staging had sk_live_ CLERK_SECRET_KEY (production Clerk secret key) (2026-05-23)
+## DEC-075 — Stage 4 audit: Railway staging had sk_live_ CLERK_SECRET_KEY (production Clerk secret key) (2026-05-23)
 
 **Date:** 2026-05-23 (Stage 4 Staging Isolation Audit)
 
@@ -1497,7 +1497,7 @@ switches contexts.
 
 ---
 
-## DEC-076 -- Stage 4 audit: pk.snapai.mainnov.tech served pk_test_ due to stale ISR edge cache (2026-05-23)
+## DEC-076 — Stage 4 audit: pk.snapai.mainnov.tech served pk_test_ due to stale ISR edge cache (2026-05-23)
 
 **Date:** 2026-05-23 (Stage 4 Staging Isolation Audit)
 
@@ -1518,7 +1518,7 @@ switches contexts.
 
 ---
 
-## DEC-077 -- Clerk key prefix is the authoritative environment signal for all four SnapAI domains (2026-05-23)
+## DEC-077 — Clerk key prefix is the authoritative environment signal for all four SnapAI domains (2026-05-23)
 
 **Date:** 2026-05-23 (Stage 4 Staging Isolation Audit)
 
@@ -1547,7 +1547,7 @@ switches contexts.
 
 ---
 
-## DEC-078 -- CSP must include maps.googleapis.com and maps.gstatic.com in script-src and connect-src (Stage 3 Google Maps Integration -- 2026-05-23)
+## DEC-078 — CSP must include maps.googleapis.com and maps.gstatic.com in script-src and connect-src (Stage 3 Google Maps Integration -- 2026-05-23)
 
 **Date:** 2026-05-23 (Stage 3 Google Maps Integration)
 
@@ -1563,7 +1563,7 @@ switches contexts.
 
 ---
 
-## DEC-079 -- Service Worker must passthrough maps.googleapis.com and maps.gstatic.com to avoid opaque-response blocking (Stage 3 Google Maps Integration -- 2026-05-23)
+## DEC-079 — Service Worker must passthrough maps.googleapis.com and maps.gstatic.com to avoid opaque-response blocking (Stage 3 Google Maps Integration -- 2026-05-23)
 
 **Date:** 2026-05-23 (Stage 3 Google Maps Integration)
 
@@ -1662,7 +1662,7 @@ Used browser-session-authenticated calls (relative URL from within vercel.com ta
 
 ---
 
-## DEC-082 -- React fiber state injection for QA bypass of StepZeroPanel (2026-05-24)
+## DEC-082 — React fiber state injection for QA bypass of StepZeroPanel (2026-05-24)
 
 **Date:** 2026-05-24 (QA Session -- pre-beta walkthrough full flow verification)
 
@@ -1694,7 +1694,7 @@ Used browser-session-authenticated calls (relative URL from within vercel.com ta
 
 ---
 
-## DEC-083 -- Vercel build error tracing: always identify the FIRST failing commit (2026-05-24)
+## DEC-083 — Vercel build error tracing: always identify the FIRST failing commit (2026-05-24)
 
 **Date:** 2026-05-24 (BUG-043/044 root-cause investigation)
 
@@ -1718,7 +1718,7 @@ Used browser-session-authenticated calls (relative URL from within vercel.com ta
 
 ---
 
-## DEC-084 -- isRecommended vs isRec: two separate variables for two separate concerns (2026-05-24)
+## DEC-084 — isRecommended vs isRec: two separate variables for two separate concerns (2026-05-24)
 
 **Date:** 2026-05-24 (Issue #3 -- BUG-044 fix in assessment/[id]/page.tsx)
 
@@ -1742,7 +1742,7 @@ const isRec = isMiddleTier;  // backward-compat alias for existing headerBg/badg
 
 ---
 
-## DEC-085 -- Phase 2 architectural rewrite: ambient-aware PSI routing via unified operating_targets (2026-05-24)
+## DEC-085 — Phase 2 architectural rewrite: ambient-aware PSI routing via unified operating_targets (2026-05-24)
 
 **Date:** 2026-05-24
 
@@ -1758,7 +1758,7 @@ const isRec = isMiddleTier;  // backward-compat alias for existing headerBg/badg
 
 ---
 
-## DEC-086 -- Duplicate step-2b block in migration 036 hotfix: staging fresh seed masks copy-paste bug (2026-05-24)
+## DEC-086 — Duplicate step-2b block in migration 036 hotfix: staging fresh seed masks copy-paste bug (2026-05-24)
 
 **Date:** 2026-05-24
 
@@ -1968,7 +1968,7 @@ FIX: widened both checks' Grace Time 1h → **6h** in the Healthchecks dashboard
 
 ---
 
-## DEC-087 -- QA skill consolidation: discard snapai-qa-master in favor of snapai-full-audit (2026-06-17)
+## DEC-087 — QA skill consolidation: discard snapai-qa-master in favor of snapai-full-audit (2026-06-17)
 
 **Date:** 2026-06-17
 
@@ -2148,7 +2148,7 @@ Fixed via two commits: `next.config.js` wrapped with `withSentryConfig` (sourcem
 
 ---
 
-## DEC-088 -- PERMANENT COPY RULE: No future-tense outcome promises in any homeowner-facing language (2026-06-17)
+## DEC-088 — PERMANENT COPY RULE: No future-tense outcome promises in any homeowner-facing language (2026-06-17)
 
 **Date:** 2026-06-17
 
@@ -2488,7 +2488,7 @@ Done on staging via PR #23 (merge `a43c681`). Build script flipped `next build -
 After staging verification, Turbopack promoted to prod via a SCOPED file-scoped overlay (main commit `66699a05`) — only the Turbopack files (next.config.js webpack()/disableLogger removed, package.json build `next build`, instrumentation-client.ts + instrumentation.ts added, sentry.client.config.ts deleted); prod already had the audit-session work + migrations 042-044, so nothing else was shipped. Verified on prod: Vercel Turbopack build green (both projects), e2e CI green, /health ok, /api/version 1.2, **§5 Sentry delivers under Turbopack on prod** (ingest 200, nextjs/10.62.0 via instrumentation-client.ts), public landing + Clerk v7 sign-in render, proxy.ts auth-protection works, no console errors (US+PK). **Turbopack now LIVE on prod + staging.** Tailwind stayed v3 (works under Turbopack).
 
 
-## DEC-127 -- Dependabot postcss alert #34 is a KNOWN NON-ISSUE (no upstream fix; do NOT override)
+## DEC-127 — Dependabot postcss alert #34 is a KNOWN NON-ISSUE (no upstream fix; do NOT override)
 
 **Status (2026-06-29): ACCEPTED / WAIT-FOR-UPSTREAM. Do not re-investigate or re-attempt a fix.**
 
@@ -2509,7 +2509,7 @@ Root cause: Next's compiled webpack CSS toolchain `require()`s its own nested po
 **Decision / what future sessions must do:** Leave #34 open and **accept it as low-risk**. Do NOT attempt lockfile overrides (they break the build). It clears for real only when upstream Next ships a release whose bundled postcss `>= 8.5.10` -- at that point bump Next (staging-first, DEC-070) and the alert closes on its own. **Future AI / QA / Dependabot-triage sessions: this is expected and already analyzed -- do not re-litigate.**
 
 
-## DEC-128 -- Cowork advisor-board skills: installed plugin cache is SEPARATE from the Drive canonical source; roster edits must be re-synced (2026-07-02)
+## DEC-128 — Cowork advisor-board skills: installed plugin cache is SEPARATE from the Drive canonical source; roster edits must be re-synced (2026-07-02)
 
 **Status: ACTIVE RULE.** Applies to the @board (snapai-board) and @nav (snapai-nav) Cowork skills. This is tooling/infra, not app code.
 
@@ -2528,7 +2528,7 @@ Root cause: Next's compiled webpack CSS toolchain `require()`s its own nested po
 **2026-07-02 state:** 6 advisors added -- board Panel 5 (bryan-orr, jenny-hoyos, zaria-parvez, alex-su) and nav Seat #16 (mrbeast) + Seat #17 (terence-reilly). Drive canonical, plugin cache, and manifest.json all synced to 25 board / 17 nav this session. Durable re-import via Settings -> Capabilities still recommended.
 
 
-## DEC-129 -- diagnostic_questions branch_logic_jsonb is Monaco-seeded; migrations alone are INSUFFICIENT evidence of what is live (2026-07-03)
+## DEC-129 — diagnostic_questions branch_logic_jsonb is Monaco-seeded; migrations alone are INSUFFICIENT evidence of what is live (2026-07-03)
 
 **Status: ACTIVE RULE.** Applies to any AI or human session evaluating the diagnostic flow's coverage, completeness, or bug status.
 

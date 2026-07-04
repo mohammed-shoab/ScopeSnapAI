@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SnapAI — Decision Tree v7 (Full — LIVE + NEW)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e8eaf0; padding-bottom: 60px; }
+
+  /* HEADER */
+  .app-header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-bottom: 2px solid #2a2a4a; padding: 16px 24px; }
+  .app-logo { font-size: 22px; font-weight: 800; color: #fff; }
+  .app-logo span { color: #3498db; }
+  .app-subtitle { font-size: 11px; color: #7a82a0; margin-top: 4px; }
+  .pill-row { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+  .pill { background:#2a2a4a; border:1px solid #3a3a6a; color:#c8d0e0; font-size:10px; font-weight:700; padding:3px 9px; border-radius:12px; }
+  .pill.new { background:#1a0a2a; border-color:#9b59b6; color:#c070f0; }
+  .pill.grounded { background:#1a1200; border-color:#f39c12; color:#f5c842; }
+
+  /* LEGEND */
+  .legend-bar { background:#161622; border-bottom:1px solid #222238; padding:10px 24px; display:flex; gap:14px; align-items:center; flex-wrap:wrap; font-size:11px; }
+  .lgd { display:flex; align-items:center; gap:6px; }
+  .lgd-dot { width:11px; height:11px; border-radius:3px; }
+  .lgd-live { background:#2ecc71; }
+  .lgd-new { background:#9b59b6; }
+  .lgd-safety { background:#e74c3c; }
+  .lgd-escalate { background:#e67e22; }
+  .lgd-question { background:#3498db; }
+  .lgd-crosscut { background:#f39c12; }
+
+  /* COMPLAINT TABS */
+  .complaint-tabs { display:flex; gap:6px; padding:10px 24px 0; flex-wrap:wrap; }
+  .ctab { padding:8px 12px; border-radius:8px 8px 0 0; background:#161622; border:1px solid #2a2a4a; border-bottom:none; cursor:pointer; font-size:11px; color:#7a82a0; font-weight:600; }
+  .ctab.active { background:#0a0a15; color:#fff; border-color:#3498db; border-bottom-color:#0a0a15; margin-bottom:-1px; z-index:2; }
+  .ctab-letter { display:inline-block; background:#2a2a4a; color:#fff; font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; margin-right:6px; }
+  .ctab-letter.new { background:#9b59b6; }
+
+  /* CONTENT */
+  .content-area { background:#0a0a15; border:1px solid #2a2a4a; margin:0 24px; padding:20px; border-radius:0 8px 8px 8px; }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+  .complaint-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid #222238; flex-wrap:wrap; }
+  .complaint-icon { font-size:24px; }
+  .complaint-name { font-size:16px; font-weight:800; color:#fff; }
+  .complaint-meta { font-size:10px; color:#7a82a0; margin-top:2px; }
+  .status-badge { background:#0a2a15; border:1px solid #2ecc71; color:#7edb9b; font-size:10px; padding:3px 8px; border-radius:12px; font-weight:700; }
+  .status-badge.new { background:#1a0a2a; border-color:#9b59b6; color:#c070f0; }
+  .status-badge.mixed { background:#0a1a2a; border-color:#3498db; color:#5eb0f0; }
+
+  /* NODES */
+  .node { background:#1a1a2e; border:1px solid #3a3a6a; border-radius:8px; padding:8px 12px; margin:0 auto; display:inline-block; text-align:center; min-width:180px; max-width:340px; }
+  .node-tag { font-size:9px; font-weight:800; color:#7a82a0; text-transform:uppercase; letter-spacing:0.7px; margin-bottom:3px; }
+  .node-title { font-size:11px; font-weight:700; color:#fff; margin-bottom:2px; }
+  .node-sub { font-size:9.5px; color:#8a90a8; line-height:1.4; }
+  .node.q { border-color:#3498db; background:#0a1a2a; }
+  .node.q .node-tag { color:#5eb0f0; }
+  .node.live { border-color:#2ecc71; background:#0d1f14; }
+  .node.live .node-tag { color:#2ecc71; }
+  .node.new { border-color:#9b59b6; background:#150a20; }
+  .node.new .node-tag { color:#c070f0; }
+  .node.safety { border-color:#e74c3c; background:#200a0a; }
+  .node.safety .node-tag { color:#ff6b6b; }
+  .node.escalate { border-color:#e67e22; background:#1a1200; }
+  .node.escalate .node-tag { color:#f5a54c; }
+  .node.crosscut { border-color:#f39c12; background:#1a1a0a; border-style: dashed; }
+  .node.crosscut .node-tag { color:#f5c842; }
+  .node.card-live { border-color:#2ecc71; background:#0a2a15; }
+  .node.card-live .node-tag { color:#2ecc71; font-weight:900; }
+  .node.card-new { border-color:#9b59b6; background:#1a0a2a; }
+  .node.card-new .node-tag { color:#c070f0; font-weight:900; }
+
+  /* BRANCHES / CONNECTORS */
+  .branch-container { padding:12px 0; }
+  .branch-vconn { text-align:center; padding: 4px 0; }
+  .vline { display:inline-block; width:2px; height:20px; background:#3a3a6a; }
+  .vline.live { background:#2ecc71; }
+  .vline.new { background:#9b59b6; }
+  .vline.safety { background:#e74c3c; }
+  .branch-row { display:flex; gap:14px; justify-content:center; margin-top:8px; flex-wrap:wrap; }
+  .branch-col { flex:1; min-width:200px; max-width:360px; text-align:center; }
+  .branch-label { display:inline-block; padding:4px 10px; border-radius:12px; font-size:10px; font-weight:700; margin-bottom:4px; }
+  .bl-yes { background:#0a2a15; border:1px solid #2ecc71; color:#7edb9b; }
+  .bl-no { background:#2a0a0a; border:1px solid #e74c3c; color:#ff9090; }
+  .bl-low { background:#0a1a2a; border:1px solid #3498db; color:#7bb8f0; }
+  .bl-ok { background:#0a2a15; border:1px solid #2ecc71; color:#7edb9b; }
+  .bl-high { background:#2a1500; border:1px solid #e67e22; color:#f5a54c; }
+  .bl-new { background:#1a0a2a; border:1px solid #9b59b6; color:#c070f0; }
+  .bl-escalate { background:#2a1500; border:1px solid #e67e22; color:#f5a54c; }
+  .bl-safety { background:#2a0a0a; border:1px solid #e74c3c; color:#ff9090; }
+  .bl-question { background:#0a1a2a; border:1px solid #3498db; color:#7bb8f0; }
+  .bl-crosscut { background:#1a1a0a; border:1px dashed #f39c12; color:#f5c842; }
+
+  /* CARD FAMILY DIAGRAM */
+  .family-block { background:#161622; border:1px solid #2a2a4a; border-radius:12px; padding:16px 20px; margin:16px 0; }
+  .family-title { font-size:14px; font-weight:800; color:#fff; margin-bottom:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .family-desc { font-size:11px; color:#8a90a8; margin-bottom:10px; line-height:1.6; }
+
+  /* SECTION */
+  .section-divider { margin: 30px 24px 12px; padding-top: 20px; border-top: 2px dashed #2a2a4a; }
+  .section-title { font-size:18px; font-weight:800; color:#fff; margin-bottom:6px; }
+  .section-sub { font-size:11px; color:#7a82a0; margin-bottom:14px; line-height:1.5; }
+
+  /* READING BOX */
+  .reading-row { display:flex; gap:8px; justify-content:center; margin-top:6px; flex-wrap:wrap; }
+  .reading-box { background:#12122a; border:1px solid #3a3a6a; border-radius:6px; padding:6px 10px; font-size:10px; color:#c8d0e0; min-width:150px; }
+  .reading-box.new { background:#150a20; border-color:#9b59b6; }
+  .reading-box.new::before { content:"🆕 "; }
+  .reading-box.live { background:#0d1f14; border-color:#2ecc71; }
+  .reading-box.live::before { content:"✅ "; }
+  .reading-box strong { color:#fff; }
+
+  /* WARNING CALLOUT */
+  .callout { background:linear-gradient(135deg, #2a0a0a, #1a0f0a); border:2px solid #e74c3c; border-radius:10px; padding:14px 18px; margin:14px 0; }
+  .callout-title { font-size:13px; font-weight:800; color:#ff6b6b; margin-bottom:6px; }
+  .callout-body { font-size:11px; color:#f0c0c0; line-height:1.6; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="app-logo">Snap<span>AI</span> — Diagnostic Decision Tree v7.1 (Full Diagram — Card #21 excluded)</div>
+  <div class="app-subtitle">Complete diagnostic flow with existing (LIVE) branches + all Bryan gap-fills (NEW) — v7.1 2026-07-06 · Card #21 (Heat Exchanger) permanently excluded per Shoab</div>
+  <div class="pill-row">
+    <div class="pill">v7.1 · 2026-07-06</div>
+    <div class="pill">10 complaint flows (9 LIVE + 1 NEW)</div>
+    <div class="pill">27 fault cards (19 LIVE + 8 NEW/expanded — Card #21 excluded)</div>
+    <div class="pill">15 reading types (8 LIVE + 7 NEW — combustion analyzer removed)</div>
+    <div class="pill grounded">Grounded in 960-episode HVAC School archive</div>
+    <div class="pill new">Bryan Orr @board</div>
+  </div>
+</div>
+
+<div class="legend-bar">
+  <div class="lgd"><div class="lgd-dot lgd-live"></div><strong style="color:#2ecc71;">GREEN</strong> = LIVE in prod</div>
+  <div class="lgd"><div class="lgd-dot lgd-new"></div><strong style="color:#c070f0;">PURPLE</strong> = NEW (Bryan gap-fill)</div>
+  <div class="lgd"><div class="lgd-dot lgd-safety"></div><strong style="color:#ff6b6b;">RED</strong> = SAFETY (fast-track)</div>
+  <div class="lgd"><div class="lgd-dot lgd-question"></div><strong style="color:#5eb0f0;">BLUE</strong> = Question</div>
+  <div class="lgd"><div class="lgd-dot lgd-escalate"></div><strong style="color:#f5a54c;">ORANGE</strong> = Escalate</div>
+  <div class="lgd"><div class="lgd-dot lgd-crosscut"></div><strong style="color:#f5c842;">YELLOW dashed</strong> = Cross-cutting sub-flow</div>
+</div>
+
+<div style="background:linear-gradient(135deg,#1a0a2a,#150a20);border-bottom:2px solid #9b59b6;padding:12px 24px;">
+  <div style="font-size:13px;font-weight:800;color:#c070f0;margin-bottom:4px;">Card #21 (Heat Exchanger) — PERMANENTLY EXCLUDED — never to be built in SnapAI (Shoab, 2026-07-06)</div>
+  <div style="font-size:11px;color:#c8b0e0;line-height:1.6;">This is a permanent no-build, not a hold. SnapAI does not diagnose heat exchangers, combustion, or carbon monoxide; any such concern is referred to a separate licensed in-person safety inspection. Legal basis (Alfred, US/TX): a false-negative on a cracked heat exchanger carries carbon-monoxide personal-injury / wrongful-death exposure that is categorically beyond any mechanical fault card; back-side and hairline seam cracks are not reliably detectable from a photo, so a &quot;clean&quot; output would be an unsupportable safety representation; and the risk is uninsurable without a specific rider. Structural exclusion is the conservative, defensible posture and matches the PDF safety-inspection disclaimer in the legal-safe wordings.</div>
+</div>
+
+<div class="complaint-tabs">
+  <div class="ctab active" onclick="showTab('a', this)"><span class="ctab-letter">A</span>Not Cooling</div>
+  <div class="ctab" onclick="showTab('b', this)"><span class="ctab-letter">B</span>Water Dripping</div>
+  <div class="ctab" onclick="showTab('c', this)"><span class="ctab-letter">C</span>Not Turning On</div>
+  <div class="ctab" onclick="showTab('d', this)"><span class="ctab-letter">D</span>Making Noise</div>
+  <div class="ctab" onclick="showTab('e', this)"><span class="ctab-letter">E</span>High Electric Bill</div>
+  <div class="ctab" onclick="showTab('f', this)"><span class="ctab-letter">F</span>Error Code</div>
+  <div class="ctab" onclick="showTab('g', this)"><span class="ctab-letter">G</span>Not Heating</div>
+  <div class="ctab" onclick="showTab('h', this)"><span class="ctab-letter">H</span>Intermittent Shutdown</div>
+  <div class="ctab" onclick="showTab('i', this)"><span class="ctab-letter">I</span>Service / Tune-Up</div>
+  <div class="ctab" onclick="showTab('j', this)"><span class="ctab-letter new">J 🆕</span>Comfort Complaint</div>
+</div>
+
+<div class="content-area">
+
+  <!-- ═══════════════ TAB A — NOT COOLING ═══════════════ -->
+  <div id="tab-a" class="tab-content active">
+    <div class="complaint-header">
+      <div class="complaint-icon">🥵</div>
+      <div>
+        <div class="complaint-name">A — Not Cooling / Warm Air</div>
+        <div class="complaint-meta">~38% of Houston calls · 2-step cascade LIVE + 4-reading discrimination NEW</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span class="status-badge">✅ 4 Cards LIVE (8/13/14/17)</span>
+        <span class="status-badge new">🆕 Adds superheat/subcool → refined 6-card</span>
+      </div>
+    </div>
+
+    <!-- Step 1: outdoor running? -->
+    <div style="text-align:center;">
+      <div class="node q">
+        <div class="node-tag">STEP 1 — Q</div>
+        <div class="node-title">Is the outdoor unit running?</div>
+        <div class="node-sub">Tech listens + looks at condenser fan</div>
+      </div>
+      <div class="branch-vconn"><span class="vline"></span></div>
+    </div>
+
+    <div class="branch-row">
+
+      <!-- NO branch (unit not running) -->
+      <div class="branch-col">
+        <span class="branch-label bl-no">NO — Unit not running</span>
+        <div class="branch-vconn"><span class="vline"></span></div>
+        <div class="node q">
+          <div class="node-tag">STEP 2 — Reading</div>
+          <div class="node-title">Enter capacitor µF reading</div>
+          <div class="node-sub">Compared vs nameplate spec (±10%)</div>
+        </div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label bl-low">µF LOW/HIGH</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live">
+              <div class="node-tag">✅ CARD #1</div>
+              <div class="node-title">Capacitor Failure</div>
+              <div class="node-sub">Auto-confirm from µF reading</div>
+            </div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-ok">µF OK</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node q">
+              <div class="node-tag">STEP 3 — Multi</div>
+              <div class="node-title">Photo contactor face + voltage L1+L2</div>
+            </div>
+            <div class="branch-vconn"><span class="vline"></span></div>
+            <div class="branch-row">
+              <div class="branch-col">
+                <span class="branch-label bl-ok">Power OK</span>
+                <div class="branch-vconn"><span class="vline live"></span></div>
+                <div class="node card-live">
+                  <div class="node-tag">✅ CARD #3</div>
+                  <div class="node-title">Contactor Failure</div>
+                </div>
+              </div>
+              <div class="branch-col">
+                <span class="branch-label bl-escalate">No power / phase loss</span>
+                <div class="branch-vconn"><span class="vline"></span></div>
+                <div class="node escalate">
+                  <div class="node-tag">ESCALATE</div>
+                  <div class="node-title">Check breaker / disconnect / incoming power</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- YES branch (running but warm) -->
+      <div class="branch-col" style="min-width:400px;">
+        <span class="branch-label bl-yes">YES — Running but warm</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+
+        <div class="node q">
+          <div class="node-tag">STEP 2 — Reading (LIVE)</div>
+          <div class="node-title">Enter suction PSI</div>
+          <div class="node-sub">Ambient captured at Step Zero (Mild/Hot/Extreme). Range: R-410A 115-140 at 95°F.</div>
+        </div>
+
+        <div class="reading-row">
+          <div class="reading-box live"><strong>Suction PSI</strong> (live)</div>
+          <div class="reading-box new"><strong>Superheat</strong> — new Tier 1</div>
+          <div class="reading-box new"><strong>Subcool</strong> — new Tier 1</div>
+        </div>
+
+        <div class="branch-vconn"><span class="vline live"></span></div>
+
+        <div class="branch-row">
+          <!-- Low suction (LIVE → Card 8) -->
+          <div class="branch-col">
+            <span class="branch-label bl-low">Low suction (&lt;115)</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node new" style="border-style:dashed;">
+              <div class="node-tag">🆕 STEP 3 (NEW) — Reading</div>
+              <div class="node-title">Enter Superheat + Subcool</div>
+              <div class="node-sub">Discriminates leak vs TXV restriction vs airflow issue</div>
+            </div>
+            <div class="branch-vconn"><span class="vline new"></span></div>
+            <div class="branch-row">
+              <div class="branch-col">
+                <span class="branch-label bl-new">High SH + Low SC</span>
+                <div class="branch-vconn"><span class="vline new"></span></div>
+                <div class="node card-live">
+                  <div class="node-tag">✅ CARD #8 — Confirmed</div>
+                  <div class="node-title">Refrigerant Leak</div>
+                  <div class="node-sub">🆕 Now confirmed (not hypothesis)</div>
+                </div>
+              </div>
+              <div class="branch-col">
+                <span class="branch-label bl-new">Low SH (0-3°F)</span>
+                <div class="branch-vconn"><span class="vline new"></span></div>
+                <div class="node card-new">
+                  <div class="node-tag">🆕 CARD #15b</div>
+                  <div class="node-title">TXV Bulb Loss</div>
+                  <div class="node-sub">Metering Family — flooding evap</div>
+                </div>
+              </div>
+              <div class="branch-col">
+                <span class="branch-label bl-new">Oscillating SH</span>
+                <div class="branch-vconn"><span class="vline new"></span></div>
+                <div class="node card-new">
+                  <div class="node-tag">🆕 CARD #15c</div>
+                  <div class="node-title">TXV Hunting</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- OK suction (LIVE → Card 13) -->
+          <div class="branch-col">
+            <span class="branch-label bl-ok">OK (115-141)</span>
+            <div class="branch-vconn"><span class="vline new"></span></div>
+            <div class="node new" style="border-style:dashed;">
+              <div class="node-tag">🆕 STEP 3 (NEW) — Reading</div>
+              <div class="node-title">Enter TESP + delta-T</div>
+              <div class="node-sub">Discriminates ductwork leak vs system under-airflow</div>
+            </div>
+            <div class="branch-vconn"><span class="vline new"></span></div>
+            <div class="branch-row">
+              <div class="branch-col">
+                <span class="branch-label bl-ok">TESP OK</span>
+                <div class="branch-vconn"><span class="vline live"></span></div>
+                <div class="node card-live">
+                  <div class="node-tag">✅ CARD #13</div>
+                  <div class="node-title">Ductwork Leak</div>
+                  <div class="node-sub">Threshold routing (LIVE)</div>
+                </div>
+              </div>
+              <div class="branch-col">
+                <span class="branch-label bl-new">TESP high (&gt;0.5")</span>
+                <div class="branch-vconn"><span class="vline new"></span></div>
+                <div class="node card-new">
+                  <div class="node-tag">🆕 CARD #20</div>
+                  <div class="node-title">System Under-Airflow</div>
+                  <div class="node-sub">Triggers Airflow Assessment ▼</div>
+                </div>
+                <div class="branch-vconn"><span class="vline new"></span></div>
+                <div class="node crosscut">
+                  <div class="node-tag">🆕 CROSS-CUT</div>
+                  <div class="node-title">Airflow Assessment sub-flow</div>
+                  <div class="node-sub">4-point static profile → identify highest-drop</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- High suction (LIVE → Step 3 discharge) -->
+          <div class="branch-col">
+            <span class="branch-label bl-high">High (&gt;141)</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node q">
+              <div class="node-tag">STEP 3 (LIVE) — Reading</div>
+              <div class="node-title">Enter discharge PSI</div>
+              <div class="node-sub">Range: 225-275 at 95°F R-410A</div>
+            </div>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="branch-row">
+              <div class="branch-col">
+                <span class="branch-label bl-ok">Disch OK</span>
+                <div class="branch-vconn"><span class="vline live"></span></div>
+                <div class="node card-live">
+                  <div class="node-tag">✅ CARD #14</div>
+                  <div class="node-title">Dirty Coil</div>
+                </div>
+              </div>
+              <div class="branch-col">
+                <span class="branch-label bl-high">Disch HIGH</span>
+                <div class="branch-vconn"><span class="vline new"></span></div>
+                <div class="node new" style="border-style:dashed;">
+                  <div class="node-tag">🆕 Reading gate</div>
+                  <div class="node-title">Enter Subcool</div>
+                </div>
+                <div class="branch-vconn"><span class="vline new"></span></div>
+                <div class="branch-row">
+                  <div class="branch-col">
+                    <span class="branch-label bl-new">SC HIGH</span>
+                    <div class="branch-vconn"><span class="vline live"></span></div>
+                    <div class="node card-live">
+                      <div class="node-tag">✅ CARD #17</div>
+                      <div class="node-title">Overcharge</div>
+                      <div class="node-sub">🆕 Now confirmed</div>
+                    </div>
+                  </div>
+                  <div class="branch-col">
+                    <span class="branch-label bl-new">SC NORMAL</span>
+                    <div class="branch-vconn"><span class="vline new"></span></div>
+                    <div class="node card-new">
+                      <div class="node-tag">🆕 CARD #10c</div>
+                      <div class="node-title">Compression Ratio Problem</div>
+                      <div class="node-sub">Compressor Family — internal valve wear</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="branch-col">
+                <span class="branch-label bl-escalate">Disch LOW</span>
+                <div class="branch-vconn"><span class="vline"></span></div>
+                <div class="node escalate">
+                  <div class="node-tag">ESCALATE</div>
+                  <div class="node-title">Unexpected pattern</div>
+                  <div class="node-sub">Compressor valve failure or blocked suction line</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════ TAB B — WATER DRIPPING ═══════════════ -->
+  <div id="tab-b" class="tab-content">
+    <div class="complaint-header">
+      <div class="complaint-icon">💧</div>
+      <div>
+        <div class="complaint-name">B — Water Dripping / Leaking</div>
+        <div class="complaint-meta">Drain clog #1 Houston call · Photo-driven diagnosis</div>
+      </div>
+      <span class="status-badge">✅ FULLY LIVE</span>
+    </div>
+
+    <div style="text-align:center;">
+      <div class="node q">
+        <div class="node-tag">STEP 1 — Q</div>
+        <div class="node-title">Where is water coming from?</div>
+      </div>
+      <div class="branch-vconn"><span class="vline"></span></div>
+    </div>
+
+    <div class="branch-row">
+      <div class="branch-col">
+        <span class="branch-label bl-question">Indoor drain pan</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 2 (LIVE)</div><div class="node-title">Photo drain pan + condensate exit</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label bl-yes">Standing water / blocked</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #5</div><div class="node-title">Drain Clog</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-ok">Pan dry, exit flowing</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node q"><div class="node-tag">STEP 3 (LIVE)</div><div class="node-title">Filter + evap coil photo + delta-T</div></div>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #9</div><div class="node-title">Coil Freeze (dirty filter/coil path)</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label bl-question">Outdoor refrigerant</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 2 (LIVE)</div><div class="node-title">Enter suction PSI</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label bl-low">Low</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #8</div><div class="node-title">Refrigerant Leak</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-high">High</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #14</div><div class="node-title">Dirty Condenser Coil</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-escalate">OK — check line-set condensation</span>
+            <div class="branch-vconn"><span class="vline"></span></div>
+            <div class="node escalate"><div class="node-tag">ESCALATE</div><div class="node-title">Line-set insulation / condensation</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TAB C — NOT TURNING ON ═══════════════ -->
+  <div id="tab-c" class="tab-content">
+    <div class="complaint-header">
+      <div class="complaint-icon">⚫</div>
+      <div>
+        <div class="complaint-name">C — System Not Turning On</div>
+        <div class="complaint-meta">Reading-first branch · Fastest resolution</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span class="status-badge">✅ 5-step LIVE</span>
+        <span class="status-badge new">🆕 Adds Card #23 Thermostat/24V branch</span>
+      </div>
+    </div>
+
+    <div style="text-align:center;">
+      <div class="node q"><div class="node-tag">STEP 1 (LIVE)</div><div class="node-title">Any power at all? (breaker, tstat display, indoor lights)</div></div>
+      <div class="branch-vconn"><span class="vline"></span></div>
+    </div>
+
+    <div class="branch-row">
+      <div class="branch-col">
+        <span class="branch-label bl-no">NO power</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 2 (LIVE)</div><div class="node-title">Photo contactor + voltage L1+L2</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label bl-ok">Power passes</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #3</div><div class="node-title">Contactor Failure</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-escalate">No power / phase loss</span>
+            <div class="branch-vconn"><span class="vline"></span></div>
+            <div class="node escalate"><div class="node-tag">ESCALATE</div><div class="node-title">Check breaker / disconnect</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label bl-yes">YES — power present</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 3 (LIVE)</div><div class="node-title">Error code on control board?</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label bl-yes">YES error</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node q"><div class="node-tag">STEP 4 (LIVE)</div><div class="node-title">Photo control board LED pattern</div></div>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #7</div><div class="node-title">Control Board / Error Code</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-no">No error code</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node q"><div class="node-tag">STEP 5 (LIVE)</div><div class="node-title">Enter capacitor µF reading</div></div>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="branch-row">
+              <div class="branch-col">
+                <span class="branch-label bl-low">µF LOW/HIGH</span>
+                <div class="branch-vconn"><span class="vline live"></span></div>
+                <div class="node card-live"><div class="node-tag">✅ CARD #1</div><div class="node-title">Capacitor Failure</div></div>
+              </div>
+              <div class="branch-col">
+                <span class="branch-label bl-new">🆕 µF OK — check tstat</span>
+                <div class="branch-vconn"><span class="vline new"></span></div>
+                <div class="node new"><div class="node-tag">🆕 STEP 6 (NEW)</div><div class="node-title">Check 24V + C-wire + phantom voltage</div><div class="node-sub">Meter tstat wiring at board + at tstat</div></div>
+                <div class="branch-vconn"><span class="vline new"></span></div>
+                <div class="node card-new"><div class="node-tag">🆕 CARD #23</div><div class="node-title">Thermostat / Low-Voltage Fault</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TAB D — MAKING NOISE ═══════════════ -->
+  <div id="tab-d" class="tab-content">
+    <div class="complaint-header">
+      <div class="complaint-icon">🔊</div>
+      <div>
+        <div class="complaint-name">D — Making Noise</div>
+        <div class="complaint-meta">Noise-type routing · 5 branches</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span class="status-badge">✅ 5 routes LIVE</span>
+        <span class="status-badge new">🆕 Grinding branch expanded</span>
+      </div>
+    </div>
+
+    <div style="text-align:center;">
+      <div class="node q"><div class="node-tag">STEP 1 (LIVE)</div><div class="node-title">Select noise type</div></div>
+      <div class="branch-vconn"><span class="vline"></span></div>
+    </div>
+
+    <div class="branch-row">
+      <div class="branch-col">
+        <span class="branch-label bl-question">Clicking</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 2</div><div class="node-title">µF reading</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node card-live"><div class="node-tag">✅ CARD #1</div><div class="node-title">Capacitor</div></div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label bl-question">Squealing</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 2</div><div class="node-title">Blower photo + amp draw</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node card-live"><div class="node-tag">✅ CARD #4</div><div class="node-title">Blower Motor</div></div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label bl-question">Banging</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 2</div><div class="node-title">Compressor amp draw</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node card-live"><div class="node-tag">✅ CARD #10</div><div class="node-title">Compressor (routes to Family)</div></div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label bl-question">Hissing</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 2</div><div class="node-title">Suction PSI</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node card-live"><div class="node-tag">✅ CARD #8 / #14</div><div class="node-title">Leak or Dirty Coil</div></div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label bl-new">🆕 Grinding</span>
+        <div class="branch-vconn"><span class="vline new"></span></div>
+        <div class="node new"><div class="node-tag">🆕 STEP 2 (EXPANDED)</div><div class="node-title">Location? Outdoor or Indoor?</div></div>
+        <div class="branch-vconn"><span class="vline new"></span></div>
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label bl-low">Outdoor</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #3 or</div><div class="node-title">Contactor OR 🆕 Card #10b Mechanical</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-low">Indoor</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #4</div><div class="node-title">Blower bearing</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TAB E — HIGH ELECTRIC BILL ═══════════════ -->
+  <div id="tab-e" class="tab-content">
+    <div class="complaint-header">
+      <div class="complaint-icon">💸</div>
+      <div>
+        <div class="complaint-name">E — High Electric Bill</div>
+        <div class="complaint-meta">Filter/coil path LIVE · Adds Airflow + Oversizing routes</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span class="status-badge">✅ 2 routes LIVE</span>
+        <span class="status-badge new">🆕 Adds Airflow + Card #24 Oversizing</span>
+      </div>
+    </div>
+
+    <div style="text-align:center;">
+      <div class="node q"><div class="node-tag">STEP 1 (LIVE)</div><div class="node-title">Running constantly / not cycling off?</div></div>
+      <div class="branch-vconn"><span class="vline"></span></div>
+    </div>
+
+    <div class="branch-row">
+      <div class="branch-col">
+        <span class="branch-label bl-yes">YES — running constantly</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 2 (LIVE)</div><div class="node-title">Photo filter face</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label bl-yes">Dirty</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #2</div><div class="node-title">Dirty Filter</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-new">🆕 Clean → check airflow</span>
+            <div class="branch-vconn"><span class="vline new"></span></div>
+            <div class="node crosscut"><div class="node-tag">🆕 CROSS-CUT</div><div class="node-title">Airflow Assessment (TESP → 4-point)</div></div>
+            <div class="branch-vconn"><span class="vline new"></span></div>
+            <div class="branch-row">
+              <div class="branch-col">
+                <span class="branch-label bl-new">TESP HIGH</span>
+                <div class="branch-vconn"><span class="vline new"></span></div>
+                <div class="node card-new"><div class="node-tag">🆕 CARD #20</div><div class="node-title">System Under-Airflow</div></div>
+              </div>
+              <div class="branch-col">
+                <span class="branch-label bl-new">TESP OK → short-cycle?</span>
+                <div class="branch-vconn"><span class="vline new"></span></div>
+                <div class="node card-new"><div class="node-tag">🆕 CARD #24</div><div class="node-title">System Oversizing</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label bl-no">NO — cycling normally</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 3 (LIVE)</div><div class="node-title">Photo condenser coil + discharge PSI</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label bl-high">Dirty / high disch</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #14</div><div class="node-title">Dirty Coil</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-escalate">All clean, normal</span>
+            <div class="branch-vconn"><span class="vline"></span></div>
+            <div class="node escalate"><div class="node-tag">ESCALATE</div><div class="node-title">Load calc / duct assessment</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TAB F — ERROR CODE ═══════════════ -->
+  <div id="tab-f" class="tab-content">
+    <div class="complaint-header">
+      <div class="complaint-icon">⚠️</div>
+      <div>
+        <div class="complaint-name">F — Error Code / Fault Light</div>
+        <div class="complaint-meta">7-way discrimination LIVE + Phase 2 sub-gate</div>
+      </div>
+      <span class="status-badge">✅ FULLY LIVE (mig 014)</span>
+    </div>
+
+    <div style="text-align:center;">
+      <div class="node q"><div class="node-tag">STEP 1 (LIVE)</div><div class="node-title">Photograph error code display or LED board</div><div class="node-sub">Brand DB lookup + 7-way route</div></div>
+      <div class="branch-vconn"><span class="vline"></span></div>
+    </div>
+
+    <div class="branch-row">
+      <div class="branch-col">
+        <span class="branch-label bl-question">Capacitor code</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node card-live"><div class="node-tag">✅ CARD #1</div></div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label bl-question">Contactor code</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node card-live"><div class="node-tag">✅ CARD #3</div></div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label bl-question">Lockout trip / nuisance</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 4 — Q</div><div class="node-title">Does it reset?</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node card-live"><div class="node-tag">✅ CARD #7</div><div class="node-title">Both YES + NO → Card #7 (LIVE — mig 014)</div></div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label bl-question">Refrigerant / low pressure</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">PHASE 2 GATE (LIVE)</div><div class="node-title">Superheat/subcool discrimination</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label bl-ok">Leak pattern</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #8</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-ok">Piston pattern</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #15</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label bl-question">Communication fault</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node card-live"><div class="node-tag">✅ CARD #6</div><div class="node-title">Wiring Fault</div></div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label bl-question">Pressure sensor</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 2 — Ohm test</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node card-live"><div class="node-tag">✅ CARD #7</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TAB G — NOT HEATING ═══════════════ -->
+  <div id="tab-g" class="tab-content">
+    <div class="complaint-header">
+      <div class="complaint-icon">🥶</div>
+      <div>
+        <div class="complaint-name">G — Not Heating</div>
+        <div class="complaint-meta">HP + gas furnace routes LIVE · HX / combustion / CO EXCLUDED (refer out)</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span class="status-badge">✅ Both routes LIVE</span>
+        <span class="status-badge" style="background:#1a0a2a;border-color:#9b59b6;color:#c070f0;">Card #21 permanently excluded</span>
+      </div>
+    </div>
+
+    <div style="text-align:center;">
+      <div class="node q"><div class="node-tag">STEP 1 (LIVE — auto from Step Zero)</div><div class="node-title">System type from nameplate</div></div>
+      <div class="branch-vconn"><span class="vline"></span></div>
+    </div>
+
+    <div class="branch-row">
+      <div class="branch-col">
+        <span class="branch-label bl-question">HEAT PUMP</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">PHASE 2 GATE (LIVE)</div><div class="node-title">Heat-mode pressures + reversing valve check</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label bl-low">Valve stuck cool</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #12</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-low">Low suction heat</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #15</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-ok">Normal — defrost</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #7</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="branch-col" style="min-width:400px;">
+        <span class="branch-label bl-question">GAS FURNACE</span>
+        <div class="branch-vconn"><span class="vline new"></span></div>
+        <div class="node new" style="border-color:#9b59b6;background:#150a20;"><div class="node-tag" style="color:#c070f0;">HX / COMBUSTION / CO — EXCLUDED</div><div class="node-title">SnapAI does not diagnose heat exchangers, combustion, or CO</div><div class="node-sub">Refer homeowner to a separate licensed in-person safety inspection</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 2 (LIVE)</div><div class="node-title">Does burner ignite?</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label bl-no">No ignition</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #11</div><div class="node-title">Ignitor</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-yes">Ignites then off</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #11</div><div class="node-title">Flame Sensor (LIVE — mig 014+015)</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TAB H — INTERMITTENT SHUTDOWN ═══════════════ -->
+  <div id="tab-h" class="tab-content">
+    <div class="complaint-header">
+      <div class="complaint-icon">🔄</div>
+      <div>
+        <div class="complaint-name">H — Intermittent Shutdown / Short Cycling</div>
+        <div class="complaint-meta">Path A (thermal camera) + Path B (4-step manual) both LIVE · Adds Card #24 route</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span class="status-badge">✅ Both paths LIVE</span>
+        <span class="status-badge new">🆕 Oversizing route added</span>
+      </div>
+    </div>
+
+    <div style="text-align:center;">
+      <div class="node q"><div class="node-tag">STEP 1 (LIVE)</div><div class="node-title">Do you have a thermal camera?</div></div>
+      <div class="branch-vconn"><span class="vline"></span></div>
+    </div>
+
+    <div class="branch-row">
+      <div class="branch-col">
+        <span class="branch-label bl-yes">YES — Path A</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 2 (LIVE)</div><div class="node-title">Thermal photo — all terminals</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label bl-yes">Hotspot present</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #16</div><div class="node-title">Loose Terminal</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-escalate">No hotspot — re-route</span>
+            <div class="branch-vconn"><span class="vline"></span></div>
+            <div class="node escalate"><div class="node-tag">LIVE escalate</div><div class="node-title">Card #17 overcharge OR 🆕 #24 Oversizing</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="branch-col" style="min-width:400px;">
+        <span class="branch-label bl-no">NO — Path B (4 steps)</span>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="node q"><div class="node-tag">STEP 3 (LIVE)</div><div class="node-title">Visual photo terminal strip → STEP 4 IR temps → STEP 5 voltage drop</div></div>
+        <div class="branch-vconn"><span class="vline live"></span></div>
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label bl-yes">Fault confirmed</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #16</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-escalate">Elevated (marginal)</span>
+            <div class="branch-vconn"><span class="vline"></span></div>
+            <div class="node escalate"><div class="node-tag">✅ LIVE escalate</div><div class="node-title">"Marginal voltage drop — Path B caps 85-90%. Consider FLIR camera."</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TAB I — SERVICE / TUNE-UP ═══════════════ -->
+  <div id="tab-i" class="tab-content">
+    <div class="complaint-header">
+      <div class="complaint-icon">🔧</div>
+      <div>
+        <div class="complaint-name">I — Service / Tune-Up</div>
+        <div class="complaint-meta">8-step preventive · Adds airflow + comfort checks</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span class="status-badge">✅ 8 steps LIVE</span>
+        <span class="status-badge new">🆕 Add TESP + wet-bulb checks</span>
+      </div>
+    </div>
+
+    <div style="text-align:center;line-height:2;">
+      <div class="node q" style="min-width:600px;">
+        <div class="node-tag">✅ LIVE — 8-step sequential flow</div>
+        <div class="node-title">svc-1 filter → svc-2 cap → svc-3 coil → svc-4 drain → svc-5 terminals → svc-6 amps → svc-7 delta-T → svc-8 run</div>
+        <div class="node-sub">Each step generates findings + line items → final estimate</div>
+      </div>
+      <div class="branch-vconn"><span class="vline new"></span></div>
+      <div class="node new" style="min-width:600px;">
+        <div class="node-tag">🆕 PROPOSED EXPANSION</div>
+        <div class="node-title">Add svc-9 TESP profile + svc-10 wet-bulb / RH check</div>
+        <div class="node-sub">Uplifts service ticket by identifying under-airflow / latent-load issues before they become emergencies</div>
+      </div>
+      <div class="branch-vconn"><span class="vline new"></span></div>
+      <div class="node crosscut" style="min-width:600px;">
+        <div class="node-tag">🆕 CROSS-CUT triggers</div>
+        <div class="node-title">Any findings from svc-9/10 → route to Card #20 / #22 / #24 addons on the estimate</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ TAB J — COMFORT COMPLAINT (NEW) ═══════════════ -->
+  <div id="tab-j" class="tab-content">
+    <div class="complaint-header">
+      <div class="complaint-icon">😓</div>
+      <div>
+        <div class="complaint-name">J — 🆕 Comfort Complaint (Clammy / Uneven Rooms)</div>
+        <div class="complaint-meta">Houston-critical · 152 dehumidif episodes in Bryan's archive</div>
+      </div>
+      <span class="status-badge new">🆕 ENTIRELY NEW FLOW</span>
+    </div>
+
+    <div style="text-align:center;">
+      <div class="node new"><div class="node-tag">🆕 STEP 1 (NEW)</div><div class="node-title">Which comfort issue?</div></div>
+      <div class="branch-vconn"><span class="vline new"></span></div>
+    </div>
+
+    <div class="branch-row">
+      <div class="branch-col">
+        <span class="branch-label bl-new">Clammy / sticky</span>
+        <div class="branch-vconn"><span class="vline new"></span></div>
+        <div class="node new"><div class="node-tag">🆕 STEP 2</div><div class="node-title">Read return wet-bulb + indoor RH</div></div>
+        <div class="branch-vconn"><span class="vline new"></span></div>
+        <div class="node new"><div class="node-tag">🆕 STEP 3</div><div class="node-title">Blower speed + Manual J check</div></div>
+        <div class="branch-vconn"><span class="vline new"></span></div>
+        <div class="node card-new"><div class="node-tag">🆕 CARD #22</div><div class="node-title">Latent Capacity Deficit</div><div class="node-sub">Oversized / vent load / duct-return leak / no dehumidifier</div></div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label bl-new">Rooms cold/hot</span>
+        <div class="branch-vconn"><span class="vline new"></span></div>
+        <div class="node crosscut"><div class="node-tag">🆕 CROSS-CUT</div><div class="node-title">Airflow Assessment → per-room CFM</div></div>
+        <div class="branch-vconn"><span class="vline new"></span></div>
+        <div class="branch-row">
+          <div class="branch-col">
+            <span class="branch-label bl-new">TESP high</span>
+            <div class="branch-vconn"><span class="vline new"></span></div>
+            <div class="node card-new"><div class="node-tag">🆕 CARD #20</div><div class="node-title">Under-Airflow</div></div>
+          </div>
+          <div class="branch-col">
+            <span class="branch-label bl-new">Duct leak on return</span>
+            <div class="branch-vconn"><span class="vline live"></span></div>
+            <div class="node card-live"><div class="node-tag">✅ CARD #13</div><div class="node-title">Ductwork Leak (expanded)</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="branch-col">
+        <span class="branch-label bl-new">Short-cycling</span>
+        <div class="branch-vconn"><span class="vline new"></span></div>
+        <div class="node card-new"><div class="node-tag">🆕 CARD #24</div><div class="node-title">System Oversizing</div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════ CROSS-CUTTING SUB-FLOWS ═══════════════════════ -->
+<div class="section-divider">
+  <div class="section-title">🔀 Cross-Cutting Sub-Flows (New — Reusable Across Complaints)</div>
+  <div class="section-sub">These aren't complaint tabs — they're modular diagnostic subroutines triggered from multiple parent flows.</div>
+</div>
+
+<div style="margin: 0 24px;">
+
+  <div class="family-block">
+    <div class="family-title">🆕 🔀 Airflow Assessment Sub-Flow<span class="pill new">TIER 1</span></div>
+    <div class="family-desc">Triggered from: Not Cooling YES (normal suction or high disch) · High Electric Bill (both branches) · Intermittent Shutdown (no hotspot) · Comfort Complaint. Feeds: Card #20 (Under-Airflow) · Card #13 (Ductwork Leak) · Card #14 (Dirty Coil) · Card #24 (Oversizing).</div>
+    <div style="text-align:center;">
+      <div class="node new"><div class="node-tag">🆕 STEP 1</div><div class="node-title">Enter Total External Static Pressure (TESP)</div><div class="node-sub">Design budget: 0.5 in.w.c. residential</div></div>
+      <div class="branch-vconn"><span class="vline new"></span></div>
+      <div class="branch-row">
+        <div class="branch-col">
+          <span class="branch-label bl-ok">TESP ≤ 0.5"</span>
+          <div class="branch-vconn"><span class="vline live"></span></div>
+          <div class="node escalate"><div class="node-tag">RETURN</div><div class="node-title">Airflow not the constraint — continue parent flow</div></div>
+        </div>
+        <div class="branch-col">
+          <span class="branch-label bl-new">TESP &gt; 0.5"</span>
+          <div class="branch-vconn"><span class="vline new"></span></div>
+          <div class="node new"><div class="node-tag">🆕 STEP 2</div><div class="node-title">4-point static profile</div><div class="node-sub">Before/after filter · Before/after coil</div></div>
+          <div class="branch-vconn"><span class="vline new"></span></div>
+          <div class="branch-row">
+            <div class="branch-col">
+              <span class="branch-label bl-new">Highest drop = filter</span>
+              <div class="branch-vconn"><span class="vline live"></span></div>
+              <div class="node card-live"><div class="node-tag">✅ CARD #2</div><div class="node-title">Dirty Filter (or undersized)</div></div>
+            </div>
+            <div class="branch-col">
+              <span class="branch-label bl-new">Highest = coil</span>
+              <div class="branch-vconn"><span class="vline live"></span></div>
+              <div class="node card-live"><div class="node-tag">✅ CARD #14</div></div>
+            </div>
+            <div class="branch-col">
+              <span class="branch-label bl-new">Distributed → duct</span>
+              <div class="branch-vconn"><span class="vline live"></span></div>
+              <div class="node card-live"><div class="node-tag">✅ CARD #13</div></div>
+            </div>
+            <div class="branch-col">
+              <span class="branch-label bl-new">System-wide restriction</span>
+              <div class="branch-vconn"><span class="vline new"></span></div>
+              <div class="node card-new"><div class="node-tag">🆕 CARD #20</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="family-block">
+    <div class="family-title">🆕 🔀 Vacuum Validation Sub-Flow<span class="pill new">TIER 1</span></div>
+    <div class="family-desc">Injected before "charge system" action on: Card #8 Leak · Card #10 Family (any compressor) · Card #12 Reversing Valve · Card #15 Family (any metering). Prevents silent-compounding failure from residual moisture / undetected small leak.</div>
+    <div style="text-align:center;">
+      <div class="node new"><div class="node-tag">🆕 STEP 1</div><div class="node-title">Enter final micron reading before opening service valves</div></div>
+      <div class="branch-vconn"><span class="vline new"></span></div>
+      <div class="branch-row">
+        <div class="branch-col">
+          <span class="branch-label bl-new">≤ 500 µm</span>
+          <div class="branch-vconn"><span class="vline new"></span></div>
+          <div class="node new"><div class="node-tag">🆕 STEP 2</div><div class="node-title">Standing decay test (15 min)</div></div>
+          <div class="branch-vconn"><span class="vline new"></span></div>
+          <div class="branch-row">
+            <div class="branch-col">
+              <span class="branch-label bl-ok">Rise ≤ 100 µm</span>
+              <div class="branch-vconn"><span class="vline live"></span></div>
+              <div class="node card-live"><div class="node-tag">PASS</div><div class="node-title">Proceed with charge</div></div>
+            </div>
+            <div class="branch-col">
+              <span class="branch-label bl-escalate">Rise &gt; 100 µm</span>
+              <div class="branch-vconn"><span class="vline"></span></div>
+              <div class="node escalate"><div class="node-tag">HOLD</div><div class="node-title">Do not charge. Leak or moisture. Return to leak search or replace filter dryer.</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="branch-col">
+          <span class="branch-label bl-escalate">&gt; 500 µm</span>
+          <div class="branch-vconn"><span class="vline"></span></div>
+          <div class="node escalate"><div class="node-tag">HOLD</div><div class="node-title">Continue evacuation or replace vacuum pump oil</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="family-block" style="border-color:#9b59b6;">
+    <div class="family-title" style="color:#c070f0;">Heat Exchanger / Combustion / CO — PERMANENTLY EXCLUDED<span class="pill new">NOT A HOLD</span></div>
+    <div class="family-desc">Card #21 and the Combustion Safety Check sub-flow are permanently removed from SnapAI (Shoab, 2026-07-06) — a permanent no-build, not a hold. SnapAI does not diagnose heat exchangers, combustion, or carbon monoxide; any such concern is referred to a separate licensed in-person safety inspection. Legal basis (Alfred, US/TX): a false-negative on a cracked heat exchanger carries carbon-monoxide personal-injury / wrongful-death exposure categorically beyond any mechanical fault card; back-side and hairline seam cracks are not reliably detectable from a photo, so a &quot;clean&quot; output would be an unsupportable safety representation; and the exposure is uninsurable without a specific rider. Structural exclusion is the conservative, defensible posture and matches the PDF safety-inspection disclaimer in the legal-safe wordings.</div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════ CARD FAMILIES ═══════════════════════ -->
+<div class="section-divider">
+  <div class="section-title">👨‍👩‍👧‍👦 New Card Families (Card #10 + Card #15 expansions)</div>
+  <div class="section-sub">Two existing single cards expand into discriminated sub-mode families in v7.</div>
+</div>
+
+<div style="margin: 0 24px;">
+
+  <div class="family-block">
+    <div class="family-title">🆕 Card #10 Family — Compressor Sub-Modes (5 members)<span class="pill new">TIER 1</span></div>
+    <div class="family-desc">Bryan: <em>"A junior tech running SnapAI diagnoses all six modes as 'Compressor Failure — replace.' That's a $2-4K wrong call on modes a-e."</em></div>
+    <div style="text-align:center;">
+      <div class="node card-live"><div class="node-tag">✅ CARD #10 (LIVE)</div><div class="node-title">Compressor Failure — catch-all</div></div>
+      <div class="branch-vconn"><span class="vline new"></span></div>
+      <div class="node new"><div class="node-tag">🆕 EXPAND INTO</div><div class="node-title">5 discriminated sub-modes</div></div>
+      <div class="branch-vconn"><span class="vline new"></span></div>
+      <div class="branch-row">
+        <div class="branch-col">
+          <span class="branch-label bl-new">Grounded</span>
+          <div class="branch-vconn"><span class="vline new"></span></div>
+          <div class="node card-new"><div class="node-tag">🆕 CARD #10a</div><div class="node-title">Grounded Compressor</div><div class="node-sub">Winding-to-ground R test + ambient flag</div></div>
+        </div>
+        <div class="branch-col">
+          <span class="branch-label bl-new">Mechanical</span>
+          <div class="branch-vconn"><span class="vline new"></span></div>
+          <div class="node card-new"><div class="node-tag">🆕 CARD #10b</div><div class="node-title">Mechanical / Locked Rotor</div></div>
+        </div>
+        <div class="branch-col">
+          <span class="branch-label bl-new">Compression ratio</span>
+          <div class="branch-vconn"><span class="vline new"></span></div>
+          <div class="node card-new"><div class="node-tag">🆕 CARD #10c</div><div class="node-title">Compression Ratio Problem</div><div class="node-sub">Needs SH + SC + amp</div></div>
+        </div>
+        <div class="branch-col">
+          <span class="branch-label bl-new">Start components</span>
+          <div class="branch-vconn"><span class="vline new"></span></div>
+          <div class="node card-new"><div class="node-tag">🆕 CARD #10d</div><div class="node-title">Start Component Failure</div><div class="node-sub">Hard-start / start cap / potential relay</div></div>
+        </div>
+        <div class="branch-col">
+          <span class="branch-label bl-new">Crankcase heater</span>
+          <div class="branch-vconn"><span class="vline new"></span></div>
+          <div class="node card-new"><div class="node-tag">🆕 CARD #10e</div><div class="node-title">Crankcase Heater Failure</div><div class="node-sub">Slugging on startup</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="family-block">
+    <div class="family-title">🆕 Card #15 Family — Metering Device Sub-Modes (4 members)<span class="pill new">TIER 2</span></div>
+    <div class="family-desc">Bryan: <em>"The TXV's job is to control superheat — but if it's not given its prerequisites (subcool present, no line restriction, correct bulb position/charge), it can't do what it's supposed to do."</em></div>
+    <div style="text-align:center;">
+      <div class="node card-live"><div class="node-tag">✅ CARD #15 (LIVE)</div><div class="node-title">Fixed Orifice / Piston Mismatch</div></div>
+      <div class="branch-vconn"><span class="vline new"></span></div>
+      <div class="node new"><div class="node-tag">🆕 EXPAND INTO</div><div class="node-title">4 discriminated sub-modes (SH/SC-driven)</div></div>
+      <div class="branch-vconn"><span class="vline new"></span></div>
+      <div class="branch-row">
+        <div class="branch-col">
+          <span class="branch-label bl-ok">Orifice</span>
+          <div class="branch-vconn"><span class="vline live"></span></div>
+          <div class="node card-live"><div class="node-tag">✅ CARD #15a</div><div class="node-title">Piston Mismatch (current)</div></div>
+        </div>
+        <div class="branch-col">
+          <span class="branch-label bl-new">TXV bulb loss</span>
+          <div class="branch-vconn"><span class="vline new"></span></div>
+          <div class="node card-new"><div class="node-tag">🆕 CARD #15b</div><div class="node-title">TXV Bulb Loss</div><div class="node-sub">SH 0-3°F, flooding evap</div></div>
+        </div>
+        <div class="branch-col">
+          <span class="branch-label bl-new">TXV hunting</span>
+          <div class="branch-vconn"><span class="vline new"></span></div>
+          <div class="node card-new"><div class="node-tag">🆕 CARD #15c</div><div class="node-title">TXV Hunting</div><div class="node-sub">Oscillating SH</div></div>
+        </div>
+        <div class="branch-col">
+          <span class="branch-label bl-new">EEV controller</span>
+          <div class="branch-vconn"><span class="vline new"></span></div>
+          <div class="node card-new"><div class="node-tag">🆕 CARD #15d</div><div class="node-title">EEV Controller Failure</div><div class="node-sub">Won't step</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function showTab(id, elem) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.ctab').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  elem.classList.add('active');
+}
+</script>
+
+</body>
+</html>

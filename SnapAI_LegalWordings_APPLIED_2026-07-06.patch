@@ -1,0 +1,1483 @@
+diff --git a/scopesnap-api/api/clerk_webhook.py b/scopesnap-api/api/clerk_webhook.py
+index c32efb5..1dea1f3 100644
+--- a/scopesnap-api/api/clerk_webhook.py
++++ b/scopesnap-api/api/clerk_webhook.py
+@@ -13,6 +13,7 @@ Dev mode: Accepts unsigned webhooks if CLERK_WEBHOOK_SECRET is not set.
+ 
+ import html as _html_mod
+ import json
++from datetime import datetime, timezone
+ from fastapi import APIRouter, Depends, HTTPException, Request, status
+ from sqlalchemy.ext.asyncio import AsyncSession
+ from sqlalchemy import select
+@@ -321,6 +322,14 @@ async def get_me(
+             "email": auth.company.email,
+             "license_number": auth.company.license_number,
+             "warranty_text": getattr(auth.company, "warranty_text", None),
++            # Onboarding-gate fields the frontend guard reads to decide whether
++            # the contractor still needs to finish /onboarding.
++            "attestation_accepted_at": (
++                auth.company.attestation_accepted_at.isoformat()
++                if getattr(auth.company, "attestation_accepted_at", None)
++                else None
++            ),
++            "terms_ack_version": getattr(auth.company, "terms_ack_version", None),
+         },
+     }
+ 
+@@ -349,7 +358,15 @@ async def update_company(
+     if "email" in body:
+         company.email = body["email"]
+     if "license_number" in body:
+-        company.license_number = body["license_number"]
++        # License # is the core of the contractor gate (C3): a blank/empty
++        # value must never pass. Reject with 422 so a homeowner can't clear it.
++        lic = body["license_number"]
++        if lic is None or not str(lic).strip():
++            raise HTTPException(
++                status_code=422,
++                detail="A valid contractor license number is required.",
++            )
++        company.license_number = str(lic).strip()
+     if "address_line1" in body:
+         company.address_line1 = body["address_line1"]
+     if "city" in body:
+@@ -368,6 +385,18 @@ async def update_company(
+         # Empty string normalizes to NULL so no warranty language appears (DEC-088).
+         company.warranty_text = (str(wt).strip() or None) if wt is not None else None
+ 
++    # Contractor onboarding gate (C3). When the owner ticks the attestation
++    # checkbox on the onboarding form we stamp attestation_accepted_at so the
++    # frontend guard stops redirecting them to /onboarding.
++    if "attestation_accepted" in body:
++        if bool(body["attestation_accepted"]):
++            company.attestation_accepted_at = datetime.now(timezone.utc)
++        else:
++            company.attestation_accepted_at = None
++    if "terms_ack_version" in body:
++        tav = body["terms_ack_version"]
++        company.terms_ack_version = (str(tav).strip() or None) if tav is not None else None
++
+     await db.commit()
+ 
+     return {
+@@ -379,5 +408,11 @@ async def update_company(
+             "email": company.email,
+             "license_number": company.license_number,
+             "warranty_text": company.warranty_text,
++            "attestation_accepted_at": (
++                company.attestation_accepted_at.isoformat()
++                if company.attestation_accepted_at
++                else None
++            ),
++            "terms_ack_version": company.terms_ack_version,
+         }
+     }
+diff --git a/scopesnap-api/db/migrations/versions/045_company_onboarding_gate.py b/scopesnap-api/db/migrations/versions/045_company_onboarding_gate.py
+new file mode 100644
+index 0000000..921d6e7
+--- /dev/null
++++ b/scopesnap-api/db/migrations/versions/045_company_onboarding_gate.py
+@@ -0,0 +1,53 @@
++"""Add contractor onboarding-gate columns to companies (gate C3)
++
++The contractor onboarding GATE ensures a homeowner can't just sign up with a
++Gmail and reach the app. Two nullable columns back it:
++
++  * ``attestation_accepted_at`` -- TIMESTAMPTZ, NULL by default. Stamped with
++    now() when the owner ticks the "I'm a licensed HVAC contractor…" attestation
++    on the onboarding form. The frontend guard treats a NULL value (or a blank
++    ``license_number``) as "onboarding incomplete" and redirects to /onboarding.
++  * ``terms_ack_version`` -- VARCHAR(20), NULL by default. Records which version
++    of the ToS / decision-support acknowledgement the owner accepted (e.g. "v1").
++
++Both nullable with no server_default, so existing companies are unaffected until
++their owner completes the gate.
++
++Idempotent: ADD/DROP COLUMN IF [NOT] EXISTS guards (same style as 041/043).
++
++Revision ID: 045
++Revises: 044
++"""
++from __future__ import annotations
++
++from typing import Union
++
++from alembic import op
++from sqlalchemy import text
++
++revision: str = "045"
++down_revision: Union[str, None] = "044"
++branch_labels = None
++depends_on = None
++
++
++def upgrade() -> None:
++    bind = op.get_bind()
++    bind.execute(text(
++        'ALTER TABLE "companies" '
++        'ADD COLUMN IF NOT EXISTS "attestation_accepted_at" TIMESTAMPTZ'
++    ))
++    bind.execute(text(
++        'ALTER TABLE "companies" '
++        'ADD COLUMN IF NOT EXISTS "terms_ack_version" VARCHAR(20)'
++    ))
++
++
++def downgrade() -> None:
++    bind = op.get_bind()
++    bind.execute(text(
++        'ALTER TABLE "companies" DROP COLUMN IF EXISTS "terms_ack_version"'
++    ))
++    bind.execute(text(
++        'ALTER TABLE "companies" DROP COLUMN IF EXISTS "attestation_accepted_at"'
++    ))
+diff --git a/scopesnap-api/db/models.py b/scopesnap-api/db/models.py
+index 3f58df6..f8fb110 100644
+--- a/scopesnap-api/db/models.py
++++ b/scopesnap-api/db/models.py
+@@ -79,6 +79,18 @@ class Company(Base):
+     # NULL/blank = no warranty language appears anywhere on the report.
+     warranty_text: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+ 
++    # Contractor onboarding GATE (C3): a homeowner can't just sign up with a
++    # Gmail. attestation_accepted_at is stamped when the owner ticks the
++    # "I'm a licensed HVAC contractor…" attestation on the onboarding form.
++    # terms_ack_version records which version of the ToS / decision-support
++    # acknowledgement they accepted (e.g. "v1"). Both NULL until the gate is
++    # completed; the frontend guard treats a NULL attestation_accepted_at (or a
++    # blank license_number) as "onboarding incomplete" and redirects to /onboarding.
++    attestation_accepted_at: Mapped[Optional[datetime]] = mapped_column(
++        DateTime(timezone=True), nullable=True,
++    )
++    terms_ack_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
++
+     # Trusted server-side market ('US'|'PK'). Authenticated requests resolve
+     # market-dependent tables from THIS, never the spoofable X-Market header
+     # (audit finding #4, migration 043). Existing/legacy rows default to 'US'.
+diff --git a/scopesnap-api/prompts/cascade_prompts.py b/scopesnap-api/prompts/cascade_prompts.py
+index ac5aa79..efd93a4 100644
+--- a/scopesnap-api/prompts/cascade_prompts.py
++++ b/scopesnap-api/prompts/cascade_prompts.py
+@@ -44,7 +44,10 @@ def format_yolo_findings(yolo_result) -> str:
+ 
+ 
+ TRACK_A_CONFLICT_PROMPT = """\
+-You are an expert HVAC fault diagnosis system acting as a senior reviewer.
++You are a decision-support assistant for licensed HVAC technicians. You provide preliminary
++findings for the technician's independent verification. Never present findings as a certified
++diagnosis. Every output is preliminary and requires the licensed technician's verification and
++final determination.
+ 
+ SENSOR MODEL DIAGNOSIS:
+   Fault detected: {sensor_fault}
+@@ -76,7 +79,10 @@ Return ONLY this JSON structure — no other text:
+ """
+ 
+ TRACK_B_UNCERTAIN_PROMPT = """\
+-You are an expert HVAC fault diagnosis system acting as a senior reviewer.
++You are a decision-support assistant for licensed HVAC technicians. You provide preliminary
++findings for the technician's independent verification. Never present findings as a certified
++diagnosis. Every output is preliminary and requires the licensed technician's verification and
++final determination.
+ 
+ VISUAL MODEL PRE-SCAN (YOLO — below confidence threshold, needs verification):
+ {yolo_findings}
+diff --git a/scopesnap-api/prompts/homeowner_narrative.py b/scopesnap-api/prompts/homeowner_narrative.py
+index b1e75fa..a3e1aae 100644
+--- a/scopesnap-api/prompts/homeowner_narrative.py
++++ b/scopesnap-api/prompts/homeowner_narrative.py
+@@ -11,27 +11,25 @@ The narrative must be warm, clear, jargon-free, and under 40 words.
+ 
+ # Template string — fill with .format() before sending to Gemini
+ HOMEOWNER_NARRATIVE_PROMPT = """
+-You are writing for a homeowner who knows nothing about HVAC. Be warm,
+-clear, and honest. No jargon. No scare tactics. No sales pressure.
++You are writing a plain-language summary for a homeowner. This summary supports the
++licensed HVAC contractor's professional recommendations -- it does not replace them.
++
++Never present findings as a diagnosis. Never use medical analogies. Never make specific
++efficiency, cost, or lifespan claims. Attribute all recommendations to the licensed contractor.
+ 
+ Equipment: {brand} {model}, installed {install_year} ({age} years old).
+-Condition: {overall_condition}.
+-Issues found: {issues_plain_english}
++Preliminary contractor assessment: {overall_condition}.
++Items your contractor flagged for review: {issues_plain_english}
+ 
+ Write exactly 2 sentences:
+-1. What the equipment is and its general health (think "doctor visit summary")
+-2. The most important thing they should know right now
+-
+-Keep it under 40 words total. Use "your" not "the". Be specific not vague.
+-
+-Example good output: "Your Carrier AC is 9 years old and in fair condition.
+-The indoor coil has corrosion that's reducing your cooling efficiency by
+-about 15-20% — worth addressing before summer."
++1. What the equipment is and what your contractor observed (describe what was observed for
++   review; do not state a definitive condition).
++2. What your contractor recommends you discuss with them next.
+ 
+-Example bad output: "Your HVAC system has been assessed and some issues
+-were found that may require attention in the near future."
++Under 40 words total. Use "your". Attribute recommendations to "your contractor". Never state
++that SnapAI diagnosed or determined anything.
+ 
+-RESPOND WITH ONLY the 2 sentences — no JSON, no extra text.
++RESPOND WITH ONLY the 2 sentences -- no JSON, no extra text.
+ """
+ 
+ 
+@@ -80,5 +78,5 @@ def build_narrative_prompt(
+ 
+ 
+ # ── Prompt Metadata ───────────────────────────────────────────────────────────
+-NARRATIVE_PROMPT_VERSION = "1.0.0"
++NARRATIVE_PROMPT_VERSION = "1.1.0"  # 2026-07-06 decision-support rewrite (legal-safe wordings v1)
+ NARRATIVE_MODEL = "gemini-2.5-flash"  # Use flash-lite for cost savings in production
+diff --git a/scopesnap-api/services/email.py b/scopesnap-api/services/email.py
+index b4d3c83..920b8af 100644
+--- a/scopesnap-api/services/email.py
++++ b/scopesnap-api/services/email.py
+@@ -123,8 +123,8 @@ class ConsoleSender(BaseEmailSender):
+                 f"Hi {customer_name}, just checking in on your HVAC assessment. View it here: {report_url}"
+             ),
+             "48h_reminder": (
+-                "Your HVAC assessment is waiting — see your 5-year savings",
+-                f"Hi {customer_name}, your HVAC assessment is still available. Don't let this wait — HVAC issues get worse. View: {report_url}"
++                "Your service report from your contractor is ready",
++                f"Hi {customer_name}, your service report is available to view: {report_url}"
+             ),
+             "7d_last_chance": (
+                 f"Last reminder: Your HVAC assessment from {company_name}",
+@@ -260,13 +260,13 @@ class ResendSender(BaseEmailSender):
+         # Templates exist here for when they are activated
+         subjects = {
+             "24h_reminder": f"{company_name} sent you an equipment assessment",
+-            "48h_reminder": "Your HVAC assessment is waiting — see your 5-year savings",
++            "48h_reminder": "Your service report from your contractor is ready",
+             "7d_last_chance": f"Last reminder: Your HVAC assessment from {company_name}",
+         }
+         messages = {
+             "24h_reminder": "We wanted to check in on the HVAC assessment we prepared for you.",
+-            "48h_reminder": "HVAC issues tend to worsen over time. Reviewing your assessment now could save you money.",
+-            "7d_last_chance": "This is our last follow-up. Please review your assessment when you have a moment.",
++            "48h_reminder": "Your service report is available whenever you'd like to review it.",
++            "7d_last_chance": "Your service report is still available to view.",
+         }
+         body = messages.get(template, "Your HVAC assessment is still available.")
+         html = f"""
+diff --git a/scopesnap-web/app/(app)/layout.tsx b/scopesnap-web/app/(app)/layout.tsx
+index 564f0fe..ec157b5 100644
+--- a/scopesnap-web/app/(app)/layout.tsx
++++ b/scopesnap-web/app/(app)/layout.tsx
+@@ -54,6 +54,18 @@ export default async function AppLayout({
+             // (webhook may be delayed) — send to /assess for the wow moment.
+             // The Clerk webhook will create their record in the background.
+             redirect("/assess");
++          } else if (meRes.status === 200) {
++            // Contractor onboarding GATE (C3): a company record exists but the
++            // owner hasn't completed the gate — no license number, or no
++            // attestation timestamp. Force them through /onboarding. This path
++            // is in skipPaths, so there is no redirect loop.
++            const me = await meRes.json().catch(() => null);
++            const company = me?.company;
++            const licenseMissing = !company?.license_number || !String(company.license_number).trim();
++            const attestationMissing = !company?.attestation_accepted_at;
++            if (licenseMissing || attestationMissing) {
++              redirect("/onboarding");
++            }
+           }
+         }
+       }
+diff --git a/scopesnap-web/app/(app)/onboarding/page.tsx b/scopesnap-web/app/(app)/onboarding/page.tsx
+index db4f263..4a46e39 100644
+--- a/scopesnap-web/app/(app)/onboarding/page.tsx
++++ b/scopesnap-web/app/(app)/onboarding/page.tsx
+@@ -59,6 +59,9 @@ export default function OnboardingPage() {
+   // commented out below. Re-enable when multi-trade support is ready.
+   const [selectedTrade, setSelectedTrade] = useState<Trade | null>("hvac");
+   const [logoPreview, setLogoPreview] = useState<string | null>(null);
++  // Contractor onboarding gate (C3): both must be true to launch.
++  const [attestation, setAttestation] = useState(false);
++  const [sec2Ack, setSec2Ack] = useState(false);
+ 
+   const [profile, setProfile] = useState<CompanyProfile>({
+     name: "",
+@@ -129,6 +132,14 @@ export default function OnboardingPage() {
+       setError("Company name is required");
+       return;
+     }
++    if (!profile.license_number.trim()) {
++      setError("A valid contractor license number is required");
++      return;
++    }
++    if (!attestation || !sec2Ack) {
++      setError("Please confirm both acknowledgements to continue");
++      return;
++    }
+ 
+     setSaving(true);
+     setError(null);
+@@ -142,6 +153,8 @@ export default function OnboardingPage() {
+           phone: profile.phone,
+           license_number: profile.license_number,
+           trade: selectedTrade,
++          attestation_accepted: attestation,
++          terms_ack_version: "v1",
+         }),
+       });
+       if (!r.ok) {
+@@ -157,25 +170,6 @@ export default function OnboardingPage() {
+     }
+   };
+ 
+-  const handleSkip = async () => {
+-    setSaving(true);
+-    try {
+-      const headers = await getAuthHeaders();
+-      await fetch(`${API_URL}/api/auth/me/company`, {
+-        method: "PATCH",
+-        headers,
+-        body: JSON.stringify({
+-          trade: selectedTrade,
+-        }),
+-      });
+-      router.push("/dashboard");
+-    } catch (e: unknown) {
+-      setError(e instanceof Error ? e.message : "Skip failed");
+-    } finally {
+-      setSaving(false);
+-    }
+-  };
+-
+   // ── Render ──────────────────────────────────────────────────────────────────
+ 
+   // 2 actual form steps (welcome is pre-step, not counted):
+@@ -386,6 +380,42 @@ export default function OnboardingPage() {
+                   </div>
+                 </div>
+ 
++                {/* Contractor gate (C3) — both required to launch */}
++                <label className="flex items-start gap-3 cursor-pointer">
++                  <input
++                    type="checkbox"
++                    checked={attestation}
++                    onChange={(e) => setAttestation(e.target.checked)}
++                    className="mt-0.5 h-4 w-4 rounded border-surface-border text-brand-green focus:ring-brand-green/30"
++                  />
++                  <span className="text-xs text-text-secondary leading-relaxed">
++                    I'm a licensed HVAC contractor, or an authorized employee of
++                    one, using SnapAI in my business.
++                  </span>
++                </label>
++
++                <label className="flex items-start gap-3 cursor-pointer">
++                  <input
++                    type="checkbox"
++                    checked={sec2Ack}
++                    onChange={(e) => setSec2Ack(e.target.checked)}
++                    className="mt-0.5 h-4 w-4 rounded border-surface-border text-brand-green focus:ring-brand-green/30"
++                  />
++                  <span className="text-xs text-text-secondary leading-relaxed">
++                    I understand SnapAI is a decision-support tool for my
++                    professional use. It{" "}
++                    <a
++                      href="/tos"
++                      target="_blank"
++                      rel="noopener noreferrer"
++                      className="text-brand-green underline hover:text-brand-green-dark"
++                    >
++                      doesn't diagnose equipment
++                    </a>{" "}
++                    — I do, as the licensed pro.
++                  </span>
++                </label>
++
+                 {/* Logo Upload */}
+                 <div>
+                   <label className="text-xs font-semibold text-text-secondary uppercase tracking-wide block mb-2">
+@@ -433,20 +463,18 @@ export default function OnboardingPage() {
+                 </button>
+                 <button
+                   onClick={handleCompanyInfoSave}
+-                  disabled={saving || !profile.name.trim()}
++                  disabled={
++                    saving ||
++                    !profile.name.trim() ||
++                    !profile.license_number.trim() ||
++                    !attestation ||
++                    !sec2Ack
++                  }
+                   className="flex-1 bg-brand-green text-white font-bold py-3 rounded-lg text-sm shadow-green hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                 >
+                   {saving ? "Launching..." : "Launch SnapAI 🚀"}
+                 </button>
+               </div>
+-
+-              <button
+-                onClick={handleSkip}
+-                disabled={saving}
+-                className="w-full text-center text-xs text-text-secondary hover:text-text-primary py-2 transition-colors"
+-              >
+-                I'll finish this later
+-              </button>
+             </div>
+ 
+             <DotIndicators />
+diff --git a/scopesnap-web/app/d/[share_token]/page.tsx b/scopesnap-web/app/d/[share_token]/page.tsx
+index 55834e9..57d2750 100644
+--- a/scopesnap-web/app/d/[share_token]/page.tsx
++++ b/scopesnap-web/app/d/[share_token]/page.tsx
+@@ -38,8 +38,8 @@ export default function PublicSharePage() {
+         trackEvent("diagnosis_share_opened_externally", { share_token });
+       })
+       .catch((err) => {
+-        if (err.message === "not_found") setError("This diagnosis link is not valid or has expired.");
+-        else setError("Could not load the shared diagnosis.");
++        if (err.message === "not_found") setError("This assessment link is not valid or has expired.");
++        else setError("Could not load the shared assessment.");
+       })
+       .finally(() => setLoading(false));
+   }, [share_token]);
+@@ -66,7 +66,7 @@ export default function PublicSharePage() {
+       {/* Minimal public header */}
+       <div style={{ borderBottom: "1px solid #e2e8f0", padding: "12px 20px", display: "flex", alignItems: "center", gap: 10 }}>
+         <span style={{ fontWeight: 700, fontSize: 15, color: "#0f172a" }}>SnapAI</span>
+-        <span style={{ fontSize: 12, color: "#94a3b8" }}>Diagnostic Report</span>
++        <span style={{ fontSize: 12, color: "#94a3b8" }}>Contractor Assessment Report</span>
+       </div>
+       <FaultResolutionScreen data={data} mode="public" />
+     </div>
+diff --git a/scopesnap-web/app/homeowner/page.tsx b/scopesnap-web/app/homeowner/page.tsx
+deleted file mode 100755
+index ce6ac8e..0000000
+--- a/scopesnap-web/app/homeowner/page.tsx
++++ /dev/null
+@@ -1,290 +0,0 @@
+-/**
+- * SnapAI -- /homeowner landing page (D.2)
+- * Homeowner-targeted landing page for cat ad traffic and homeowner-facing posts.
+- * Destination: snapai.mainnov.tech/homeowner
+- *
+- * PostHog: fires "homeowner_landing_visited" on mount
+- * CTA: Share buttons (WhatsApp, email, copy link) -- NO sign-up form
+- * Contractors sign up; homeowners share this page with their contractor.
+- */
+-
+-"use client";
+-
+-import { useEffect, useState } from "react";
+-import Link from "next/link";
+-import { usePostHog } from "posthog-js/react";
+-
+-export default function HomeownerLandingPage() {
+-  const posthog = usePostHog();
+-  const [copied, setCopied] = useState(false);
+-
+-  // PostHog: fire homeowner_landing_visited + capture UTM params
+-  useEffect(() => {
+-    if (typeof window === "undefined") return;
+-    const params = new URLSearchParams(window.location.search);
+-    posthog?.capture("homeowner_landing_visited", {
+-      utm_source: params.get("utm_source"),
+-      utm_medium: params.get("utm_medium"),
+-      utm_campaign: params.get("utm_campaign"),
+-      utm_content: params.get("utm_content"),
+-      referrer: document.referrer || null,
+-    });
+-  }, [posthog]);
+-
+-  const pageUrl = typeof window !== "undefined" ? window.location.href : "https://snapai.mainnov.tech/homeowner";
+-  const shareText = "Ask your HVAC contractor if they use SnapAI — it shows you three repair options with real prices before they leave.";
+-
+-  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + " " + pageUrl)}`;
+-  const emailUrl = `mailto:?subject=${encodeURIComponent("A clearer HVAC estimate — ask your contractor about this")}&body=${encodeURIComponent(shareText + "\n\n" + pageUrl)}`;
+-
+-  const handleCopyLink = async () => {
+-    try {
+-      await navigator.clipboard.writeText(pageUrl);
+-      setCopied(true);
+-      posthog?.capture("homeowner_share_clicked", { method: "copy" });
+-      setTimeout(() => setCopied(false), 2500);
+-    } catch {
+-      // clipboard unavailable
+-    }
+-  };
+-
+-  const expectations = [
+-    {
+-      number: "01",
+-      title: "A diagnostic report explaining what is wrong",
+-      description:
+-        "Your contractor photographs the unit and follows a guided fault-detection process. The app identifies the problem — no guessing, no vague answers.",
+-    },
+-    {
+-      number: "02",
+-      title: "Three repair options at different price points",
+-      description:
+-        "You see three context-aware options — each priced against your unit’s specific condition. A quick fix, a deeper repair, or a replacement, with one honest recommendation marked and no upsell pressure. Real prices. Your call which one to choose.",
+-    },
+-    {
+-      number: "03",
+-      title: "A 5-year outlook showing future repair risk",
+-      description:
+-        "Each option shows the projected repair cost and energy savings over the next five years. You see the full picture before you decide.",
+-    },
+-  ];
+-
+-  return (
+-    <main className="min-h-screen bg-surface-bg text-text-primary font-sans">
+-
+-      {/* ── Navigation ─────────────────────────────────────────────────────── */}
+-      <nav className="sticky top-0 z-50 bg-surface-bg border-b border-surface-border">
+-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+-          <div className="flex items-center gap-2">
+-            <div
+-              className="w-7 h-7 rounded-md flex items-center justify-center text-white text-sm font-bold"
+-              style={{ backgroundColor: "#1a8754" }}
+-            >
+-              S
+-            </div>
+-            <span className="font-semibold text-text-primary tracking-tight">SnapAI</span>
+-          </div>
+-          <Link
+-            href="/dashboard"
+-            className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+-          >
+-            Contractors: Sign In
+-          </Link>
+-        </div>
+-      </nav>
+-
+-      {/* ── Hero ───────────────────────────────────────────────────────────── */}
+-      <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-16 pb-12 text-center">
+-        <div className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide uppercase text-brand-green bg-brand-green-light px-3 py-1.5 rounded-full mb-6">
+-          For Houston Homeowners
+-        </div>
+-
+-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-text-primary leading-tight mb-5 max-w-3xl mx-auto">
+-          Three options. Real prices. No surprises.
+-        </h1>
+-
+-        <p className="text-lg sm:text-xl text-text-secondary max-w-2xl mx-auto mb-8 leading-relaxed">
+-          When your HVAC contractor uses SnapAI, you get a clear written estimate with three
+-          repair options before they leave. You see what is wrong, what each fix costs, and
+-          what happens if you wait.
+-        </p>
+-
+-        <p className="text-sm text-text-secondary max-w-xl mx-auto">
+-          Ask your contractor if they use SnapAI.
+-          If they do not, share this page with them.
+-        </p>
+-      </section>
+-
+-      {/* ── What to Expect ─────────────────────────────────────────────────── */}
+-      <section className="bg-surface-card border-y border-surface-border py-16">
+-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+-          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4">
+-            What you get when your contractor uses SnapAI
+-          </h2>
+-          <p className="text-center text-text-secondary mb-12 max-w-xl mx-auto text-sm">
+-            No more "I will call you with a price." No more waiting two days for a quote.
+-            No more wondering if you are being overcharged.
+-          </p>
+-
+-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+-            {expectations.map((item) => (
+-              <div key={item.number} className="flex flex-col">
+-                <div className="text-3xl font-bold text-brand-green mb-3 font-mono">
+-                  {item.number}
+-                </div>
+-                <h3 className="text-base font-semibold text-text-primary mb-2">
+-                  {item.title}
+-                </h3>
+-                <p className="text-sm text-text-secondary leading-relaxed">
+-                  {item.description}
+-                </p>
+-              </div>
+-            ))}
+-          </div>
+-          <p className="text-sm text-text-secondary mt-8 text-center max-w-lg mx-auto leading-relaxed">
+-            Your contractor’s SnapAI estimate marks one option as ★️ Recommended based on your unit’s age and condition — sometimes the quick fix is right, sometimes the deeper repair, sometimes replacement.
+-          </p>
+-        </div>
+-      </section>
+-
+-      {/* ── Sample Report Preview ──────────────────────────────────────────── */}
+-      <section className="max-w-5xl mx-auto px-4 sm:px-6 py-16">
+-        <h2 className="text-2xl font-bold text-center mb-10">
+-          What the estimate looks like
+-        </h2>
+-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+-          {[
+-            {
+-              tier: "Quick Fix",
+-              label: "Quick fix",
+-              color: "text-text-primary",
+-              bg: "bg-surface-card",
+-              border: "border-surface-border",
+-              description: "Replace the failed component. Gets you running today.",
+-            },
+-            {
+-              tier: "Smart Repair",
+-              label: "Fix + prevent",
+-              color: "text-brand-green",
+-              bg: "bg-brand-green-light",
+-              border: "border-brand-green",
+-              description: "Fix the fault and address the root cause. Recommended.",
+-              recommended: true,
+-            },
+-            {
+-              tier: "Replace System",
+-              label: "Most thorough",
+-              color: "text-text-primary",
+-              bg: "bg-surface-card",
+-              border: "border-surface-border",
+-              description: "New system install. Long-term value if unit is aging.",
+-            },
+-          ].map((option) => (
+-            <div
+-              key={option.tier}
+-              className={`${option.bg} border ${option.border} rounded-ss p-5 shadow-ss relative`}
+-            >
+-              {option.recommended && (
+-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-bold text-white bg-brand-green px-3 py-1 rounded-full shadow-green">
+-                  RECOMMENDED
+-                </div>
+-              )}
+-              <div className={`text-lg font-bold ${option.color} mb-0.5`}>{option.tier}</div>
+-              <div className="text-xs text-text-tertiary font-medium mb-3 uppercase tracking-wide">
+-                {option.label}
+-              </div>
+-              <p className="text-xs text-text-secondary leading-relaxed">{option.description}</p>
+-            </div>
+-          ))}
+-        </div>
+-        <p className="text-center text-xs text-text-tertiary mt-6">
+-          Example shown for a 10-year-old unit — labels change based on your unit’s actual age and condition. Every estimate includes parts, labor, and a branded PDF delivered to your inbox.
+-        </p>
+-      </section>
+-
+-      {/* ── Share Section ──────────────────────────────────────────────────── */}
+-      <section className="bg-brand-green py-16">
+-        <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
+-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+-            Share with your contractor
+-          </h2>
+-          <p className="text-green-100 mb-10 leading-relaxed">
+-            Your contractor controls whether you get a SnapAI estimate.
+-            Forward this page and ask them to sign up. It is free for them during beta.
+-          </p>
+-
+-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+-            <a
+-              href={whatsappUrl}
+-              target="_blank"
+-              rel="noopener noreferrer"
+-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-ss bg-white text-brand-green font-semibold text-sm hover:bg-green-50 transition-colors shadow-ss-lg"
+-              onClick={() => posthog?.capture("homeowner_share_clicked", { method: "whatsapp" })}
+-            >
+-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 shrink-0">
+-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+-              </svg>
+-              Share via WhatsApp
+-            </a>
+-
+-            <a
+-              href={emailUrl}
+-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-ss bg-white text-brand-green font-semibold text-sm hover:bg-green-50 transition-colors shadow-ss-lg"
+-              onClick={() => posthog?.capture("homeowner_share_clicked", { method: "email" })}
+-            >
+-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 shrink-0">
+-                <rect x="2" y="4" width="20" height="16" rx="2" />
+-                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+-              </svg>
+-              Share via Email
+-            </a>
+-
+-            <button
+-              onClick={handleCopyLink}
+-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-ss border-2 border-white text-white font-semibold text-sm hover:bg-white hover:text-brand-green transition-colors"
+-            >
+-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 shrink-0">
+-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+-              </svg>
+-              {copied ? "Copied!" : "Copy Link"}
+-            </button>
+-          </div>
+-
+-          <div className="mt-10 pt-8 border-t border-green-600">
+-            <p className="text-green-100 text-sm mb-4">
+-              Are you an HVAC contractor? Sign up free during beta.
+-            </p>
+-            <Link
+-              href="/dashboard"
+-              className="inline-flex items-center justify-center px-6 py-3 rounded-ss border border-white text-white font-medium text-sm hover:bg-green-700 transition-colors"
+-              onClick={() => posthog?.capture("homeowner_contractor_cta_clicked")}
+-            >
+-              Contractor Sign Up -- Free Beta
+-            </Link>
+-          </div>
+-        </div>
+-      </section>
+-
+-      {/* ── Footer ─────────────────────────────────────────────────────────── */}
+-      <footer className="bg-surface-bg border-t border-surface-border py-8">
+-        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-text-tertiary">
+-          <div className="flex items-center gap-2">
+-            <div
+-              className="w-5 h-5 rounded flex items-center justify-center text-white text-xs font-bold"
+-              style={{ backgroundColor: "#1a8754" }}
+-            >
+-              S
+-            </div>
+-            <span>SnapAI by Mainnov</span>
+-          </div>
+-          <div className="flex items-center gap-4">
+-            <Link href="/privacy" className="hover:text-text-secondary transition-colors">Privacy</Link>
+-            <Link href="/dashboard" className="hover:text-text-secondary transition-colors">Contractor Sign In</Link>
+-          </div>
+-        </div>
+-      </footer>
+-
+-    </main>
+-  );
+-}
+diff --git a/scopesnap-web/app/methodology/page.tsx b/scopesnap-web/app/methodology/page.tsx
+new file mode 100644
+index 0000000..c8e37fd
+--- /dev/null
++++ b/scopesnap-web/app/methodology/page.tsx
+@@ -0,0 +1,32 @@
++/**
++ * SnapAI -- Public Methodology page. Defines confidence bands numerically.
++ * TODO (Will / Alfred): supply numeric thresholds for High / Medium / Low bands.
++ */
++export default function MethodologyPage() {
++  return (
++    <main className="min-h-screen bg-surface-bg text-text-primary">
++      <div className="max-w-2xl mx-auto px-6 py-12">
++        <div className="mb-8">
++          <a href="/tech" className="text-brand-green text-sm font-semibold hover:underline">← Back to SnapAI</a>
++          <h1 className="text-3xl font-bold mt-4 mb-2">Our Methodology</h1>
++          <p className="text-text-secondary text-sm">Last updated: TODO</p>
++        </div>
++        <div className="prose prose-sm max-w-none space-y-6 text-text-primary">
++          <section>
++            <h2 className="text-lg font-bold mb-2">Confidence bands</h2>
++            <p className="text-sm text-text-secondary leading-relaxed">Each finding is labeled with a confidence band, defined numerically:</p>
++            <ul className="text-sm text-text-secondary leading-relaxed space-y-2 mt-2">
++              <li><strong className="text-text-primary">High confidence:</strong> TODO (Will/Alfred) numeric threshold.</li>
++              <li><strong className="text-text-primary">Medium confidence:</strong> TODO (Will/Alfred) numeric range.</li>
++              <li><strong className="text-text-primary">Low confidence:</strong> TODO (Will/Alfred) numeric threshold.</li>
++            </ul>
++          </section>
++          <section>
++            <h2 className="text-lg font-bold mb-2">Limitations</h2>
++            <p className="text-sm text-text-secondary leading-relaxed">SnapAI is a decision-support tool for licensed HVAC professionals; findings require on-site verification by a qualified technician. TODO: align with disclaimer copy.</p>
++          </section>
++        </div>
++      </div>
++    </main>
++  );
++}
+diff --git a/scopesnap-web/app/page.tsx b/scopesnap-web/app/page.tsx
+deleted file mode 100644
+index 1f948e8..0000000
+--- a/scopesnap-web/app/page.tsx
++++ /dev/null
+@@ -1,321 +0,0 @@
+-/**
+- * SnapAI — Beta Landing Page
+- * SOW Task 1.5: Replace dev placeholder with proper beta landing page.
+- *
+- * Sections:
+- *  1. Hero — headline, sub-copy, CTA button, BETA badge
+- *  2. How it works — 3 steps (Photo → AI → Send)
+- *  3. Video placeholder — 16:9 embed slot
+- *  4. Early-access signup — email capture → POST /api/waitlist
+- *  5. Footer — minimal, no external links
+- *
+- * Design tokens match tailwind.config.ts (brand-green, surface-bg, etc.)
+- */
+-
+-"use client";
+-
+-import { useState, useEffect } from "react";
+-import Link from "next/link";
+-import { useRouter } from "next/navigation";
+-import { useUser } from "@clerk/nextjs";
+-import InstallPrompt from "@/components/InstallPrompt";
+-
+-export default function LandingPage() {
+-  const { user, isLoaded, isSignedIn } = useUser();
+-  const [email, setEmail] = useState("");
+-  const [submitted, setSubmitted] = useState(false);
+-  const [submitting, setSubmitting] = useState(false);
+-  const [error, setError] = useState("");
+-
+-  const router = useRouter();
+-
+-  // Redirect signed-in users straight to the dashboard
+-  useEffect(() => {
+-    if (isLoaded && isSignedIn) {
+-      router.replace("/dashboard");
+-    }
+-  }, [isLoaded, isSignedIn, router]);
+-
+-  // Display name: first name, or email username, or full email
+-  const displayName = isSignedIn && user
+-    ? (user.firstName || user.primaryEmailAddress?.emailAddress?.split("@")[0] || user.primaryEmailAddress?.emailAddress || "Account")
+-    : null;
+-
+-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+-
+-  async function handleSignup(e: React.FormEvent) {
+-    e.preventDefault();
+-    if (!email.trim()) return;
+-    setSubmitting(true);
+-    setError("");
+-    try {
+-      const res = await fetch(`${API_URL}/api/waitlist`, {
+-        method: "POST",
+-        headers: { "Content-Type": "application/json" },
+-        body: JSON.stringify({ email: email.trim() }),
+-      });
+-      if (res.ok) {
+-        setSubmitted(true);
+-      } else {
+-        const data = await res.json().catch(() => ({}));
+-        setError(data?.detail || "Something went wrong. Please try again.");
+-      }
+-    } catch {
+-      setError("Could not connect. Please try again.");
+-    } finally {
+-      setSubmitting(false);
+-    }
+-  }
+-
+-  return (
+-    <>
+-      {/* ── Meta / SEO ────────────────────────────────────────────────────── */}
+-      {/* Note: use Next.js Metadata API in layout.tsx for full meta control */}
+-
+-      {/* PWA install prompt — shows on iOS/Android when not yet installed */}
+-      <InstallPrompt />
+-
+-      <main className="min-h-screen bg-surface-bg text-text-primary">
+-
+-        {/* ── Navigation ──────────────────────────────────────────────────── */}
+-        <nav className="max-w-5xl mx-auto px-6 py-5 flex items-center justify-between">
+-          <div className="inline-flex items-center gap-2.5">
+-            <div className="w-8 h-8 bg-brand-green rounded-lg flex items-center justify-center">
+-              <span className="text-white font-bold text-sm">S</span>
+-            </div>
+-            <span className="font-bold text-lg tracking-tight">SnapAI</span>
+-            <span className="text-[10px] font-bold tracking-widest uppercase bg-brand-green/10 text-brand-green border border-brand-green/20 rounded px-1.5 py-0.5 ml-1">
+-              EARLY ACCESS
+-            </span>
+-          </div>
+-          {isLoaded && (
+-            isSignedIn && displayName ? (
+-              <Link
+-                href="/dashboard"
+-                className="flex items-center gap-2 text-sm font-semibold text-brand-green hover:underline"
+-              >
+-                <span className="w-7 h-7 rounded-full bg-brand-green/15 border border-brand-green/30 flex items-center justify-center text-xs font-bold text-brand-green">
+-                  {displayName[0].toUpperCase()}
+-                </span>
+-                {displayName}
+-              </Link>
+-            ) : (
+-              <Link
+-                href="/dashboard"
+-                className="text-sm font-semibold text-brand-green hover:underline"
+-              >
+-                Sign In →
+-              </Link>
+-            )
+-          )}
+-        </nav>
+-
+-        {/* ── Hero ────────────────────────────────────────────────────────── */}
+-        <section className="max-w-3xl mx-auto px-6 pt-16 pb-20 text-center">
+-          <div className="inline-block bg-brand-green/10 text-brand-green text-xs font-semibold tracking-wider uppercase rounded-full px-4 py-1.5 mb-6 border border-brand-green/20">
+-            Early Access
+-          </div>
+-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight mb-5">
+-            HVAC estimates without{" "}
+-            <span className="text-brand-green">guessing.</span>
+-          </h1>
+-          <p className="text-base font-medium text-text-secondary mb-2">
+-            Built by a software team that took HVAC seriously enough to do the deep research.
+-          </p>
+-          <p className="text-lg text-text-secondary leading-relaxed mb-10 max-w-xl mx-auto">
+-            Photograph any HVAC unit. SnapAI identifies the equipment,
+-            generates three context-aware options with one honest recommendation, and sends the homeowner a
+-            beautiful report — all before you leave the driveway.
+-          </p>
+-          <p className="text-xs text-text-tertiary mb-4">Free during beta. Pricing announced before launch.</p>
+-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+-            <Link
+-              href="/dashboard"
+-              className="bg-brand-green text-white font-semibold py-3.5 px-8 rounded-xl hover:bg-green-700 transition-colors text-center text-base"
+-            >
+-              Start Your First Assessment →
+-            </Link>
+-            <a
+-              href="#how-it-works"
+-              className="border border-surface-border text-text-secondary font-medium py-3.5 px-8 rounded-xl hover:bg-surface-card transition-colors text-center text-base"
+-            >
+-              See How It Works
+-            </a>
+-          </div>
+-        </section>
+-
+-        {/* ── How It Works ────────────────────────────────────────────────── */}
+-        <section id="how-it-works" className="bg-surface-card border-y border-surface-border py-20">
+-          <div className="max-w-4xl mx-auto px-6">
+-            <h2 className="text-2xl font-bold text-center mb-12">
+-              How it works
+-            </h2>
+-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+-              {[
+-                {
+-                  step: "01",
+-                  title: "Photograph the equipment",
+-                  desc: "Open the app, tap Assess, and photograph the nameplate. The diagnostic engine reads make, model, age, and refrigerant type.",
+-                },
+-                {
+-                  step: "02",
+-                  title: "AI identifies everything",
+-                  desc: "Answer guided questions about symptoms. The system routes your answers through a fault tree built from manufacturer documentation and Houston field patterns.",
+-                },
+-                {
+-                  step: "03",
+-                  title: "Send the homeowner a report",
+-                  desc: "One tap delivers a branded PDF report to the homeowner's inbox. No login required on their end.",
+-                },
+-              ].map(({ step, title, desc }) => (
+-                <div key={step} className="text-center">
+-                  <div className="w-12 h-12 bg-brand-green/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-brand-green/20">
+-                    <span className="text-brand-green font-mono font-bold text-sm">{step}</span>
+-                  </div>
+-                  <h3 className="font-semibold text-base mb-2">{title}</h3>
+-                  <p className="text-text-secondary text-sm leading-relaxed">{desc}</p>
+-                </div>
+-              ))}
+-            </div>
+-          </div>
+-        </section>
+-
+-        {/* ── App Preview ─────────────────────────────────────────────────── */}
+-        <section className="max-w-4xl mx-auto px-6 py-20">
+-          <h2 className="text-2xl font-bold text-center mb-3">See it in action</h2>
+-          <p className="text-center text-text-secondary text-sm mb-10">
+-            From the driveway to a signed estimate — in under 90 seconds.
+-          </p>
+-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+-            {[
+-              {
+-                step: "01",
+-                icon: (
+-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+-                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+-                    <circle cx="12" cy="13" r="4"/>
+-                  </svg>
+-                ),
+-                title: "Snap the nameplate",
+-                desc: "AI reads make, model, serial, and age automatically — no manual entry.",
+-                color: "#1a8754",
+-                bg: "rgba(26,135,84,.08)",
+-              },
+-              {
+-                step: "02",
+-                icon: (
+-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+-                    <path d="M9.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 01-5 0v-15A2.5 2.5 0 019.5 2z"/>
+-                    <path d="M14.5 8A2.5 2.5 0 0117 10.5v9a2.5 2.5 0 01-5 0v-9A2.5 2.5 0 0114.5 8z"/>
+-                    <path d="M4.5 13A2.5 2.5 0 017 15.5v4a2.5 2.5 0 01-5 0v-4A2.5 2.5 0 014.5 13z"/>
+-                  </svg>
+-                ),
+-                title: "Estimate built from the fault tree",
+-                desc: "Three context-aware options, priced with your markup — parts, labor, and R-22 surcharges included. One honest recommendation, no upsell pressure.",
+-                color: "#6a1b9a",
+-                bg: "rgba(106,27,154,.08)",
+-              },
+-              {
+-                step: "03",
+-                icon: (
+-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+-                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.67A2 2 0 012 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.91a16 16 0 006.18 6.18l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+-                  </svg>
+-                ),
+-                title: "Homeowner gets the report",
+-                desc: "A branded PDF lands in their inbox before you leave the driveway. No login needed on their end.",
+-                color: "#c4600a",
+-                bg: "rgba(196,96,10,.08)",
+-              },
+-            ].map(({ step, icon, title, desc, color, bg }) => (
+-              <div key={step} className="bg-surface-card border border-surface-border rounded-2xl p-5">
+-                <div className="flex items-center gap-3 mb-4">
+-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+-                       style={{ background: bg, color }}>
+-                    {icon}
+-                  </div>
+-                  <span className="text-xs font-mono font-bold" style={{ color }}>Step {step}</span>
+-                </div>
+-                <h3 className="font-bold text-base mb-2 text-text-primary">{title}</h3>
+-                <p className="text-text-secondary text-sm leading-relaxed">{desc}</p>
+-              </div>
+-            ))}
+-          </div>
+-          {/* ── YouTube demo video embed ── */}
+-          {/* Replace SNAPAI_VIDEO_ID below with your YouTube video ID (e.g. dQw4w9WgXcQ) */}
+-          <div className="mt-12 relative w-full rounded-2xl overflow-hidden"
+-               style={{ paddingBottom: "56.25%" }}>
+-            <iframe
+-              className="absolute inset-0 w-full h-full"
+-              src="https://www.youtube.com/embed/SNAPAI_VIDEO_ID?autoplay=1&mute=1&loop=1&playlist=SNAPAI_VIDEO_ID&rel=0&modestbranding=1&playsinline=1"
+-              title="SnapAI — 90-second demo"
+-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+-              allowFullScreen
+-            />
+-          </div>
+-          <p className="text-center text-xs text-text-secondary mt-4">
+-            Can&apos;t wait? <Link href="/dashboard" className="text-brand-green font-semibold hover:underline">Try it live →</Link>
+-          </p>
+-        </section>
+-
+-        {/* ── Early Access Signup ─────────────────────────────────────────── */}
+-        <section className="bg-surface-card border-y border-surface-border py-20">
+-          <div className="max-w-lg mx-auto px-6 text-center">
+-            <h2 className="text-2xl font-bold mb-3">Get early access</h2>
+-            <p className="text-text-secondary mb-8 text-sm leading-relaxed">
+-              Limited early access — first 30 assessments free.
+-              No credit card required.
+-            </p>
+-            {submitted ? (
+-              <div className="bg-brand-green/10 border border-brand-green/20 rounded-xl p-6">
+-                <p className="text-brand-green font-semibold text-lg mb-1">You're in!</p>
+-                <p className="text-text-secondary text-sm">
+-                  Check your inbox — we'll send your access details shortly.
+-                </p>
+-              </div>
+-            ) : (
+-              <form onSubmit={handleSignup} className="flex flex-col sm:flex-row gap-3">
+-                <input
+-                  type="email"
+-                  required
+-                  value={email}
+-                  onChange={(e) => setEmail(e.target.value)}
+-                  placeholder="your@email.com"
+-                  className="flex-1 border border-surface-border rounded-xl px-4 py-3 text-sm bg-surface-bg focus:outline-none focus:ring-2 focus:ring-brand-green placeholder:text-text-secondary"
+-                />
+-                <button
+-                  type="submit"
+-                  disabled={submitting}
+-                  className="bg-brand-green text-white font-semibold py-3 px-6 rounded-xl hover:bg-green-700 transition-colors text-sm disabled:opacity-60 whitespace-nowrap"
+-                >
+-                  {submitting ? "Sending…" : "Start Free →"}
+-                </button>
+-              </form>
+-            )}
+-            {error && (
+-              <p className="mt-3 text-red-500 text-xs">{error}</p>
+-            )}
+-            <p className="mt-4 text-xs text-text-secondary">
+-              No spam. Unsubscribe any time.
+-            </p>
+-          </div>
+-        </section>
+-
+-        {/* ── Footer ──────────────────────────────────────────────────────── */}
+-        <footer className="max-w-5xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-text-secondary">
+-          <div className="flex items-center gap-2">
+-            <div className="w-5 h-5 bg-brand-green rounded flex items-center justify-center">
+-              <span className="text-white font-bold text-[10px]">S</span>
+-            </div>
+-            <span>SnapAI — Professional HVAC assessments for contractors</span>
+-          </div>
+-          <div className="flex gap-4">
+-            <Link href="/privacy" className="hover:text-text-primary transition-colors">Privacy</Link>
+-            <Link href="/dashboard" className="hover:text-text-primary transition-colors">Sign In</Link>
+-          </div>
+-        </footer>
+-
+-      </main>
+-    </>
+-  );
+-}
+diff --git a/scopesnap-web/app/r/[slug]/[reportId]/ReportClient.tsx b/scopesnap-web/app/r/[slug]/[reportId]/ReportClient.tsx
+index 0efc4e2..cf7ec70 100644
+--- a/scopesnap-web/app/r/[slug]/[reportId]/ReportClient.tsx
++++ b/scopesnap-web/app/r/[slug]/[reportId]/ReportClient.tsx
+@@ -5,7 +5,7 @@ import DataConfidenceLabel from "@/components/DataConfidenceLabel";
+ import { track, trackEvent } from "@/lib/tracking";
+ import { formatCurrency, detectMarket, getLanguage } from "@/lib/market";
+ import { URDU_STRINGS } from "@/lib/urdu-strings";
+-import FiveYearComparison, { type TierTCO } from "@/components/FiveYearComparison";
++import { type TierTCO } from "@/components/FiveYearComparison";
+ 
+ /**
+  * ReportQRCode — SOW Task 1.9 (Zuckerberg requirement)
+@@ -161,6 +161,24 @@ const CONDITION_BG: Record<string, string> = {
+   failed: "#fce8e8",
+ };
+ 
++// H7: plain-language display labels for overall condition. Display-only --
++// backend tier logic depends on the raw values, so never change stored values
++// or the color-map keys above.
++const CONDITION_LABELS: Record<string, string> = {
++  excellent: "Operating normally",
++  good: "Operating normally",
++  fair: "Showing wear",
++  poor: "Needs service",
++  critical: "End-of-life",
++  failed: "End-of-life",
++};
++
++/** H7 helper: map a raw condition value to its plain-language label (display only). */
++function conditionLabel(condition?: string): string {
++  const key = (condition || "unknown").toLowerCase();
++  return CONDITION_LABELS[key] || "Assessed";
++}
++
+ 
+ /** Convert snake_case slugs to Title Case for display ("evaporator_coil" → "Evaporator Coil") */
+ function formatSlug(s: string): string {
+@@ -209,7 +227,7 @@ function HealthGauge({ condition }: { condition?: string }) {
+           lineHeight: 1.2,
+         }}
+       >
+-        {label.toUpperCase()}
++        {conditionLabel(label)}
+       </span>
+     </div>
+   );
+@@ -284,7 +302,7 @@ function AnnotatedPhotoSvg({ photo, hasIssues }: { photo: Photo; hasIssues?: boo
+           )}
+       </svg>
+       <div style={{ padding: "8px 12px", background: "rgba(0,0,0,.85)", color: "rgba(255,255,255,.7)", fontSize: 10 }}>
+-        <strong style={{ color: "#22cc66" }}>AI-Enhanced Assessment Photo</strong>
++        <strong style={{ color: "#22cc66" }}>Assessment Photo</strong>
+         {" · Red = needs attention · Orange = minor · Green = identified"}
+       </div>
+     </div>
+@@ -597,7 +615,7 @@ export default function ReportClient({ report }: { report: Report }) {
+               marginBottom: 4,
+             }}
+           >
+-            {t("Equipment Health Report")}
++            {t("Contractor Assessment Report")}
+           </p>
+           <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px", letterSpacing: -0.5 }}>
+             {property?.customer_name ? `${property.customer_name}'s Home` : property?.address_line1 || ""}
+@@ -645,16 +663,16 @@ export default function ReportClient({ report }: { report: Report }) {
+                     ? `Your ${equipLabel(equipment.equipment_type)}:`
+                     : "Your System:"}{" "}
+                   <span style={{ color: conditionColor }}>
+-                    {t(condition.charAt(0).toUpperCase() + condition.slice(1))} Condition
++                    {t(conditionLabel(condition))}
+                   </span>
+                 </h4>
+                 <p style={{ fontSize: 11, color: "#7a7770", margin: "3px 0 0" }}>
+                   {condition === "fair"
+-                    ? "Functional, with one component that needs attention soon."
++                    ? "Your contractor noted one component to review."
+                     : condition === "poor" || condition === "critical"
+-                    ? "Needs attention soon; one or more components are showing significant wear."
++                    ? "Your contractor noted one or more components showing wear."
+                     : condition === "good" || condition === "excellent"
+-                    ? "Your system is in good shape."
++                    ? "Your contractor found your system in good condition."
+                     : "Assessment complete — see details below."}
+                 </p>
+               </div>
+@@ -803,7 +821,9 @@ export default function ReportClient({ report }: { report: Report }) {
+                           fontFamily: "IBM Plex Mono, monospace",
+                         }}
+                       >
+-                        {isRTL ? "★ " + t("Recommended").toUpperCase() : "★ RECOMMENDED"}
++                        {isRTL
++                          ? (company?.name || t("Your contractor")) + t("'s recommendation")
++                          : `${company?.name || "Your contractor"}'s recommendation`}
+                       </div>
+                     )}
+ 
+@@ -1233,20 +1253,6 @@ export default function ReportClient({ report }: { report: Report }) {
+             )}
+           </div>
+         )}
+-        {/* 5-Year TCO — Track G */}
+-        {report.options.length > 0 && (
+-          <div style={{ margin: "10px 0" }}>
+-            <FiveYearComparison
+-              optionA={report.options.find((o) => o.tier === "good" || o.tier === "A")?.five_year_comparison ?? null}
+-              optionB={report.options.find((o) => o.tier === "better" || o.tier === "B")?.five_year_comparison ?? null}
+-              optionC={report.options.find((o) => o.tier === "best" || o.tier === "C")?.five_year_comparison ?? null}
+-              recommendedTier={(initialRecommendedTier as "A" | "B" | "C")}
+-              market={reportMarket}
+-              mode="homeowner_report"
+-              sessionId={report.report_short_id}
+-            />
+-          </div>
+-        )}
+ 
+         {/* Contact Section */}
+         <div
+diff --git a/scopesnap-web/app/tech/page.tsx b/scopesnap-web/app/tech/page.tsx
+index a01dfc8..6b4bd69 100755
+--- a/scopesnap-web/app/tech/page.tsx
++++ b/scopesnap-web/app/tech/page.tsx
+@@ -7,6 +7,7 @@
+  * CTA: routes to /dashboard (Clerk auth / sign-up flow)
+  */
+ 
++// COPY DRAFT — pending Codie + Alfred sign-off
+ "use client";
+ 
+ import { useEffect, useState } from "react";
+@@ -17,6 +18,38 @@ export default function TechLandingPage() {
+   const posthog = usePostHog();
+   const [copied, setCopied] = useState(false);
+ 
++  // Waitlist email-capture (moved from former root landing page) — POST /api/waitlist
++  const [email, setEmail] = useState("");
++  const [submitted, setSubmitted] = useState(false);
++  const [submitting, setSubmitting] = useState(false);
++  const [error, setError] = useState("");
++
++  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
++
++  async function handleSignup(e: React.FormEvent) {
++    e.preventDefault();
++    if (!email.trim()) return;
++    setSubmitting(true);
++    setError("");
++    try {
++      const res = await fetch(`${API_URL}/api/waitlist`, {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ email: email.trim() }),
++      });
++      if (res.ok) {
++        setSubmitted(true);
++      } else {
++        const data = await res.json().catch(() => ({}));
++        setError(data?.detail || "Something went wrong. Please try again.");
++      }
++    } catch {
++      setError("Could not connect. Please try again.");
++    } finally {
++      setSubmitting(false);
++    }
++  }
++
+   // PostHog: fire tech_landing_visited + capture UTM params
+   useEffect(() => {
+     if (typeof window === "undefined") return;
+@@ -49,7 +82,7 @@ export default function TechLandingPage() {
+     },
+     {
+       number: "02",
+-      title: "App walks the diagnostic",
++      title: "App walks the tech through the fault",
+       description:
+         "Answer a series of guided questions about symptoms. The system follows the same fault tree your best senior tech has in his head.",
+     },
+@@ -91,17 +124,15 @@ export default function TechLandingPage() {
+       {/* ── Hero ───────────────────────────────────────────────────────────── */}
+       <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-16 pb-12 text-center">
+         <div className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide uppercase text-brand-green bg-brand-green-light px-3 py-1.5 rounded-full mb-6">
+-          Houston Contractors Only
++          Built for independent HVAC shops
+         </div>
+ 
+         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-text-primary leading-tight mb-5 max-w-3xl mx-auto">
+-          Diagnose, estimate, and close before you leave the driveway.
++          Your newest tech diagnoses like your most experienced.
+         </h1>
+ 
+         <p className="text-lg sm:text-xl text-text-secondary max-w-2xl mx-auto mb-8 leading-relaxed">
+-          An AI HVAC diagnostic tool built for Houston contractors.
+-          Guided fault detection. Three context-aware options, one honest recommendation. Homeowner-approved PDF.
+-          All before you pull out of the driveway.
++          A decision-support app built for independent HVAC shops. It walks your tech through the fault, then lays out three context-aware options and a clear recommendation. Homeowner-approved PDF — before you pull out of the driveway.
+         </p>
+ 
+         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+@@ -110,10 +141,14 @@ export default function TechLandingPage() {
+             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-ss bg-brand-green text-white font-semibold text-base shadow-green hover:bg-brand-green-dark transition-colors"
+             onClick={() => posthog?.capture("tech_cta_clicked", { location: "hero" })}
+           >
+-            Start Free Beta Access
++            Start free — built for independent HVAC shops
+           </Link>
+-          <p className="text-sm text-text-tertiary">First 10 Houston testers. Free, no commitment.</p>
++          <p className="text-sm text-text-tertiary">First 10 testers. Free, no commitment.</p>
+         </div>
++
++        <p className="text-sm text-text-tertiary max-w-2xl mx-auto mt-6 leading-relaxed">
++          SnapAI is a decision-support tool for licensed HVAC professionals. It organizes symptoms and surfaces likely faults to assist the technician&apos;s own judgment; it does not perform diagnosis, and all findings must be verified on site by a qualified tech.
++        </p>
+       </section>
+ 
+ 
+@@ -148,11 +183,11 @@ export default function TechLandingPage() {
+           <p className="text-sm text-text-secondary leading-relaxed mb-4">
+             We built SnapAI by deeply researching how HVAC diagnostic actually works —
+             manufacturer documentation, training references, and the fault patterns that show up
+-            most often on Houston residential systems. The diagnostic engine, fault card database,
++            most often on residential systems. The assessment engine, fault card database,
+             and pricing tiers reflect months of that research.
+           </p>
+           <p className="text-sm text-text-secondary leading-relaxed mb-4">
+-            Beta program now open — first 10 Houston HVAC techs get founding access.
++            Beta program now open — first 10 HVAC techs get founding access.
+             Your input shapes every release.
+           </p>
+           <p className="text-xs font-semibold text-brand-green">
+@@ -165,11 +200,11 @@ export default function TechLandingPage() {
+       <section className="bg-brand-green py-16">
+         <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
+           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+-            Free for the first 10 Houston techs.
++            Free for the first 10 techs.
+           </h2>
+           <p className="text-green-100 mb-8 leading-relaxed">
+-            Built with Houston field experience. Diagnostic logic validated against real residential
+-            split-system calls. R-410A, R-22 surcharges, and Houston labor rates all baked in.
++            Built with real field experience. Assessment logic validated against real residential
++            split-system calls. R-410A, R-22 surcharges, and local labor rates all baked in.
+           </p>
+           <Link
+             href="/dashboard"
+@@ -182,6 +217,49 @@ export default function TechLandingPage() {
+         </div>
+       </section>
+ 
++      {/* ── Early Access Signup (waitlist — moved from former root landing) ── */}
++      <section className="bg-surface-card border-y border-surface-border py-16">
++        <div className="max-w-lg mx-auto px-4 sm:px-6 text-center">
++          <h2 className="text-2xl font-bold mb-3">Get early access</h2>
++          <p className="text-text-secondary mb-8 text-sm leading-relaxed">
++            Limited early access — first 30 assessments free.
++            No credit card required.
++          </p>
++          {submitted ? (
++            <div className="bg-brand-green/10 border border-brand-green/20 rounded-ss p-6">
++              <p className="text-brand-green font-semibold text-lg mb-1">You&apos;re in!</p>
++              <p className="text-text-secondary text-sm">
++                Check your inbox — we&apos;ll send your access details shortly.
++              </p>
++            </div>
++          ) : (
++            <form onSubmit={handleSignup} className="flex flex-col sm:flex-row gap-3">
++              <input
++                type="email"
++                required
++                value={email}
++                onChange={(e) => setEmail(e.target.value)}
++                placeholder="your@email.com"
++                className="flex-1 border border-surface-border rounded-ss px-4 py-3 text-sm bg-surface-bg focus:outline-none focus:ring-2 focus:ring-brand-green placeholder:text-text-secondary"
++              />
++              <button
++                type="submit"
++                disabled={submitting}
++                className="bg-brand-green text-white font-semibold py-3 px-6 rounded-ss hover:bg-brand-green-dark transition-colors text-sm disabled:opacity-60 whitespace-nowrap"
++              >
++                {submitting ? "Sending…" : "Start Free →"}
++              </button>
++            </form>
++          )}
++          {error && (
++            <p className="mt-3 text-red-500 text-xs">{error}</p>
++          )}
++          <p className="mt-4 text-xs text-text-secondary">
++            No spam. Unsubscribe any time.
++          </p>
++        </div>
++      </section>
++
+       {/* ── Footer ─────────────────────────────────────────────────────────── */}
+       <footer className="bg-surface-bg border-t border-surface-border py-8">
+         <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-text-tertiary">
+@@ -196,6 +274,7 @@ export default function TechLandingPage() {
+           </div>
+           <div className="flex items-center gap-4">
+             <Link href="/privacy" className="hover:text-text-secondary transition-colors">Privacy</Link>
++            <Link href="/tos" className="hover:text-text-secondary transition-colors">Terms</Link>
+             <Link href="/dashboard" className="hover:text-text-secondary transition-colors">Sign In</Link>
+             <button
+               onClick={handleCopyLink}
+diff --git a/scopesnap-web/app/tos/page.tsx b/scopesnap-web/app/tos/page.tsx
+new file mode 100644
+index 0000000..f02b1a6
+--- /dev/null
++++ b/scopesnap-web/app/tos/page.tsx
+@@ -0,0 +1,28 @@
++/**
++ * SnapAI -- Public Terms of Service page. Linked from the public footer.
++ * CONTENT SOURCE: ScopeSnapAI/SnapAI_Legal_Framework_ToS_and_Disclaimers_v1_DRAFT.md
++ * TODO: paste approved ToS (incl. Sec 2A-2C definitional clause + Sec 7 indemnification).
++ *       Do NOT edit legal wording without Alfred (US HVAC counsel) sign-off.
++ */
++export default function TermsPage() {
++  return (
++    <main className="min-h-screen bg-surface-bg text-text-primary">
++      <div className="max-w-2xl mx-auto px-6 py-12">
++        <div className="mb-8">
++          <a href="/tech" className="text-brand-green text-sm font-semibold hover:underline">← Back to SnapAI</a>
++          <h1 className="text-3xl font-bold mt-4 mb-2">Terms of Service</h1>
++          <p className="text-text-secondary text-sm">Last updated: TODO</p>
++        </div>
++        <div className="prose prose-sm max-w-none space-y-6 text-text-primary">
++          <section>
++            <h2 className="text-lg font-bold mb-2">Terms of Service</h2>
++            <p className="text-sm text-text-secondary leading-relaxed">
++              The full Terms of Service and disclaimers are being finalized. Questions:{" "}
++              <a href="mailto:hello@mainnov.tech" className="text-brand-green font-semibold hover:underline">hello@mainnov.tech</a>.
++            </p>
++          </section>
++        </div>
++      </div>
++    </main>
++  );
++}
+diff --git a/scopesnap-web/lib/urdu-strings.ts b/scopesnap-web/lib/urdu-strings.ts
+index 68fa6a3..dcfebaf 100644
+--- a/scopesnap-web/lib/urdu-strings.ts
++++ b/scopesnap-web/lib/urdu-strings.ts
+@@ -210,7 +210,7 @@ export const URDU_STRINGS: Record<string, string> = {
+   "Assessment":                      "تشخیص",
+ 
+   // ── Homeowner report (ReportClient) ──────────────────────────────────────────────
+-  "Equipment Health Report":         "آلات کی صحت کی رپورٹ",
++  "Contractor Assessment Report":         "آلات کی صحت کی رپورٹ",
+   "System Overview":                 "سسٹم کا جائزہ",
+   "Installed":                       "نصب شدہ",
+   "Est. Life Remaining":             "متوقع بقیہ عمر",
+diff --git a/scopesnap-web/next.config.js b/scopesnap-web/next.config.js
+index 63a1b2f..36b299c 100644
+--- a/scopesnap-web/next.config.js
++++ b/scopesnap-web/next.config.js
+@@ -29,6 +29,16 @@ const nextConfig = {
+         destination: "/assessment/:id",
+         permanent: true,
+       },
++      {
++        source: "/",
++        destination: "/tech",
++        permanent: true,
++      },
++      {
++        source: "/homeowner",
++        destination: "/tech",
++        permanent: true,
++      },
+     ];
+   },
+   serverExternalPackages: ['crypto-js'],

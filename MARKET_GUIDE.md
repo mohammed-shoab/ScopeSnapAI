@@ -4,6 +4,11 @@
 > SnapAI runs as two separate live apps — one for Houston (US) and one for Pakistan (PK).
 > Last updated: 2026-05-26 (BUG-045: nameplate OCR JWT fix is market-neutral — no market-specific changes. X-Market header now correctly set on OCR fetch for both US and PK. | Previously: 2026-05-20)
 
+> **CURRENT MARKET STATUS (as of DEC-123, 2026-06-22):**
+> PK is a **dormant test market**. All active development targets Houston (US).
+> PK code paths and data are preserved but not being iterated on.
+> Do NOT propose PK-specific features without confirming with Shoab first.
+
 ---
 
 ## The Two Apps at a Glance

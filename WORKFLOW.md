@@ -9,17 +9,11 @@
 
 ## 1. Activation status
 
-This workflow becomes **canonical and mandatory** the moment Stage 7 (Staging End-to-End QA) signs off — meaning staging is verified to be a true mirror of production, the Vercel staging project deploys the `staging` branch, and a full QA pass on staging matches a full QA pass on production.
+**ACTIVE as of 2026-05-24.** Stage 7 (Staging End-to-End QA) signed off on 2026-05-24. Staging is verified as a true mirror of production. Vercel staging deploys the `staging` branch. Full QA passes match on both environments.
 
-Until that moment:
-- ~~Staging Alembic drift~~ — RESOLVED Stage 5 (2026-05-24): both prod and staging at Alembic 034, 15 reference tables synced
-- ~~Vercel staging deploys `main`~~ — RESOLVED Stage 6 (2026-05-24): all 3 staging domains now serve `staging` branch via domain-level gitBranch (DEC-067 SUPERSEDED by DEC-080)
-- Remaining gap: Stage 7 staging E2E QA must pass before DEC-070 is declared active
-- The "feature branch → staging → main" loop described below is the **target** workflow, not yet the operational one
+This workflow is the **canonical and mandatory** path for every code, schema, env-var, and infrastructure change reaching production. The four absolute rules in Section 2 are enforced. The feature-branch → staging → main → prod loop described below is the operational workflow.
 
-During the transition (Stages 1–7), changes still flow through the existing ad-hoc patterns documented in DEC-004 (git from `/tmp` clone), DEC-013 (no git stash from sandbox), DEC-022 (Desktop Commander for git ops).
-
-After Stage 7 sign-off, this document becomes the single source of truth. The transition is announced via a commit message `feat(workflow): staging-first workflow canonical from <date> (DEC-070)`.
+The supporting tactics from DEC-004 (git from `/tmp` clone), DEC-013 (no git stash from sandbox), and DEC-022 (Desktop Commander for git ops) remain documented practices for specific Cowork / sandbox contexts — they are no longer transitional exceptions.
 
 ---
 
@@ -670,3 +664,158 @@ The only exception: corrections that are factually wrong (e.g., wrong project ID
 ---
 
 *Last updated: 2026-05-23 — initial draft establishing staging-first workflow as DEC-070. Activates after Stage 7 sign-off.*
+
+---
+
+## 16. Brain-file provenance metadata (added 2026-07-06 — brain files cleanup Phase 2d)
+
+**Rule:** Every substantive entry (rule, fact, claim, threshold) in a brain file carries a small YAML metadata block above it, so the weekly auto-audit can detect stale content mechanically.
+
+### Format
+
+```yaml
+---
+added: 2026-07-06
+last_verified: 2026-07-06
+source: DEC-129
+---
+```
+
+Three fields, all required:
+- **`added:`** — ISO date the entry was first written into the brain file
+- **`last_verified:`** — ISO date the entry was last confirmed against live state (Supabase, prod app, git log, etc.)
+- **`source:`** — canonical reference — a DEC number, a user rule date, a legal chat citation, or a URL
+
+### Where to apply
+
+- **STATUS.md open blockers** — each blocker line gets metadata (added / last_verified / owner)
+- **PROJECT_BRAIN.md CRITICAL RULES table** — each row carries the source column (already done); add `last_verified` in a footnote when confirmed
+- **DECISIONS.md** — each DEC-XXX already carries an implicit `added:` in the header date; add `last_verified:` when re-checking
+- **TECH_STACK.md** — each infrastructure claim (Alembic head, service URL, brand data version) carries metadata
+- **MARKET_GUIDE.md** — market status banners carry metadata
+
+### Where NOT to apply
+
+- **Header text** (titles, section titles) — no metadata needed
+- **Prose narrative** — no metadata (this is why prose is limited to top-of-file current-state paragraphs)
+- **Historical archive files (`*_HISTORY.md`)** — no metadata (frozen archives, never re-verified)
+
+### Staleness triggers (weekly auto-audit checks)
+
+- `last_verified` > 60 days old → flag as WARNING
+- `last_verified` > 180 days old → flag as VIOLATION
+- No `last_verified` at all → flag as MISSING_METADATA warning
+
+### Example: an entry with metadata
+
+```markdown
+---
+added: 2026-07-05
+last_verified: 2026-07-05
+source: Legal chat 2026-07-05, Alfred (nav)
+---
+**Card #21 Heat Exchanger + Combustion Safety Check = Tier D indefinite hold** — six gates must clear (insurance rider, ToS rewrite, homeowner report language, threshold recalibration, PE engineering review, full audit trail). No CO / HX / combustion safety in scope until then.
+```
+
+### Enforcement
+
+The weekly auto-audit (`snapai-brain-files-weekly-audit` scheduled task, Fridays 09:00 CT) checks provenance metadata coverage and staleness. Missing or stale metadata generates a report entry — not a hard block. Provenance is the audit's earliest-warning signal that a rule may be drifting away from reality.
+
+### Reference
+
+Full plan: `SnapAI_Brain_Files_Management_Plan_2026-07-05.md` Part 6 Rule 4 (provenance metadata).
+
+---
+
+## 17. Session Learnings Log — the SESSION_LOG_* archetype (added 2026-07-06 — brain files cleanup Phase 3)
+
+**Rule:** Every substantive session that produces retrospective content — root causes traced, hypotheses tried, failures learned from — writes a dedicated `SESSION_LOG_YYYY-MM-DD_<topic>.md` file. This is the deep-narrative counterpart to the short brain-file summaries.
+
+### Location + Naming
+
+**Folder:** `ScopeSnapAI/session_logs/`
+
+**Filename:** `SESSION_LOG_YYYY-MM-DD_<snake_case_topic>.md`
+
+Examples:
+- `SESSION_LOG_2026-07-06_brain_files_cleanup.md`
+- `SESSION_LOG_2026-07-05_deep_legal_audit.md`
+- `SESSION_LOG_2026-06-20_scoring_overhaul.md` (Omni pattern)
+
+### Standard sections (template)
+
+Every session log includes:
+
+1. **Metadata header** — duration, participants, related workstream, related files (with computer:// URLs)
+2. **Context** — what we started with (2-3 sentences)
+3. **Goal** — what we tried to accomplish (1-2 sentences)
+4. **What we tried** — chronological hypotheses with worked/failed/partial results
+5. **What worked** — specific things that stuck
+6. **What DIDN'T work** — dead ends, wrong assumptions, false paths (highest-value section per Bryan Orr)
+7. **Root causes** — analytical write-up of why the failed attempts failed
+8. **Resolution** — the final approach that worked (specific enough to replicate)
+9. **Lessons for next time** — actionable, not vague
+10. **Follow-up items** — checkboxes with owner + rough effort
+11. **References** — related DECs, brain files, plan docs, audit docs
+12. **Change log** — session-log-level change history
+
+### When to create one (the "future-you" test)
+
+**Create a session log when:**
+- Substantive debug/fix (something was broken; you tried multiple things before finding root cause)
+- Non-trivial build (new subsystem, major refactor, migration)
+- Multi-hour session with clear before/after state
+- Ad-hoc closeout / audit / plan doc worthy of preservation
+
+**Skip when:**
+- Simple one-line fix
+- Straightforward planned work with no surprises
+- Pure discussion / strategic planning session (goes in ACTIVE_TASKS session block or a plan doc)
+- Session where nothing worked and no learning surfaced
+
+**Rough test:** *"If I forgot this in 3 months, would future me want the story?"* Yes → session log. No → skip.
+
+### How this connects to the other brain files
+
+**Loose coupling:**
+
+- **ACTIVE_TASKS.md session block** stays short (DONE + OPEN + a one-line pointer to the session log)
+- **DECISIONS.md** — if a session log surfaced a decision, the DEC references the log as source
+- **PROJECT_BRAIN.md CRITICAL RULES** — if a lesson became a rule, the rule references the session log
+- **STATUS.md** milestones — short entry with a pointer to the session log
+
+Result: brain files stay small and load fast; deep narrative lives in rarely-opened session logs.
+
+### Archetype rules
+
+- **Immutable append-only** — like DECISIONS.md, never rewritten
+- **No line cap** — grows as needed; queried, not scanned
+- **Provenance metadata not required at entry level** — the file itself is a dated snapshot; whole-file metadata in the top-of-file section suffices
+
+### Session-end update ritual (analyze + propose, do NOT ask questions)
+
+When Shoab says *"update the brain files"* or at end of a substantive session:
+
+1. The AI analyzes what happened in the session against the routing table in `SnapAI_Project_Instructions.md` Section 7.
+2. The AI presents ONE consolidated proposal: *"I'll update these files with these changes: [file 1] — [summary]. [file 2] — [summary]. ... Say yes to write all, or flag exceptions."*
+3. Shoab replies "yes" or flags specific items.
+4. AI executes in one pass. Reports result.
+
+**Do NOT ask a series of yes/no questions.** The AI already knows what each file is for (see Section 7 routing table). Analyze once, propose once, execute once.
+
+**Only exception where asking is OK:** when the session log topic isn't obvious (mixed workstreams), the AI proposes 1-3 candidate filenames and lets Shoab pick.
+
+### Retroactive session log candidates (Rob's suggestion)
+
+Existing docs that are basically session logs and could be renamed with zero content change:
+- `STAGING_MIRROR_CLOSEOUT.md` → `session_logs/SESSION_LOG_2026-05-24_staging_mirror_closeout.md`
+- `STAGING_FIX_PLAN.md` → `session_logs/SESSION_LOG_2026-05-22_staging_fix_plan.md`
+- `AUDIT_FINDINGS_DETAILED.md` / `AUDIT_REPORT_Phase3_QA.md` / `CODE_AUDIT_REPORT.md` → date-tag each and move to session_logs/
+
+Optional retrofit — not required for the pattern to work forward.
+
+### Reference
+
+Full plan: `SnapAI_Brain_Files_Management_Plan_2026-07-05.md`.
+First instance: `session_logs/SESSION_LOG_2026-07-06_brain_files_cleanup.md`.
+Omni pattern reference: `Claude Omni/SESSION_LOG_2026-06-20_scoring_overhaul.md`, `SESSION_LOG_2026-06-21_phase1_frontend.md`, `SESSION_LOG_2026-06-21_phase2A_2B.md`.

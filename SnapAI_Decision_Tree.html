@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SnapAI — AC Diagnostic Decision Tree v5</title>
+<title>SnapAI — AC Diagnostic Decision Tree v5.1 (audit-corrected 2026-07-05)</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e8eaf0; min-height: 100vh; }
@@ -246,7 +246,7 @@
     <div class="app-logo">Snap<span>AI</span> — Diagnostic Engine</div>
     <div class="app-subtitle">v5 · QA-annotated · May 11 2026 · 12 PASS · 5 BUGS · 3 N/T · Backend fixes required</div>
   </div>
-  <div class="version-pill">v5.0 · QA Audit 11 May 2026</div>
+  <div class="version-pill">v5.1 · 2026-07-05</div>
 </div>
 
 <div class="stats-bar">
@@ -287,14 +287,14 @@
         Making Noise → Clicking &amp; Squealing
       </div>
     </div>
-    <div style="flex:1;min-width:180px;background:#2a0a0a;border:1px solid #e74c3c;border-radius:8px;padding:10px 14px;">
-      <div style="font-size:10px;font-weight:800;color:#e74c3c;margin-bottom:6px;">🔴 5 BUGS (3 Critical · 2 High)</div>
-      <div style="font-size:10px;color:#c07070;line-height:1.7;">
-        <strong style="color:#f08080;">BUG #10 [CRITICAL]</strong> Service/Tune-Up Step 8 → 503<br>
-        <strong style="color:#f08080;">BUG #11 [CRITICAL]</strong> Not Cooling → NO → always escalates<br>
-        <strong style="color:#f08080;">BUG #12 [CRITICAL]</strong> Water Dripping → Outdoor → 404/422<br>
-        <strong style="color:#e0a070;">BUG #13 [HIGH]</strong> Not Heating → Ignites shuts off<br>
-        <strong style="color:#e0a070;">BUG #9 &nbsp;[HIGH]</strong> Error Code → NO reset → escalates
+    <div style="flex:1;min-width:180px;background:#0d2d1a;border:1px solid #2ecc71;border-radius:8px;padding:10px 14px;">
+      <div style="font-size:10px;font-weight:800;color:#2ecc71;margin-bottom:6px;">✅ 5 BUGS — ALL FIXED (mig 014 + 015)</div>
+      <div style="font-size:10px;color:#7edb9b;line-height:1.7;">
+        <strong style="color:#2ecc71;">BUG #9 &nbsp;— FIXED</strong> mig 014 → Card #7 lockout<br>
+        <strong style="color:#2ecc71;">BUG #10 — FIXED</strong> mig 011+ → svc-8 live with generate_estimate<br>
+        <strong style="color:#2ecc71;">BUG #11 — FIXED</strong> mig 014 → voltage handler with low_threshold:100<br>
+        <strong style="color:#2ecc71;">BUG #12 — FIXED</strong> mig 014 → q2-wd-suction routing live<br>
+        <strong style="color:#2ecc71;">BUG #13 — FIXED</strong> mig 014+015 → microamps low/replace/heavy_oxide → Card #11
       </div>
     </div>
     <div style="flex:1;min-width:180px;background:#1a1a2e;border:1px solid #5a6280;border-radius:8px;padding:10px 14px;">
@@ -380,10 +380,7 @@
     <div class="houston-badge">~15% of calls<small>Houston (seasonal)</small></div>
   </div>
 
-  <div class="qa-bug-banner">
-    <div class="bug-title">🔴 BUG #10 — CRITICAL — Service/Tune-Up Step 8 → 503 Backend Error</div>
-    <div class="bug-desc">ALL Service/Tune-Up branches are blocked at the final step. GET /api/diagnostic/questions/service returns 404, then POST /api/diagnostic/session/{id}/answer returns 503. None of the three paths (Looks Clean, Dirty-Can Clean, Dirty-Replace) can reach an estimate. This is the highest-volume complaint type — fix is Priority 1.</div>
-    <div><span class="bug-code">GET /api/diagnostic/questions/service → 404</span> <span class="bug-code">POST /answer → 503 Service Unavailable</span></div>
+  <div class="qa-pass-banner">✅ FIXED — Service/Tune-Up 8-step flow live (svc-1 filter → svc-8 run). svc-8 branch_logic sets service_complete + generate_estimate.</div>
   </div>
 
   <div class="mark-callout">
@@ -474,7 +471,7 @@
     <div class="complaint-icon">🥵</div>
     <div>
       <div class="complaint-name">A — Not Cooling / Warm Air</div>
-      <div class="complaint-meta">Most complex branch · 6 possible cards · Phase 2 gate for pressure branches</div>
+      <div class="complaint-meta">Most complex branch · 6 possible cards · ✅ 2-step reading cascade LIVE (suction → conditional discharge)</div>
     </div>
     <div class="houston-badge">~38% of calls<small>Houston frequency</small></div>
   </div>
@@ -595,9 +592,9 @@
       </div>
       <div class="node node-p2">
         <div class="node-tag">PHASE 2 GATE — Mandatory</div>
-        <div class="node-title">Enter: suction pressure, discharge pressure, ambient temp, supply air temp</div>
-        <div class="node-sub">XGBoost classifies fault pattern. Refrigerant type known from Step Zero.</div>
-        <span class="phase-badge pb-p2">Phase 2 build needed (Task #9 + #10)</span>
+        <div class="node-title">Step 1: Enter suction PSI (ambient captured at Step Zero via Mild/Hot/Extreme). Step 2 fires only if suction is high.</div>
+        <div class="node-sub">Threshold routing on suction cascade — low → Card 8, ok → Card 13, high → Step 2 discharge PSI (→ Card 14 / 17 / escalate).</div>
+        <span class="phase-badge pb-p1" style="background:#0a2a15;color:#2ecc71;border-color:#2ecc71;">✅ LIVE — 2-step cascade in prod</span>
       </div>
       <div class="qa-pass-banner">✅ PASS — Not Cooling → YES (70 PSI) → Card #13 Ductwork Leak — rpt-9273</div>
       <div class="v-line"></div>
@@ -605,7 +602,7 @@
         <div class="branch-col">
           <div class="branch-label-wrap"><div class="branch-label bl-clog">Low suction · high superheat</div><div class="v-line" style="height:10px;"></div></div>
           <div class="photo-req-row"><div class="photo-evidence"><div class="ph-label">📋 Evidence Only</div><div class="ph-title">UV dye glow photo</div><div class="ph-desc">No diagnostic value — leak is invisible normally. UV glow photo is compelling homeowner evidence.</div></div></div>
-          <div class="node node-p2"><div class="node-tag">CARD #8 — Refrigerant Leak</div><div class="node-title">XGBoost on pressure pattern. Photo is for PDF only.</div><span class="phase-badge pb-p2">Phase 2</span><div class="actions-count">⚡ 5 actions (readings primary)</div></div>
+          <div class="node node-p2"><div class="node-tag">CARD #8 — Refrigerant Leak</div><div class="node-title">Threshold routing on low suction (<115 PSI at 95°F). Photo for homeowner PDF only.</div><span class="phase-badge pb-p2">Phase 2</span><div class="actions-count">⚡ 5 actions (readings primary)</div></div>
         </div>
         <div class="branch-col" style="margin-left:10px;">
           <div class="branch-label-wrap"><div class="branch-label bl-moderate">High discharge · restricted airflow</div><div class="v-line" style="height:10px;"></div></div>
@@ -618,7 +615,7 @@
         </div>
         <div class="branch-col" style="margin-left:10px;">
           <div class="branch-label-wrap"><div class="branch-label bl-pres">Normal pressures · warm supply</div><div class="v-line" style="height:10px;"></div></div>
-          <div class="node node-pj"><div class="node-tag">CARD #13 — Ductwork Leak</div><div class="node-title">Gemini reasoning. No single reading or photo diagnoses this.</div><span class="phase-badge pb-pj">Tech Judgment</span></div>
+          <div class="node node-p1"><div class="node-tag">CARD #13 — Ductwork Leak</div><div class="node-title">Threshold routing — reached when suction PSI is normal (115-141 at 95°F R-410A). Working hypothesis: ductwork leak.</div><span class="phase-badge pb-p1" style="background:#0a2a15;color:#2ecc71;border-color:#2ecc71;">✅ LIVE — Auto-routed</span></div>
         </div>
       </div>
     </div>
@@ -706,10 +703,7 @@
 
     <div class="branch-col" style="margin-left:18px;">
       <div class="branch-label-wrap"><div class="branch-label bl-no">Outdoor / refrigerant lines</div><div class="v-line" style="height:10px;"></div></div>
-      <div class="qa-bug-banner">
-        <div class="bug-title">🔴 BUG #12 — CRITICAL — Immediate 404/422 on selection</div>
-        <div class="bug-desc">Selecting "Outdoor – refrigerant lines" immediately hits GET /api/diagnostic/questions/water_dripping → 404, then POST /api/estimates/fault-card → 422. "Estimate generation failed" toast. No questions are configured in the backend for this sub-branch.</div>
-        <div><span class="bug-code">GET /api/diagnostic/questions/water_dripping → 404</span> <span class="bug-code">POST /fault-card → 422 Unprocessable Entity</span></div>
+      <div class="qa-pass-banner">✅ FIXED (mig 014) — water_dripping outdoor_refrigerant routes to q2-wd-suction with proper PSI thresholds.</div>
       </div>
       <div class="node node-p2">
         <div class="node-tag">PHASE 2 GATE</div>
@@ -895,7 +889,7 @@
     <div class="complaint-icon">⚠️</div>
     <div>
       <div class="complaint-name">F — Error Code / Fault Light</div>
-      <div class="complaint-meta">Error codes are brand/model specific — not universal · Task #12 (brand DB) needed for full auto-route</div>
+      <div class="complaint-meta">Error codes are brand/model specific · ✅ 7-way discrimination + Phase 2 sub-gate (Card #8 vs #15) LIVE</div>
     </div>
     <div class="houston-badge">~7% of calls<small>Houston frequency</small></div>
   </div>
@@ -942,7 +936,7 @@
       <div class="branch-row">
         <div class="branch-col"><div class="branch-label-wrap"><div class="branch-label bl-clear">YES — Clears</div><div class="v-line" style="height:10px;"></div></div><div class="node node-p1"><div class="node-tag">CARD #7</div><div class="node-title">Nuisance trip</div><span class="phase-badge pb-p1">Phase 1</span></div><div class="qa-pass-banner">✅ PASS — Error Code → Photo + Manual → YES reset → Card #7</div></div>
         <div class="branch-col" style="margin-left:8px;"><div class="branch-label-wrap"><div class="branch-label bl-clog">NO — Does not reset</div><div class="v-line" style="height:10px;"></div></div>
-          <div class="qa-bug-banner"><div class="bug-title">🟠 BUG #9 — HIGH — NO Reset → Escalates</div><div class="bug-desc">Selecting "NO – code did not reset" triggers "Diagnostic escalated — please inspect manually" with no repair path offered. Common field scenario — this path must route to a diagnosis.</div><div><span class="bug-code">POST /answer → 200 but escalation unconditional</span></div></div>
+          <div class="qa-pass-banner">✅ FIXED (mig 014) — q4-reset NO resolves to Card #7 (control board lockout) with note. Same target as YES.</div></div>
           <div class="node node-p2"><div class="node-tag">→ Tab H</div><div class="node-title">Intermittent Shutdown branch</div><span class="phase-badge pb-p2">Phase 2</span></div></div>
       </div>
     </div>
@@ -995,10 +989,7 @@
             <div class="reading-box"><div class="rd-label">📏 Confirms</div><div class="rd-title">Micro-amp reading</div><div class="rd-compare">&lt;1µA = replace sensor</div></div>
           </div>
           <div class="node node-p1"><div class="node-tag">CARD #11 — Flame Sensor</div><span class="phase-badge pb-p1">Phase 1 · ASSISTED ✓</span><div class="actions-count">⚡ 4 actions</div></div>
-          <div class="qa-bug-banner">
-            <div class="bug-title">🟠 BUG #13 — HIGH — Always Escalates (No Backend Card Configured)</div>
-            <div class="bug-desc">Submitting any micro-amp value — 0.5 µA (below &lt;1 µA replace threshold) or 3 µA (above &gt;2 µA healthy threshold) — always returns "Diagnostic escalated." No diagnosis card or follow-up question is configured in the backend for this path. Both replace and healthy readings need a configured resolution.</div>
-            <div><span class="bug-code">POST /answer → 200 but escalation unconditional (no card mapped)</span></div>
+          <div class="qa-pass-banner">✅ FIXED (mig 014 + 015) — q4-flame-sensor routes low/replace/heavy_oxide → Card #11; ok/clean/marginal → escalate with reason.</div>
           </div>
         </div>
       </div>
@@ -1016,10 +1007,7 @@
     </div>
     <div class="houston-badge">~5% of calls<small>Houston frequency</small></div>
   </div>
-  <div class="warning-box">
-    <div class="warning-icon">⚠️</div>
-    <div><strong>Action required:</strong> Add "Intermittent Shutdown" as the 8th complaint to top screen. Without it, techs misfile this under other complaints and get wrong card routing.</div>
-  </div>
+  <div class="qa-pass-banner">✅ LIVE — Intermittent Shutdown IS the 8th complaint. 5-step flow (q1 camera → q2 thermal Path A → q3 visual → q4 IR → q5 voltage drop). Card #16 + FLIR camera escalate on elevated voltage-drop.</div>
   <div class="v-connector">
     <div class="node node-q"><div class="node-tag">Step 1</div><div class="node-title">Does the tech have a thermal camera?</div><div class="node-sub">Determines Path A (2 steps) or Path B (4-step workaround)</div></div>
     <div class="v-line"></div>
