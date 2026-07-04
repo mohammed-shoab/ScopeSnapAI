@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { headers } from "next/headers";
 import { ClerkProvider } from "@clerk/nextjs";
 import { PostHogProvider } from "@/providers/PostHogProvider";
 import "./globals.css";
@@ -7,7 +6,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "SnapAI — AI-Powered HVAC Estimation",
   description:
-    "Photograph any HVAC unit. Get an instant AI assessment with Good/Better/Best estimates. Send the homeowner a beautiful report in 90 seconds.",
+    "Photograph any HVAC unit. Get an instant AI assessment with three context-aware options and one honest recommendation. Send the homeowner a beautiful report in 90 seconds.",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -37,12 +36,11 @@ export const viewport: Viewport = {
   themeColor: "#1a8754",  viewportFit: "cover",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en">
       <head>
@@ -57,13 +55,12 @@ export default async function RootLayout({
       </head>
       <body className="bg-surface-bg text-text-primary font-sans antialiased">
         <PostHogProvider>
-          <ClerkProvider dynamic>
+          <ClerkProvider>
           {children}
           </ClerkProvider>
         </PostHogProvider>
         {/* PWA Service Worker Registration */}
         <script
-          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
