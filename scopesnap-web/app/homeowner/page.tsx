@@ -12,22 +12,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
 import { usePostHog } from "posthog-js/react";
 
 export default function HomeownerLandingPage() {
   const posthog = usePostHog();
   const [copied, setCopied] = useState(false);
-  const router = useRouter();
-  const { isLoaded, isSignedIn } = useUser();
-
-  // 4.14: redirect signed-in users to dashboard
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      router.replace("/dashboard");
-    }
-  }, [isLoaded, isSignedIn, router]);
 
   // PostHog: fire homeowner_landing_visited + capture UTM params
   useEffect(() => {
@@ -70,7 +59,7 @@ export default function HomeownerLandingPage() {
       number: "02",
       title: "Three repair options at different price points",
       description:
-        "You see a Good option (quick fix), a Better option (fix plus prevention), and a Best option (most thorough — addresses root cause, includes pressure testing). Real prices. Your call which one to choose.",
+        "You see three context-aware options — each priced against your unit’s specific condition. A quick fix, a deeper repair, or a replacement, with one honest recommendation marked and no upsell pressure. Real prices. Your call which one to choose.",
     },
     {
       number: "03",
@@ -106,6 +95,10 @@ export default function HomeownerLandingPage() {
 
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-16 pb-12 text-center">
+        <div className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide uppercase text-brand-green bg-brand-green-light px-3 py-1.5 rounded-full mb-6">
+          For Houston Homeowners
+        </div>
+
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-text-primary leading-tight mb-5 max-w-3xl mx-auto">
           Three options. Real prices. No surprises.
         </h1>
@@ -116,14 +109,9 @@ export default function HomeownerLandingPage() {
           what happens if you wait.
         </p>
 
-        <p className="text-sm text-text-secondary max-w-xl mx-auto mb-4">
+        <p className="text-sm text-text-secondary max-w-xl mx-auto">
           Ask your contractor if they use SnapAI.
           If they do not, share this page with them.
-        </p>
-
-        {/* 4.13: market scope line */}
-        <p className="text-xs text-text-tertiary max-w-xl mx-auto">
-          Currently active in Houston, Texas. Other markets coming.
         </p>
       </section>
 
@@ -154,7 +142,7 @@ export default function HomeownerLandingPage() {
             ))}
           </div>
           <p className="text-sm text-text-secondary mt-8 text-center max-w-lg mx-auto leading-relaxed">
-            Your contractor’s SnapAI estimate marks one tier as ★️ Recommended based on your unit’s age and condition — sometimes Good, sometimes Better, sometimes Best.
+            Your contractor’s SnapAI estimate marks one option as ★️ Recommended based on your unit’s age and condition — sometimes the quick fix is right, sometimes the deeper repair, sometimes replacement.
           </p>
         </div>
       </section>
@@ -167,7 +155,7 @@ export default function HomeownerLandingPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
           {[
             {
-              tier: "Good",
+              tier: "Quick Fix",
               label: "Quick fix",
               color: "text-text-primary",
               bg: "bg-surface-card",
@@ -175,8 +163,8 @@ export default function HomeownerLandingPage() {
               description: "Replace the failed component. Gets you running today.",
             },
             {
-              tier: "Better",
-              label: "Fix + extend life",
+              tier: "Smart Repair",
+              label: "Fix + prevent",
               color: "text-brand-green",
               bg: "bg-brand-green-light",
               border: "border-brand-green",
@@ -184,12 +172,12 @@ export default function HomeownerLandingPage() {
               recommended: true,
             },
             {
-              tier: "Best",
-              label: "Most Thorough",
+              tier: "Replace System",
+              label: "Most thorough",
               color: "text-text-primary",
               bg: "bg-surface-card",
               border: "border-surface-border",
-              description: "New system install. Best long-term value if unit is aging.",
+              description: "New system install. Long-term value if unit is aging.",
             },
           ].map((option) => (
             <div
@@ -210,7 +198,7 @@ export default function HomeownerLandingPage() {
           ))}
         </div>
         <p className="text-center text-xs text-text-tertiary mt-6">
-          Every estimate includes parts, labor, and a branded PDF delivered to your inbox.
+          Example shown for a 10-year-old unit — labels change based on your unit’s actual age and condition. Every estimate includes parts, labor, and a branded PDF delivered to your inbox.
         </p>
       </section>
 

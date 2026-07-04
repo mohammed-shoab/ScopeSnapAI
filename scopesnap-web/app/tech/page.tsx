@@ -11,22 +11,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
 import { usePostHog } from "posthog-js/react";
 
 export default function TechLandingPage() {
   const posthog = usePostHog();
   const [copied, setCopied] = useState(false);
-  const router = useRouter();
-  const { isLoaded, isSignedIn } = useUser();
-
-  // 4.14: redirect signed-in users to dashboard
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      router.replace("/dashboard");
-    }
-  }, [isLoaded, isSignedIn, router]);
 
   // PostHog: fire tech_landing_visited + capture UTM params
   useEffect(() => {
@@ -54,21 +43,21 @@ export default function TechLandingPage() {
   const steps = [
     {
       number: "01",
-      title: "Snap the nameplate in the truck.",
+      title: "Photograph the unit",
       description:
-        "You're at the job. Open the app, photograph the data plate. Make, model, year, refrigerant pulled in seconds. No supply house phone calls.",
+        "Open SnapAI, tap New Assessment, and photograph the nameplate and unit. The AI reads make, model, age, and refrigerant automatically.",
     },
     {
       number: "02",
-      title: "Walk the diagnosis on your phone.",
+      title: "App walks the diagnostic",
       description:
-        "Guided fault tree. Same logic your best senior tech runs in his head — written down. Diagnosis in under 90 seconds, every tech, every call.",
+        "Answer a series of guided questions about symptoms. The system follows the same fault tree your best senior tech has in his head.",
     },
     {
       number: "03",
-      title: "Quote and close before you pull out.",
+      title: "Three context-aware options, one recommendation — in 90 seconds",
       description:
-        "Good / Better / Best estimate with your markup applied. Homeowner approves on your phone. Branded PDF in their inbox before you turn the key.",
+        "SnapAI generates a three-tier estimate with your markup applied. Send the homeowner a branded PDF before you leave the driveway.",
     },
   ];
 
@@ -102,20 +91,17 @@ export default function TechLandingPage() {
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-16 pb-12 text-center">
         <div className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide uppercase text-brand-green bg-brand-green-light px-3 py-1.5 rounded-full mb-6">
-          Built for Houston contractors first
+          Houston Contractors Only
         </div>
 
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-text-primary leading-tight mb-5 max-w-3xl mx-auto">
           Diagnose, estimate, and close before you leave the driveway.
         </h1>
 
-        <p className="text-lg sm:text-xl text-text-secondary max-w-2xl mx-auto mb-6 leading-relaxed">
-          Guided diagnostic, three-tier estimate, homeowner-approved PDF — all on your phone before you leave the driveway.
-        </p>
-
-        {/* 4.13 positioning callout */}
-        <p className="text-sm text-text-tertiary max-w-xl mx-auto mb-8 italic">
-          If your service truck is your office, this is for you. No implementation team. No quarterly review. No IT.
+        <p className="text-lg sm:text-xl text-text-secondary max-w-2xl mx-auto mb-8 leading-relaxed">
+          An AI HVAC diagnostic tool built for Houston contractors.
+          Guided fault detection. Three context-aware options, one honest recommendation. Homeowner-approved PDF.
+          All before you pull out of the driveway.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -126,21 +112,7 @@ export default function TechLandingPage() {
           >
             Start Free Beta Access
           </Link>
-          <p className="text-sm text-text-tertiary">Wave 1 — looking for the first 5 Houston techs. Free during beta, no credit card.</p>
-        </div>
-
-        {/* 4.15: Hero video embed — TODO: replace placeholder with /hero.mp4 once Shoab provides it */}
-        <div className="mt-10 max-w-3xl mx-auto rounded-2xl overflow-hidden bg-surface-card border border-surface-border">
-          <video
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            className="w-full h-auto rounded-xl shadow-lg"
-          >
-            <source src="/hero.mp4" type="video/mp4" />
-          </video>
+          <p className="text-sm text-text-tertiary">First 10 Houston testers. Free, no commitment.</p>
         </div>
       </section>
 
@@ -180,12 +152,11 @@ export default function TechLandingPage() {
             and pricing tiers reflect months of that research.
           </p>
           <p className="text-sm text-text-secondary leading-relaxed mb-4">
-            Wave 1 beta now open — first 5 Houston HVAC techs get founding access.
-            Your senior tech reviews the diagnostic tree before we wire it to your team.
-            Your input rewrites the tree.
+            Beta program now open — first 10 Houston HVAC techs get founding access.
+            Your input shapes every release.
           </p>
           <p className="text-xs font-semibold text-brand-green">
-            Free during beta, no credit card. After beta, $39/tech/month with a 14-day free trial. Flat fee, no add-on modules.
+            Free during beta. Pricing announced before launch.
           </p>
         </div>
       </section>
@@ -194,7 +165,7 @@ export default function TechLandingPage() {
       <section className="bg-brand-green py-16">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-            Free for the first 5 Houston techs.
+            Free for the first 10 Houston techs.
           </h2>
           <p className="text-green-100 mb-8 leading-relaxed">
             Built with Houston field experience. Diagnostic logic validated against real residential
@@ -213,27 +184,7 @@ export default function TechLandingPage() {
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <footer className="bg-surface-bg border-t border-surface-border py-8">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-
-          {/* ── About block (2026-05-29 — resolves geography-honesty fragility per Strategic Narrative v1.1) ─── */}
-          <div className="mb-6 pb-6 border-b border-surface-border">
-            <p className="text-xs text-text-tertiary leading-relaxed max-w-3xl">
-              <span className="font-semibold text-text-secondary">About:</span>{" "}
-              SnapAI is built by Shoab, a data scientist based in Pakistan, in close iteration with Houston HVAC techs.
-              Wave 1 beta is live now — looking for 5 Houston techs to calibrate the diagnostic tree against real calls.
-              Reach out:{" "}
-              <a
-                href="mailto:sajan@hellosnapai.com"
-                className="text-brand-green hover:underline"
-              >
-                sajan@hellosnapai.com
-              </a>
-              .
-            </p>
-          </div>
-
-          {/* ── Existing footer row ──────────────────────────────────── */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-text-tertiary">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-text-tertiary">
           <div className="flex items-center gap-2">
             <div
               className="w-5 h-5 rounded flex items-center justify-center text-white text-xs font-bold"
@@ -253,7 +204,6 @@ export default function TechLandingPage() {
               {copied ? "Link copied!" : "Share this page"}
             </button>
           </div>
-        </div>
         </div>
       </footer>
 
