@@ -124,7 +124,7 @@ export default function LandingPage() {
           </p>
           <p className="text-lg text-text-secondary leading-relaxed mb-10 max-w-xl mx-auto">
             Photograph any HVAC unit. SnapAI identifies the equipment,
-            generates a Good / Better / Best estimate, and sends the homeowner a
+            generates three context-aware options with one honest recommendation, and sends the homeowner a
             beautiful report — all before you leave the driveway.
           </p>
           <p className="text-xs text-text-tertiary mb-4">Free during beta. Pricing announced before launch.</p>
@@ -211,7 +211,7 @@ export default function LandingPage() {
                   </svg>
                 ),
                 title: "Estimate built from the fault tree",
-                desc: "Good / Better / Best pricing generated with your markup — parts, labor, and R-22 surcharges included.",
+                desc: "Three context-aware options, priced with your markup — parts, labor, and R-22 surcharges included. One honest recommendation, no upsell pressure.",
                 color: "#6a1b9a",
                 bg: "rgba(106,27,154,.08)",
               },

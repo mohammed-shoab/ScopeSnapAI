@@ -55,7 +55,7 @@ export default function TechLandingPage() {
     },
     {
       number: "03",
-      title: "Good / Better / Best estimate in 90 seconds",
+      title: "Three context-aware options, one recommendation — in 90 seconds",
       description:
         "SnapAI generates a three-tier estimate with your markup applied. Send the homeowner a branded PDF before you leave the driveway.",
     },
@@ -100,7 +100,7 @@ export default function TechLandingPage() {
 
         <p className="text-lg sm:text-xl text-text-secondary max-w-2xl mx-auto mb-8 leading-relaxed">
           An AI HVAC diagnostic tool built for Houston contractors.
-          Guided fault detection. Good / Better / Best estimate. Homeowner-approved PDF.
+          Guided fault detection. Three context-aware options, one honest recommendation. Homeowner-approved PDF.
           All before you pull out of the driveway.
         </p>
 

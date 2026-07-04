@@ -59,7 +59,7 @@ export default function HomeownerLandingPage() {
       number: "02",
       title: "Three repair options at different price points",
       description:
-        "You see a Good option (quick fix), a Better option (fix plus prevention), and a Best option (most thorough — addresses root cause, includes pressure testing). Real prices. Your call which one to choose.",
+        "You see three context-aware options — each priced against your unit’s specific condition. A quick fix, a deeper repair, or a replacement, with one honest recommendation marked and no upsell pressure. Real prices. Your call which one to choose.",
     },
     {
       number: "03",
@@ -142,7 +142,7 @@ export default function HomeownerLandingPage() {
             ))}
           </div>
           <p className="text-sm text-text-secondary mt-8 text-center max-w-lg mx-auto leading-relaxed">
-            Your contractor’s SnapAI estimate marks one tier as ★️ Recommended based on your unit’s age and condition — sometimes Good, sometimes Better, sometimes Best.
+            Your contractor’s SnapAI estimate marks one option as ★️ Recommended based on your unit’s age and condition — sometimes the quick fix is right, sometimes the deeper repair, sometimes replacement.
           </p>
         </div>
       </section>
@@ -155,7 +155,7 @@ export default function HomeownerLandingPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
           {[
             {
-              tier: "Good",
+              tier: "Quick Fix",
               label: "Quick fix",
               color: "text-text-primary",
               bg: "bg-surface-card",
@@ -163,7 +163,7 @@ export default function HomeownerLandingPage() {
               description: "Replace the failed component. Gets you running today.",
             },
             {
-              tier: "Better",
+              tier: "Smart Repair",
               label: "Fix + prevent",
               color: "text-brand-green",
               bg: "bg-brand-green-light",
@@ -172,12 +172,12 @@ export default function HomeownerLandingPage() {
               recommended: true,
             },
             {
-              tier: "Best",
-              label: "Most Thorough",
+              tier: "Replace System",
+              label: "Most thorough",
               color: "text-text-primary",
               bg: "bg-surface-card",
               border: "border-surface-border",
-              description: "New system install. Best long-term value if unit is aging.",
+              description: "New system install. Long-term value if unit is aging.",
             },
           ].map((option) => (
             <div
@@ -198,7 +198,7 @@ export default function HomeownerLandingPage() {
           ))}
         </div>
         <p className="text-center text-xs text-text-tertiary mt-6">
-          Every estimate includes parts, labor, and a branded PDF delivered to your inbox.
+          Example shown for a 10-year-old unit — labels change based on your unit’s actual age and condition. Every estimate includes parts, labor, and a branded PDF delivered to your inbox.
         </p>
       </section>
 

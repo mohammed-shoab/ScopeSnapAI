@@ -6,7 +6,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "SnapAI — AI-Powered HVAC Estimation",
   description:
-    "Photograph any HVAC unit. Get an instant AI assessment with Good/Better/Best estimates. Send the homeowner a beautiful report in 90 seconds.",
+    "Photograph any HVAC unit. Get an instant AI assessment with three context-aware options and one honest recommendation. Send the homeowner a beautiful report in 90 seconds.",
   manifest: "/manifest.json",
   icons: {
     icon: [
