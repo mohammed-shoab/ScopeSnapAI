@@ -2526,3 +2526,41 @@ Root cause: Next's compiled webpack CSS toolchain `require()`s its own nested po
 4. Also grep other skills (e.g. snapai-dev) for stale cross-refs like "21 experts" / "15-seat".
 
 **2026-07-02 state:** 6 advisors added -- board Panel 5 (bryan-orr, jenny-hoyos, zaria-parvez, alex-su) and nav Seat #16 (mrbeast) + Seat #17 (terence-reilly). Drive canonical, plugin cache, and manifest.json all synced to 25 board / 17 nav this session. Durable re-import via Settings -> Capabilities still recommended.
+
+
+## DEC-129 -- diagnostic_questions branch_logic_jsonb is Monaco-seeded; migrations alone are INSUFFICIENT evidence of what is live (2026-07-03)
+
+**Status: ACTIVE RULE.** Applies to any AI or human session evaluating the diagnostic flow's coverage, completeness, or bug status.
+
+**The gotcha (real incident, this session):** Bryan Orr @board evaluation of the SnapAI diagnostic app concluded from reading migration files alone that:
+- Item 1 -- Card #13 Ductwork Leak branch on Not Cooling YES / normal pressures + warm supply was "NOT DONE" (migration 013 comment appeared to have replaced the 4-way Phase 2 gate with a single-reading suction-only gate resolving to a repurposed "TXV/Metering" card).
+- Item 2 -- Error Code / refrigerant_low Phase 2 gate discriminating Card #8 (leak) vs Card #15 (piston) was "NOT DONE" (no migration file adds this discrimination).
+- Item 3 -- Intermittent Shutdown Path B all-checks-pass FLIR camera escalate was "PARTIALLY DONE, unverifiable from migrations."
+
+Shoab said "check it yourself" via Supabase MCP. Live prod query against `diagnostic_questions` on `snapai-prod-use1` (project `zpsoprffaujswywtsgzy`) proved ALL THREE ITEMS ARE LIVE:
+- not_cooling / q2-nc-suction routes low→Card 8, ok→Card 13 (verified Ductwork Leak in fault_cards), high→q2-nc-discharge which routes to Card 14 / Card 17 / escalate for compressor-valve edge case. Full 4-card discrimination lives.
+- error_code / q1 branch_logic contains `"refrigerant_low": {"phase_2_gate": true, "after": {"piston_pattern": {"resolve_card": 15}, "low_suction_high_superheat": {"resolve_card": 8}}}`. Exact tree-spec gate, live.
+- intermittent_shutdown / q5-voltage-drop has `"elevated": {"escalate": true, "reason": "Marginal voltage drop -- Path B caps at 85-90%. Consider FLIR camera."}` -- exact tree-spec FLIR escalate branch, live.
+
+**Root cause:** Migration `011_p3_diagnostic_engine.py` is intentionally a NO-OP (`upgrade(): pass`) with docstring "DDL applied directly in Supabase (same technique as WS-C migration 008). This file is a no-op so Railway alembic upgrade head skips cleanly." The initial diagnostic_questions rows -- and every later mutation of their branch_logic_jsonb -- were seeded via the Supabase Monaco SQL editor, NOT in migration files. Same pattern applies to migration 008 (WS-C readings gate). Any migration whose docstring says "applied directly in Supabase" or "seeded via Monaco" leaves NO trace in Alembic history but is fully live in the DB.
+
+**Rule / How to verify diagnostic coverage from now on:**
+1. NEVER claim a diagnostic step, branch, or resolve_card is absent based on migration files alone. Migrations are a PARTIAL source.
+2. Query Supabase directly via `mcp__supabase__execute_sql` on `snapai-prod-use1` (or `snapai-staging-use1` for pre-prod state). Base query:
+   ```sql
+   SELECT complaint_type, step_id, step_order, question_text, input_type,
+          reading_spec, branch_logic_jsonb, is_terminal
+   FROM diagnostic_questions
+   WHERE complaint_type = <target>
+   ORDER BY step_order;
+   ```
+3. Cross-reference resolve_card IDs against `fault_cards.card_name` to confirm the card the branch resolves to:
+   ```sql
+   SELECT card_id, card_name FROM fault_cards WHERE card_id IN (...) ORDER BY card_id;
+   ```
+4. Only after the live DB has been queried is it safe to claim "done" or "not done" on a discrimination / escalate branch.
+5. The `SnapAI_Decision_Tree.html` v5 is the DESIGN SPEC. It reflects intent, not necessarily what shipped. Migrations reflect a SUBSET of what shipped. The live `diagnostic_questions` table is the AUTHORITATIVE source of what runs today.
+
+**Impact on the Bryan Orr @board evaluation:** With live verification, all three items marked "not done" or "partially done" are FULLY DONE and match the tree spec. The 80% senior-tech-replacement claim moves from "not defensible" to "defensible on the 15-20 fault types the cards cover, given the discrimination cascade and honest escalate branches are live." Two remaining honesty flags stand: (a) the confidence label calibration -- current UI says "High Confidence" from ONE suction reading before the discrimination cascade completes; should say "hypothesis" or "probable" until the cascade converges; (b) landing page copy still says "Good / Better / Best" which per MBrain is retired language.
+
+**Cross-references:** DEC-111 (never claim without verifying), DEC-070 (staging-first workflow), migration 011 (no-op Monaco-seeded diagnostic tables), migration 008 (same pattern for WS-C readings gate), tree spec `SnapAI_Decision_Tree.html`.
