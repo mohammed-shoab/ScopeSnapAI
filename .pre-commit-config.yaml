@@ -1,0 +1,13 @@
+# Legal-copy drift guard (DEC-088 / legal-safe-wordings v1).
+# Blocks a commit if NEWLY ADDED lines in homeowner-facing / public surfaces
+# contain banned diagnosis claims, predictive/superlative bans, self-claims,
+# or city/geo in public copy. Companion to CI nul-byte-guard + gitleaks.
+repos:
+  - repo: local
+    hooks:
+      - id: legal-banned-strings
+        name: legal banned-string guard (homeowner/public copy)
+        entry: python scripts/check_legal_banned_strings.py --staged
+        language: system
+        pass_filenames: false
+        always_run: true

@@ -210,7 +210,7 @@ export const URDU_STRINGS: Record<string, string> = {
   "Assessment":                      "تشخیص",
 
   // ── Homeowner report (ReportClient) ──────────────────────────────────────────────
-  "Equipment Health Report":         "آلات کی صحت کی رپورٹ",
+  "Contractor Assessment Report":         "آلات کی صحت کی رپورٹ",
   "System Overview":                 "سسٹم کا جائزہ",
   "Installed":                       "نصب شدہ",
   "Est. Life Remaining":             "متوقع بقیہ عمر",

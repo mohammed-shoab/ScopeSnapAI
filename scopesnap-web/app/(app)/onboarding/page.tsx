@@ -59,6 +59,9 @@ export default function OnboardingPage() {
   // commented out below. Re-enable when multi-trade support is ready.
   const [selectedTrade, setSelectedTrade] = useState<Trade | null>("hvac");
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  // Contractor onboarding gate (C3): both must be true to launch.
+  const [attestation, setAttestation] = useState(false);
+  const [sec2Ack, setSec2Ack] = useState(false);
 
   const [profile, setProfile] = useState<CompanyProfile>({
     name: "",
@@ -129,6 +132,14 @@ export default function OnboardingPage() {
       setError("Company name is required");
       return;
     }
+    if (!profile.license_number.trim()) {
+      setError("A valid contractor license number is required");
+      return;
+    }
+    if (!attestation || !sec2Ack) {
+      setError("Please confirm both acknowledgements to continue");
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -142,6 +153,8 @@ export default function OnboardingPage() {
           phone: profile.phone,
           license_number: profile.license_number,
           trade: selectedTrade,
+          attestation_accepted: attestation,
+          terms_ack_version: "v1",
         }),
       });
       if (!r.ok) {
@@ -152,25 +165,6 @@ export default function OnboardingPage() {
       router.push("/dashboard");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleSkip = async () => {
-    setSaving(true);
-    try {
-      const headers = await getAuthHeaders();
-      await fetch(`${API_URL}/api/auth/me/company`, {
-        method: "PATCH",
-        headers,
-        body: JSON.stringify({
-          trade: selectedTrade,
-        }),
-      });
-      router.push("/dashboard");
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Skip failed");
     } finally {
       setSaving(false);
     }
@@ -386,6 +380,42 @@ export default function OnboardingPage() {
                   </div>
                 </div>
 
+                {/* Contractor gate (C3) — both required to launch */}
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={attestation}
+                    onChange={(e) => setAttestation(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-surface-border text-brand-green focus:ring-brand-green/30"
+                  />
+                  <span className="text-xs text-text-secondary leading-relaxed">
+                    I'm a licensed HVAC contractor, or an authorized employee of
+                    one, using SnapAI in my business.
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sec2Ack}
+                    onChange={(e) => setSec2Ack(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-surface-border text-brand-green focus:ring-brand-green/30"
+                  />
+                  <span className="text-xs text-text-secondary leading-relaxed">
+                    I understand SnapAI is a decision-support tool for my
+                    professional use. It{" "}
+                    <a
+                      href="/tos"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-brand-green underline hover:text-brand-green-dark"
+                    >
+                      doesn't diagnose equipment
+                    </a>{" "}
+                    — I do, as the licensed pro.
+                  </span>
+                </label>
+
                 {/* Logo Upload */}
                 <div>
                   <label className="text-xs font-semibold text-text-secondary uppercase tracking-wide block mb-2">
@@ -433,20 +463,18 @@ export default function OnboardingPage() {
                 </button>
                 <button
                   onClick={handleCompanyInfoSave}
-                  disabled={saving || !profile.name.trim()}
+                  disabled={
+                    saving ||
+                    !profile.name.trim() ||
+                    !profile.license_number.trim() ||
+                    !attestation ||
+                    !sec2Ack
+                  }
                   className="flex-1 bg-brand-green text-white font-bold py-3 rounded-lg text-sm shadow-green hover:bg-brand-green-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? "Launching..." : "Launch SnapAI 🚀"}
                 </button>
               </div>
-
-              <button
-                onClick={handleSkip}
-                disabled={saving}
-                className="w-full text-center text-xs text-text-secondary hover:text-text-primary py-2 transition-colors"
-              >
-                I'll finish this later
-              </button>
             </div>
 
             <DotIndicators />

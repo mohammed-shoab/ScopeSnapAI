@@ -54,6 +54,18 @@ export default async function AppLayout({
             // (webhook may be delayed) — send to /assess for the wow moment.
             // The Clerk webhook will create their record in the background.
             redirect("/assess");
+          } else if (meRes.status === 200) {
+            // Contractor onboarding GATE (C3): a company record exists but the
+            // owner hasn't completed the gate — no license number, or no
+            // attestation timestamp. Force them through /onboarding. This path
+            // is in skipPaths, so there is no redirect loop.
+            const me = await meRes.json().catch(() => null);
+            const company = me?.company;
+            const licenseMissing = !company?.license_number || !String(company.license_number).trim();
+            const attestationMissing = !company?.attestation_accepted_at;
+            if (licenseMissing || attestationMissing) {
+              redirect("/onboarding");
+            }
           }
         }
       }

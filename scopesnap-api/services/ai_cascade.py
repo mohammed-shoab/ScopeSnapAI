@@ -139,7 +139,7 @@ class AICascadeService:
         gemini_result = await _call_gemini_track_a(photos, sr, yr, readings)
 
         return CascadeResult(
-            fault_label=gemini_result.get("confirmed_fault", sr.fault_label),
+            fault_label=gemini_result.get("suggested_finding_for_review", sr.fault_label),
             confidence=gemini_result.get("confidence", sr.confidence),
             track_used="A",
             method="gemini_tiebreak",
@@ -180,7 +180,7 @@ class AICascadeService:
         gemini_result = await _call_gemini_track_b(photos, yr)
 
         return CascadeResult(
-            fault_label=gemini_result.get("confirmed_fault", "unknown"),
+            fault_label=gemini_result.get("suggested_finding_for_review", "unknown"),
             confidence=gemini_result.get("confidence", 0.7),
             track_used="B",
             method="gemini_fallback",
@@ -296,7 +296,7 @@ async def _call_gemini(photos, prompt: str) -> dict:
         logger.error(f"[Cascade] Gemini call failed: {e}")
 
     return {
-        "confirmed_fault": "unknown",
+        "suggested_finding_for_review": "unknown",
         "confidence": 0.6,
         "explanation": "AI analysis unavailable. Please assess manually.",
         "recommendation": "Perform a manual inspection.",

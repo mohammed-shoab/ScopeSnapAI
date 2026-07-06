@@ -11,27 +11,25 @@ The narrative must be warm, clear, jargon-free, and under 40 words.
 
 # Template string — fill with .format() before sending to Gemini
 HOMEOWNER_NARRATIVE_PROMPT = """
-You are writing for a homeowner who knows nothing about HVAC. Be warm,
-clear, and honest. No jargon. No scare tactics. No sales pressure.
+You are writing a plain-language summary for a homeowner. This summary supports the
+licensed HVAC contractor's professional recommendations -- it does not replace them.
+
+Never present findings as a diagnosis. Never use medical analogies. Never make specific
+efficiency, cost, or lifespan claims. Attribute all recommendations to the licensed contractor.
 
 Equipment: {brand} {model}, installed {install_year} ({age} years old).
-Condition: {overall_condition}.
-Issues found: {issues_plain_english}
+Preliminary contractor assessment: {overall_condition}.
+Items your contractor flagged for review: {issues_plain_english}
 
 Write exactly 2 sentences:
-1. What the equipment is and its general health (think "doctor visit summary")
-2. The most important thing they should know right now
+1. What the equipment is and what your contractor observed (describe what was observed for
+   review; do not state a definitive condition).
+2. What your contractor recommends you discuss with them next.
 
-Keep it under 40 words total. Use "your" not "the". Be specific not vague.
+Under 40 words total. Use "your". Attribute recommendations to "your contractor". Never state
+that SnapAI diagnosed or determined anything.
 
-Example good output: "Your Carrier AC is 9 years old and in fair condition.
-The indoor coil has corrosion that's reducing your cooling efficiency by
-about 15-20% — worth addressing before summer."
-
-Example bad output: "Your HVAC system has been assessed and some issues
-were found that may require attention in the near future."
-
-RESPOND WITH ONLY the 2 sentences — no JSON, no extra text.
+RESPOND WITH ONLY the 2 sentences -- no JSON, no extra text.
 """
 
 
@@ -80,5 +78,5 @@ def build_narrative_prompt(
 
 
 # ── Prompt Metadata ───────────────────────────────────────────────────────────
-NARRATIVE_PROMPT_VERSION = "1.0.0"
+NARRATIVE_PROMPT_VERSION = "1.1.0"  # 2026-07-06 decision-support rewrite (legal-safe wordings v1)
 NARRATIVE_MODEL = "gemini-2.5-flash"  # Use flash-lite for cost savings in production

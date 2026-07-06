@@ -7,6 +7,7 @@
  * CTA: routes to /dashboard (Clerk auth / sign-up flow)
  */
 
+// COPY DRAFT — pending Codie + Alfred sign-off
 "use client";
 
 import { useEffect, useState } from "react";
@@ -16,6 +17,38 @@ import { usePostHog } from "posthog-js/react";
 export default function TechLandingPage() {
   const posthog = usePostHog();
   const [copied, setCopied] = useState(false);
+
+  // Waitlist email-capture (moved from former root landing page) — POST /api/waitlist
+  const [email, setEmail] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+  async function handleSignup(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch(`${API_URL}/api/waitlist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (res.ok) {
+        setSubmitted(true);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data?.detail || "Something went wrong. Please try again.");
+      }
+    } catch {
+      setError("Could not connect. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   // PostHog: fire tech_landing_visited + capture UTM params
   useEffect(() => {
@@ -49,7 +82,7 @@ export default function TechLandingPage() {
     },
     {
       number: "02",
-      title: "App walks the diagnostic",
+      title: "App walks the tech through the fault",
       description:
         "Answer a series of guided questions about symptoms. The system follows the same fault tree your best senior tech has in his head.",
     },
@@ -91,17 +124,15 @@ export default function TechLandingPage() {
       {/* ── Hero ───────────────────────────────────────────────────────────── */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 pt-16 pb-12 text-center">
         <div className="inline-flex items-center gap-2 text-xs font-semibold tracking-wide uppercase text-brand-green bg-brand-green-light px-3 py-1.5 rounded-full mb-6">
-          Houston Contractors Only
+          Built for independent HVAC shops
         </div>
 
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-text-primary leading-tight mb-5 max-w-3xl mx-auto">
-          Diagnose, estimate, and close before you leave the driveway.
+          Your newest tech diagnoses like your most experienced.
         </h1>
 
         <p className="text-lg sm:text-xl text-text-secondary max-w-2xl mx-auto mb-8 leading-relaxed">
-          An AI HVAC diagnostic tool built for Houston contractors.
-          Guided fault detection. Three context-aware options, one honest recommendation. Homeowner-approved PDF.
-          All before you pull out of the driveway.
+          A decision-support app built for independent HVAC shops. It walks your tech through the fault, then lays out three context-aware options and a clear recommendation. Homeowner-approved PDF — before you pull out of the driveway.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -110,10 +141,14 @@ export default function TechLandingPage() {
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-ss bg-brand-green text-white font-semibold text-base shadow-green hover:bg-brand-green-dark transition-colors"
             onClick={() => posthog?.capture("tech_cta_clicked", { location: "hero" })}
           >
-            Start Free Beta Access
+            Start free — built for independent HVAC shops
           </Link>
-          <p className="text-sm text-text-tertiary">First 10 Houston testers. Free, no commitment.</p>
+          <p className="text-sm text-text-tertiary">First 10 testers. Free, no commitment.</p>
         </div>
+
+        <p className="text-sm text-text-tertiary max-w-2xl mx-auto mt-6 leading-relaxed">
+          SnapAI is a decision-support tool for licensed HVAC professionals. It organizes symptoms and surfaces likely faults to assist the technician&apos;s own judgment; it does not perform diagnosis, and all findings must be verified on site by a qualified tech.
+        </p>
       </section>
 
 
@@ -148,11 +183,11 @@ export default function TechLandingPage() {
           <p className="text-sm text-text-secondary leading-relaxed mb-4">
             We built SnapAI by deeply researching how HVAC diagnostic actually works —
             manufacturer documentation, training references, and the fault patterns that show up
-            most often on Houston residential systems. The diagnostic engine, fault card database,
+            most often on residential systems. The assessment engine, fault card database,
             and pricing tiers reflect months of that research.
           </p>
           <p className="text-sm text-text-secondary leading-relaxed mb-4">
-            Beta program now open — first 10 Houston HVAC techs get founding access.
+            Beta program now open — first 10 HVAC techs get founding access.
             Your input shapes every release.
           </p>
           <p className="text-xs font-semibold text-brand-green">
@@ -165,11 +200,11 @@ export default function TechLandingPage() {
       <section className="bg-brand-green py-16">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-            Free for the first 10 Houston techs.
+            Free for the first 10 techs.
           </h2>
           <p className="text-green-100 mb-8 leading-relaxed">
-            Built with Houston field experience. Diagnostic logic validated against real residential
-            split-system calls. R-410A, R-22 surcharges, and Houston labor rates all baked in.
+            Built with real field experience. Assessment logic validated against real residential
+            split-system calls. R-410A, R-22 surcharges, and local labor rates all baked in.
           </p>
           <Link
             href="/dashboard"
@@ -179,6 +214,49 @@ export default function TechLandingPage() {
             Claim Your Free Beta Spot
           </Link>
           <p className="text-green-100 text-xs mt-4">No credit card. No commitment. Cancel anytime.</p>
+        </div>
+      </section>
+
+      {/* ── Early Access Signup (waitlist — moved from former root landing) ── */}
+      <section className="bg-surface-card border-y border-surface-border py-16">
+        <div className="max-w-lg mx-auto px-4 sm:px-6 text-center">
+          <h2 className="text-2xl font-bold mb-3">Get early access</h2>
+          <p className="text-text-secondary mb-8 text-sm leading-relaxed">
+            Limited early access — first 30 assessments free.
+            No credit card required.
+          </p>
+          {submitted ? (
+            <div className="bg-brand-green/10 border border-brand-green/20 rounded-ss p-6">
+              <p className="text-brand-green font-semibold text-lg mb-1">You&apos;re in!</p>
+              <p className="text-text-secondary text-sm">
+                Check your inbox — we&apos;ll send your access details shortly.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSignup} className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="flex-1 border border-surface-border rounded-ss px-4 py-3 text-sm bg-surface-bg focus:outline-none focus:ring-2 focus:ring-brand-green placeholder:text-text-secondary"
+              />
+              <button
+                type="submit"
+                disabled={submitting}
+                className="bg-brand-green text-white font-semibold py-3 px-6 rounded-ss hover:bg-brand-green-dark transition-colors text-sm disabled:opacity-60 whitespace-nowrap"
+              >
+                {submitting ? "Sending…" : "Start Free →"}
+              </button>
+            </form>
+          )}
+          {error && (
+            <p className="mt-3 text-red-500 text-xs">{error}</p>
+          )}
+          <p className="mt-4 text-xs text-text-secondary">
+            No spam. Unsubscribe any time.
+          </p>
         </div>
       </section>
 
@@ -196,6 +274,7 @@ export default function TechLandingPage() {
           </div>
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="hover:text-text-secondary transition-colors">Privacy</Link>
+            <Link href="/tos" className="hover:text-text-secondary transition-colors">Terms</Link>
             <Link href="/dashboard" className="hover:text-text-secondary transition-colors">Sign In</Link>
             <button
               onClick={handleCopyLink}
