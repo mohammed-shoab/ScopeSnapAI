@@ -68,10 +68,10 @@ Analyze the attached HVAC inspection photo and the sensor data above.
 
 Return ONLY this JSON structure — no other text:
 {{
-  "confirmed_fault": "fault_name_or_normal",
+  "suggested_finding_for_review": "fault_name_or_normal",
   "confidence": 0.0,
-  "sensor_diagnosis_correct": true,
-  "visual_findings_correct": true,
+  "sensor_reading_appears_consistent": true,
+  "visual_scan_supports_finding": true,
   "explanation": "plain English explanation for the technician",
   "recommendation": "specific next steps for the technician",
   "bounding_boxes": [{{"label": "...", "x1": 0, "y1": 0, "x2": 100, "y2": 100, "confidence": 0.0}}]
@@ -93,7 +93,7 @@ Pay special attention to the regions flagged by the YOLO models above, even if c
 
 Return ONLY this JSON structure — no other text:
 {{
-  "confirmed_fault": "fault_name_or_normal",
+  "suggested_finding_for_review": "fault_name_or_normal",
   "confidence": 0.0,
   "explanation": "plain English explanation for the technician",
   "recommendation": "specific next steps for the technician",

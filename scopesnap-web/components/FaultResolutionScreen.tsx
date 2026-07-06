@@ -454,6 +454,36 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
         )}
       </div>
 
+      {/* ── Layer-4 in-app decision-support disclaimer (always visible, both modes) ── */}
+      <div
+        role="note"
+        style={{
+          background: "#fffbeb",
+          border: "1px solid #f59e0b",
+          borderRadius: 8,
+          padding: "12px 14px",
+          fontSize: 13,
+          lineHeight: 1.5,
+          color: "#78350f",
+        }}
+      >
+        <div style={{ fontWeight: 700, marginBottom: 4, color: "#92400e" }}>
+          SnapAI recommendation only — NOT a certified diagnosis.
+        </div>
+        <div>
+          This Output is a probabilistic recommendation. Verify all findings
+          independently before acting. Do not present this Output to a Homeowner as
+          a certified diagnosis.
+        </div>
+        {recTier === "C" && (
+          <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #fcd34d" }}>
+            This is a preliminary finding requiring independent Manual J load
+            calculation and licensed inspection before any equipment replacement or
+            major service recommendation is presented to the Homeowner.
+          </div>
+        )}
+      </div>
+
       {/* ── Action steps ── */}
       {data.action_steps.length > 0 && (
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "14px 16px" }}>
