@@ -5,7 +5,7 @@ import DataConfidenceLabel from "@/components/DataConfidenceLabel";
 import { track, trackEvent } from "@/lib/tracking";
 import { formatCurrency, detectMarket, getLanguage } from "@/lib/market";
 import { URDU_STRINGS } from "@/lib/urdu-strings";
-import FiveYearComparison, { type TierTCO } from "@/components/FiveYearComparison";
+import { type TierTCO } from "@/components/FiveYearComparison";
 
 /**
  * ReportQRCode — SOW Task 1.9 (Zuckerberg requirement)
@@ -161,6 +161,24 @@ const CONDITION_BG: Record<string, string> = {
   failed: "#fce8e8",
 };
 
+// H7: plain-language display labels for overall condition. Display-only --
+// backend tier logic depends on the raw values, so never change stored values
+// or the color-map keys above.
+const CONDITION_LABELS: Record<string, string> = {
+  excellent: "Operating normally",
+  good: "Operating normally",
+  fair: "Showing wear",
+  poor: "Needs service",
+  critical: "End-of-life",
+  failed: "End-of-life",
+};
+
+/** H7 helper: map a raw condition value to its plain-language label (display only). */
+function conditionLabel(condition?: string): string {
+  const key = (condition || "unknown").toLowerCase();
+  return CONDITION_LABELS[key] || "Assessed";
+}
+
 
 /** Convert snake_case slugs to Title Case for display ("evaporator_coil" → "Evaporator Coil") */
 function formatSlug(s: string): string {
@@ -209,7 +227,7 @@ function HealthGauge({ condition }: { condition?: string }) {
           lineHeight: 1.2,
         }}
       >
-        {label.toUpperCase()}
+        {conditionLabel(label)}
       </span>
     </div>
   );
@@ -284,7 +302,7 @@ function AnnotatedPhotoSvg({ photo, hasIssues }: { photo: Photo; hasIssues?: boo
           )}
       </svg>
       <div style={{ padding: "8px 12px", background: "rgba(0,0,0,.85)", color: "rgba(255,255,255,.7)", fontSize: 10 }}>
-        <strong style={{ color: "#22cc66" }}>AI-Enhanced Assessment Photo</strong>
+        <strong style={{ color: "#22cc66" }}>Assessment Photo</strong>
         {" · Red = needs attention · Orange = minor · Green = identified"}
       </div>
     </div>
@@ -597,7 +615,7 @@ export default function ReportClient({ report }: { report: Report }) {
               marginBottom: 4,
             }}
           >
-            {t("Equipment Health Report")}
+            {t("Contractor Assessment Report")}
           </p>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 4px", letterSpacing: -0.5 }}>
             {property?.customer_name ? `${property.customer_name}'s Home` : property?.address_line1 || ""}
@@ -645,16 +663,16 @@ export default function ReportClient({ report }: { report: Report }) {
                     ? `Your ${equipLabel(equipment.equipment_type)}:`
                     : "Your System:"}{" "}
                   <span style={{ color: conditionColor }}>
-                    {t(condition.charAt(0).toUpperCase() + condition.slice(1))} Condition
+                    {t(conditionLabel(condition))}
                   </span>
                 </h4>
                 <p style={{ fontSize: 11, color: "#7a7770", margin: "3px 0 0" }}>
                   {condition === "fair"
-                    ? "Functional, with one component that needs attention soon."
+                    ? "Your contractor noted one component to review."
                     : condition === "poor" || condition === "critical"
-                    ? "Needs attention soon; one or more components are showing significant wear."
+                    ? "Your contractor noted one or more components showing wear."
                     : condition === "good" || condition === "excellent"
-                    ? "Your system is in good shape."
+                    ? "Your contractor found your system in good condition."
                     : "Assessment complete — see details below."}
                 </p>
               </div>
@@ -803,7 +821,9 @@ export default function ReportClient({ report }: { report: Report }) {
                           fontFamily: "IBM Plex Mono, monospace",
                         }}
                       >
-                        {isRTL ? "★ " + t("Recommended").toUpperCase() : "★ RECOMMENDED"}
+                        {isRTL
+                          ? (company?.name || t("Your contractor")) + t("'s recommendation")
+                          : `${company?.name || "Your contractor"}'s recommendation`}
                       </div>
                     )}
 
@@ -1233,20 +1253,6 @@ export default function ReportClient({ report }: { report: Report }) {
             )}
           </div>
         )}
-        {/* 5-Year TCO — Track G */}
-        {report.options.length > 0 && (
-          <div style={{ margin: "10px 0" }}>
-            <FiveYearComparison
-              optionA={report.options.find((o) => o.tier === "good" || o.tier === "A")?.five_year_comparison ?? null}
-              optionB={report.options.find((o) => o.tier === "better" || o.tier === "B")?.five_year_comparison ?? null}
-              optionC={report.options.find((o) => o.tier === "best" || o.tier === "C")?.five_year_comparison ?? null}
-              recommendedTier={(initialRecommendedTier as "A" | "B" | "C")}
-              market={reportMarket}
-              mode="homeowner_report"
-              sessionId={report.report_short_id}
-            />
-          </div>
-        )}
 
         {/* Contact Section */}
         <div
@@ -1331,6 +1337,23 @@ export default function ReportClient({ report }: { report: Report }) {
             </p>
           </div>
         )}
+
+        {/* Layer 5 — homeowner report decision-support disclaimer (legal-safe-wordings v1) */}
+        <div style={{ margin: "12px 10px 4px", padding: "12px 14px", background: "#faf9f7", borderRadius: 10, border: "1px solid #e5e2da" }}>
+          <p style={{ fontSize: 10, color: "#6b7280", margin: "0 0 6px", lineHeight: 1.6 }}>
+            <strong style={{ color: "#4b5563" }}>About this report.</strong> This report contains preliminary findings generated by SnapAI, a decision-support tool used by your HVAC contractor. SnapAI does not perform HVAC diagnoses. Your licensed HVAC contractor is solely responsible for interpreting these findings, verifying them independently, and recommending any service action.
+          </p>
+          <p style={{ fontSize: 10, color: "#6b7280", margin: "0 0 6px", lineHeight: 1.6 }}>
+            Any recommended repair, replacement, or service must be verified by the licensed contractor performing the work. Do not rely on this report as a certification of HVAC equipment condition, safety, or performance.
+          </p>
+          <p style={{ fontSize: 10, color: "#6b7280", margin: "0 0 6px", lineHeight: 1.6 }}>
+            <strong style={{ color: "#4b5563" }}>For your safety:</strong> SnapAI does not currently perform combustion, heat exchanger, or carbon monoxide safety diagnostics. Always ensure a licensed HVAC contractor performs a full combustion safety inspection on gas-fired equipment. Install and maintain functioning carbon monoxide detectors on every level of your home.
+          </p>
+          <p style={{ fontSize: 10, color: "#6b7280", margin: 0, lineHeight: 1.6 }}>
+            <strong style={{ color: "#4b5563" }}>Questions or concerns:</strong> Contact your HVAC contractor directly. SnapAI is not a service provider and cannot answer questions about repairs, service quotes, or equipment recommendations.
+          </p>
+        </div>
+
 
         {/* Footer — SOW Decision #2: two-line SnapAI footer + QR code (Task 1.9 / Zuckerberg) */}
         <div style={{ textAlign: "center", padding: "20px 16px", fontSize: 10, color: "#a8a49c", lineHeight: 1.8 }}>

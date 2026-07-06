@@ -44,7 +44,10 @@ def format_yolo_findings(yolo_result) -> str:
 
 
 TRACK_A_CONFLICT_PROMPT = """\
-You are an expert HVAC fault diagnosis system acting as a senior reviewer.
+You are a decision-support assistant for licensed HVAC technicians. You provide preliminary
+findings for the technician's independent verification. Never present findings as a certified
+diagnosis. Every output is preliminary and requires the licensed technician's verification and
+final determination.
 
 SENSOR MODEL DIAGNOSIS:
   Fault detected: {sensor_fault}
@@ -65,10 +68,10 @@ Analyze the attached HVAC inspection photo and the sensor data above.
 
 Return ONLY this JSON structure — no other text:
 {{
-  "confirmed_fault": "fault_name_or_normal",
+  "suggested_finding_for_review": "fault_name_or_normal",
   "confidence": 0.0,
-  "sensor_diagnosis_correct": true,
-  "visual_findings_correct": true,
+  "sensor_reading_appears_consistent": true,
+  "visual_scan_supports_finding": true,
   "explanation": "plain English explanation for the technician",
   "recommendation": "specific next steps for the technician",
   "bounding_boxes": [{{"label": "...", "x1": 0, "y1": 0, "x2": 100, "y2": 100, "confidence": 0.0}}]
@@ -76,7 +79,10 @@ Return ONLY this JSON structure — no other text:
 """
 
 TRACK_B_UNCERTAIN_PROMPT = """\
-You are an expert HVAC fault diagnosis system acting as a senior reviewer.
+You are a decision-support assistant for licensed HVAC technicians. You provide preliminary
+findings for the technician's independent verification. Never present findings as a certified
+diagnosis. Every output is preliminary and requires the licensed technician's verification and
+final determination.
 
 VISUAL MODEL PRE-SCAN (YOLO — below confidence threshold, needs verification):
 {yolo_findings}
@@ -87,7 +93,7 @@ Pay special attention to the regions flagged by the YOLO models above, even if c
 
 Return ONLY this JSON structure — no other text:
 {{
-  "confirmed_fault": "fault_name_or_normal",
+  "suggested_finding_for_review": "fault_name_or_normal",
   "confidence": 0.0,
   "explanation": "plain English explanation for the technician",
   "recommendation": "specific next steps for the technician",

@@ -123,8 +123,8 @@ class ConsoleSender(BaseEmailSender):
                 f"Hi {customer_name}, just checking in on your HVAC assessment. View it here: {report_url}"
             ),
             "48h_reminder": (
-                "Your HVAC assessment is waiting — see your 5-year savings",
-                f"Hi {customer_name}, your HVAC assessment is still available. Don't let this wait — HVAC issues get worse. View: {report_url}"
+                "Your service report from your contractor is ready",
+                f"Hi {customer_name}, your service report is available to view: {report_url}"
             ),
             "7d_last_chance": (
                 f"Last reminder: Your HVAC assessment from {company_name}",
@@ -260,13 +260,13 @@ class ResendSender(BaseEmailSender):
         # Templates exist here for when they are activated
         subjects = {
             "24h_reminder": f"{company_name} sent you an equipment assessment",
-            "48h_reminder": "Your HVAC assessment is waiting — see your 5-year savings",
+            "48h_reminder": "Your service report from your contractor is ready",
             "7d_last_chance": f"Last reminder: Your HVAC assessment from {company_name}",
         }
         messages = {
             "24h_reminder": "We wanted to check in on the HVAC assessment we prepared for you.",
-            "48h_reminder": "HVAC issues tend to worsen over time. Reviewing your assessment now could save you money.",
-            "7d_last_chance": "This is our last follow-up. Please review your assessment when you have a moment.",
+            "48h_reminder": "Your service report is available whenever you'd like to review it.",
+            "7d_last_chance": "Your service report is still available to view.",
         }
         body = messages.get(template, "Your HVAC assessment is still available.")
         html = f"""

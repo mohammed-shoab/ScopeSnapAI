@@ -79,6 +79,18 @@ class Company(Base):
     # NULL/blank = no warranty language appears anywhere on the report.
     warranty_text: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
+    # Contractor onboarding GATE (C3): a homeowner can't just sign up with a
+    # Gmail. attestation_accepted_at is stamped when the owner ticks the
+    # "I'm a licensed HVAC contractor…" attestation on the onboarding form.
+    # terms_ack_version records which version of the ToS / decision-support
+    # acknowledgement they accepted (e.g. "v1"). Both NULL until the gate is
+    # completed; the frontend guard treats a NULL attestation_accepted_at (or a
+    # blank license_number) as "onboarding incomplete" and redirects to /onboarding.
+    attestation_accepted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+    terms_ack_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
     # Trusted server-side market ('US'|'PK'). Authenticated requests resolve
     # market-dependent tables from THIS, never the spoofable X-Market header
     # (audit finding #4, migration 043). Existing/legacy rows default to 'US'.
