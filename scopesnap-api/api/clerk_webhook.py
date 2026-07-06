@@ -13,6 +13,7 @@ Dev mode: Accepts unsigned webhooks if CLERK_WEBHOOK_SECRET is not set.
 
 import html as _html_mod
 import json
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -321,6 +322,14 @@ async def get_me(
             "email": auth.company.email,
             "license_number": auth.company.license_number,
             "warranty_text": getattr(auth.company, "warranty_text", None),
+            # Onboarding-gate fields the frontend guard reads to decide whether
+            # the contractor still needs to finish /onboarding.
+            "attestation_accepted_at": (
+                auth.company.attestation_accepted_at.isoformat()
+                if getattr(auth.company, "attestation_accepted_at", None)
+                else None
+            ),
+            "terms_ack_version": getattr(auth.company, "terms_ack_version", None),
         },
     }
 
@@ -349,7 +358,15 @@ async def update_company(
     if "email" in body:
         company.email = body["email"]
     if "license_number" in body:
-        company.license_number = body["license_number"]
+        # License # is the core of the contractor gate (C3): a blank/empty
+        # value must never pass. Reject with 422 so a homeowner can't clear it.
+        lic = body["license_number"]
+        if lic is None or not str(lic).strip():
+            raise HTTPException(
+                status_code=422,
+                detail="A valid contractor license number is required.",
+            )
+        company.license_number = str(lic).strip()
     if "address_line1" in body:
         company.address_line1 = body["address_line1"]
     if "city" in body:
@@ -368,6 +385,18 @@ async def update_company(
         # Empty string normalizes to NULL so no warranty language appears (DEC-088).
         company.warranty_text = (str(wt).strip() or None) if wt is not None else None
 
+    # Contractor onboarding gate (C3). When the owner ticks the attestation
+    # checkbox on the onboarding form we stamp attestation_accepted_at so the
+    # frontend guard stops redirecting them to /onboarding.
+    if "attestation_accepted" in body:
+        if bool(body["attestation_accepted"]):
+            company.attestation_accepted_at = datetime.now(timezone.utc)
+        else:
+            company.attestation_accepted_at = None
+    if "terms_ack_version" in body:
+        tav = body["terms_ack_version"]
+        company.terms_ack_version = (str(tav).strip() or None) if tav is not None else None
+
     await db.commit()
 
     return {
@@ -379,5 +408,11 @@ async def update_company(
             "email": company.email,
             "license_number": company.license_number,
             "warranty_text": company.warranty_text,
+            "attestation_accepted_at": (
+                company.attestation_accepted_at.isoformat()
+                if company.attestation_accepted_at
+                else None
+            ),
+            "terms_ack_version": company.terms_ack_version,
         }
     }

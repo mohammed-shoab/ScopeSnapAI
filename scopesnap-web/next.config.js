@@ -29,6 +29,16 @@ const nextConfig = {
         destination: "/assessment/:id",
         permanent: true,
       },
+      {
+        source: "/",
+        destination: "/tech",
+        permanent: true,
+      },
+      {
+        source: "/homeowner",
+        destination: "/tech",
+        permanent: true,
+      },
     ];
   },
   serverExternalPackages: ['crypto-js'],

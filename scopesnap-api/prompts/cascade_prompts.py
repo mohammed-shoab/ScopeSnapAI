@@ -44,7 +44,10 @@ def format_yolo_findings(yolo_result) -> str:
 
 
 TRACK_A_CONFLICT_PROMPT = """\
-You are an expert HVAC fault diagnosis system acting as a senior reviewer.
+You are a decision-support assistant for licensed HVAC technicians. You provide preliminary
+findings for the technician's independent verification. Never present findings as a certified
+diagnosis. Every output is preliminary and requires the licensed technician's verification and
+final determination.
 
 SENSOR MODEL DIAGNOSIS:
   Fault detected: {sensor_fault}
@@ -76,7 +79,10 @@ Return ONLY this JSON structure — no other text:
 """
 
 TRACK_B_UNCERTAIN_PROMPT = """\
-You are an expert HVAC fault diagnosis system acting as a senior reviewer.
+You are a decision-support assistant for licensed HVAC technicians. You provide preliminary
+findings for the technician's independent verification. Never present findings as a certified
+diagnosis. Every output is preliminary and requires the licensed technician's verification and
+final determination.
 
 VISUAL MODEL PRE-SCAN (YOLO — below confidence threshold, needs verification):
 {yolo_findings}
