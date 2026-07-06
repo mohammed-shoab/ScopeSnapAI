@@ -55,3 +55,13 @@ Beta gate: GREEN ✅ (all 9 complaint types reach valid resolution)
 - `scopesnap-web/components/diagnostic/ReadingInput.tsx` — voltage type handler (no_power / power_passes_normal)
 - `scopesnap-api/db/migrations/versions/014_bug_fixes_5_bugs.py` — all branch_logic + reading_spec data fixes
 - `scopesnap-api/main.py` — removed 3 non-existent module imports (ImportError on startup)
+
+---
+
+## Legal-safe wordings v1 — SHIPPED TO PROD (2026-07-06)
+
+Deploy: staging `19563f3` → prod main `e22580a` (scoped 3-way promote). Migration head **045** on both staging + prod DBs (gate columns live). Backend + cascade tests 10/10.
+
+Live-verified on prod (snapai.mainnov.tech): /tos (16 sections, Mainnov, draft/not-yet-effective banner), /methodology (real bands), `/`+`/homeowner` → `/tech` redirects, /tech geo-neutral decision-support copy + Layer-1 disclaimer + footer Terms, Layer-4 in-app disclaimer (auth + /d share), Layer-5 web report + PDF disclaimer, contractor gate C3 (blocks signup without license/attestation; persists to DB). See DEC-130.
+
+REMAINING (non-blocking): real Texas counsel sign-off → make ToS effective + drop "not yet effective" banner (Gate 2); Will's substantiation file → unpark "no upsell" (Gate 1); TDLR license verification job; Privacy Policy H4.
