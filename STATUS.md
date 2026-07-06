@@ -1,67 +1,48 @@
-ALL 16 WORK PACKAGES COMPLETE. 16/16 done.
+# SnapAI — Current Live State
 
-WP-01: Project Scaffolding ✅
-WP-02: Photo Upload + Vision AI ✅
-WP-03: Equipment DB + Matcher ✅
-WP-04: Estimate Generator ✅
-WP-05: PDF Report Generator ✅
-WP-06: Homeowner Web Report ✅
-WP-07: Email Delivery ✅
-WP-08: Tech Dashboard (Frontend) ✅
-WP-09: Send Estimate + Follow-ups ✅
-WP-10: Stripe Payment Deposit ✅
-WP-11: Clerk Auth Integration ✅
-WP-12: Integration Testing ✅
-WP-13: Cloud Deployment (Fly.io + Docker) ✅
-WP-14: Analytics Dashboard ✅
-WP-15: Stripe Subscription Billing ✅
-WP-16: Company Onboarding Flow ✅
+**As of:** 2026-07-06
+**Live prod:** https://snapai.mainnov.tech (US) · https://pk.snapai.mainnov.tech (PK, dormant per DEC-123)
+**Alembic head:** 034 (verify via live Supabase per DEC-129)
+**Latest DEC:** DEC-130 (legal-safe-wordings v1 shipped)
+**Boards:** @board + @nav standing on (all SnapAI chats)
 
 ---
 
-## QA / Beta Readiness
+## Current focus (4 active workstreams)
 
-BUG-006: Vercel TypeScript build failure (card_name) — RESOLVED ✅ (commit ee86b4a, 2026-05-11)
-Vercel deploy: READY ✅ (snapai.mainnov.tech)
+1. **Legal cover + wordings update** — Layer 1-5 remediation from v2 deep audit. **DEC-130 legal-safe-wordings v1 SHIPPED to prod 2026-07-06** (prompts, report H9/H10, gate C3, /tos, /methodology, redirects, email). Follow-ups pending: Wyoming LLC entity formation, ToS banner flip post-entity, Gate 1/2 substantiation, PK lawyer (per Alfred). Owner: Shoab + Alfred (legal chat).
+2. **Adding new complaint cards** — Tier A per Bryan's proposal (Cards #20 Under-Airflow, #22 Latent Deficit, #23 Thermostat, #24 Oversizing + Airflow Assessment sub-flow + Comfort Complaint tab J + superheat/subcool discrimination on Card #8). Build Plan v1 + Wordings v2 COMPLETE authored 2026-07-06 (Alfred conditionally signed off with 3 C1/C2/C3 conditions). Card #21 PERMANENTLY EXCLUDED per Alfred. Owner: Shoab + Bryan.
+3. **Brain files cleanup + future system** — Phase 1+2+3 executed 2026-07-06. Router updated, pre-commit hook installed, weekly audit scheduled, 60 session logs backdated, SESSION_LOG_* archetype adopted. Owner: Shoab + Karpathy/Rob.
+4. **TikTok video marketing** — upcoming, not yet scoped. Owner: Shoab + Azhan.
 
-Beta Readiness Gate (2026-05-11): 9/9 complaint types PASS ✅
-  Service/Tune-Up ✅ | Not Cooling ✅ | Not Heating ✅ | Intermittent Shutdown ✅
-  Water Dripping ✅ | Not Turning On ✅ | Making Noise ✅ | High Electric Bill ✅ | Error Code ✅
+## Open blockers
 
-BETA STATUS: GREEN — Ready for beta user onboarding ✅
+1. Wyoming LLC entity formation must complete before ToS "not yet effective" banner can flip and before billing goes live.
+2. Texas SaaS attorney engagement pending (Baker Botts / Winstead / Jackson Walker — not yet contacted).
+3. Tech E&O insurance broker quotes pending (Hiscox / Founder Shield / Vouch — not yet contacted).
+4. PK-jurisdiction lawyer pending (Alfred flagged as follow-up).
+5. Tier A card start date not yet formally committed (waiting on legal Gate 1/2 substantiation).
 
----
+## Recent milestones (last 7 days)
 
-## Diagnostic Engine Bug Fixes — 2026-05-11
+- **2026-07-06:** DEC-130 legal-safe-wordings v1 PROMOTED TO PROD (prompts, report H9/H10, gate C3, /tos, /methodology, redirects, email).
+- **2026-07-06:** Legal follow-ups documented — Wyoming LLC entity formation before billing, don't flip ToS banner pre-entity, Gate 1/2 + PK lawyer (per Alfred).
+- **2026-07-06:** Brain files Phase 1+2+3 executed — 5 cleanup commits, automation setup, 60 session logs.
+- **2026-07-06:** New-card Build Plan v1 + Wordings v2 COMPLETE authored (Alfred conditionally signed off).
+- **2026-07-05:** v7 branching diagnostic tree HTML built (+ v7.1 legend fix).
+- **2026-07-05:** Deep legal audit v2 completed — 12 Critical + 11 High findings.
+- **2026-07-05:** Legal + product chat handoffs prepared (verbatim transcripts + continuation prompts).
 
-Beta gate: GREEN ✅ (all 9 complaint types reach valid resolution)
+## Key files (pointers, not content — see PROJECT_BRAIN.md for architecture facts)
 
-### Fixed this session
+- CRITICAL RULES table: PROJECT_BRAIN.md first 20 lines
+- Legal continuation: `SnapAI_Legal_Discussion_Continuation_Prompt.md`
+- Product continuation: `SnapAI_Product_Discussion_Continuation_Prompt.md`
+- Brain files plan: `SnapAI_Brain_Files_Management_Plan_2026-07-05.md`
+- New-card build plan: `SnapAI_NewCard_Build_Plan_v1_2026-07-06.md`
+- New-card wordings: `SnapAI_NewCard_Wordings_v2_COMPLETE_2026-07-06.md`
+- Session logs archive: `session_logs/` (60 files)
 
-| Bug | Complaint / Step | Root Cause | Status |
-|-----|-----------------|------------|--------|
-| #10 | Service → svc-8-run | 3 issues: missing endpoint, unhandled exception, bad idempotency check | ✅ FIXED |
-| #11 | Not Cooling → q3-contactor | No voltage handler in classifyReading() → branchKey always "ok" | ✅ FIXED |
-| #12 | Water Dripping → Outdoor | phase_2_gate with null card_id → 422; no questions configured | ✅ FIXED |
-| #13 | Not Heating → q4-flame-sensor | type "micro_amps" (underscore) ≠ "microamps"; missing "low"/"ok" keys | ✅ FIXED |
-| #9  | Error Code → q4-reset → NO | Dead-end escalation (wsg3 removed repair path) | ✅ FIXED |
-| Untested | Not Turning On → q2-no-power | Same voltage threshold bug as #11 | ✅ FIXED |
-| Untested | Making Noise → Banging → q4 | over_rla had both resolve_card AND escalate:true | ✅ FIXED |
-| Untested | Making Noise → Hissing | phase_2_gate (same as #12) | ✅ FIXED |
+## Auto-updated
 
-### Files changed
-
-- `scopesnap-api/api/diagnostic.py` — photo_branch_map support, service_complete try/except, idempotency fix, missing endpoints + GET session body
-- `scopesnap-web/components/diagnostic/ReadingInput.tsx` — voltage type handler (no_power / power_passes_normal)
-- `scopesnap-api/db/migrations/versions/014_bug_fixes_5_bugs.py` — all branch_logic + reading_spec data fixes
-- `scopesnap-api/main.py` — removed 3 non-existent module imports (ImportError on startup)
-
----
-
-## Legal-safe wordings v1 — SHIPPED TO PROD (2026-07-06)
-
-Deploy: staging `19563f3` → prod main `e22580a` (scoped 3-way promote). Migration head **045** on both staging + prod DBs (gate columns live). Backend + cascade tests 10/10.
-
-Live-verified on prod (snapai.mainnov.tech): /tos (16 sections, Mainnov, draft/not-yet-effective banner), /methodology (real bands), `/`+`/homeowner` → `/tech` redirects, /tech geo-neutral decision-support copy + Layer-1 disclaimer + footer Terms, Layer-4 in-app disclaimer (auth + /d share), Layer-5 web report + PDF disclaimer, contractor gate C3 (blocks signup without license/attestation; persists to DB). See DEC-130.
-
-REMAINING (non-blocking): real Texas counsel sign-off → make ToS effective + drop "not yet effective" banner (Gate 2); Will's substantiation file → unpark "no upsell" (Gate 1); TDLR license verification job; Privacy Policy H4.
+Last modified: 2026-07-06 by Cowork session (Path Y clean-restart merge)

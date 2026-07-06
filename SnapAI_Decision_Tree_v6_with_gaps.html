@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SnapAI — AC Diagnostic Decision Tree v6 (Gap Fills)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e8eaf0; min-height: 100vh; padding-bottom: 60px; }
+
+  /* HEADER */
+  .app-header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-bottom: 2px solid #2a2a4a; padding: 18px 28px; }
+  .app-logo { font-size: 22px; font-weight: 800; color: #fff; }
+  .app-logo span { color: #3498db; }
+  .app-subtitle { font-size: 12px; color: #7a82a0; margin-top: 4px; }
+  .version-strip { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+  .version-pill { background: #2a2a4a; border: 1px solid #3a3a6a; color: #c8d0e0; font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px; }
+  .version-pill.new { background: #0a2a15; border-color: #2ecc71; color: #7edb9b; }
+  .version-pill.grounded { background: #1a1a2e; border-color: #9b59b6; color: #c070f0; }
+
+  /* LEGEND */
+  .legend-bar { background: #161622; border-bottom: 1px solid #222238; padding: 14px 28px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; font-size: 11px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-badge { padding: 3px 9px; border-radius: 12px; font-size: 10px; font-weight: 800; border: 1px solid; }
+  .lb-live { background: #0a2a15; color: #2ecc71; border-color: #2ecc71; }
+  .lb-new { background: #1a0a2a; color: #c070f0; border-color: #9b59b6; }
+  .lb-safety { background: #2a0a0a; color: #ff6b6b; border-color: #e74c3c; }
+  .lb-tier1 { background: #2a1500; color: #ff9e42; border-color: #e67e22; }
+  .lb-tier2 { background: #1a1a0a; color: #f5c842; border-color: #f39c12; }
+  .lb-tier3 { background: #0a1a2a; color: #5eb0f0; border-color: #3498db; }
+  .lb-tier4 { background: #1a1a2e; color: #7a82a0; border-color: #5a6280; }
+
+  /* SECTION */
+  .section { margin: 24px 28px; }
+  .section-title { font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 6px; padding-bottom: 8px; border-bottom: 2px solid #2a2a4a; }
+  .section-sub { font-size: 12px; color: #7a82a0; margin-bottom: 18px; line-height: 1.6; }
+
+  /* SUMMARY CARDS */
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .summary-card { background: #161622; border: 1px solid #2a2a4a; border-radius: 12px; padding: 16px; }
+  .summary-card .num { font-size: 32px; font-weight: 800; color: #fff; }
+  .summary-card .label { font-size: 11px; color: #7a82a0; text-transform: uppercase; letter-spacing: 0.8px; margin-top: 4px; }
+  .summary-card.live { border-color: #2ecc71; }
+  .summary-card.live .num { color: #2ecc71; }
+  .summary-card.new { border-color: #9b59b6; }
+  .summary-card.new .num { color: #c070f0; }
+  .summary-card.safety { border-color: #e74c3c; }
+  .summary-card.safety .num { color: #ff6b6b; }
+
+  /* BRYAN QUOTE */
+  .bryan-quote { background: linear-gradient(135deg, #1a1200, #0a0f1a); border-left: 4px solid #f39c12; border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+  .bryan-quote .attribution { font-size: 10px; color: #c8a030; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .bryan-quote .body { font-size: 13px; color: #e0e0e0; line-height: 1.7; font-style: italic; }
+  .bryan-quote .source { font-size: 10px; color: #7a82a0; margin-top: 6px; }
+
+  /* READING / CARD CARDS */
+  .item-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
+  .item-card { background: #161622; border: 1px solid #2a2a4a; border-radius: 10px; padding: 14px 16px; }
+  .item-card.new { border-color: #9b59b6; background: #150a20; }
+  .item-card.live { border-color: #2ecc71; background: #0d1f14; }
+  .item-card.safety { border-color: #e74c3c; background: #200a0a; }
+  .item-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .item-title { font-size: 13px; font-weight: 800; color: #fff; }
+  .item-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+  .badge { font-size: 9px; font-weight: 800; padding: 2px 7px; border-radius: 10px; border: 1px solid; }
+  .badge-live { background: #0a2a15; color: #2ecc71; border-color: #2ecc71; }
+  .badge-new { background: #1a0a2a; color: #c070f0; border-color: #9b59b6; }
+  .badge-safety { background: #2a0a0a; color: #ff6b6b; border-color: #e74c3c; }
+  .badge-tier1 { background: #2a1500; color: #ff9e42; border-color: #e67e22; }
+  .badge-tier2 { background: #1a1a0a; color: #f5c842; border-color: #f39c12; }
+  .badge-tier3 { background: #0a1a2a; color: #5eb0f0; border-color: #3498db; }
+  .item-body { font-size: 11px; color: #c8d0e0; line-height: 1.65; }
+  .item-body strong { color: #fff; }
+  .item-body code { background: #0a0a1a; color: #7edb9b; padding: 1px 6px; border-radius: 4px; font-size: 10px; }
+  .item-eviden { font-size: 10px; color: #8a90a8; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #2a2a4a; }
+  .item-eviden strong { color: #c8a030; }
+
+  /* BUILD SEQUENCE TABLE */
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; background: #161622; border: 1px solid #2a2a4a; border-radius: 10px; overflow: hidden; }
+  th { background: #1a1a2e; color: #7a82a0; font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; padding: 10px 14px; text-align: left; border-bottom: 1px solid #2a2a4a; font-weight: 800; }
+  td { font-size: 12px; color: #c8d0e0; padding: 12px 14px; border-bottom: 1px solid #1a1a2e; vertical-align: top; }
+  td.rank { font-weight: 800; color: #fff; text-align: center; width: 40px; }
+  td strong { color: #fff; }
+
+  /* SAFETY CALLOUT */
+  .safety-callout { background: linear-gradient(135deg, #2a0a0a, #1a0f0a); border: 2px solid #e74c3c; border-radius: 12px; padding: 20px; margin: 20px 0; }
+  .safety-callout .safety-title { font-size: 16px; font-weight: 800; color: #ff6b6b; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+  .safety-callout .safety-body { font-size: 12px; color: #f0c0c0; line-height: 1.7; }
+
+  /* NAV BAR */
+  .navbar { position: sticky; top: 0; z-index: 100; background: #0a0a15; border-bottom: 2px solid #2a2a4a; padding: 10px 28px; display: flex; gap: 8px; flex-wrap: wrap; overflow-x: auto; }
+  .nav-item { color: #7a82a0; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; transition: all 0.2s; }
+  .nav-item:hover { background: #1a1a2e; color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="app-logo">Snap<span>AI</span> — Diagnostic Decision Tree v6</div>
+  <div class="app-subtitle">Gap fills grounded in 960-episode HVAC School archive · Bryan Orr @board analysis · 2026-07-05</div>
+  <div class="version-strip">
+    <div class="version-pill">v6 · 2026-07-05</div>
+    <div class="version-pill grounded">Grounded in 960 transcripts</div>
+    <div class="version-pill">Live prod verified against snapai-prod-use1 (DEC-129)</div>
+    <div class="version-pill new">Complements v5.1 audit-corrected tree</div>
+  </div>
+</div>
+
+<div class="legend-bar">
+  <div class="legend-item"><span class="legend-badge lb-live">✅ LIVE</span> Verified in prod diagnostic_questions</div>
+  <div class="legend-item"><span class="legend-badge lb-new">🆕 NEW</span> Bryan gap-fill proposal</div>
+  <div class="legend-item"><span class="legend-badge lb-safety">⚠️ SAFETY</span> Fast-track for liability</div>
+  <div class="legend-item"><span class="legend-badge lb-tier1">TIER 1</span> Critical for 80% claim</div>
+  <div class="legend-item"><span class="legend-badge lb-tier2">TIER 2</span> High-value depth</div>
+  <div class="legend-item"><span class="legend-badge lb-tier3">TIER 3</span> Completeness</div>
+  <div class="legend-item"><span class="legend-badge lb-tier4">TIER 4</span> Defer</div>
+</div>
+
+<div class="navbar">
+  <a class="nav-item" href="#summary">Summary</a>
+  <a class="nav-item" href="#safety">⚠️ Safety Fast-Track</a>
+  <a class="nav-item" href="#readings">New Readings</a>
+  <a class="nav-item" href="#cards">New Fault Cards</a>
+  <a class="nav-item" href="#flows">New / Expanded Flows</a>
+  <a class="nav-item" href="#build">Build Sequence</a>
+  <a class="nav-item" href="#tier4">Deferred (Tier 4)</a>
+  <a class="nav-item" href="#changelog">Change Log</a>
+</div>
+
+<!-- ═══════════════════════ SUMMARY ═══════════════════════ -->
+<div class="section" id="summary">
+  <div class="section-title">📊 Executive Summary</div>
+  <div class="section-sub">
+    Bryan Orr @board did a full-corpus review of the 960 HVAC School episode transcripts against SnapAI's live diagnostic state
+    (Supabase <code>diagnostic_questions</code> on <code>snapai-prod-use1</code>). This document lists the specific gap fills required to defensibly claim
+    "senior-tech-quality diagnostic reasoning" across the calls a Houston mid-tech actually encounters.
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary-card live"><div class="num">9</div><div class="label">✅ Live Complaint Flows</div></div>
+    <div class="summary-card live"><div class="num">19</div><div class="label">✅ Live Fault Cards</div></div>
+    <div class="summary-card live"><div class="num">8</div><div class="label">✅ Live Reading Types</div></div>
+    <div class="summary-card new"><div class="num">8</div><div class="label">🆕 New Readings Proposed</div></div>
+    <div class="summary-card new"><div class="num">9</div><div class="label">🆕 New / Expanded Cards</div></div>
+    <div class="summary-card new"><div class="num">4</div><div class="label">🆕 New Complaint Flows</div></div>
+    <div class="summary-card safety"><div class="num">1</div><div class="label">⚠️ SAFETY Fast-Track</div></div>
+  </div>
+
+  <div class="bryan-quote">
+    <div class="attribution">🧡 Bryan Orr — from the 960-transcript archive</div>
+    <div class="body">
+      "SnapAI has real diagnostic reasoning on the electrical + refrigerant faults. What you don't have is <strong>airflow diagnosis</strong> —
+      the actual most-common problem in residential HVAC per two independent DOE studies. Static pressure isn't in your reading types.
+      CFM isn't measured. Cracked heat exchanger isn't a card. A junior tech running SnapAI today gets senior-tech-quality output
+      on maybe 40% of the calls he takes. Fix the Tier 1 gaps and that jumps to 60-70%. That's when the 80% claim actually holds up
+      on the messy real calls, not just the textbook ones."
+    </div>
+    <div class="source">Grounded in: 598 duct episodes · 468 compressor · 361 refrigeration · 263 vacuum · 212 airflow · 193 superheat · 152 dehumidif · 87 heat exchanger + more.</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ SAFETY FAST-TRACK ═══════════════════════ -->
+<div class="section" id="safety">
+  <div class="section-title">⚠️ Safety Fast-Track — Build This Out of Order</div>
+  <div class="section-sub">The one gap Bryan named as a legal-liability exposure. Ship first regardless of the rest of the sequence.</div>
+
+  <div class="safety-callout">
+    <div class="safety-title">⚠️ Card #21 — Heat Exchanger Damage (Carbon Monoxide Risk)</div>
+    <div class="safety-body">
+      <strong>The gap:</strong> SnapAI has Card #11 (Ignitor / Flame Sensor) for combustion-side no-heat, but no card for cracked heat exchanger detection.
+      Adam Mufich (Duct Renovations episode) named cracked HX as a consequence of chronic low airflow — very common on Houston attic-mount 15+ year gas furnaces.
+      A junior tech running SnapAI on a rusted-out 18-year-old furnace with restricted airflow gets zero HX inspection prompt and zero CO check.
+      That's carbon-monoxide-poisoning liability sitting in your product today.
+      <br><br>
+      <strong>The fix:</strong> Add <code>Card #21 — Heat Exchanger Damage</code>. Force HX inspection prompt on any gas furnace ≥ 12 years old
+      OR any furnace where static pressure exceeds the design budget. Add optional combustion-analyzer readings (CO ppm, O2%, flue temp) for shops with the tool.
+      <br><br>
+      <strong>Evidence weight:</strong> 87 heat exchanger + 37 carbon monoxide + 86 combustion + 42 combustion analyzer episodes across the 960-transcript archive.
+      <br><br>
+      <strong>Priority:</strong> Ship before Tier 1 sequence. This is not about the 80% claim — this is about not being sued.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ NEW READINGS ═══════════════════════ -->
+<div class="section" id="readings">
+  <div class="section-title">📏 New Reading Types</div>
+  <div class="section-sub">
+    Currently live: 8 reading types (uF, amps compressor/blower, voltage L1+L2, voltage drop, delta_T, ohms, micro_amps, temp_delta, PSI suction/discharge).
+    Bryan gap analysis identifies 8 new reading types the app must collect to reach senior-tech-quality diagnosis on the failure modes that matter.
+  </div>
+
+  <div class="item-grid">
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">Superheat</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier1">TIER 1</span></div>
+      </div>
+      <div class="item-body">
+        Suction line temperature at compressor + saturation temp from pressure. <strong>Load-bearing reading</strong> for confirming refrigerant charge diagnosis.
+        Target: 8-12°F at compressor for TXV systems; 10-20°F evap superheat for orifice.
+        <br><strong>Current gap:</strong> Not Cooling YES commits to "Refrigerant Leak" from suction PSI alone. Without superheat, indistinguishable from TXV restriction or low airflow.
+        <br><strong>Enables:</strong> Card #8 refinement, TXV/EEV diagnosis (Card #15 expansion), compression ratio problem detection.
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 193 episodes touch superheat.
+        <br><strong>Bryan (verbatim, AC Pressures class):</strong> <em>"our suction saturation our evaporator temperature tells us the temperature of the evaporator and our super heat tells us how full it is. You can't just know one or the other because that doesn't tell you enough."</em>
+      </div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">Subcool</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier1">TIER 1</span></div>
+      </div>
+      <div class="item-body">
+        Liquid line temperature at condenser outlet + condensing saturation temp. Tells us <strong>liquid quality at the metering device</strong>.
+        Target: 8-15°F depending on manufacturer.
+        <br><strong>Current gap:</strong> Card #17 Overcharge is triggered by "high suction + high discharge" but the more reliable overcharge signal is subcool > 15°F.
+        <br><strong>Enables:</strong> Card #17 refinement, TXV pre-requisite validation, flash-gas-at-metering-device detection.
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 113 episodes touch subcool/subcooling.
+        <br><strong>Bryan (verbatim):</strong> <em>"We need to feed our metering device with a full column of liquid full stop. More sub cool ≠ more efficiency — it usually means you're increasing your condensing temperature and shrinking your effective condenser area."</em>
+      </div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">Total External Static Pressure (TESP) + 4-point profile</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier1">TIER 1</span></div>
+      </div>
+      <div class="item-body">
+        Static pressure measured at 4 points: before/after filter, before/after coil. Identifies which component is eating the pressure budget.
+        Design budget for most residential = 0.5 in.w.c.
+        <br><strong>Current gap:</strong> ZERO airflow measurement in SnapAI. DOE meta-analysis (44 studies): 50-93% of residential systems move below 350 CFM/ton.
+        <br><strong>Enables:</strong> Card #20 (new: Under-Airflow), Card #21 Heat Exchanger trigger, oversizing detection (Card #24), coil dirt vs undersized filter differentiation.
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 169 static pressure + 212 airflow + 70 manometer episodes — 451+ combined weight.
+        <br><strong>Bryan:</strong> <em>"A 16x25x1 undersized filter can triple the allowed pressure budget on its own. This is the single most powerful fix that's also the most underused."</em>
+      </div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">Micron Gauge + Standing Vacuum Decay</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier1">TIER 1</span></div>
+      </div>
+      <div class="item-body">
+        Micron reading during evacuation + standing decay test (does vacuum rise fast? = leak or moisture).
+        Target: hold at ≤ 500 microns for 15 minutes with rise ≤ 100 microns.
+        <br><strong>Current gap:</strong> Card #8 Leak card description says "pull vacuum to 500 microns" but no verification the tech did it. Silent-compounding failure: recharge over moisture → TXV acid formation 6 months later.
+        <br><strong>Enables:</strong> Validation gate on Cards #8, #10, #12, #15 — no charge step allowed until micron reading + decay test pass.
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 101 micron + 263 vacuum + 120 recovery = 484 combined weight.
+        <br><strong>Bryan:</strong> Multiple full episodes with Jim Bergmann (Advanced Evacuation, Evacuation 101, Vacuum Deep Dive) — the industry authority on this.
+      </div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">Wet Bulb / Relative Humidity</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier2">TIER 2</span></div>
+      </div>
+      <div class="item-body">
+        Return air wet-bulb + indoor RH. Distinguishes sensible cooling deficit from latent (humidity) deficit.
+        <strong>Houston-critical</strong> — a system passing every SnapAI check can still fail on humidity control.
+        <br><strong>Current gap:</strong> No latent-load diagnostic path. No "clammy / sticky" complaint routing.
+        <br><strong>Enables:</strong> Card #22 (new: Latent Capacity Deficit), Comfort Complaint flow.
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 152 dehumidification + 97 latent + 94 sensible + 55 wet-bulb.
+        <br><strong>Bryan (AC Pressures class):</strong> <em>"In our market [Houston] we had conditions that [Bergmann] just wasn't used to seeing — these very high latent conditions drive the DTD differently."</em>
+      </div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">Winding-to-Ground Resistance</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier1">TIER 1</span></div>
+      </div>
+      <div class="item-body">
+        Megger or ohmmeter reading from compressor terminals (C, R, S) to compressor housing. Detects grounded winding.
+        Healthy = OL (infinite). Faulty = any measurable resistance.
+        <br><strong>Current gap:</strong> Card #10 Compressor Failure doesn't differentiate grounded vs mechanical. Roman Baugh's live-call episode: cool ambient causes refrigerant migration → intermittent readings that look grounded but aren't.
+        <br><strong>Enables:</strong> Card #10a Grounded Compressor sub-card (part of the Compressor Family expansion).
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 55 grounded compressor episodes.
+        <br><strong>Bryan (Roman Baugh Deep End episode):</strong> <em>"Cool ambient temperatures that enable liquid refrigerant to migrate into the compressor could potentially skew electrical readings. Intermittent resistance readings don't always indicate a failed winding."</em>
+      </div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">Combustion Analyzer (CO ppm, O2%, Flue Temp)</div>
+        <div class="item-badges"><span class="badge badge-safety">⚠️ SAFETY</span><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier1">TIER 1</span></div>
+      </div>
+      <div class="item-body">
+        Testo/Bacharach combustion analyzer readings on gas furnaces. Detects incomplete combustion, cracked heat exchanger CO leaks, misadjusted gas pressure.
+        Target: CO in flue &lt; 100 ppm air-free.
+        <br><strong>Current gap:</strong> Card #11 Ignitor/Flame Sensor covers no-heat symptoms only. No combustion analysis. No CO reading.
+        <br><strong>Enables:</strong> Card #21 Heat Exchanger Damage detection (SAFETY fast-track).
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 42 combustion analyzer + 86 combustion + 37 carbon monoxide episodes.
+      </div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">Instrument Confidence Check</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier2">TIER 2</span></div>
+      </div>
+      <div class="item-body">
+        Optional per-reading toggle: gauge last calibrated? clamp position + AC/DC? IR emissivity? Manometer auto-zeroed?
+        Downgrades "High Confidence" label when input confidence is flagged.
+        <br><strong>Current gap:</strong> SnapAI weights junior-tech readings equal to senior-tech readings. Eric Kaiser: stacked inaccuracies (instrument error × density correction error) can push diagnosis in wrong direction.
+        <br><strong>Enables:</strong> Confidence label calibration Bryan already flagged in prior evaluation.
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> Eric Kaiser's airflow-testing episode is the definitive one; 30 temperature-rise, 42 combustion analyzer, 70 manometer episodes all touch calibration/accuracy.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════ NEW FAULT CARDS ═══════════════════════ -->
+<div class="section" id="cards">
+  <div class="section-title">🎴 New Fault Cards + Expansions</div>
+  <div class="section-sub">
+    Currently live: 19 fault cards (Card #1 through #19). Bryan analysis adds 5 new cards (Cards #20-24) plus expands Card #10 into a 5-member Compressor Family
+    and Card #15 into a 4-member Metering Device Family.
+  </div>
+
+  <div class="item-grid">
+
+    <div class="item-card safety">
+      <div class="item-header">
+        <div class="item-title">Card #21 — Heat Exchanger Damage</div>
+        <div class="item-badges"><span class="badge badge-safety">⚠️ SAFETY</span><span class="badge badge-new">🆕 NEW</span></div>
+      </div>
+      <div class="item-body">
+        <strong>Trigger:</strong> Any gas furnace ≥ 12 years old OR any furnace with TESP &gt; design budget OR flame roll-out reported.
+        <br><strong>Inputs:</strong> Visual HX photo + combustion analyzer CO reading + flue temp.
+        <br><strong>Escalate condition:</strong> CO &gt; 100 ppm air-free OR visible crack → immediate red-tag protocol.
+        <br><strong>Recommendation:</strong> Replace furnace (HX repair is not economically viable on residential furnaces).
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 87 HX + 37 CO + 42 combustion analyzer.</div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">Card #20 — System Under-Airflow</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier1">TIER 1</span></div>
+      </div>
+      <div class="item-body">
+        <strong>Trigger:</strong> TESP &gt; 0.5 in.w.c. OR CFM &lt; 350 per ton (measured or temp-rise calculated).
+        <br><strong>Differentiate from Card #14 (Dirty Coil):</strong> Card #14 fires on dirty photo + high discharge. Card #20 fires on high static across the whole airflow path with no single dirty component.
+        <br><strong>Differentiate from Card #13 (Ductwork Leak):</strong> Card #13 is normal pressure + warm supply (leak losing air to attic). Card #20 is normal supply temp but low CFM (restriction anywhere in the path).
+        <br><strong>Recommendation:</strong> Static pressure profile → identify highest-drop component → filter upsize / coil clean / duct rework.
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 598 duct + 212 airflow + 169 static pressure + 87 oversizing (a common cause).</div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">Card #22 — Latent Capacity Deficit</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier2">TIER 2</span></div>
+      </div>
+      <div class="item-body">
+        <strong>Trigger:</strong> Indoor RH &gt; 60% while sensible cooling meets set point (Houston "clammy" complaint).
+        <br><strong>Root causes:</strong> Oversized equipment short-cycling (never runs long enough to condense water) · Ventilation load (fresh-air intake) · Duct leak on return-side pulling in humid attic air · Missing standalone dehumidifier.
+        <br><strong>Recommendation:</strong> Downsizing analysis, blower speed adjustment (lower CFM → colder coil → more latent removal), dedicated dehumidifier.
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 152 dehumidification + 97 latent + 94 sensible + 55 wet-bulb.</div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">Card #23 — Thermostat / Low-Voltage Fault</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier3">TIER 3</span></div>
+      </div>
+      <div class="item-body">
+        <strong>Trigger:</strong> Not Turning On + no error code + power to control board present, but no call to Y.
+        <br><strong>Sub-modes:</strong> Missing C-wire (smart thermostat drop-outs) · Phantom voltage on control wire · Zone board / staging board failure · Nest/Ecobee compatibility issue with older equipment · Thermostat internal fault.
+        <br><strong>Differentiate from Card #7 (Control Board):</strong> Card #7 is board-side fault. Card #23 is thermostat-side / control-wire fault.
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 261 thermostat + 14 zoning episodes.</div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">Card #24 — System Oversizing</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier3">TIER 3</span></div>
+      </div>
+      <div class="item-body">
+        <strong>Trigger:</strong> Short-cycling pattern (Intermittent Shutdown) + delta-T ≥ 22°F + poor humidity control + Manual J shows unit is 30%+ over calculated load.
+        <br><strong>Differentiate from Card #18 (Undersizing):</strong> Opposite direction; more common per DOE data (up to 93% oversized).
+        <br><strong>Recommendation:</strong> Load calculation → equipment downsizing on next replacement + short-term blower speed reduction.
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 87 oversizing + 43 Manual J episodes. Adam Mufich: <em>"A 50% oversized AC system can increase energy consumption by up to 91%."</em></div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">Card #10 Family — Compressor Sub-Modes (5 members)</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 EXPAND</span><span class="badge badge-tier1">TIER 1</span></div>
+      </div>
+      <div class="item-body">
+        Currently Card #10 is a single "Compressor Failure" catch-all. Expand to 5 discriminated sub-modes:
+        <br><br>
+        <strong>Card #10a — Grounded Compressor</strong>: Winding-to-ground resistance test, ambient-temp captured to flag refrigerant migration risk.
+        <br><strong>Card #10b — Mechanical / Locked Rotor</strong>: Amp draw at start attempt, hard-start kit test.
+        <br><strong>Card #10c — Compression Ratio Problem</strong>: Requires superheat + subcool + amp pattern; distinguishes high discharge (dirty condenser / overcharge) from internal valve wear.
+        <br><strong>Card #10d — Start Component Failure</strong>: Hard-start kit, start capacitor, potential relay — each different fix.
+        <br><strong>Card #10e — Crankcase Heater Failure</strong>: Causes slugging on startup; visible on migration-heavy climates in cool ambient.
+        <br><br>
+        <strong>Why:</strong> All 5 currently flatten to "replace compressor" which is a $2-4K wrong call on modes a–e sub 4 of 5.
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 468 compressor + 55 grounded + 33 hard start + 29 start capacitor + 24 crankcase heater.</div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">Card #15 Family — Metering Device Sub-Modes (4 members)</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 EXPAND</span><span class="badge badge-tier2">TIER 2</span></div>
+      </div>
+      <div class="item-body">
+        Currently Card #15 is "Fixed Orifice / Piston Mismatch" only. Expand to 4 modes:
+        <br><br>
+        <strong>Card #15a — Piston Mismatch</strong> (current — orifice systems only).
+        <br><strong>Card #15b — TXV Bulb Loss</strong>: Bulb charge escaped, valve stuck open, superheat drops to 0-3°F, flooding evap.
+        <br><strong>Card #15c — TXV Hunting</strong>: Oscillating superheat, bulb overcharge or misplacement.
+        <br><strong>Card #15d — EEV Controller Failure</strong>: Won't step, error code on controller, no expansion.
+        <br><br>
+        <strong>Prerequisite:</strong> Requires superheat + subcool readings (Tier 1 gap 2).
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 162 TXV + 68 EEV + 24 electronic leak + 5 TXV bulb episodes.</div>
+    </div>
+
+    <div class="item-card live">
+      <div class="item-header">
+        <div class="item-title">Cards #1 – #19 (Current Live Set)</div>
+        <div class="item-badges"><span class="badge badge-live">✅ LIVE</span></div>
+      </div>
+      <div class="item-body">
+        Capacitor · Dirty Filter · Contactor · Blower Motor · Drain Clog · Wiring Fault · Control Board · Refrigerant Leak · Coil Freeze · Compressor Failure · Ignitor/Flame Sensor · Reversing Valve · Ductwork Leak · Dirty Coil · Fixed Orifice / Piston · Loose Terminal · Overcharge · Undersizing · Formicary Corrosion.
+        <br><br>
+        <strong>Coverage:</strong> ~40-50% of routine Houston residential call load per Bryan's estimate. Diagnostic reasoning is HVAC-industry-standard on this set.
+      </div>
+      <div class="item-eviden"><strong>Status:</strong> Verified live in prod (fault_cards table, snapai-prod-use1). All 19 cards routable from live diagnostic_questions.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════ NEW / EXPANDED FLOWS ═══════════════════════ -->
+<div class="section" id="flows">
+  <div class="section-title">🌳 New / Expanded Complaint Flows</div>
+  <div class="section-sub">
+    Currently live: 9 complaint types (Not Cooling, Not Heating, Water Dripping, Not Turning On, Making Noise, High Electric Bill, Error Code, Intermittent Shutdown, Service/Tune-Up).
+    Bryan gap analysis adds 4 new complaint entry points + expands 3 existing flows.
+  </div>
+
+  <div class="item-grid">
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">🆕 Comfort Complaint (Clammy / Sticky / Uneven Rooms)</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier2">TIER 2</span></div>
+      </div>
+      <div class="item-body">
+        <strong>Missing today:</strong> Houston homeowner says "system runs but house feels clammy" → tech runs SnapAI → everything reads OK → tech leaves confused.
+        <br><br>
+        <strong>New flow:</strong>
+        <br>Q1: Which comfort issue? [clammy/sticky | some rooms cold, some rooms hot | dust / air quality]
+        <br>Q2 clammy: Read return-air wet-bulb + indoor RH.
+        <br>Q3 clammy: Read blower speed setting + Manual J vs installed capacity check.
+        <br>→ Routes to Card #22 (Latent Capacity Deficit) or Card #24 (Oversizing) or Card #13 (Ductwork Leak on return side)
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 152 dehumidification episodes — dominant Houston-specific concern.</div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">🆕 Airflow Assessment (Cross-Cutting)</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier1">TIER 1</span></div>
+      </div>
+      <div class="item-body">
+        <strong>Not a new complaint category — a required sub-flow triggered from multiple existing complaints:</strong>
+        <br>Trigger from: Not Cooling YES (high discharge) · High Electric Bill (both branches) · Intermittent Shutdown · Comfort Complaint.
+        <br><br>
+        <strong>Flow:</strong>
+        <br>Step 1: Enter Total External Static Pressure (TESP).
+        <br>Step 2: If TESP &gt; 0.5 in.w.c., collect 4-point profile (before/after filter, before/after coil).
+        <br>Step 3: Route to highest-drop component → Card #2 (filter) OR Card #14 (coil) OR Card #20 (system under-airflow) OR Card #13 (duct restriction).
+        <br>Step 4: If TESP OK but comfort/bill complaint persists → route to Card #24 (Oversizing).
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 598+212+169+70 = 1049 combined episode weight on airflow / static / manometer topics.</div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">🆕 Vacuum Validation (Cross-Cutting)</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 NEW</span><span class="badge badge-tier1">TIER 1</span></div>
+      </div>
+      <div class="item-body">
+        <strong>Not a new complaint — a required verification step</strong> injected before "charge system" action on all refrigerant-circuit repair cards (#8 Leak, #10 Compressor family, #12 Reversing Valve, #15 Metering family).
+        <br><br>
+        <strong>Flow:</strong>
+        <br>Step 1: Enter final micron reading before opening service valves.
+        <br>Step 2: Enter standing decay test result (isolate pump, watch micron rise for 15 min).
+        <br>Rule: Fail if reading &gt; 500 microns after 15 min OR decay rate &gt; 100 microns / 15 min.
+        <br>Fail → escalate: "Standing vacuum decay indicates leak or moisture. Do not charge. Return to leak search or replace filter dryer."
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 263 vacuum + 101 micron + 120 recovery = 484 combined.</div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">🆕 Combustion Safety Check (Cross-Cutting)</div>
+        <div class="item-badges"><span class="badge badge-safety">⚠️ SAFETY</span><span class="badge badge-new">🆕 NEW</span></div>
+      </div>
+      <div class="item-body">
+        <strong>Required safety check</strong> triggered by Not Heating + system age ≥ 12 years OR TESP &gt; design budget OR flame roll-out reported.
+        <br><br>
+        <strong>Flow:</strong>
+        <br>Step 1: Visual HX inspection photo (required — no skip).
+        <br>Step 2: Optional combustion analyzer readings (CO ppm, O2%, flue temp).
+        <br>Step 3: If visual crack OR CO &gt; 100 ppm air-free → Card #21 Heat Exchanger Damage (red-tag).
+        <br>Step 4: If clean visual + acceptable combustion → continue normal ignitor/flame sensor flow.
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 87 HX + 37 CO + 86 combustion.</div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">🔧 EXPAND: Not Cooling YES — 4-reading cascade</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 EXPAND</span><span class="badge badge-tier1">TIER 1</span></div>
+      </div>
+      <div class="item-body">
+        <strong>Current live:</strong> 2-step cascade (suction PSI → conditional discharge PSI) → 4-card discrimination.
+        <br><br>
+        <strong>Expand to:</strong> 4-reading cascade adding superheat + subcool inputs.
+        <br>Discrimination logic:
+        <br>Low suction + high superheat + low subcool → <strong>Card #8 Refrigerant Leak</strong> (confirmed, not just hypothesis).
+        <br>Low suction + low superheat + normal subcool → <strong>Card #15b/c TXV problem</strong> (bulb loss or hunting).
+        <br>Normal pressures + high delta-T + high static → <strong>Card #20 Under-Airflow</strong>.
+        <br>Normal pressures + normal delta-T + warm supply → <strong>Card #13 Ductwork Leak</strong> (current logic).
+        <br>High discharge + normal subcool → <strong>Card #14 Dirty Coil</strong>.
+        <br>High discharge + high subcool → <strong>Card #17 Overcharge</strong> (confirmed).
+        <br>Any single-reading commit → downgrade confidence label to "hypothesis" until cascade completes.
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> AC Pressures class + Charging a TXV system with Probes + Class - What Superheat Signifies episodes are the specific source.</div>
+    </div>
+
+    <div class="item-card new">
+      <div class="item-header">
+        <div class="item-title">🔧 EXPAND: Making Noise — add "grinding" compressor path</div>
+        <div class="item-badges"><span class="badge badge-new">🆕 EXPAND</span><span class="badge badge-tier2">TIER 2</span></div>
+      </div>
+      <div class="item-body">
+        <strong>Current live:</strong> 5 noise routes (banging → compressor, hissing → suction, clicking → capacitor, grinding → contactor, squealing → blower).
+        <br><br>
+        <strong>Expand grinding:</strong> Grinding can also be compressor internal bearing failure, not just contactor. Add branch:
+        <br>Grinding → Q: Location? [outdoor unit / indoor unit].
+        <br>Outdoor → contactor photo (current) OR bearing test (amp draw pattern → Card #10b).
+        <br>Indoor → blower motor bearing test (Card #4).
+      </div>
+      <div class="item-eviden"><strong>Archive weight:</strong> 468 compressor episodes cover bearing wear patterns extensively.</div>
+    </div>
+
+    <div class="item-card live">
+      <div class="item-header">
+        <div class="item-title">Existing 9 Complaint Flows</div>
+        <div class="item-badges"><span class="badge badge-live">✅ LIVE</span></div>
+      </div>
+      <div class="item-body">
+        Not Cooling · Not Heating · Water Dripping · Not Turning On · Making Noise · High Electric Bill · Error Code · Intermittent Shutdown · Service/Tune-Up.
+        <br>All 46 diagnostic_questions steps verified live in prod. All 5 previously-flagged bugs (BUG #9/#10/#11/#12/#13) FIXED per migration 014 + 015.
+      </div>
+      <div class="item-eviden"><strong>Status:</strong> See v5.1 audit-corrected tree for the full diagram.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════ BUILD SEQUENCE ═══════════════════════ -->
+<div class="section" id="build">
+  <div class="section-title">🏗️ Build Sequence (Bryan Priority Order)</div>
+  <div class="section-sub">
+    Ship the SAFETY gap out of tier order. Then Tier 1 in the given sequence — each item builds on the prior one's readings.
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>#</th><th>Gap</th><th>Tier</th><th>Archive Weight</th><th>Enables</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="rank">0</td>
+        <td><strong>Card #21 Heat Exchanger Damage + Combustion Safety Check flow + combustion analyzer readings</strong></td>
+        <td><span class="badge badge-safety">⚠️ SAFETY</span></td>
+        <td>87 HX + 37 CO + 86 combustion + 42 combustion analyzer</td>
+        <td>CO liability protection. Ship BEFORE Tier 1.</td>
+      </tr>
+      <tr>
+        <td class="rank">1</td>
+        <td><strong>TESP + 4-point static pressure profile + Card #20 Under-Airflow + Airflow Assessment cross-cutting flow</strong></td>
+        <td><span class="badge badge-tier1">TIER 1</span></td>
+        <td>1049 (598 duct + 212 airflow + 169 static + 70 manometer)</td>
+        <td>Card #24 Oversizing detection · Better Card #13 vs #14 vs #20 discrimination · Card #21 HX safety trigger.</td>
+      </tr>
+      <tr>
+        <td class="rank">2</td>
+        <td><strong>Superheat + Subcool as required inputs · Not Cooling YES cascade expanded to 4-reading discrimination</strong></td>
+        <td><span class="badge badge-tier1">TIER 1</span></td>
+        <td>306 (193 superheat + 113 subcool)</td>
+        <td>Card #10c Compression Ratio · Card #15 Metering Family (b/c/d TXV modes) · Card #17 confirmation · Confidence label calibration.</td>
+      </tr>
+      <tr>
+        <td class="rank">3</td>
+        <td><strong>Card #10 Compressor Family (5 sub-modes) + winding-to-ground reading + ambient migration flag</strong></td>
+        <td><span class="badge badge-tier1">TIER 1</span></td>
+        <td>609 (468 compressor + 55 grounded + 33 hard start + 29 start cap + 24 crankcase)</td>
+        <td>Reduces $2-4K wrong-compressor-replacement rate. Requires readings from steps 1-2 above.</td>
+      </tr>
+      <tr>
+        <td class="rank">4</td>
+        <td><strong>Micron gauge + Standing decay test + Vacuum Validation cross-cutting flow (gates all charge steps)</strong></td>
+        <td><span class="badge badge-tier1">TIER 1</span></td>
+        <td>484 (263 vacuum + 101 micron + 120 recovery)</td>
+        <td>Silent-failure prevention across Cards #8, #10 family, #12, #15 family.</td>
+      </tr>
+      <tr>
+        <td class="rank">5</td>
+        <td><strong>Wet-bulb / RH readings + Card #22 Latent Capacity Deficit + Comfort Complaint flow</strong></td>
+        <td><span class="badge badge-tier2">TIER 2</span></td>
+        <td>398 (152 dehumidif + 97 latent + 94 sensible + 55 wet-bulb)</td>
+        <td>Houston-critical. Distinguishes sensible-OK / latent-fail systems.</td>
+      </tr>
+      <tr>
+        <td class="rank">6</td>
+        <td><strong>Card #15 Metering Family expansion (TXV bulb loss / hunting / EEV controller)</strong></td>
+        <td><span class="badge badge-tier2">TIER 2</span></td>
+        <td>259 (162 TXV + 68 EEV + 24 electronic leak + 5 TXV bulb)</td>
+        <td>Depends on Tier 1 step 2 (superheat/subcool readings). Refines refrigerant-charge diagnosis.</td>
+      </tr>
+      <tr>
+        <td class="rank">7</td>
+        <td><strong>Instrument Confidence Check toggle</strong></td>
+        <td><span class="badge badge-tier2">TIER 2</span></td>
+        <td>~200 combined calibration mentions</td>
+        <td>Reduces false-high-confidence diagnosis. Small UI-only build.</td>
+      </tr>
+      <tr>
+        <td class="rank">8</td>
+        <td><strong>Duct depth beyond leak — per-room CFM / balance / Manual D assessment</strong></td>
+        <td><span class="badge badge-tier2">TIER 2</span></td>
+        <td>Rolls up under 598 duct + 43 Manual J</td>
+        <td>Upsell $1.5K-5K duct-renovation ticket for full-service shops.</td>
+      </tr>
+      <tr>
+        <td class="rank">9</td>
+        <td><strong>Line-set / brazing procedure validation (post-repair)</strong></td>
+        <td><span class="badge badge-tier2">TIER 2</span></td>
+        <td>260 (135 line set + 125 brazing)</td>
+        <td>Pairs with Vacuum Validation (step 4).</td>
+      </tr>
+      <tr>
+        <td class="rank">10</td>
+        <td><strong>Card #23 Thermostat / Low-Voltage Fault + phantom voltage reading</strong></td>
+        <td><span class="badge badge-tier3">TIER 3</span></td>
+        <td>275 (261 thermostat + 14 zoning)</td>
+        <td>Modern Nest/Ecobee/zoning coverage.</td>
+      </tr>
+      <tr>
+        <td class="rank">11</td>
+        <td><strong>Card #24 System Oversizing + short-cycle pattern detection</strong></td>
+        <td><span class="badge badge-tier3">TIER 3</span></td>
+        <td>130 (87 oversizing + 43 Manual J)</td>
+        <td>Complements Card #22 latent deficit.</td>
+      </tr>
+      <tr>
+        <td class="rank">12</td>
+        <td><strong>Variable-speed / Inverter compressor diagnostic context</strong></td>
+        <td><span class="badge badge-tier3">TIER 3</span></td>
+        <td>82 (71 variable speed + 11 inverter)</td>
+        <td>Modern-equipment pressure reading interpretation.</td>
+      </tr>
+      <tr>
+        <td class="rank">13</td>
+        <td><strong>A2L refrigerant safety handling (R-32, R-454B)</strong></td>
+        <td><span class="badge badge-tier3">TIER 3</span></td>
+        <td>30 A2L episodes</td>
+        <td>Industry-transition preparedness.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════════ TIER 4 DEFERRED ═══════════════════════ -->
+<div class="section" id="tier4">
+  <div class="section-title">🟢 Tier 4 — Deferred (Not for Houston Mid-Tech Pitch)</div>
+  <div class="section-sub">Named for completeness. Not recommended for the current SnapAI scope.</div>
+
+  <div class="item-grid">
+    <div class="item-card">
+      <div class="item-header"><div class="item-title">Commercial Refrigeration</div><div class="item-badges"><span class="badge badge-tier4">DEFER</span></div></div>
+      <div class="item-body">361 episodes in Bryan's archive — SECOND-highest topic weight after ducts. Whole other trade (walk-ins, reach-ins, grocery refrigeration, pulse valves). <strong>Recommendation:</strong> spin as separate product if pursued.</div>
+    </div>
+    <div class="item-card">
+      <div class="item-header"><div class="item-title">Mini-Split / Ductless</div><div class="item-badges"><span class="badge badge-tier4">DEFER</span></div></div>
+      <div class="item-body">Only 6 episodes in Bryan's archive despite the market presence. Bryan's earlier tier-1 recommendation was overstated (corrected 2026-07-05).</div>
+    </div>
+    <div class="item-card">
+      <div class="item-header"><div class="item-title">Boilers / Hydronics</div><div class="item-badges"><span class="badge badge-tier4">DEFER</span></div></div>
+      <div class="item-body">45 episodes. Northeast trade. Not Houston.</div>
+    </div>
+    <div class="item-card">
+      <div class="item-header"><div class="item-title">Commercial Rooftop Units</div><div class="item-badges"><span class="badge badge-tier4">DEFER</span></div></div>
+      <div class="item-body">51 episodes. Different install patterns from residential split systems. Different product category.</div>
+    </div>
+    <div class="item-card">
+      <div class="item-header"><div class="item-title">Geothermal Heat Pumps</div><div class="item-badges"><span class="badge badge-tier4">DEFER</span></div></div>
+      <div class="item-body">&lt;2% of Houston installs. Defer permanently.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ CHANGE LOG ═══════════════════════ -->
+<div class="section" id="changelog">
+  <div class="section-title">📝 Change Log</div>
+  <div class="section-sub">Traceability for future sessions.</div>
+
+  <div class="item-grid">
+    <div class="item-card">
+      <div class="item-header"><div class="item-title">2026-07-05 — v6 initial</div></div>
+      <div class="item-body">
+        Created by Bryan Orr @board analysis grounded in 960-transcript archive at <code>Personal Claude/HVAC_School_Transcripts/transcripts/</code>.
+        Complements <code>SnapAI_Decision_Tree.html</code> v5.1 (audit-corrected same date).
+        <br><br>
+        <strong>Key inputs:</strong> Live Supabase state verified per DEC-129. Bryan's 960-episode frequency scan. AC Pressures / Subcooling / Superheat class recording read in full for grounding.
+        <br><br>
+        <strong>Corrections from Bryan's earlier 9-episode analysis:</strong> Mini-splits downgraded from Tier 1 to Tier 4. Vacuum + Superheat/Subcool promoted to Tier 1. Added 4 real new gaps (Dehumidification, Compression Ratio as sub-mode, Line-set/brazing, Variable-speed context).
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
