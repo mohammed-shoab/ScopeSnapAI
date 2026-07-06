@@ -26,3 +26,4 @@ numpy>=1.26.4             # Feature engineering for sensor model + ONNX preproce
 sentry-sdk[fastapi]==2.64.0
 slowapi==0.1.10            # Rate limiting for Gemini/AI endpoints
 openpyxl>=3.1.5              # WS-A: read SnapAI_HVAC_Master_Price_List_2026.xlsx in load_repo.py
+aiosqlite==0.22.1            # async SQLite driver for onboarding-gate tests (test-only in-memory DB)
