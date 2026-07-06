@@ -1,7 +1,6 @@
 # SnapAI AI — Tech Stack & Architecture
 
-> **Last updated:** May 24, 2026 (QA Sign-Off 2026-05-24: BUG-043/044 fixed, WA-42 through WA-47 added. DEC-082/083/084 added. Stage 7 E2E QA COMPLETE. DEC-070 ACTIVE. | Stage 8 Closeout doc written. | Stage 6 Vercel Staging Branch Rewire COMPLETE. All 3 staging domains wired to `staging` branch via domain-level gitBranch. DEC-067 SUPERSEDED by DEC-080. | Previously: Stage 4 Staging Isolation Audit COMPLETE. Clerk key prefix convention confirmed for all 4 domains. Vercel staging custom domains = Preview branch deployments (DEC-074). DEC-074/075/076/077 added. | Stage 2 Free-Tier Cost Audit complete. Stripe confirmed in Railway env vars -- likely test mode, no charges. DEC-071 added. | Full QA pass both markets. WA-28 through WA-37 added. DEC-065/066 added. | Previously: May 21, 2026 (Track F Group C + BUG-032 QA PASS. HEAD: `4743a40`. Alembic head: `032`. Both markets verified. BUG-031 OPEN (staging banner on prod PK). | **2026-05-23 patch:** Change workflow `WORKFLOW.md` + DEC-070 added.
-> **Status:** Beta — live on Vercel + Railway. Both markets QA-verified 2026-05-21: Houston + PK. Build hash: `80f50c7f2d1fe88a`. See DEC-037 through DEC-042 for lessons from this session.
+**Current state (2026-07-06):** Beta — live on Vercel + Railway. Both markets QA-verified (US Houston active; PK dormant per DEC-123). Stack: Next.js 16 + React 19 + Clerk v7 + Turbopack (DEC-113) on Vercel; FastAPI on Railway with Alembic head 034; Supabase Postgres; Cloudflare R2 for photos + PDFs; Sentry v10 (DEC-108); PostHog analytics; Google Gemini 2.5 (Flash + Flash-Lite). Legal-safe-wordings v1 shipped 2026-07-06 (DEC-130). Historical build narrative → `TECH_STACK_HISTORY.md`.
 
 ---
 
@@ -1935,5 +1934,4 @@ Dependabot is active on `mohammed-shoab/ScopeSnapAI` (`.github/dependabot.yml`) 
 
 ---
 
-### 2026-06-29 (PM) — Turbopack PROMOTED TO PROD (DEC-113)
-**PROD now builds with Turbopack** (`next build`; `--webpack` dropped) — main commit `66699a05`. Supersedes the "prod still --webpack" note. Both staging AND prod are now on Turbopack. Sentry via instrumentation-client.ts/instrumentation.ts (delivery verified on prod, ingest 200). Tailwind v3 retained. Backend unchanged (frontend-only release; /api/version 1.2).
+### 2026-06-29 (PM) — Turbopack PROMOTED TO PROD (D
