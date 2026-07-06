@@ -1142,3 +1142,19 @@ Root cause: `scopesnap-api/services/pdf_generator.py` had **117 trailing NUL byt
 ---
 
 ## 2026-0
+---
+
+## 2026-07-06 — Legal deployment follow-ups (entity + counsel + gates)
+
+Legal-safe wordings v1 shipped to prod (DEC-130). These are the OPEN legal follow-ups, in priority order. Alfred (@nav) advised; US/Texas jurisdiction. General info, not legal advice.
+
+**Context:** "Mainnov" is the operating name but is **NOT a registered legal entity yet** (Shoab, 2026-07-06). The public `/tos` ships labeled "Draft — Not yet effective" naming "operated by Mainnov".
+
+- [ ] **PRIORITY 1 — Form a legal entity (protects Shoab personally).** With no entity, SnapAI = Shoab as an individual; every ToS liability cap / indemnity protects a *name*, and personal assets are exposed. For a non-US (Pakistan-based) founder serving the US market, a **Wyoming LLC** is the common cheap path (~$100–500 filing + ~$50–150/yr registered agent, remote, 1–3 weeks; Delaware alt). Do this **before charging the first customer / taking payments** (Stripe is already wired). This is the single highest-value protection and does NOT require a lawyer to start.
+- [ ] **DO NOT flip the `/tos` "Not yet effective" banner until the entity exists.** Making the ToS "effective" while "Mainnov" is a non-existent entity is *legally worse than the draft*: (a) the protections can't attach to a non-existent party (no shield), (b) promoter/pre-incorporation agency law makes **Shoab personally liable** on the contract — and later forming the LLC does NOT erase that without a formal novation, (c) presenting "effective terms from Mainnov" when Mainnov isn't registered has a DTPA/FTC-§5 misrepresentation tint. The truthful draft asserts nothing false and creates no obligation — it is the safe square through beta.
+- [ ] **GATE 2 — Real Texas counsel sign-off, then flip.** After the entity exists + there's revenue: a licensed TX attorney reviews §6 liability cap, §8 class-action waiver, §9 arbitration (Harris County) + confirms the exact registered entity name in §1, then remove the banner so the ToS becomes operative.
+- [ ] **Pakistani lawyer (separate).** How a US LLC interacts with Shoab's side — income/tax, State Bank/forex rules for receiving USD. Outside Alfred's US lane.
+- [ ] **GATE 1 — "no upsell/honest" stays parked** until Will's algo-bias substantiation file exists (FTC reasonable-basis). Leaving it out = safer; no deadline.
+- [ ] TDLR contractor-license verification job (gate currently captures + stores license; does not verify against the state DB). Privacy Policy multi-state review (H4).
+
+**Trigger summary:** free beta now = fine as-is. The day money changes hands, the entity + effective ToS + payment/tax handling stop being optional.
