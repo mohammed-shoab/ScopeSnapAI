@@ -48,6 +48,7 @@ const COMPLAINT_OPTIONS = [
   { id: "making_noise",          icon: "\u{1F50A}", label: "Making Noise",           sub: "Banging, squealing, humming" },
   { id: "high_electric_bill",    icon: "\u{1F4B8}", label: "High Electric Bill",     sub: "Unusually high usage" },
   { id: "error_code",            icon: "\u{1F6A8}", label: "Error Code",             sub: "Display or thermostat error" },
+  { id: "comfort",               icon: "\u{1F321}", label: "Comfort / Humidity",     sub: "Clammy, uneven rooms, short-cycling" },
 ] as const;
 type ComplaintId = typeof COMPLAINT_OPTIONS[number]["id"];
 
