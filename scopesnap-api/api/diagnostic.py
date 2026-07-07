@@ -655,6 +655,38 @@ async def _evaluate_pressure_for_market(
     return "ok"
 
 
+async def _evaluate_static_pressure_inwc(
+    db: AsyncSession,
+    value: float,
+    system_type: str = "residential_split",
+) -> str:
+    """
+    Tier A -- mirrors _evaluate_pressure_for_market. Look up static_pressure_targets
+    (total_external design budget) and return "over_budget" | "within_budget".
+    Server-side deterministic classification against the DB threshold table, with a
+    belt-and-suspenders fallback (NCI residential 0.50 in.w.c. routing max) if the
+    lookup fails.
+    """
+    _FALLBACK_TESP_BUDGET = 0.50
+    try:
+        row = await db.execute(
+            text(
+                "SELECT design_budget_inwc FROM static_pressure_targets "
+                "WHERE measurement_point = 'total_external' "
+                "AND drop_threshold_inwc IS NOT NULL "
+                "ORDER BY design_budget_inwc ASC LIMIT 1"
+            )
+        )
+        target = row.fetchone()
+    except Exception as e:
+        logger.warning("[diagnostic] static_pressure_targets lookup failed: %s", e)
+        target = None
+    budget = float(target.design_budget_inwc) if target else _FALLBACK_TESP_BUDGET
+    if value > budget:
+        return "over_budget"
+    return "within_budget"
+
+
 # ── Branch following ───────────────────────────────────────────────────────────
 
 
@@ -1012,6 +1044,21 @@ async def submit_answer(
         logger.info(
             "[diagnostic] pressure eval: %.1f PSI %s → %s (market=%s, ref=%s, amb=%d°C)",
             raw_psi, subtype, branch_key, tables.market, refrigerant, ambient,
+        )
+
+    # Static-pressure evaluation (Tier A -- mirrors PSI). Additive: only fires for
+    # the new static_pressure_inwc reading type; never affects existing flows.
+    if (
+        q_row.input_type == "reading"
+        and isinstance(q_row.reading_spec, dict)
+        and q_row.reading_spec.get("type") == "static_pressure_inwc"
+        and isinstance(body.answer, dict)
+        and body.answer.get("value") is not None
+    ):
+        raw_tesp = float(body.answer["value"])
+        branch_key = await _evaluate_static_pressure_inwc(db, raw_tesp)
+        logger.info(
+            "[diagnostic] static-pressure eval: %.3f in.w.c. -> %s", raw_tesp, branch_key,
         )
 
     # ── BUG-016: PK ok suction → discharge PSI step (not US Card 13) ─────────
