@@ -687,6 +687,102 @@ async def _evaluate_static_pressure_inwc(
     return "within_budget"
 
 
+async def _evaluate_clammy_rh(
+    db: AsyncSession,
+    indoor_rh: float,
+    return_wet_bulb: Optional[float],
+) -> str:
+    """
+    Tier A Card #22 (comfort / clammy) step q2-clammy-rh. Mirrors
+    _evaluate_pressure_for_market / _evaluate_static_pressure_inwc: DB-driven bands
+    from latent_targets, deterministic (GATE-4), hard fallbacks if lookup fails.
+    Composes TWO readings into one semantic branch_key:
+      rh_low  |  in_band  |  rh_or_wetbulb_high
+    """
+    _FALLBACK_RH = (45.0, 55.0)          # latent_targets.indoor_rh design band
+    _FALLBACK_WB_MAX = 69.0              # return_wet_bulb upper band (spec 63-69)
+    rh_min, rh_max = _FALLBACK_RH
+    try:
+        rh_row = await db.execute(
+            text(
+                "SELECT target_min, target_max FROM latent_targets "
+                "WHERE metric = 'indoor_rh' LIMIT 1"
+            )
+        )
+        r = rh_row.fetchone()
+        if r and r.target_min is not None and r.target_max is not None:
+            rh_min, rh_max = float(r.target_min), float(r.target_max)
+    except Exception as e:
+        logger.warning("[diagnostic] latent_targets indoor_rh lookup failed: %s", e)
+
+    wb_max = _FALLBACK_WB_MAX
+    try:
+        wb_row = await db.execute(
+            text(
+                "SELECT target_max FROM latent_targets "
+                "WHERE metric = 'return_wet_bulb' LIMIT 1"
+            )
+        )
+        wr = wb_row.fetchone()
+        # latent_targets stores return_wet_bulb as a 67F point-target; only adopt the
+        # DB value as an upper band when it exceeds that point, else keep 69F fallback.
+        if wr and wr.target_max is not None and float(wr.target_max) > 67.0:
+            wb_max = float(wr.target_max)
+    except Exception as e:
+        logger.warning("[diagnostic] latent_targets return_wet_bulb lookup failed: %s", e)
+
+    if indoor_rh < rh_min:
+        return "rh_low"
+    if indoor_rh > rh_max or (return_wet_bulb is not None and return_wet_bulb > wb_max):
+        return "rh_or_wetbulb_high"
+    return "in_band"
+
+
+async def _evaluate_clammy_airflow(
+    db: AsyncSession,
+    cfm_per_ton: float,
+    tolerance_pct: float = 15.0,
+) -> str:
+    """
+    Tier A Card #22 step q3-clammy-airflow. Humid-climate anchored (Houston default):
+    low floor from cfm_per_ton_targets.low_airflow_fault_threshold, high limit from
+    humid_target*(1+tolerance). Deterministic (GATE-4) with fallbacks. Returns:
+      low_airflow  |  cfm_high  |  cfm_in_spec_no_load_calc
+    """
+    _FALLBACK_FLOOR = 350.0
+    _FALLBACK_TARGET = 350.0
+    floor = _FALLBACK_FLOOR
+    target = _FALLBACK_TARGET
+    try:
+        frow = await db.execute(
+            text(
+                "SELECT cfm_per_ton_max FROM cfm_per_ton_targets "
+                "WHERE indicator = 'low_airflow_fault_threshold' LIMIT 1"
+            )
+        )
+        fr = frow.fetchone()
+        if fr and fr.cfm_per_ton_max is not None:
+            floor = float(fr.cfm_per_ton_max)
+        trow = await db.execute(
+            text(
+                "SELECT cfm_per_ton_max FROM cfm_per_ton_targets "
+                "WHERE indicator = 'humid_target' LIMIT 1"
+            )
+        )
+        tr = trow.fetchone()
+        if tr and tr.cfm_per_ton_max is not None:
+            target = float(tr.cfm_per_ton_max)
+    except Exception as e:
+        logger.warning("[diagnostic] cfm_per_ton_targets lookup failed: %s", e)
+
+    high_limit = target * (1.0 + tolerance_pct / 100.0)
+    if cfm_per_ton < floor:
+        return "low_airflow"
+    if cfm_per_ton > high_limit:
+        return "cfm_high"
+    return "cfm_in_spec_no_load_calc"
+
+
 # ── Branch following ───────────────────────────────────────────────────────────
 
 
@@ -1060,6 +1156,47 @@ async def submit_answer(
         logger.info(
             "[diagnostic] static-pressure eval: %.3f in.w.c. -> %s", raw_tesp, branch_key,
         )
+
+    # ── Tier A Card #22 comfort/clammy multi steps (server-side eval) ────────
+    # Mirrors the PSI / static-pressure overrides. Multi readings arrive in
+    # options order as answer.reading_0 / reading_1; recompute the semantic
+    # branch_key deterministically from the threshold tables (GATE-4). Additive:
+    # fires only for the two clammy step_ids, never affects existing multi flows.
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q2-clammy-rh"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")
+        _r1 = body.answer.get("reading_1")
+        if isinstance(_r0, dict) and _r0.get("value") is not None:
+            _rh = float(_r0["value"])
+            _wb = (
+                float(_r1["value"])
+                if isinstance(_r1, dict) and _r1.get("value") is not None
+                else None
+            )
+            branch_key = await _evaluate_clammy_rh(db, _rh, _wb)
+            logger.info(
+                "[diagnostic] clammy-rh eval: RH=%.1f WB=%s -> %s", _rh, _wb, branch_key,
+            )
+
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q3-clammy-airflow"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")
+        if isinstance(_r0, dict) and _r0.get("value") is not None:
+            _cfm = float(_r0["value"])
+            _tol = 15.0
+            if isinstance(q_row.options_jsonb, list) and q_row.options_jsonb:
+                _spec = q_row.options_jsonb[0].get("spec") or {}
+                _tol = float(_spec.get("tolerance_pct", 15.0))
+            branch_key = await _evaluate_clammy_airflow(db, _cfm, _tol)
+            logger.info(
+                "[diagnostic] clammy-airflow eval: CFM/ton=%.1f -> %s", _cfm, branch_key,
+            )
 
     # ── BUG-016: PK ok suction → discharge PSI step (not US Card 13) ─────────
     # US q2-nc-suction maps "ok" → Card 13 (TXV/Metering Device).
