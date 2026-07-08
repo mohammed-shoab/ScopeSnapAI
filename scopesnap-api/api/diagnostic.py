@@ -1018,6 +1018,79 @@ async def _evaluate_restriction_head(
     return "head_normal_to_low"
 
 
+def _evaluate_tstat_24v(voltage: float) -> str:
+    """
+    Tier A not_turning_on step q6-tstat-24v (Card #23 thermostat / low-voltage).
+    24V nominal control voltage, +/-10% tolerance (spec.control_voltage_24v).
+    Deterministic (GATE-4):
+      present_but_call_not_passing (-> #23)  |  absent_or_call_passing (escalate)
+    24V present at R-to-C but equipment not energizing => thermostat/wiring fault (#23).
+    Below-tolerance (absent/phantom) => upstream transformer/wiring -> tech judgment.
+    """
+    _NOMINAL_24V = 24.0
+    _TOLERANCE_PCT = 10.0
+    present_floor = _NOMINAL_24V * (1.0 - _TOLERANCE_PCT / 100.0)  # 21.6 V
+    if voltage >= present_floor:
+        return "present_but_call_not_passing"
+    return "absent_or_call_passing"
+
+
+async def _evaluate_megohm(db: AsyncSession, megohm: float) -> str:
+    """
+    Tier A not_cooling #26 chain step q7-compressor-megohm. Winding-to-ground
+    resistance vs compressor_test_thresholds (26a; Copeland default anchor 0.5 megohm).
+    Deterministic (GATE-4):
+      below_condemn_limit (-> #26 grounded/shorted winding)  |  above_condemn_limit (-> q8)
+    """
+    _FALLBACK_CONDEMN = 0.50
+    limit = _FALLBACK_CONDEMN
+    try:
+        row = await db.execute(
+            text(
+                "SELECT min(threshold_value) AS lim FROM compressor_test_thresholds "
+                "WHERE sub_mode_card = '26a' AND test = 'winding_to_ground_resistance' "
+                "AND unit = 'megohm' AND comparison = 'below'"
+            )
+        )
+        r = row.fetchone()
+        if r and r.lim is not None:
+            limit = float(r.lim)
+    except Exception as e:
+        logger.warning("[diagnostic] compressor_test_thresholds 26a lookup failed: %s", e)
+
+    if megohm < limit:
+        return "below_condemn_limit"
+    return "above_condemn_limit"
+
+
+async def _evaluate_locked_rotor(db: AsyncSession, duration_s: float) -> str:
+    """
+    Tier A not_cooling #26 chain step q8-compressor-locked-rotor. Sustained no-spin
+    LRA-level draw duration vs compressor_test_thresholds (26b; >=2s). Upstream steps
+    (q5 charge / q6 start-assist / q7 megohm) have already excluded charge, start
+    components, and grounded windings. Deterministic (GATE-4):
+      seizure_confirmed (-> #26 mechanical seizure, 26b)  |  not_confirmed (escalate)
+    """
+    _FALLBACK_DURATION_S = 2.0
+    thr = _FALLBACK_DURATION_S
+    try:
+        row = await db.execute(
+            text(
+                "SELECT min(threshold_value) AS thr FROM compressor_test_thresholds "
+                "WHERE sub_mode_card = '26b' AND unit = 'seconds'"
+            )
+        )
+        r = row.fetchone()
+        if r and r.thr is not None:
+            thr = float(r.thr)
+    except Exception as e:
+        logger.warning("[diagnostic] compressor_test_thresholds 26b lookup failed: %s", e)
+
+    if duration_s >= thr:
+        return "seizure_confirmed"
+    return "not_confirmed"
+
+
 # ── Branch following ───────────────────────────────────────────────────────────
 
 
@@ -1548,6 +1621,45 @@ async def submit_answer(
             logger.info(
                 "[diagnostic] restriction-head eval: discharge=%.1f PSI -> %s",
                 _disch, branch_key,
+            )
+
+    # ── Tier A Card #23 thermostat 24V (not_turning_on q6-tstat-24v) ─────────
+    if (
+        q_row.input_type == "reading"
+        and isinstance(q_row.reading_spec, dict)
+        and q_row.reading_spec.get("type") == "voltage_24v"
+        and isinstance(body.answer, dict)
+        and body.answer.get("value") is not None
+    ):
+        branch_key = _evaluate_tstat_24v(float(body.answer["value"]))
+        logger.info(
+            "[diagnostic] tstat-24V eval: %.1f V -> %s", float(body.answer["value"]), branch_key,
+        )
+
+    # ── Tier A #26 chain: megohm winding-to-ground (q7-compressor-megohm) ────
+    if (
+        q_row.input_type == "reading"
+        and isinstance(q_row.reading_spec, dict)
+        and q_row.reading_spec.get("type") == "megohm_winding_to_ground"
+        and isinstance(body.answer, dict)
+        and body.answer.get("value") is not None
+    ):
+        branch_key = await _evaluate_megohm(db, float(body.answer["value"]))
+        logger.info(
+            "[diagnostic] megohm eval: %.2f megohm -> %s", float(body.answer["value"]), branch_key,
+        )
+
+    # ── Tier A #26 chain: locked-rotor duration (q8-compressor-locked-rotor) ─
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q8-compressor-locked-rotor"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")
+        if isinstance(_r0, dict) and _r0.get("value") is not None:
+            branch_key = await _evaluate_locked_rotor(db, float(_r0["value"]))
+            logger.info(
+                "[diagnostic] locked-rotor eval: %.1f s -> %s", float(_r0["value"]), branch_key,
             )
 
     # ── BUG-016: PK ok suction → discharge PSI step (not US Card 13) ─────────
