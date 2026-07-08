@@ -144,6 +144,7 @@ export default function ReadingInput({ spec, ocrNameplate, onSubmit, disabled = 
           value={inputVal}
           onChange={(e) => setInputVal(e.target.value)}
           placeholder={spec.placeholder ?? `Enter ${spec.unit}`}
+          aria-label={spec.placeholder ?? `Enter ${spec.unit}`}
           disabled={disabled}
           className="w-full px-4 py-4 rounded-xl text-xl font-mono font-bold text-right pr-16 border-2 bg-surface-secondary text-text-primary placeholder-text-secondary focus:outline-none transition-colors"
           style={{ borderColor: hasValue ? (preview ? (preview.ok ? "#2ecc71" : "#e74c3c") : "#3498db") : "#2a2a4a" }}

@@ -946,7 +946,11 @@ async def _evaluate_shsc_discrimination(
         return "txv_bulb_loss"
     if subcool_f is not None and subcool_f > sc_max:
         return "restriction_check"
-    if superheat_f > sh_max and subcool_f is not None and subcool_f < sc_min:
+    # Leak/undercharge is gated on LOW SUBCOOL (the sourced 7-12F TXV band), NOT an
+    # absolute superheat number: a TXV modulates superheat, so elevated evaporator
+    # superheat only corroborates (D1 Sec 2.2 -- "not required"). This removes the
+    # earlier directional 14F fallback (sh_max no longer gates the branch).
+    if subcool_f is not None and subcool_f < sc_min:
         return "confirmed_leak"
     return "inconclusive"
 
@@ -1107,7 +1111,7 @@ def _reading_result_label(branch_key: str) -> str:
     return "within range"
 
 
-def _build_reading_receipt(q_row, answer, branch: dict, branch_key: str, card_id: int) -> Optional[dict]:
+async def _build_reading_receipt(db: AsyncSession, q_row, answer, branch: dict, branch_key: str, card_id: int) -> Optional[dict]:
     """
     GATE-5 Reading Receipt snapshot captured when a reading/multi step resolves a
     card. Generic: pulls the primary reading value + the step's target band + a
@@ -1143,6 +1147,23 @@ def _build_reading_receipt(q_row, answer, branch: dict, branch_key: str, card_id
 
     _tlow = spec.get("band_min") if spec.get("band_min") is not None else spec.get("low_threshold")
     _thigh = spec.get("band_max") if spec.get("band_max") is not None else spec.get("high_threshold")
+    # Derive a numeric range for reading types whose spec carries no band/threshold
+    # (cfm_per_ton uses a tolerance around a humid target) so the receipt shows a real
+    # range instead of "reference targets".
+    if (_tlow is None or _thigh is None) and spec.get("type") == "cfm_per_ton":
+        try:
+            _floor_row = await db.execute(text(
+                "SELECT cfm_per_ton_max FROM cfm_per_ton_targets WHERE indicator = 'low_airflow_fault_threshold' LIMIT 1"))
+            _fr = _floor_row.fetchone()
+            _floor = float(_fr.cfm_per_ton_max) if _fr and _fr.cfm_per_ton_max is not None else 350.0
+            _tgt_row = await db.execute(text(
+                "SELECT cfm_per_ton_max FROM cfm_per_ton_targets WHERE indicator = 'humid_target' LIMIT 1"))
+            _tr = _tgt_row.fetchone()
+            _tgt = float(_tr.cfm_per_ton_max) if _tr and _tr.cfm_per_ton_max is not None else 350.0
+            _tol = float(spec.get("tolerance_pct", 15))
+            _tlow, _thigh = _floor, round(_tgt * (1 + _tol / 100.0), 1)
+        except Exception as e:
+            logger.warning("[diagnostic] cfm receipt range lookup failed: %s", e)
     return {
         "reading_value": value,
         "unit": spec.get("unit"),
@@ -1769,7 +1790,7 @@ async def submit_answer(
     # ── GATE-5 Reading Receipt: snapshot the resolving reading + target ──────
     if "resolve_card" in branch:
         try:
-            _rr = _build_reading_receipt(q_row, body.answer, branch, branch_key, branch["resolve_card"])
+            _rr = await _build_reading_receipt(db, q_row, body.answer, branch, branch_key, branch["resolve_card"])
             if _rr is not None:
                 await db.execute(
                     text("UPDATE diagnostic_sessions SET reading_receipt = CAST(:rr AS JSONB) WHERE id = :sid"),
