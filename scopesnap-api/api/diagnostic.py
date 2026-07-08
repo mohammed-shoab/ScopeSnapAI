@@ -907,6 +907,117 @@ async def _evaluate_four_point_static(
     return "system_wide_no_dominant_point"
 
 
+async def _evaluate_shsc_discrimination(
+    db: AsyncSession,
+    superheat_f: float,
+    subcool_f: Optional[float],
+    oscillating: bool = False,
+) -> str:
+    """
+    Tier A not_cooling step q2-sh-sc (Card #8 leak / #15 TXV variants / restriction gate).
+    Deterministic SH/SC discrimination (GATE-4):
+      txv_hunting(#15/15c) | txv_bulb_loss(#15/15b) | restriction_check(-> q3)
+      | confirmed_leak(#8) | inconclusive(escalate)
+    Subcool band from superheat_subcool_targets (TXV 7-12F). TXV target_superheat is
+    NULL in DB (a TXV modulates superheat), so a clinical upper fallback (14F) gates
+    the starved/leak case.
+    """
+    sc_min, sc_max = 7.0, 12.0
+    _FALLBACK_SH_MAX = 14.0
+    sh_max = _FALLBACK_SH_MAX
+    try:
+        row = await db.execute(
+            text(
+                "SELECT target_subcool_min_f, target_subcool_max_f "
+                "FROM superheat_subcool_targets "
+                "WHERE market = 'US' AND metering_device = 'TXV' "
+                "AND target_subcool_min_f IS NOT NULL ORDER BY id LIMIT 1"
+            )
+        )
+        r = row.fetchone()
+        if r and r.target_subcool_min_f is not None and r.target_subcool_max_f is not None:
+            sc_min, sc_max = float(r.target_subcool_min_f), float(r.target_subcool_max_f)
+    except Exception as e:
+        logger.warning("[diagnostic] superheat_subcool_targets SH/SC lookup failed: %s", e)
+
+    if oscillating:
+        return "txv_hunting"
+    if superheat_f <= 3.0:
+        return "txv_bulb_loss"
+    if subcool_f is not None and subcool_f > sc_max:
+        return "restriction_check"
+    if superheat_f > sh_max and subcool_f is not None and subcool_f < sc_min:
+        return "confirmed_leak"
+    return "inconclusive"
+
+
+async def _evaluate_ll_restriction(
+    db: AsyncSession,
+    drier_inlet_f: float,
+    drier_outlet_f: float,
+    ambient_f: Optional[float],
+) -> str:
+    """
+    Tier A not_cooling step q3-restriction-lldrop. Confirms a liquid-line/drier
+    restriction (deterministic, GATE-4) via drier temp drop OR colder-than-ambient
+    check against liquid_line_restriction_thresholds:
+      drop_confirmed(-> q4-restriction-head)  |  no_drop_confirmed(escalate)
+    """
+    drop_floor = 3.0
+    ambient_floor = 1.0
+    try:
+        d = await db.execute(
+            text(
+                "SELECT threshold_value FROM liquid_line_restriction_thresholds "
+                "WHERE check_type = 'drier_temp_drop' AND refrigerant = 'ALL' LIMIT 1"
+            )
+        )
+        dr = d.fetchone()
+        if dr and dr.threshold_value is not None:
+            drop_floor = float(dr.threshold_value)
+        a = await db.execute(
+            text(
+                "SELECT threshold_value FROM liquid_line_restriction_thresholds "
+                "WHERE check_type = 'ambient_floor' LIMIT 1"
+            )
+        )
+        ar = a.fetchone()
+        if ar and ar.threshold_value is not None:
+            ambient_floor = float(ar.threshold_value)
+    except Exception as e:
+        logger.warning("[diagnostic] liquid_line_restriction_thresholds lookup failed: %s", e)
+
+    drier_drop = drier_inlet_f - drier_outlet_f
+    colder_than_ambient = (
+        ambient_f is not None and drier_outlet_f <= (ambient_f - ambient_floor)
+    )
+    if drier_drop > drop_floor or colder_than_ambient:
+        return "drop_confirmed"
+    return "no_drop_confirmed"
+
+
+async def _evaluate_restriction_head(
+    db: AsyncSession,
+    discharge_psi: float,
+    refrigerant: str,
+    ambient_c: int,
+    market: str = "US",
+) -> str:
+    """
+    Tier A not_cooling step q4-restriction-head. No head-pressure table exists (D1
+    Sec 2.3 GAP), so reuse the existing discharge-PSI evaluator against
+    operating_targets: HIGH head -> head_high (escalate; overcharge/dirty condenser,
+    NOT restriction); normal-to-low head -> head_normal_to_low (-> Card #25 confirmed
+    restriction). Deterministic (GATE-4).
+    """
+    disch_key = await _evaluate_pressure_for_market(
+        db, discharge_psi, "discharge", refrigerant, ambient_c, market=market
+    )
+    if disch_key == "high":
+        return "head_high"
+    return "head_normal_to_low"
+
+
 # ── Branch following ───────────────────────────────────────────────────────────
 
 
@@ -1369,6 +1480,74 @@ async def submit_answer(
             logger.info(
                 "[diagnostic] four-point static eval: bf=%.3f af=%.3f bc=%.3f ac=%.3f -> %s",
                 _v[0], _v[1], _v[2], _v[3], branch_key,
+            )
+
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q2-sh-sc"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")  # superheat_F
+        _r1 = body.answer.get("reading_1")  # subcool_F
+        if isinstance(_r0, dict) and _r0.get("value") is not None:
+            _sh = float(_r0["value"])
+            _sc = (
+                float(_r1["value"])
+                if isinstance(_r1, dict) and _r1.get("value") is not None
+                else None
+            )
+            _osc = bool(
+                _r0.get("oscillating")
+                or _r0.get("stability") == "oscillating"
+                or _r0.get("branch_key") == "oscillating"
+            )
+            branch_key = await _evaluate_shsc_discrimination(db, _sh, _sc, _osc)
+            logger.info(
+                "[diagnostic] SH/SC eval: SH=%.1f SC=%s osc=%s -> %s",
+                _sh, _sc, _osc, branch_key,
+            )
+
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q3-restriction-lldrop"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")  # drier inlet
+        _r1 = body.answer.get("reading_1")  # drier outlet
+        _r2 = body.answer.get("reading_2")  # outdoor ambient
+        if (
+            isinstance(_r0, dict) and _r0.get("value") is not None
+            and isinstance(_r1, dict) and _r1.get("value") is not None
+        ):
+            _in = float(_r0["value"])
+            _out = float(_r1["value"])
+            _amb = (
+                float(_r2["value"])
+                if isinstance(_r2, dict) and _r2.get("value") is not None
+                else None
+            )
+            branch_key = await _evaluate_ll_restriction(db, _in, _out, _amb)
+            logger.info(
+                "[diagnostic] LL-restriction eval: in=%.1f out=%.1f amb=%s -> %s",
+                _in, _out, _amb, branch_key,
+            )
+
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q4-restriction-head"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")  # discharge_pressure_psi
+        if isinstance(_r0, dict) and _r0.get("value") is not None:
+            _disch = float(_r0["value"])
+            _ref = body.refrigerant_type or "not_sure"
+            _amb_c = body.ambient_c or (40 if tables.market == "PK" else 35)
+            branch_key = await _evaluate_restriction_head(
+                db, _disch, _ref, _amb_c, market=tables.market
+            )
+            logger.info(
+                "[diagnostic] restriction-head eval: discharge=%.1f PSI -> %s",
+                _disch, branch_key,
             )
 
     # ── BUG-016: PK ok suction → discharge PSI step (not US Card 13) ─────────
