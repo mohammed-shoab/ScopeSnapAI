@@ -423,7 +423,7 @@ def _seasonal_modifier_pct(market: str, company_override) -> int:
 # -- Request / Response models ------------------------------------------------
 
 class FaultCardEstimateRequest(BaseModel):
-    card_id:        int             = Field(..., ge=1, le=19)
+    card_id:        int             = Field(..., ge=1, le=26)
     tonnage:        Optional[float] = Field(None, ge=0.75, le=6.0)
     unit_age_years: Optional[int]   = Field(None, ge=0, le=50)
     install_year:   Optional[int]   = Field(None, ge=1970, le=2030)
