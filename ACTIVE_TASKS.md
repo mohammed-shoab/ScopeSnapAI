@@ -1,6 +1,6 @@
 # SnapAI — Active Tasks
 
-**Last updated:** 2026-07-06 (brain files Phase 1+2+3 cleanup + Path Y merge)
+**Last updated:** 2026-07-08 (Bryan compendium Path B ship + video-marketing thread recall)
 **Historical sessions:** see `ACTIVE_TASKS_HISTORY.md` (60-row session-log index at top)
 
 ---
@@ -19,6 +19,28 @@
 ---
 
 ## Recent sessions (2026-06-18 onward — Bryan's exception: any session with any OPEN item stays)
+
+## Session 2026-07-08 — Bryan compendium ship (Path B) + video-marketing thread recall
+
+**DONE this session:**
+- Verified Bryan Orr HVAC compendium outputs (parallel extraction, 30 Opus subagents, 959 episodes): master compendium 1443 lines + 12 topic files 25,292 lines + 3 refreshed board refs + session log + push script + 30 raw batch JSONs — all present and correctly structured.
+- Chose Path B (mirror-and-commit) over leave-in-Drive or session-log-only. Mirrored 16 files into `ScopeSnapAI/snapai-board/references/bryan-orr/`.
+- Committed staging (`70b03bd` feat) + promoted to main (`47d4c37` scoped) via DEC-070. Board persona knowledge now git-versioned. DEC-131 sets the mirror-and-promote precedent for future board compendia.
+- Live-tested Bryan compendium load: `@board Bryan` diagnostic-sequence test (3-ton R-410A overcharge scenario) returned episode-cited response with 4 verbatim episode IDs (`qIo_iT8msZA`, `lfuiVg8WSQ0`, `QjF4I8db1kA`, `6WlUva3hrhk`) — confirms router row 20 + skill protocol both trigger the compendium reads.
+- Recalled the paused video-marketing thread — surfaced `SnapAI_Video_Marketing_Strategy_TwoDoor.md` (2026-05-22) + `SnapAI_Virality_FreeTrial_Strategy_Boards_Recommendations_2026-07-01.md` (27 voices) + Panel 5 additions (Bryan/Jenny/Zaria/Alex Su) + Nav additions (MrBeast/Reilly). Flagged honestly: Panel 5 + Reilly/MrBeast opinions on the virality strategy were NOT persisted to a follow-up doc — only their persona files exist.
+
+**OPEN / follow-ups:**
+
+| Priority | Item | Owner | Notes |
+|----------|------|-------|-------|
+| HIGH | Re-run virality-strategy question to full boards with 6 new voices (Panel 5 + MrBeast/Reilly) given DEC-130 legal shipped + Tier A app shipped + Bryan compendium loaded | Shoab + @board + @nav | Running next in this session |
+| HIGH | Q7.1 from 2026-07-01 doc STILL open + blocking: current SnapAI diagnostic accuracy % across last 30 days of tester data. Karpathy's >80% threshold gates the whole dependency thesis | Shoab | Was flagged "this week" on 2026-07-01, still open a week+ later |
+| MEDIUM | Q7.2–7.7 from 2026-07-01 doc still open (buyer persona for videos, named 50 shop owners target list, daily-ritual metric measurability, production pipeline architecture, value metric for pricing, first-3-videos-for-14-day-test) | Shoab | Re-evaluate after board re-ask |
+| LOW | Clean up laptop-side scratch files from Bryan extraction (_extraction/*.py, HVAC_School_Transcripts/build_b28.py) | Shoab | Drive mount blocks rm; Windows-side delete needed |
+
+Pointer to session log: `session_logs/SESSION_LOG_2026-07-08_bryan_compendium_extraction.md` (parallel session created; success criterion #10 closed today via Path B ship).
+
+---
 
 ## Session 2026-06-29 (PM) — Turbopack PROMOTED TO PROD (DEC-113)
 
