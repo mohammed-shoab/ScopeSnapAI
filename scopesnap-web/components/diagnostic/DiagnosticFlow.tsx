@@ -501,7 +501,7 @@ export default function DiagnosticFlow({
           <VisualSelect options={currentQuestion.options} onAnswer={handleVisualSelect} disabled={submitting} />
         )}
         {currentQuestion.input_type === "reading" && currentQuestion.reading_spec && (
-          <ReadingInput spec={currentQuestion.reading_spec} ocrNameplate={ocrNameplate}
+          <ReadingInput key={currentQuestion.step_id} spec={currentQuestion.reading_spec} ocrNameplate={ocrNameplate}
             onSubmit={handleReading} disabled={submitting} />
         )}
         {currentQuestion.input_type === "photo" && currentQuestion.photo_spec && (
@@ -587,7 +587,7 @@ export default function DiagnosticFlow({
 
         {currentQuestion.input_type === "multi" && multiItems.length > 0 && (
           <>
-            <MultiInput inputs={multiItems} assessmentId={assessmentId}
+            <MultiInput key={currentQuestion.step_id} inputs={multiItems} assessmentId={assessmentId}
               authHeaders={liveHeaders} ocrNameplate={ocrNameplate}
               onSubmit={handleMulti} disabled={submitting} />
 
