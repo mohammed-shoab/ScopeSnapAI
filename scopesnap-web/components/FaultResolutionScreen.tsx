@@ -26,6 +26,7 @@ import { detectMarket } from "@/lib/market";
 import { trackEvent } from "@/lib/tracking";
 import { apiFetch } from "@/lib/api";
 import DiagnosisFeedbackModal from "@/components/DiagnosisFeedbackModal";
+import ReadingReceipt, { type ReadingReceiptData } from "@/components/diagnostic/ReadingReceipt";
 import {
   incrementDiagnosesOpened,
   getDiagnosesOpenedCount,
@@ -107,6 +108,7 @@ export interface DiagnosticResult {
   share_url: string;
   created_at?: string | null;
   repair_plan?: RepairPlan | null;
+  reading_receipt?: ReadingReceiptData | null;
 }
 
 interface Props {
@@ -483,6 +485,9 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
           </div>
         )}
       </div>
+
+      {/* ── GATE-5 Reading Receipt: reading vs target, inline on terminal cards ── */}
+      {data.reading_receipt && <ReadingReceipt data={data.reading_receipt} />}
 
       {/* ── Action steps ── */}
       {data.action_steps.length > 0 && (

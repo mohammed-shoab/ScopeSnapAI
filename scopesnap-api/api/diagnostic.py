@@ -1091,6 +1091,70 @@ async def _evaluate_locked_rotor(db: AsyncSession, duration_s: float) -> str:
     return "not_confirmed"
 
 
+# ── GATE-5 Reading Receipt ──────────────────────────────────────────────────────
+
+_HIGH_EXPOSURE_CARDS = {10, 22, 24, 26}  # >$5K exposure -> enhanced Layer-4 (Guidelines Sec 10)
+
+
+def _reading_result_label(branch_key: str) -> str:
+    b = (branch_key or "").lower()
+    if any(x in b for x in ("high", "over", "above", "abnormal", "excess", "confirmed_leak", "seizure", "below_condemn")):
+        return "high"
+    if any(x in b for x in ("_low", "low_", "below", "under", "deficit", "cfm_high")):
+        return "low"
+    if "cfm_high" in b:
+        return "high"
+    return "within range"
+
+
+def _build_reading_receipt(q_row, answer, branch: dict, branch_key: str, card_id: int) -> Optional[dict]:
+    """
+    GATE-5 Reading Receipt snapshot captured when a reading/multi step resolves a
+    card. Generic: pulls the primary reading value + the step's target band + a
+    result label so FaultResolutionScreen can render reading-vs-target inline.
+    Returns None for non-reading resolutions (visual_select / photo).
+    """
+    spec = None
+    value = None
+    if q_row.input_type == "reading" and isinstance(q_row.reading_spec, dict):
+        spec = q_row.reading_spec
+        if isinstance(answer, dict):
+            value = answer.get("value")
+    elif q_row.input_type == "multi" and isinstance(q_row.options_jsonb, list):
+        for item in q_row.options_jsonb:
+            if isinstance(item, dict) and item.get("kind") == "reading":
+                spec = item.get("spec")
+                break
+        if isinstance(answer, dict):
+            r0 = answer.get("reading_0")
+            if isinstance(r0, dict):
+                value = r0.get("value")
+    if not isinstance(spec, dict) or value is None:
+        return None
+
+    why = (branch.get("reason") or branch.get("note") or "").strip()
+    for sep in (" -- ", ". "):
+        if sep in why:
+            why = why.split(sep, 1)[0].strip()
+            break
+
+    conf_raw = str(branch.get("confidence") or "Medium").strip().lower()
+    confidence = {"low": "Low", "medium": "Medium", "high": "High"}.get(conf_raw, "Medium")
+
+    return {
+        "reading_value": value,
+        "unit": spec.get("unit"),
+        "target_low": spec.get("band_min"),
+        "target_high": spec.get("band_max"),
+        "target_source": spec.get("compare_to") or "reference targets",
+        "result": _reading_result_label(branch_key),
+        "why_line": why,
+        "ruled_out": [],
+        "confidence": confidence,
+        "high_exposure": int(card_id) in _HIGH_EXPOSURE_CARDS,
+    }
+
+
 # ── Branch following ───────────────────────────────────────────────────────────
 
 
@@ -1700,6 +1764,18 @@ async def submit_answer(
             ),
         )
 
+    # ── GATE-5 Reading Receipt: snapshot the resolving reading + target ──────
+    if "resolve_card" in branch:
+        try:
+            _rr = _build_reading_receipt(q_row, body.answer, branch, branch_key, branch["resolve_card"])
+            if _rr is not None:
+                await db.execute(
+                    text("UPDATE diagnostic_sessions SET reading_receipt = CAST(:rr AS JSONB) WHERE id = :sid"),
+                    {"rr": json.dumps(_rr), "sid": session_id},
+                )
+        except Exception as e:
+            logger.warning("[diagnostic] reading_receipt capture failed: %s", e)
+
     return await _process_branch(
         db, session_id, session.complaint_type, branch,
         assessment_id=session.assessment_id, company_id=auth.company_id,
@@ -1867,7 +1943,7 @@ async def get_diagnostic_result(
     sess_result = await db.execute(
         text(
             "SELECT id, assessment_id, company_id, resolved_card_id, created_at,"
-            "       reasoning_chain, confidence_level, share_token,"
+            "       reasoning_chain, confidence_level, share_token, reading_receipt,"
             "       customer_label, customer_address"
             " FROM diagnostic_sessions"
             " WHERE id = :sid AND company_id = :cid AND deleted_at IS NULL LIMIT 1"
@@ -1974,6 +2050,7 @@ async def get_diagnostic_result(
             "confidence": session.confidence_level or "high",
         },
         "reasoning_chain": session.reasoning_chain or [],
+        "reading_receipt": session.reading_receipt,
         "action_steps": fc.action_steps or [],
         "parts_needed": fc.parts_needed or [],
         "time_estimate_minutes": None,
@@ -2223,7 +2300,7 @@ async def get_public_diagnosis(
     sess_res = await db.execute(
         text(
             "SELECT id, assessment_id, status, resolved_card_id,"
-            "       created_at, share_token, confidence_level, reasoning_chain,"
+            "       created_at, share_token, confidence_level, reasoning_chain, reading_receipt,"
             "       customer_label, customer_address"
             " FROM diagnostic_sessions"
             " WHERE share_token = :token AND deleted_at IS NULL LIMIT 1"
@@ -2276,6 +2353,7 @@ async def get_public_diagnosis(
             "confidence": session.confidence_level or "high",
         },
         "reasoning_chain": session.reasoning_chain or [],
+        "reading_receipt": session.reading_receipt,
         "action_steps": fc_row.action_steps or [],
         "parts_needed": fc_row.parts_needed or [],
         "time_estimate_minutes": None,
