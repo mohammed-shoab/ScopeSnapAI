@@ -28,7 +28,7 @@ def _fc(card_id=8, card_name="Refrigerant Leak"):
 
 
 def test_data_files_loaded():
-    assert len(_REPAIR_LINE_ITEMS) == 19
+    assert len(_REPAIR_LINE_ITEMS) == 24
     assert set(_UNIVERSAL_STRINGS["replacement_components"].keys()) == {
         "equipment", "refrigerant", "installation", "service"
     }
