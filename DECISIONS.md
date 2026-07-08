@@ -2566,3 +2566,23 @@ Shoab said "check it yourself" via Supabase MCP. Live prod query against `diagno
 **Cross-references:** DEC-111 (never claim without verifying), DEC-070 (staging-first workflow), migration 011 (no-op Monaco-seeded diagnostic tables), migration 008 (same pattern for WS-C readings gate), tree spec `SnapAI_Decision_Tree.html`.
 
 ## DEC-130 — Legal-safe wordings v1 SHIPPED to prod
+
+---
+
+## DEC-131 — Board-persona reference material versioned in git via mirror-and-promote pattern (2026-07-08)
+
+**Decision:** Board-member reference material (compendia, framework docs, voice examples, source indexes, etc.) lives canonically in `Personal Claude/snapai-board/references/<slug>/` (and `Personal Claude/snapai-nav/references/<slug>/`) where Cowork loads it, AND is mirrored into `ScopeSnapAI/snapai-board/references/<slug>/` (or `ScopeSnapAI/snapai-nav/references/<slug>/`) for version control. Ship via scoped promote (staging `feat(board-ref)` commit → main `promote(board-ref)` scoped promote), same pattern as `promote(plan)` and `promote(writing)` used for planning + writing-guide docs earlier this week.
+
+**Rationale:**
+- Board-persona knowledge is load-bearing for `@board` and `@nav` response quality. Proven live 2026-07-08: Bryan diagnostic response cited 4 verbatim episode IDs from the compendium (episodes `qIo_iT8msZA`, `lfuiVg8WSQ0`, `QjF4I8db1kA`, `6WlUva3hrhk`) — grounding that would not exist without the extraction.
+- Version control gives audit trail, weekly-audit drift detection, and rollback if bad data seeps in.
+- Consistency: brain files, planning docs, writing guide all in git — board refs should not be the exception.
+- Cowork loading unchanged (still reads Drive path) — this is a mirror for backup + audit, not a source-of-truth move.
+
+**Precedent set:** Bryan Orr HVAC School compendium v1 (2026-07-08) — staging `70b03bd` `feat(board-ref): Bryan Orr HVAC School compendium v1 - 959 episodes`, main `47d4c37` `promote(board-ref): sync Bryan Orr HVAC compendium v1 to prod - scoped`. 16 files: 1 master + 12 topics + 3 refreshed board refs.
+
+**Applies to future board-member compendia:** Codie Sanchez 800K-reader Contrarian Thinking newsletter archive; Rory Sutherland Ogilvy speeches + Alchemy book chapters; Jordan Crawford Blueprint GTM playbook; Terence Reilly Stanley/Crocs operator interviews; MrBeast leaked-memo synthesis; any other board member whose knowledge base warrants deep grounding via extraction.
+
+**Does NOT apply to:** persona `_index.md` / `frameworks.md` / `voice_examples.md` at their default depth — those already exist in the Drive path, are refreshed via the advisor-kb-monthly-refresh skill, and don't need per-file git tracking unless they materially change. This DEC covers COMPENDIA (deep structured extractions), not the standard 3-file persona folder.
+
+**Cross-references:** DEC-070 (staging→main→prod flow), DEC-128 (Cowork advisor-board skills separate from Drive canonical), Section 7 routing table in `SnapAI_Project_Instructions.md`, `session_logs/SESSION_LOG_2026-07-08_bryan_compendium_extraction.md`.
