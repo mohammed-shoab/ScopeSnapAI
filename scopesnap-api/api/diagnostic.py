@@ -1141,12 +1141,14 @@ def _build_reading_receipt(q_row, answer, branch: dict, branch_key: str, card_id
     conf_raw = str(branch.get("confidence") or "Medium").strip().lower()
     confidence = {"low": "Low", "medium": "Medium", "high": "High"}.get(conf_raw, "Medium")
 
+    _tlow = spec.get("band_min") if spec.get("band_min") is not None else spec.get("low_threshold")
+    _thigh = spec.get("band_max") if spec.get("band_max") is not None else spec.get("high_threshold")
     return {
         "reading_value": value,
         "unit": spec.get("unit"),
-        "target_low": spec.get("band_min"),
-        "target_high": spec.get("band_max"),
-        "target_source": spec.get("compare_to") or "reference targets",
+        "target_low": _tlow,
+        "target_high": _thigh,
+        "target_source": spec.get("compare_to"),
         "result": _reading_result_label(branch_key),
         "why_line": why,
         "ruled_out": [],
