@@ -1,24 +1,149 @@
 {
   "_note": "Repair line items keyed by numeric card_id (1-19) per ac_data_repo.json fault_card_estimates. option_1 = basic repair tier; option_2 = repair + preventive-maintenance tier. DEC-088 compliant. 'preventive maintenance' is an explicitly-allowed framing. Board-reviewed 2026-06-18 (Mark Delgado): card 8 O2 corrected (Schrader cores + vacuum + pressure-test, not metering device); card 2 O2 'static pressure' -> 'airflow'.",
   "us_fault_cards": [
-    {"card_id": 1, "card_name": "Capacitor Failure", "option_1": "Replace the worn run capacitor and test the motor startup", "option_2": "Replace the run capacitor, then check the contactor and motor draw as preventive maintenance"},
-    {"card_id": 2, "card_name": "Dirty Filter", "option_1": "Replace the clogged air filter and check airflow at the return", "option_2": "Replace the filter, clean the return grille, and check the return and supply airflow as preventive maintenance"},
-    {"card_id": 3, "card_name": "Contactor Failure", "option_1": "Replace the worn contactor and test the contactor pull-in", "option_2": "Replace the contactor, then check the capacitor and wiring connections as preventive maintenance"},
-    {"card_id": 4, "card_name": "Blower Motor Failure", "option_1": "Replace the blower motor and test airflow across the system", "option_2": "Replace the blower motor and capacitor, clean the blower wheel, and test airflow as preventive maintenance"},
-    {"card_id": 5, "card_name": "Drain Clog", "option_1": "Clear the clogged condensate drain and flush the line", "option_2": "Clear the drain line, flush it, and add a float switch as preventive maintenance"},
-    {"card_id": 6, "card_name": "Wiring Fault", "option_1": "Find the wiring fault, repair the connection, and test the circuit", "option_2": "Repair the faulty wiring, secure the connections, and inspect the full harness as preventive maintenance"},
-    {"card_id": 7, "card_name": "Control Board / Error Code", "option_1": "Diagnose the error code and replace the control board", "option_2": "Replace the control board, then check the sensors and wiring tied to the fault code as preventive maintenance"},
-    {"card_id": 8, "card_name": "Refrigerant Leak", "option_1": "Find the leak, seal it, and refill the refrigerant charge", "option_2": "Find and seal the leak, refill the charge, then replace the Schrader cores, pull a deep vacuum, and pressure-test the joints as preventive maintenance"},
-    {"card_id": 9, "card_name": "Coil Freeze", "option_1": "Thaw the frozen coil, find the cause, and restore airflow", "option_2": "Thaw the coil, correct the airflow or charge issue behind it, and clean the coil as preventive maintenance"},
-    {"card_id": 10, "card_name": "Compressor Failure", "option_1": "Replace the compressor, recharge the refrigerant, and test full operation", "option_2": "Replace the compressor, add a hard-start kit and filter drier, and recharge as preventive maintenance"},
-    {"card_id": 11, "card_name": "Ignitor / Flame Sensor (Gas Furnace)", "option_1": "Replace the ignitor or flame sensor and test the heat cycle", "option_2": "Replace the ignitor and flame sensor, clean the burners, and test the heat cycle as preventive maintenance"},
-    {"card_id": 12, "card_name": "Reversing Valve (Heat Pump)", "option_1": "Replace the reversing valve and recharge the heat pump", "option_2": "Replace the reversing valve and solenoid, recharge the system, and test both modes as preventive maintenance"},
-    {"card_id": 13, "card_name": "Ductwork Leak", "option_1": "Seal the leaking duct sections and test airflow", "option_2": "Seal the duct leaks, reconnect loose runs, and insulate the joints as preventive maintenance"},
-    {"card_id": 14, "card_name": "Dirty Condenser/Evaporator Coil", "option_1": "Clean the dirty coil and check the system pressures", "option_2": "Clean both coils, check pressures, and rinse the condenser as preventive maintenance"},
-    {"card_id": 15, "card_name": "Fixed Orifice / Piston Mismatch", "option_1": "Replace the mismatched orifice or piston and verify the charge", "option_2": "Replace the metering piston, verify the charge, and check superheat and subcooling as preventive maintenance"},
-    {"card_id": 16, "card_name": "Loose Terminal", "option_1": "Tighten the loose terminal and test the connection", "option_2": "Tighten the terminals, inspect for heat damage, and check the full connection as preventive maintenance"},
-    {"card_id": 17, "card_name": "Refrigerant Overcharge", "option_1": "Recover the excess refrigerant and set the charge to spec", "option_2": "Set the charge to spec, verify superheat and subcooling, and check airflow as preventive maintenance"},
-    {"card_id": 18, "card_name": "System Undersizing", "option_1": "Run a load calculation and document the correct system size", "option_2": "Run a full load calculation, document the duct and airflow needs, and size a matched system"},
-    {"card_id": 19, "card_name": "Formicary Corrosion", "option_1": "Replace the corroded indoor coil and recharge the system", "option_2": "Replace the corroded coil, refill the charge, and check the indoor air sources tied to corrosion as preventive maintenance"}
+    {
+      "card_id": 1,
+      "card_name": "Capacitor Failure",
+      "option_1": "Replace the worn run capacitor and test the motor startup",
+      "option_2": "Replace the run capacitor, then check the contactor and motor draw as preventive maintenance"
+    },
+    {
+      "card_id": 2,
+      "card_name": "Dirty Filter",
+      "option_1": "Replace the clogged air filter and check airflow at the return",
+      "option_2": "Replace the filter, clean the return grille, and check the return and supply airflow as preventive maintenance"
+    },
+    {
+      "card_id": 3,
+      "card_name": "Contactor Failure",
+      "option_1": "Replace the worn contactor and test the contactor pull-in",
+      "option_2": "Replace the contactor, then check the capacitor and wiring connections as preventive maintenance"
+    },
+    {
+      "card_id": 4,
+      "card_name": "Blower Motor Failure",
+      "option_1": "Replace the blower motor and test airflow across the system",
+      "option_2": "Replace the blower motor and capacitor, clean the blower wheel, and test airflow as preventive maintenance"
+    },
+    {
+      "card_id": 5,
+      "card_name": "Drain Clog",
+      "option_1": "Clear the clogged condensate drain and flush the line",
+      "option_2": "Clear the drain line, flush it, and add a float switch as preventive maintenance"
+    },
+    {
+      "card_id": 6,
+      "card_name": "Wiring Fault",
+      "option_1": "Find the wiring fault, repair the connection, and test the circuit",
+      "option_2": "Repair the faulty wiring, secure the connections, and inspect the full harness as preventive maintenance"
+    },
+    {
+      "card_id": 7,
+      "card_name": "Control Board / Error Code",
+      "option_1": "Diagnose the error code and replace the control board",
+      "option_2": "Replace the control board, then check the sensors and wiring tied to the fault code as preventive maintenance"
+    },
+    {
+      "card_id": 8,
+      "card_name": "Refrigerant Leak",
+      "option_1": "Find the leak, seal it, and refill the refrigerant charge",
+      "option_2": "Find and seal the leak, refill the charge, then replace the Schrader cores, pull a deep vacuum, and pressure-test the joints as preventive maintenance"
+    },
+    {
+      "card_id": 9,
+      "card_name": "Coil Freeze",
+      "option_1": "Thaw the frozen coil, find the cause, and restore airflow",
+      "option_2": "Thaw the coil, correct the airflow or charge issue behind it, and clean the coil as preventive maintenance"
+    },
+    {
+      "card_id": 10,
+      "card_name": "Compressor Failure",
+      "option_1": "Replace the compressor, recharge the refrigerant, and test full operation",
+      "option_2": "Replace the compressor, add a hard-start kit and filter drier, and recharge as preventive maintenance"
+    },
+    {
+      "card_id": 11,
+      "card_name": "Ignitor / Flame Sensor (Gas Furnace)",
+      "option_1": "Replace the ignitor or flame sensor and test the heat cycle",
+      "option_2": "Replace the ignitor and flame sensor, clean the burners, and test the heat cycle as preventive maintenance"
+    },
+    {
+      "card_id": 12,
+      "card_name": "Reversing Valve (Heat Pump)",
+      "option_1": "Replace the reversing valve and recharge the heat pump",
+      "option_2": "Replace the reversing valve and solenoid, recharge the system, and test both modes as preventive maintenance"
+    },
+    {
+      "card_id": 13,
+      "card_name": "Ductwork Leak",
+      "option_1": "Seal the leaking duct sections and test airflow",
+      "option_2": "Seal the duct leaks, reconnect loose runs, and insulate the joints as preventive maintenance"
+    },
+    {
+      "card_id": 14,
+      "card_name": "Dirty Condenser/Evaporator Coil",
+      "option_1": "Clean the dirty coil and check the system pressures",
+      "option_2": "Clean both coils, check pressures, and rinse the condenser as preventive maintenance"
+    },
+    {
+      "card_id": 15,
+      "card_name": "Fixed Orifice / Piston Mismatch",
+      "option_1": "Replace the mismatched orifice or piston and verify the charge",
+      "option_2": "Replace the metering piston, verify the charge, and check superheat and subcooling as preventive maintenance"
+    },
+    {
+      "card_id": 16,
+      "card_name": "Loose Terminal",
+      "option_1": "Tighten the loose terminal and test the connection",
+      "option_2": "Tighten the terminals, inspect for heat damage, and check the full connection as preventive maintenance"
+    },
+    {
+      "card_id": 17,
+      "card_name": "Refrigerant Overcharge",
+      "option_1": "Recover the excess refrigerant and set the charge to spec",
+      "option_2": "Set the charge to spec, verify superheat and subcooling, and check airflow as preventive maintenance"
+    },
+    {
+      "card_id": 18,
+      "card_name": "System Undersizing",
+      "option_1": "Run a load calculation and document the correct system size",
+      "option_2": "Run a full load calculation, document the duct and airflow needs, and size a matched system"
+    },
+    {
+      "card_id": 19,
+      "card_name": "Formicary Corrosion",
+      "option_1": "Replace the corroded indoor coil and recharge the system",
+      "option_2": "Replace the corroded coil, refill the charge, and check the indoor air sources tied to corrosion as preventive maintenance"
+    },
+    {
+      "card_id": 20,
+      "card_name": "System under-airflow",
+      "option_1": "Replace the air filter and reset the blower to the correct fan speed, then re-check the system's air pressure to confirm the new reading.",
+      "option_2": "The airflow correction above, plus a preventive-maintenance cleaning of the indoor coil to clear the buildup that restricts air. Filter, fan-speed, and coil cleaning are handled in one visit."
+    },
+    {
+      "card_id": 22,
+      "card_name": "Low latent capacity for current conditions",
+      "option_1": "Adjust the system to a lower fan-speed setting that gives the equipment more time to pull moisture from the air. A service-call adjustment with no new parts.",
+      "option_2": "Add a humidistat control so the system responds to your home's humidity level, installed as a preventive-maintenance upgrade. Includes the control part and its installation."
+    },
+    {
+      "card_id": 23,
+      "card_name": "Thermostat / low-voltage fault",
+      "option_1": "Check the 24-volt control circuit and replace the failed low-voltage part, either the control fuse or the transformer. Includes the part and the labor.",
+      "option_2": "Replace the thermostat with a new smart thermostat and run a common (C) wire where the system needs one, as a preventive-maintenance controls upgrade. Includes the device and installation."
+    },
+    {
+      "card_id": 25,
+      "card_name": "Liquid-line restriction",
+      "option_1": "Recover the refrigerant, replace the liquid-line filter drier, pull a deep vacuum, and recharge the system to the equipment's rated charge.",
+      "option_2": "The drier replacement above, plus a full refrigerant recharge and an extended vacuum step as preventive maintenance, with the operating readings checked afterward."
+    },
+    {
+      "card_id": 26,
+      "card_name": "Compressor failure - confirmed (mechanical / electrical)",
+      "option_1": "Recover the refrigerant and replace the compressor with a matched unit, along with a new filter drier, a deep vacuum, and a recharge. The standard compressor replacement for an out-of-warranty system.",
+      "option_2": "The compressor replacement above, plus new start components, a run capacitor and hard-start kit, and a full recharge, handled together as preventive maintenance."
+    }
   ]
 }
