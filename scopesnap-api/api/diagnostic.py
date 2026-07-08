@@ -783,6 +783,75 @@ async def _evaluate_clammy_airflow(
     return "cfm_in_spec_no_load_calc"
 
 
+async def _evaluate_shortcycle_static(
+    db: AsyncSession,
+    tesp_inwc: float,
+    subcool_f: Optional[float],
+) -> str:
+    """
+    Tier A comfort/short-cycle step q2-short-cycle-static. Discriminates the
+    short-cycling root cause BEFORE the sizing gate (deterministic, GATE-4):
+      subcool_abnormal (-> #17 overcharge)  |  static_above_budget (-> #20 airflow)
+      | static_within_budget_and_subcool_normal (-> q3-short-cycle-runtime)
+    Subcool band from superheat_subcool_targets (TXV default 7-12F). TESP budget
+    reuses _evaluate_static_pressure_inwc (static_pressure_targets).
+    """
+    _FALLBACK_SC = (7.0, 12.0)
+    sc_min, sc_max = _FALLBACK_SC
+    try:
+        row = await db.execute(
+            text(
+                "SELECT target_subcool_min_f, target_subcool_max_f "
+                "FROM superheat_subcool_targets "
+                "WHERE market = 'US' AND metering_device = 'TXV' "
+                "AND target_subcool_min_f IS NOT NULL "
+                "ORDER BY id LIMIT 1"
+            )
+        )
+        r = row.fetchone()
+        if r and r.target_subcool_min_f is not None and r.target_subcool_max_f is not None:
+            sc_min, sc_max = float(r.target_subcool_min_f), float(r.target_subcool_max_f)
+    except Exception as e:
+        logger.warning("[diagnostic] superheat_subcool_targets subcool lookup failed: %s", e)
+
+    if subcool_f is not None and (subcool_f < sc_min or subcool_f > sc_max):
+        return "subcool_abnormal"
+    tesp_key = await _evaluate_static_pressure_inwc(db, tesp_inwc)
+    if tesp_key == "over_budget":
+        return "static_above_budget"
+    return "static_within_budget_and_subcool_normal"
+
+
+async def _evaluate_shortcycle_runtime(
+    db: AsyncSession,
+    cycles_per_hour: float,
+) -> str:
+    """
+    Tier A comfort/short-cycle step q3-short-cycle-runtime. runtime_pct is
+    record-only (HARD-DISABLED); only cycles_per_hour drives the branch, compared
+    against sizing_rules.cycles_per_hour (default 3/hr). Deterministic (GATE-4):
+      short_cycle_signature_present (-> q4-sizing-gate)  |  cycle_pattern_normal (escalate)
+    """
+    _FALLBACK_CPH = 3.0
+    thr = _FALLBACK_CPH
+    try:
+        row = await db.execute(
+            text(
+                "SELECT threshold_value FROM sizing_rules "
+                "WHERE indicator = 'cycles_per_hour' LIMIT 1"
+            )
+        )
+        r = row.fetchone()
+        if r and r.threshold_value is not None:
+            thr = float(r.threshold_value)
+    except Exception as e:
+        logger.warning("[diagnostic] sizing_rules cycles_per_hour lookup failed: %s", e)
+
+    if cycles_per_hour > thr:
+        return "short_cycle_signature_present"
+    return "cycle_pattern_normal"
+
+
 # ── Branch following ───────────────────────────────────────────────────────────
 
 
@@ -1196,6 +1265,40 @@ async def submit_answer(
             branch_key = await _evaluate_clammy_airflow(db, _cfm, _tol)
             logger.info(
                 "[diagnostic] clammy-airflow eval: CFM/ton=%.1f -> %s", _cfm, branch_key,
+            )
+
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q2-short-cycle-static"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")  # static_pressure (TESP)
+        _r1 = body.answer.get("reading_1")  # subcool
+        if isinstance(_r0, dict) and _r0.get("value") is not None:
+            _tesp = float(_r0["value"])
+            _sc = (
+                float(_r1["value"])
+                if isinstance(_r1, dict) and _r1.get("value") is not None
+                else None
+            )
+            branch_key = await _evaluate_shortcycle_static(db, _tesp, _sc)
+            logger.info(
+                "[diagnostic] short-cycle static eval: TESP=%.3f subcool=%s -> %s",
+                _tesp, _sc, branch_key,
+            )
+
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q3-short-cycle-runtime"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")  # cycles_per_hour
+        if isinstance(_r0, dict) and _r0.get("value") is not None:
+            _cph = float(_r0["value"])
+            branch_key = await _evaluate_shortcycle_runtime(db, _cph)
+            logger.info(
+                "[diagnostic] short-cycle runtime eval: cycles/hr=%.1f -> %s",
+                _cph, branch_key,
             )
 
     # ── BUG-016: PK ok suction → discharge PSI step (not US Card 13) ─────────
