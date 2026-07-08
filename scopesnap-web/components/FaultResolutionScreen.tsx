@@ -26,6 +26,7 @@ import { detectMarket } from "@/lib/market";
 import { trackEvent } from "@/lib/tracking";
 import { apiFetch } from "@/lib/api";
 import DiagnosisFeedbackModal from "@/components/DiagnosisFeedbackModal";
+import ReadingReceipt, { type ReadingReceiptData } from "@/components/diagnostic/ReadingReceipt";
 import {
   incrementDiagnosesOpened,
   getDiagnosesOpenedCount,
@@ -107,6 +108,7 @@ export interface DiagnosticResult {
   share_url: string;
   created_at?: string | null;
   repair_plan?: RepairPlan | null;
+  reading_receipt?: ReadingReceiptData | null;
 }
 
 interface Props {
@@ -484,6 +486,9 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
         )}
       </div>
 
+      {/* ── GATE-5 Reading Receipt: reading vs target, inline on terminal cards ── */}
+      {data.reading_receipt && <ReadingReceipt data={data.reading_receipt} />}
+
       {/* ── Action steps ── */}
       {data.action_steps.length > 0 && (
         <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: "14px 16px" }}>
@@ -842,7 +847,16 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
       {/* ── DX.5: 2-button footer — Continue (primary) + Different problem (link) ── */}
       {!isPublic && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
-          {/* Primary: Continue button */}
+          {/* Primary: Continue button -- hidden for screening-only #24 (Alfred C1: no estimate reachable) */}
+          {data.fault.card_id === 24 ? (
+            <div style={{
+              width: "100%", padding: "13px 14px", borderRadius: 8,
+              background: "#f8fafc", border: "1px solid #e2e8f0",
+              color: "#475569", fontSize: 14, textAlign: "center", lineHeight: 1.4,
+            }}>
+              Screening finding - a Manual J load calculation is recommended before any repair or replacement estimate.
+            </div>
+          ) : (
           <button
             onClick={handleContinue}
             disabled={navigating || !data.assessment_id}
@@ -856,6 +870,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
           >
             {navigating ? "Opening…" : continueLabel}
           </button>
+          )}
 
           {/* Secondary: Different problem link */}
           {feedback === null ? (

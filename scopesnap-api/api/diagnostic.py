@@ -655,6 +655,529 @@ async def _evaluate_pressure_for_market(
     return "ok"
 
 
+async def _evaluate_static_pressure_inwc(
+    db: AsyncSession,
+    value: float,
+    system_type: str = "residential_split",
+) -> str:
+    """
+    Tier A -- mirrors _evaluate_pressure_for_market. Look up static_pressure_targets
+    (total_external design budget) and return "over_budget" | "within_budget".
+    Server-side deterministic classification against the DB threshold table, with a
+    belt-and-suspenders fallback (NCI residential 0.50 in.w.c. routing max) if the
+    lookup fails.
+    """
+    _FALLBACK_TESP_BUDGET = 0.50
+    try:
+        row = await db.execute(
+            text(
+                "SELECT design_budget_inwc FROM static_pressure_targets "
+                "WHERE measurement_point = 'total_external' "
+                "AND drop_threshold_inwc IS NOT NULL "
+                "ORDER BY design_budget_inwc ASC LIMIT 1"
+            )
+        )
+        target = row.fetchone()
+    except Exception as e:
+        logger.warning("[diagnostic] static_pressure_targets lookup failed: %s", e)
+        target = None
+    budget = float(target.design_budget_inwc) if target else _FALLBACK_TESP_BUDGET
+    if value > budget:
+        return "over_budget"
+    return "within_budget"
+
+
+async def _evaluate_clammy_rh(
+    db: AsyncSession,
+    indoor_rh: float,
+    return_wet_bulb: Optional[float],
+) -> str:
+    """
+    Tier A Card #22 (comfort / clammy) step q2-clammy-rh. Mirrors
+    _evaluate_pressure_for_market / _evaluate_static_pressure_inwc: DB-driven bands
+    from latent_targets, deterministic (GATE-4), hard fallbacks if lookup fails.
+    Composes TWO readings into one semantic branch_key:
+      rh_low  |  in_band  |  rh_or_wetbulb_high
+    """
+    _FALLBACK_RH = (45.0, 55.0)          # latent_targets.indoor_rh design band
+    _FALLBACK_WB_MAX = 69.0              # return_wet_bulb upper band (spec 63-69)
+    rh_min, rh_max = _FALLBACK_RH
+    try:
+        rh_row = await db.execute(
+            text(
+                "SELECT target_min, target_max FROM latent_targets "
+                "WHERE metric = 'indoor_rh' LIMIT 1"
+            )
+        )
+        r = rh_row.fetchone()
+        if r and r.target_min is not None and r.target_max is not None:
+            rh_min, rh_max = float(r.target_min), float(r.target_max)
+    except Exception as e:
+        logger.warning("[diagnostic] latent_targets indoor_rh lookup failed: %s", e)
+
+    wb_max = _FALLBACK_WB_MAX
+    try:
+        wb_row = await db.execute(
+            text(
+                "SELECT target_max FROM latent_targets "
+                "WHERE metric = 'return_wet_bulb' LIMIT 1"
+            )
+        )
+        wr = wb_row.fetchone()
+        # latent_targets stores return_wet_bulb as a 67F point-target; only adopt the
+        # DB value as an upper band when it exceeds that point, else keep 69F fallback.
+        if wr and wr.target_max is not None and float(wr.target_max) > 67.0:
+            wb_max = float(wr.target_max)
+    except Exception as e:
+        logger.warning("[diagnostic] latent_targets return_wet_bulb lookup failed: %s", e)
+
+    if indoor_rh < rh_min:
+        return "rh_low"
+    if indoor_rh > rh_max or (return_wet_bulb is not None and return_wet_bulb > wb_max):
+        return "rh_or_wetbulb_high"
+    return "in_band"
+
+
+async def _evaluate_clammy_airflow(
+    db: AsyncSession,
+    cfm_per_ton: float,
+    tolerance_pct: float = 15.0,
+) -> str:
+    """
+    Tier A Card #22 step q3-clammy-airflow. Humid-climate anchored (Houston default):
+    low floor from cfm_per_ton_targets.low_airflow_fault_threshold, high limit from
+    humid_target*(1+tolerance). Deterministic (GATE-4) with fallbacks. Returns:
+      low_airflow  |  cfm_high  |  cfm_in_spec_no_load_calc
+    """
+    _FALLBACK_FLOOR = 350.0
+    _FALLBACK_TARGET = 350.0
+    floor = _FALLBACK_FLOOR
+    target = _FALLBACK_TARGET
+    try:
+        frow = await db.execute(
+            text(
+                "SELECT cfm_per_ton_max FROM cfm_per_ton_targets "
+                "WHERE indicator = 'low_airflow_fault_threshold' LIMIT 1"
+            )
+        )
+        fr = frow.fetchone()
+        if fr and fr.cfm_per_ton_max is not None:
+            floor = float(fr.cfm_per_ton_max)
+        trow = await db.execute(
+            text(
+                "SELECT cfm_per_ton_max FROM cfm_per_ton_targets "
+                "WHERE indicator = 'humid_target' LIMIT 1"
+            )
+        )
+        tr = trow.fetchone()
+        if tr and tr.cfm_per_ton_max is not None:
+            target = float(tr.cfm_per_ton_max)
+    except Exception as e:
+        logger.warning("[diagnostic] cfm_per_ton_targets lookup failed: %s", e)
+
+    high_limit = target * (1.0 + tolerance_pct / 100.0)
+    if cfm_per_ton < floor:
+        return "low_airflow"
+    if cfm_per_ton > high_limit:
+        return "cfm_high"
+    return "cfm_in_spec_no_load_calc"
+
+
+async def _evaluate_shortcycle_static(
+    db: AsyncSession,
+    tesp_inwc: float,
+    subcool_f: Optional[float],
+) -> str:
+    """
+    Tier A comfort/short-cycle step q2-short-cycle-static. Discriminates the
+    short-cycling root cause BEFORE the sizing gate (deterministic, GATE-4):
+      subcool_abnormal (-> #17 overcharge)  |  static_above_budget (-> #20 airflow)
+      | static_within_budget_and_subcool_normal (-> q3-short-cycle-runtime)
+    Subcool band from superheat_subcool_targets (TXV default 7-12F). TESP budget
+    reuses _evaluate_static_pressure_inwc (static_pressure_targets).
+    """
+    _FALLBACK_SC = (7.0, 12.0)
+    sc_min, sc_max = _FALLBACK_SC
+    try:
+        row = await db.execute(
+            text(
+                "SELECT target_subcool_min_f, target_subcool_max_f "
+                "FROM superheat_subcool_targets "
+                "WHERE market = 'US' AND metering_device = 'TXV' "
+                "AND target_subcool_min_f IS NOT NULL "
+                "ORDER BY id LIMIT 1"
+            )
+        )
+        r = row.fetchone()
+        if r and r.target_subcool_min_f is not None and r.target_subcool_max_f is not None:
+            sc_min, sc_max = float(r.target_subcool_min_f), float(r.target_subcool_max_f)
+    except Exception as e:
+        logger.warning("[diagnostic] superheat_subcool_targets subcool lookup failed: %s", e)
+
+    if subcool_f is not None and (subcool_f < sc_min or subcool_f > sc_max):
+        return "subcool_abnormal"
+    tesp_key = await _evaluate_static_pressure_inwc(db, tesp_inwc)
+    if tesp_key == "over_budget":
+        return "static_above_budget"
+    return "static_within_budget_and_subcool_normal"
+
+
+async def _evaluate_shortcycle_runtime(
+    db: AsyncSession,
+    cycles_per_hour: float,
+) -> str:
+    """
+    Tier A comfort/short-cycle step q3-short-cycle-runtime. runtime_pct is
+    record-only (HARD-DISABLED); only cycles_per_hour drives the branch, compared
+    against sizing_rules.cycles_per_hour (default 3/hr). Deterministic (GATE-4):
+      short_cycle_signature_present (-> q4-sizing-gate)  |  cycle_pattern_normal (escalate)
+    """
+    _FALLBACK_CPH = 3.0
+    thr = _FALLBACK_CPH
+    try:
+        row = await db.execute(
+            text(
+                "SELECT threshold_value FROM sizing_rules "
+                "WHERE indicator = 'cycles_per_hour' LIMIT 1"
+            )
+        )
+        r = row.fetchone()
+        if r and r.threshold_value is not None:
+            thr = float(r.threshold_value)
+    except Exception as e:
+        logger.warning("[diagnostic] sizing_rules cycles_per_hour lookup failed: %s", e)
+
+    if cycles_per_hour > thr:
+        return "short_cycle_signature_present"
+    return "cycle_pattern_normal"
+
+
+async def _evaluate_four_point_static(
+    db: AsyncSession,
+    before_filter: float,
+    after_filter: float,
+    before_coil: float,
+    after_coil: float,
+) -> str:
+    """
+    Tier A airflow_assessment step aa-q2-four-point. Localizes an over-budget TESP
+    across the 4-point static profile (deterministic, GATE-4):
+      coil_drop_dominant (-> #14)  |  filter_drop_dominant (-> #2)
+      | system_wide_no_dominant_point (-> #20 catch-all)
+    The distributed_duct_signature (#13) branch is LOW-confidence / flagged for
+    review, so the no-dominant case folds into the #20 catch-all here.
+    Drop thresholds from static_pressure_targets (after_filter, after_coil).
+    """
+    _FB_FILTER_THR = 0.10
+    _FB_COIL_THR = 0.20
+    filter_thr = _FB_FILTER_THR
+    coil_thr = _FB_COIL_THR
+    try:
+        frow = await db.execute(
+            text(
+                "SELECT max(drop_threshold_inwc) AS thr FROM static_pressure_targets "
+                "WHERE measurement_point = 'after_filter' AND drop_threshold_inwc IS NOT NULL"
+            )
+        )
+        fr = frow.fetchone()
+        if fr and fr.thr is not None:
+            filter_thr = float(fr.thr)
+        crow = await db.execute(
+            text(
+                "SELECT max(drop_threshold_inwc) AS thr FROM static_pressure_targets "
+                "WHERE measurement_point = 'after_coil' AND system_type = 'residential_split' "
+                "AND drop_threshold_inwc IS NOT NULL"
+            )
+        )
+        cr = crow.fetchone()
+        if cr and cr.thr is not None:
+            coil_thr = float(cr.thr)
+    except Exception as e:
+        logger.warning("[diagnostic] static_pressure_targets drop-threshold lookup failed: %s", e)
+
+    filter_delta = abs(after_filter - before_filter)
+    coil_delta = abs(after_coil - before_coil)
+    coil_exceeds = coil_delta > coil_thr
+    filter_exceeds = filter_delta > filter_thr
+
+    if coil_exceeds and coil_delta >= filter_delta:
+        return "coil_drop_dominant"
+    if filter_exceeds and filter_delta > coil_delta:
+        return "filter_drop_dominant"
+    return "system_wide_no_dominant_point"
+
+
+async def _evaluate_shsc_discrimination(
+    db: AsyncSession,
+    superheat_f: float,
+    subcool_f: Optional[float],
+    oscillating: bool = False,
+) -> str:
+    """
+    Tier A not_cooling step q2-sh-sc (Card #8 leak / #15 TXV variants / restriction gate).
+    Deterministic SH/SC discrimination (GATE-4):
+      txv_hunting(#15/15c) | txv_bulb_loss(#15/15b) | restriction_check(-> q3)
+      | confirmed_leak(#8) | inconclusive(escalate)
+    Subcool band from superheat_subcool_targets (TXV 7-12F). TXV target_superheat is
+    NULL in DB (a TXV modulates superheat), so a clinical upper fallback (14F) gates
+    the starved/leak case.
+    """
+    sc_min, sc_max = 7.0, 12.0
+    _FALLBACK_SH_MAX = 14.0
+    sh_max = _FALLBACK_SH_MAX
+    try:
+        row = await db.execute(
+            text(
+                "SELECT target_subcool_min_f, target_subcool_max_f "
+                "FROM superheat_subcool_targets "
+                "WHERE market = 'US' AND metering_device = 'TXV' "
+                "AND target_subcool_min_f IS NOT NULL ORDER BY id LIMIT 1"
+            )
+        )
+        r = row.fetchone()
+        if r and r.target_subcool_min_f is not None and r.target_subcool_max_f is not None:
+            sc_min, sc_max = float(r.target_subcool_min_f), float(r.target_subcool_max_f)
+    except Exception as e:
+        logger.warning("[diagnostic] superheat_subcool_targets SH/SC lookup failed: %s", e)
+
+    if oscillating:
+        return "txv_hunting"
+    if superheat_f <= 3.0:
+        return "txv_bulb_loss"
+    if subcool_f is not None and subcool_f > sc_max:
+        return "restriction_check"
+    # Leak/undercharge is gated on LOW SUBCOOL (the sourced 7-12F TXV band), NOT an
+    # absolute superheat number: a TXV modulates superheat, so elevated evaporator
+    # superheat only corroborates (D1 Sec 2.2 -- "not required"). This removes the
+    # earlier directional 14F fallback (sh_max no longer gates the branch).
+    if subcool_f is not None and subcool_f < sc_min:
+        return "confirmed_leak"
+    return "inconclusive"
+
+
+async def _evaluate_ll_restriction(
+    db: AsyncSession,
+    drier_inlet_f: float,
+    drier_outlet_f: float,
+    ambient_f: Optional[float],
+) -> str:
+    """
+    Tier A not_cooling step q3-restriction-lldrop. Confirms a liquid-line/drier
+    restriction (deterministic, GATE-4) via drier temp drop OR colder-than-ambient
+    check against liquid_line_restriction_thresholds:
+      drop_confirmed(-> q4-restriction-head)  |  no_drop_confirmed(escalate)
+    """
+    drop_floor = 3.0
+    ambient_floor = 1.0
+    try:
+        d = await db.execute(
+            text(
+                "SELECT threshold_value FROM liquid_line_restriction_thresholds "
+                "WHERE check_type = 'drier_temp_drop' AND refrigerant = 'ALL' LIMIT 1"
+            )
+        )
+        dr = d.fetchone()
+        if dr and dr.threshold_value is not None:
+            drop_floor = float(dr.threshold_value)
+        a = await db.execute(
+            text(
+                "SELECT threshold_value FROM liquid_line_restriction_thresholds "
+                "WHERE check_type = 'ambient_floor' LIMIT 1"
+            )
+        )
+        ar = a.fetchone()
+        if ar and ar.threshold_value is not None:
+            ambient_floor = float(ar.threshold_value)
+    except Exception as e:
+        logger.warning("[diagnostic] liquid_line_restriction_thresholds lookup failed: %s", e)
+
+    drier_drop = drier_inlet_f - drier_outlet_f
+    colder_than_ambient = (
+        ambient_f is not None and drier_outlet_f <= (ambient_f - ambient_floor)
+    )
+    if drier_drop > drop_floor or colder_than_ambient:
+        return "drop_confirmed"
+    return "no_drop_confirmed"
+
+
+async def _evaluate_restriction_head(
+    db: AsyncSession,
+    discharge_psi: float,
+    refrigerant: str,
+    ambient_c: int,
+    market: str = "US",
+) -> str:
+    """
+    Tier A not_cooling step q4-restriction-head. No head-pressure table exists (D1
+    Sec 2.3 GAP), so reuse the existing discharge-PSI evaluator against
+    operating_targets: HIGH head -> head_high (escalate; overcharge/dirty condenser,
+    NOT restriction); normal-to-low head -> head_normal_to_low (-> Card #25 confirmed
+    restriction). Deterministic (GATE-4).
+    """
+    disch_key = await _evaluate_pressure_for_market(
+        db, discharge_psi, "discharge", refrigerant, ambient_c, market=market
+    )
+    if disch_key == "high":
+        return "head_high"
+    return "head_normal_to_low"
+
+
+def _evaluate_tstat_24v(voltage: float) -> str:
+    """
+    Tier A not_turning_on step q6-tstat-24v (Card #23 thermostat / low-voltage).
+    24V nominal control voltage, +/-10% tolerance (spec.control_voltage_24v).
+    Deterministic (GATE-4):
+      present_but_call_not_passing (-> #23)  |  absent_or_call_passing (escalate)
+    24V present at R-to-C but equipment not energizing => thermostat/wiring fault (#23).
+    Below-tolerance (absent/phantom) => upstream transformer/wiring -> tech judgment.
+    """
+    _NOMINAL_24V = 24.0
+    _TOLERANCE_PCT = 10.0
+    present_floor = _NOMINAL_24V * (1.0 - _TOLERANCE_PCT / 100.0)  # 21.6 V
+    if voltage >= present_floor:
+        return "present_but_call_not_passing"
+    return "absent_or_call_passing"
+
+
+async def _evaluate_megohm(db: AsyncSession, megohm: float) -> str:
+    """
+    Tier A not_cooling #26 chain step q7-compressor-megohm. Winding-to-ground
+    resistance vs compressor_test_thresholds (26a; Copeland default anchor 0.5 megohm).
+    Deterministic (GATE-4):
+      below_condemn_limit (-> #26 grounded/shorted winding)  |  above_condemn_limit (-> q8)
+    """
+    _FALLBACK_CONDEMN = 0.50
+    limit = _FALLBACK_CONDEMN
+    try:
+        row = await db.execute(
+            text(
+                "SELECT min(threshold_value) AS lim FROM compressor_test_thresholds "
+                "WHERE sub_mode_card = '26a' AND test = 'winding_to_ground_resistance' "
+                "AND unit = 'megohm' AND comparison = 'below'"
+            )
+        )
+        r = row.fetchone()
+        if r and r.lim is not None:
+            limit = float(r.lim)
+    except Exception as e:
+        logger.warning("[diagnostic] compressor_test_thresholds 26a lookup failed: %s", e)
+
+    if megohm < limit:
+        return "below_condemn_limit"
+    return "above_condemn_limit"
+
+
+async def _evaluate_locked_rotor(db: AsyncSession, duration_s: float) -> str:
+    """
+    Tier A not_cooling #26 chain step q8-compressor-locked-rotor. Sustained no-spin
+    LRA-level draw duration vs compressor_test_thresholds (26b; >=2s). Upstream steps
+    (q5 charge / q6 start-assist / q7 megohm) have already excluded charge, start
+    components, and grounded windings. Deterministic (GATE-4):
+      seizure_confirmed (-> #26 mechanical seizure, 26b)  |  not_confirmed (escalate)
+    """
+    _FALLBACK_DURATION_S = 2.0
+    thr = _FALLBACK_DURATION_S
+    try:
+        row = await db.execute(
+            text(
+                "SELECT min(threshold_value) AS thr FROM compressor_test_thresholds "
+                "WHERE sub_mode_card = '26b' AND unit = 'seconds'"
+            )
+        )
+        r = row.fetchone()
+        if r and r.thr is not None:
+            thr = float(r.thr)
+    except Exception as e:
+        logger.warning("[diagnostic] compressor_test_thresholds 26b lookup failed: %s", e)
+
+    if duration_s >= thr:
+        return "seizure_confirmed"
+    return "not_confirmed"
+
+
+# ── GATE-5 Reading Receipt ──────────────────────────────────────────────────────
+
+_HIGH_EXPOSURE_CARDS = {10, 22, 24, 26}  # >$5K exposure -> enhanced Layer-4 (Guidelines Sec 10)
+
+
+def _reading_result_label(branch_key: str) -> str:
+    b = (branch_key or "").lower()
+    if any(x in b for x in ("high", "over", "above", "abnormal", "excess", "confirmed_leak", "seizure", "below_condemn")):
+        return "high"
+    if any(x in b for x in ("_low", "low_", "below", "under", "deficit", "cfm_high")):
+        return "low"
+    if "cfm_high" in b:
+        return "high"
+    return "within range"
+
+
+async def _build_reading_receipt(db: AsyncSession, q_row, answer, branch: dict, branch_key: str, card_id: int) -> Optional[dict]:
+    """
+    GATE-5 Reading Receipt snapshot captured when a reading/multi step resolves a
+    card. Generic: pulls the primary reading value + the step's target band + a
+    result label so FaultResolutionScreen can render reading-vs-target inline.
+    Returns None for non-reading resolutions (visual_select / photo).
+    """
+    spec = None
+    value = None
+    if q_row.input_type == "reading" and isinstance(q_row.reading_spec, dict):
+        spec = q_row.reading_spec
+        if isinstance(answer, dict):
+            value = answer.get("value")
+    elif q_row.input_type == "multi" and isinstance(q_row.options_jsonb, list):
+        for item in q_row.options_jsonb:
+            if isinstance(item, dict) and item.get("kind") == "reading":
+                spec = item.get("spec")
+                break
+        if isinstance(answer, dict):
+            r0 = answer.get("reading_0")
+            if isinstance(r0, dict):
+                value = r0.get("value")
+    if not isinstance(spec, dict) or value is None:
+        return None
+
+    why = (branch.get("reason") or branch.get("note") or "").strip()
+    for sep in (" -- ", ". "):
+        if sep in why:
+            why = why.split(sep, 1)[0].strip()
+            break
+
+    conf_raw = str(branch.get("confidence") or "Medium").strip().lower()
+    confidence = {"low": "Low", "medium": "Medium", "high": "High"}.get(conf_raw, "Medium")
+
+    _tlow = spec.get("band_min") if spec.get("band_min") is not None else spec.get("low_threshold")
+    _thigh = spec.get("band_max") if spec.get("band_max") is not None else spec.get("high_threshold")
+    # Derive a numeric range for reading types whose spec carries no band/threshold
+    # (cfm_per_ton uses a tolerance around a humid target) so the receipt shows a real
+    # range instead of "reference targets".
+    if (_tlow is None or _thigh is None) and spec.get("type") == "cfm_per_ton":
+        try:
+            _floor_row = await db.execute(text(
+                "SELECT cfm_per_ton_max FROM cfm_per_ton_targets WHERE indicator = 'low_airflow_fault_threshold' LIMIT 1"))
+            _fr = _floor_row.fetchone()
+            _floor = float(_fr.cfm_per_ton_max) if _fr and _fr.cfm_per_ton_max is not None else 350.0
+            _tgt_row = await db.execute(text(
+                "SELECT cfm_per_ton_max FROM cfm_per_ton_targets WHERE indicator = 'humid_target' LIMIT 1"))
+            _tr = _tgt_row.fetchone()
+            _tgt = float(_tr.cfm_per_ton_max) if _tr and _tr.cfm_per_ton_max is not None else 350.0
+            _tol = float(spec.get("tolerance_pct", 15))
+            _tlow, _thigh = _floor, round(_tgt * (1 + _tol / 100.0), 1)
+        except Exception as e:
+            logger.warning("[diagnostic] cfm receipt range lookup failed: %s", e)
+    return {
+        "reading_value": value,
+        "unit": spec.get("unit"),
+        "target_low": _tlow,
+        "target_high": _thigh,
+        "target_source": spec.get("compare_to"),
+        "result": _reading_result_label(branch_key),
+        "why_line": why,
+        "ruled_out": [],
+        "confidence": confidence,
+        "high_exposure": int(card_id) in _HIGH_EXPOSURE_CARDS,
+    }
+
+
 # ── Branch following ───────────────────────────────────────────────────────────
 
 
@@ -1014,6 +1537,218 @@ async def submit_answer(
             raw_psi, subtype, branch_key, tables.market, refrigerant, ambient,
         )
 
+    # Static-pressure evaluation (Tier A -- mirrors PSI). Additive: only fires for
+    # the new static_pressure_inwc reading type; never affects existing flows.
+    if (
+        q_row.input_type == "reading"
+        and isinstance(q_row.reading_spec, dict)
+        and q_row.reading_spec.get("type") == "static_pressure_inwc"
+        and isinstance(body.answer, dict)
+        and body.answer.get("value") is not None
+    ):
+        raw_tesp = float(body.answer["value"])
+        branch_key = await _evaluate_static_pressure_inwc(db, raw_tesp)
+        logger.info(
+            "[diagnostic] static-pressure eval: %.3f in.w.c. -> %s", raw_tesp, branch_key,
+        )
+
+    # ── Tier A Card #22 comfort/clammy multi steps (server-side eval) ────────
+    # Mirrors the PSI / static-pressure overrides. Multi readings arrive in
+    # options order as answer.reading_0 / reading_1; recompute the semantic
+    # branch_key deterministically from the threshold tables (GATE-4). Additive:
+    # fires only for the two clammy step_ids, never affects existing multi flows.
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q2-clammy-rh"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")
+        _r1 = body.answer.get("reading_1")
+        if isinstance(_r0, dict) and _r0.get("value") is not None:
+            _rh = float(_r0["value"])
+            _wb = (
+                float(_r1["value"])
+                if isinstance(_r1, dict) and _r1.get("value") is not None
+                else None
+            )
+            branch_key = await _evaluate_clammy_rh(db, _rh, _wb)
+            logger.info(
+                "[diagnostic] clammy-rh eval: RH=%.1f WB=%s -> %s", _rh, _wb, branch_key,
+            )
+
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q3-clammy-airflow"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")
+        if isinstance(_r0, dict) and _r0.get("value") is not None:
+            _cfm = float(_r0["value"])
+            _tol = 15.0
+            if isinstance(q_row.options_jsonb, list) and q_row.options_jsonb:
+                _spec = q_row.options_jsonb[0].get("spec") or {}
+                _tol = float(_spec.get("tolerance_pct", 15.0))
+            branch_key = await _evaluate_clammy_airflow(db, _cfm, _tol)
+            logger.info(
+                "[diagnostic] clammy-airflow eval: CFM/ton=%.1f -> %s", _cfm, branch_key,
+            )
+
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q2-short-cycle-static"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")  # static_pressure (TESP)
+        _r1 = body.answer.get("reading_1")  # subcool
+        if isinstance(_r0, dict) and _r0.get("value") is not None:
+            _tesp = float(_r0["value"])
+            _sc = (
+                float(_r1["value"])
+                if isinstance(_r1, dict) and _r1.get("value") is not None
+                else None
+            )
+            branch_key = await _evaluate_shortcycle_static(db, _tesp, _sc)
+            logger.info(
+                "[diagnostic] short-cycle static eval: TESP=%.3f subcool=%s -> %s",
+                _tesp, _sc, branch_key,
+            )
+
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q3-short-cycle-runtime"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")  # cycles_per_hour
+        if isinstance(_r0, dict) and _r0.get("value") is not None:
+            _cph = float(_r0["value"])
+            branch_key = await _evaluate_shortcycle_runtime(db, _cph)
+            logger.info(
+                "[diagnostic] short-cycle runtime eval: cycles/hr=%.1f -> %s",
+                _cph, branch_key,
+            )
+
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "aa-q2-four-point"
+        and isinstance(body.answer, dict)
+    ):
+        # options order: before_filter, after_filter, before_coil, after_coil
+        _rs = [body.answer.get(f"reading_{i}") for i in range(4)]
+        if all(isinstance(r, dict) and r.get("value") is not None for r in _rs):
+            _v = [float(r["value"]) for r in _rs]
+            branch_key = await _evaluate_four_point_static(db, _v[0], _v[1], _v[2], _v[3])
+            logger.info(
+                "[diagnostic] four-point static eval: bf=%.3f af=%.3f bc=%.3f ac=%.3f -> %s",
+                _v[0], _v[1], _v[2], _v[3], branch_key,
+            )
+
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q2-sh-sc"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")  # superheat_F
+        _r1 = body.answer.get("reading_1")  # subcool_F
+        if isinstance(_r0, dict) and _r0.get("value") is not None:
+            _sh = float(_r0["value"])
+            _sc = (
+                float(_r1["value"])
+                if isinstance(_r1, dict) and _r1.get("value") is not None
+                else None
+            )
+            _osc = bool(
+                _r0.get("oscillating")
+                or _r0.get("stability") == "oscillating"
+                or _r0.get("branch_key") == "oscillating"
+            )
+            branch_key = await _evaluate_shsc_discrimination(db, _sh, _sc, _osc)
+            logger.info(
+                "[diagnostic] SH/SC eval: SH=%.1f SC=%s osc=%s -> %s",
+                _sh, _sc, _osc, branch_key,
+            )
+
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q3-restriction-lldrop"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")  # drier inlet
+        _r1 = body.answer.get("reading_1")  # drier outlet
+        _r2 = body.answer.get("reading_2")  # outdoor ambient
+        if (
+            isinstance(_r0, dict) and _r0.get("value") is not None
+            and isinstance(_r1, dict) and _r1.get("value") is not None
+        ):
+            _in = float(_r0["value"])
+            _out = float(_r1["value"])
+            _amb = (
+                float(_r2["value"])
+                if isinstance(_r2, dict) and _r2.get("value") is not None
+                else None
+            )
+            branch_key = await _evaluate_ll_restriction(db, _in, _out, _amb)
+            logger.info(
+                "[diagnostic] LL-restriction eval: in=%.1f out=%.1f amb=%s -> %s",
+                _in, _out, _amb, branch_key,
+            )
+
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q4-restriction-head"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")  # discharge_pressure_psi
+        if isinstance(_r0, dict) and _r0.get("value") is not None:
+            _disch = float(_r0["value"])
+            _ref = body.refrigerant_type or "not_sure"
+            _amb_c = body.ambient_c or (40 if tables.market == "PK" else 35)
+            branch_key = await _evaluate_restriction_head(
+                db, _disch, _ref, _amb_c, market=tables.market
+            )
+            logger.info(
+                "[diagnostic] restriction-head eval: discharge=%.1f PSI -> %s",
+                _disch, branch_key,
+            )
+
+    # ── Tier A Card #23 thermostat 24V (not_turning_on q6-tstat-24v) ─────────
+    if (
+        q_row.input_type == "reading"
+        and isinstance(q_row.reading_spec, dict)
+        and q_row.reading_spec.get("type") == "voltage_24v"
+        and isinstance(body.answer, dict)
+        and body.answer.get("value") is not None
+    ):
+        branch_key = _evaluate_tstat_24v(float(body.answer["value"]))
+        logger.info(
+            "[diagnostic] tstat-24V eval: %.1f V -> %s", float(body.answer["value"]), branch_key,
+        )
+
+    # ── Tier A #26 chain: megohm winding-to-ground (q7-compressor-megohm) ────
+    if (
+        q_row.input_type == "reading"
+        and isinstance(q_row.reading_spec, dict)
+        and q_row.reading_spec.get("type") == "megohm_winding_to_ground"
+        and isinstance(body.answer, dict)
+        and body.answer.get("value") is not None
+    ):
+        branch_key = await _evaluate_megohm(db, float(body.answer["value"]))
+        logger.info(
+            "[diagnostic] megohm eval: %.2f megohm -> %s", float(body.answer["value"]), branch_key,
+        )
+
+    # ── Tier A #26 chain: locked-rotor duration (q8-compressor-locked-rotor) ─
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "q8-compressor-locked-rotor"
+        and isinstance(body.answer, dict)
+    ):
+        _r0 = body.answer.get("reading_0")
+        if isinstance(_r0, dict) and _r0.get("value") is not None:
+            branch_key = await _evaluate_locked_rotor(db, float(_r0["value"]))
+            logger.info(
+                "[diagnostic] locked-rotor eval: %.1f s -> %s", float(_r0["value"]), branch_key,
+            )
+
     # ── BUG-016: PK ok suction → discharge PSI step (not US Card 13) ─────────
     # US q2-nc-suction maps "ok" → Card 13 (TXV/Metering Device).
     # For PK at 40°C ambient, "ok" means 125-145 PSI (normal operating range).
@@ -1051,6 +1786,18 @@ async def submit_answer(
                 "Manual diagnosis required."
             ),
         )
+
+    # ── GATE-5 Reading Receipt: snapshot the resolving reading + target ──────
+    if "resolve_card" in branch:
+        try:
+            _rr = await _build_reading_receipt(db, q_row, body.answer, branch, branch_key, branch["resolve_card"])
+            if _rr is not None:
+                await db.execute(
+                    text("UPDATE diagnostic_sessions SET reading_receipt = CAST(:rr AS JSONB) WHERE id = :sid"),
+                    {"rr": json.dumps(_rr), "sid": session_id},
+                )
+        except Exception as e:
+            logger.warning("[diagnostic] reading_receipt capture failed: %s", e)
 
     return await _process_branch(
         db, session_id, session.complaint_type, branch,
@@ -1219,7 +1966,7 @@ async def get_diagnostic_result(
     sess_result = await db.execute(
         text(
             "SELECT id, assessment_id, company_id, resolved_card_id, created_at,"
-            "       reasoning_chain, confidence_level, share_token,"
+            "       reasoning_chain, confidence_level, share_token, reading_receipt,"
             "       customer_label, customer_address"
             " FROM diagnostic_sessions"
             " WHERE id = :sid AND company_id = :cid AND deleted_at IS NULL LIMIT 1"
@@ -1326,6 +2073,7 @@ async def get_diagnostic_result(
             "confidence": session.confidence_level or "high",
         },
         "reasoning_chain": session.reasoning_chain or [],
+        "reading_receipt": session.reading_receipt,
         "action_steps": fc.action_steps or [],
         "parts_needed": fc.parts_needed or [],
         "time_estimate_minutes": None,
@@ -1575,7 +2323,7 @@ async def get_public_diagnosis(
     sess_res = await db.execute(
         text(
             "SELECT id, assessment_id, status, resolved_card_id,"
-            "       created_at, share_token, confidence_level, reasoning_chain,"
+            "       created_at, share_token, confidence_level, reasoning_chain, reading_receipt,"
             "       customer_label, customer_address"
             " FROM diagnostic_sessions"
             " WHERE share_token = :token AND deleted_at IS NULL LIMIT 1"
@@ -1628,6 +2376,7 @@ async def get_public_diagnosis(
             "confidence": session.confidence_level or "high",
         },
         "reasoning_chain": session.reasoning_chain or [],
+        "reading_receipt": session.reading_receipt,
         "action_steps": fc_row.action_steps or [],
         "parts_needed": fc_row.parts_needed or [],
         "time_estimate_minutes": None,
