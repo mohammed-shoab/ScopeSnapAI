@@ -852,6 +852,61 @@ async def _evaluate_shortcycle_runtime(
     return "cycle_pattern_normal"
 
 
+async def _evaluate_four_point_static(
+    db: AsyncSession,
+    before_filter: float,
+    after_filter: float,
+    before_coil: float,
+    after_coil: float,
+) -> str:
+    """
+    Tier A airflow_assessment step aa-q2-four-point. Localizes an over-budget TESP
+    across the 4-point static profile (deterministic, GATE-4):
+      coil_drop_dominant (-> #14)  |  filter_drop_dominant (-> #2)
+      | system_wide_no_dominant_point (-> #20 catch-all)
+    The distributed_duct_signature (#13) branch is LOW-confidence / flagged for
+    review, so the no-dominant case folds into the #20 catch-all here.
+    Drop thresholds from static_pressure_targets (after_filter, after_coil).
+    """
+    _FB_FILTER_THR = 0.10
+    _FB_COIL_THR = 0.20
+    filter_thr = _FB_FILTER_THR
+    coil_thr = _FB_COIL_THR
+    try:
+        frow = await db.execute(
+            text(
+                "SELECT max(drop_threshold_inwc) AS thr FROM static_pressure_targets "
+                "WHERE measurement_point = 'after_filter' AND drop_threshold_inwc IS NOT NULL"
+            )
+        )
+        fr = frow.fetchone()
+        if fr and fr.thr is not None:
+            filter_thr = float(fr.thr)
+        crow = await db.execute(
+            text(
+                "SELECT max(drop_threshold_inwc) AS thr FROM static_pressure_targets "
+                "WHERE measurement_point = 'after_coil' AND system_type = 'residential_split' "
+                "AND drop_threshold_inwc IS NOT NULL"
+            )
+        )
+        cr = crow.fetchone()
+        if cr and cr.thr is not None:
+            coil_thr = float(cr.thr)
+    except Exception as e:
+        logger.warning("[diagnostic] static_pressure_targets drop-threshold lookup failed: %s", e)
+
+    filter_delta = abs(after_filter - before_filter)
+    coil_delta = abs(after_coil - before_coil)
+    coil_exceeds = coil_delta > coil_thr
+    filter_exceeds = filter_delta > filter_thr
+
+    if coil_exceeds and coil_delta >= filter_delta:
+        return "coil_drop_dominant"
+    if filter_exceeds and filter_delta > coil_delta:
+        return "filter_drop_dominant"
+    return "system_wide_no_dominant_point"
+
+
 # ── Branch following ───────────────────────────────────────────────────────────
 
 
@@ -1299,6 +1354,21 @@ async def submit_answer(
             logger.info(
                 "[diagnostic] short-cycle runtime eval: cycles/hr=%.1f -> %s",
                 _cph, branch_key,
+            )
+
+    if (
+        q_row.input_type == "multi"
+        and session.current_step_id == "aa-q2-four-point"
+        and isinstance(body.answer, dict)
+    ):
+        # options order: before_filter, after_filter, before_coil, after_coil
+        _rs = [body.answer.get(f"reading_{i}") for i in range(4)]
+        if all(isinstance(r, dict) and r.get("value") is not None for r in _rs):
+            _v = [float(r["value"]) for r in _rs]
+            branch_key = await _evaluate_four_point_static(db, _v[0], _v[1], _v[2], _v[3])
+            logger.info(
+                "[diagnostic] four-point static eval: bf=%.3f af=%.3f bc=%.3f ac=%.3f -> %s",
+                _v[0], _v[1], _v[2], _v[3], branch_key,
             )
 
     # ── BUG-016: PK ok suction → discharge PSI step (not US Card 13) ─────────
