@@ -1,6 +1,6 @@
 # SnapAI — Active Tasks
 
-**Last updated:** 2026-07-08 (Bryan compendium Path B ship + video-marketing thread recall)
+**Last updated:** 2026-07-08 (Bryan compendium Path B ship + video-marketing thread recall; Tier A GATE-D prod promotion + sign-in fix)
 **Historical sessions:** see `ACTIVE_TASKS_HISTORY.md` (60-row session-log index at top)
 
 ---
@@ -10,7 +10,7 @@
 | # | Workstream | Owner + Advisor | Status | Blocking on |
 |---|---|---|---|---|
 | 1 | **Legal cover + wordings** | Shoab + Alfred (nav) | DEC-130 v1 SHIPPED to prod 2026-07-06 | Wyoming LLC entity formation; Gate 1/2 substantiation; PK lawyer |
-| 2 | **New complaint cards (Tier A)** | Shoab + Bryan (board) | Build Plan v1 + Wordings v2 COMPLETE (Alfred cond signed off) | Legal Gate 1/2 substantiation before Tier A ship |
+| 2 | **New complaint cards (Tier A)** | Shoab + Bryan (board) | ⚑ SHIPPED TO PROD 2026-07-08 (GATE D, Shoab's explicit go) — full diagnostic engine + data live on snapai-prod-use1, verified end-to-end (DEC-132). FREE BETA. | Legal Gate 1/2 substantiation is a pre-BILLING gate, NOT a code blocker; LOW-conf #25/#26 confidence upgrade pending Houston field pilot (N>=30) |
 | 3 | **Brain files cleanup + future system** | Shoab + Karpathy (nav) + Rob (board) | Phase 1+2+3 executed 2026-07-06 | Path Y merge to staging + promote to prod |
 | 4 | **TikTok video marketing** | Shoab + Azhan | Upcoming — not yet scoped | Owner, tools, budget TBD |
 
@@ -19,6 +19,24 @@
 ---
 
 ## Recent sessions (2026-06-18 onward — Bryan's exception: any session with any OPEN item stays)
+
+## Session 2026-07-08 — Tier A diagnostic families PROMOTED TO PROD (GATE D)
+
+**DONE this session:**
+- Executed GATE D on Shoab's explicit "do it completely till prod" go. Full Tier A build now LIVE on production (snapai-prod-use1 `zpsoprffaujswywtsgzy`).
+- Two-phase code overlay (DEC-070): Phase 1 `5755dad` (backend evaluators + reading-receipt, fault_estimate cap le=26, level2 copy, migrations 046+047, 4 diagnostic components); Phase 2 `24efadf` (assess complaint entries, pushed AFTER data to avoid empty-flow window). Railway auto-ran alembic 045→046→047; Vercel deployed. Sign-in/sign-up mojibake fix `d8e60eb`.
+- DB data does NOT auto-promote (separate Supabase projects) — replicated staging→prod via base64 transport + per-table md5 checksum (all matched first try): 10 threshold tables (195 rows), fault_cards 20-26, pricing_tiers card_id>=20, 17 new diagnostic_questions + 2 rewires. Prod fault_cards 19→25, dq 44→61. Method captured in DEC-132.
+- Verified on prod: counts + routing integrity (0 dangling) + checksums=staging + full authenticated browser click-through (Comfort/Humidity → Clammy → Card #22 with Reading Receipt 350-402.5 CFM/ton, disclaimers, Estimate Builder $239/$478).
+
+**OPEN / follow-ups:**
+
+| Priority | Item | Owner | Notes |
+|----------|------|-------|-------|
+| MEDIUM | LOW-confidence cards #25 (liquid-line) / #26 (compressor) are LIVE but carry LOW confidence pending Houston field pilot (N>=30, >=85% match). Code + feedback loop ready; confidence UPGRADE gated on real field data. | Shoab | Gap 3 — empirical, not closable by calc |
+| LOW | Bryan's 2 directional refinements logged (D3 coil-drop 0.20 → prefer rated coil drop; D4 14F TXV starved-superheat treat as directional) — not blockers | Shoab + Bryan | From SnapAI_TierA_Bryan_Clinical_Review.md |
+| NOTE | Legal Gate 1/2 substantiation is a pre-BILLING gate (app is FREE BETA); cards carry Alfred C1/C2/C3 disclaimers live. Not a code-deploy blocker. | Shoab + Alfred | Reconciles ACTIVE workstream 2 |
+
+---
 
 ## Session 2026-07-08 — Bryan compendium ship (Path B) + video-marketing thread recall
 
@@ -216,10 +234,4 @@ NOTE: the older backlog task "Enable GitHub Dependabot" is now DONE — Dependab
 
 ## Last QA Run — /snapai-qa on PRODUCTION (2026-06-17 PM)
 - **Target: PROD** (snapai.mainnov.tech). Run after Brand Decoder v1.2 promote (main `f70b6276`).
-- **Phase 2 backend — PASS:** `/health` ok (db connected, environment:production); `/api/version` decoder/replace/brand_data **1.2** + `analytics_enabled:true`; prod DB (`zpsoprffaujswywtsgzy`) market data intact — **58 US brands / 15 PK brands**, York+Gree present, 19 US + 16 PK fault cards, **57 brands carry serial_decodable** (migration 039 backfill on prod); PSI thresholds **R-410A PK 125-145 ✓, R-32 PK 120-140 ✓** (R-22 US 60-82 vs skill-ref 88 — minor pre-existing reference nuance, not Brand-Decoder, not a regression); alembic head **040**.
-- **Phase 1 UI (US prod, logged in) — PASS:** Flow 1 Not Cooling full diagnostic → Refrigerant Leak (High Conf) → estimate **rpt-592468** USD, **Finding-1 `[N]`→"At 18 years old…" substituted**, **Finding-2 Continue="Replace Immediately ($6,480)"=★REC**; Flow 6 nameplate manual entry inline-edit works; Flow 7 env-banner **correctly ABSENT** on prod (host=snapai.mainnov.tech, no StagingBanner, frontend PostHog env=`production`). a11y SidebarNav contrast clean.
-- **Phase 1.5/1.6 — PASS (cited):** Playwright/axe CI run #5 on main `f70b6276` = **success 26/26** (the workflow triggers on push to staging AND main); backend pytest **120 passed** this session (`d7dbc2a8`, after fixing the `re`-loader regression); tsc clean via CI build.
-- **Phase 1 UI (PK prod) — PASS (Shoab kept prod logged in; US+PK prod SHARE the same Clerk prod app, so the session carried over — no separate PK login needed).** Fresh PK diagnostic on pk.snapai.mainnov.tech: Gree (DWP Group), 1.5-ton, **R-410A** selector, install 2008 + Sure → Not Cooling → outdoor running YES → 55 PSI → **Refrigerant Undercharge/Leak (High Conf)** with PK-specific copy (soap-solution leak detect; "R-32 dominant in new PK split ACs, not interchangeable with R-410A") → estimate **rpt-076836** in **PKR**: ₨4,725 / ₨8,775 / ₨135,000. **Finding-1 LIVE:** Full Replacement reads "**At 18 years old**, complete system replacement shifts to R-32 or R-410A…" (real age, no `[N]`). **Finding-2 LIVE:** Continue = "Replace Immediately (₨135,000)" = ★REC. PK market routing (brands/fault-cards/currency) all correct on prod.
-- **BOTH MARKETS now fully verified on production.** NOT individually re-run on prod: US Flows 2-5 (Service/Tune-Up, Water Dripping, Not Turning On) — covered by staging snapai-qa-master + identical promoted build. Skill's Phase 1.5 clone recipe is stale (pnpm/`SnapAIAI`/git@ SSH/`pak_diagnostic_questions`) — used real GitHub Actions CI + Supabase prod DB instead.
-- **Minor obs (non-blocking):** opening a draft estimate's PDF before "Send" returns `estimate-rpt-…-unavailable.pdf` (PDFs generate on Send, not on draft) — expected behavior, noted.
-- **Bugs found: 0** on prod. **QA result: PASS — both markets verified live on production.**
+- **Phase 2 backend — PASS:** `/health` ok (db connected, environme
