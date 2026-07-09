@@ -2585,4 +2585,22 @@ Shoab said "check it yourself" via Supabase MCP. Live prod query against `diagno
 
 **Does NOT apply to:** persona `_index.md` / `frameworks.md` / `voice_examples.md` at their default depth — those already exist in the Drive path, are refreshed via the advisor-kb-monthly-refresh skill, and don't need per-file git tracking unless they materially change. This DEC covers COMPENDIA (deep structured extractions), not the standard 3-file persona folder.
 
-**Cross-references:** DEC-070 (staging→main→prod flow), DEC-128 (Cowork advisor-board skills separate from Drive canonical), Section 7 routing table in `SnapAI_Project_Instructions.md`, `session_logs/SESSION_LOG_2026-07-08_bryan_compendium_extraction.md`.
+**Cross-references:** DEC-070 (staging→main→prod flow), DEC-128 (Cowork advisor-board skills separate from Drive canonical), Section 7 routing table in `SnapAI_Project_Instructions.md`, `session_logs/SESSION_LOG_2026-07-08_bryan_compend
+
+---
+
+## DEC-132 — Tier A diagnostic families promoted to PROD (GATE D) via two-phase overlay + checksum-verified data replication (2026-07-08)
+
+**Decision:** On Shoab's explicit "do it completely till prod without stopping" go, the full Tier A build (4 diagnostic families — comfort / airflow / not_cooling / high_electric_bill — plus Card #23 thermostat and the #26 compressor chain) was promoted staging→production. Prod = `snapai-prod-use1` (`zpsoprffaujswywtsgzy`, us-east-1); staging = `snapai-staging-use1` (`kikhhnanuwzocwcpzutr`, us-east-1). The old Tokyo projects (`quqrvnoguofbjacrxcim` prod, `pqmgveqkuckbvyygsilk` staging) are retired/deleted — PROJECT_BRAIN quick-reference IDs corrected this session.
+
+**Two-phase code overlay (DEC-070):** Phase 1 `5755dad` — backend evaluators + reading-receipt capture, `fault_estimate` cap le=26, level2 repair copy, migrations 046 (10 threshold tables + 5 fault_cards homeowner columns) + 047 (reading_receipt column), and the 4 diagnostic frontend components. Phase 2 `24efadf` — `assess/page.tsx` new complaint entries, pushed ONLY AFTER the data was in place so prod never had a visible-but-empty flow. Railway auto-ran alembic 045→046→047; Vercel deployed the frontend. Follow-up `d8e60eb` shipped the sign-in/sign-up mojibake fix.
+
+**DB data does NOT auto-promote — critical operational fact:** staging and prod are SEPARATE Supabase projects. Pushing to `main` promotes code + schema (Railway runs alembic migrations) but NOT row data. All Tier A rows were deliberately replicated: 10 threshold tables (195 rows), fault_cards 20-26 (6 rows; prod 19→25), pricing_tiers card_id>=20 (15 rows), 17 new diagnostic_questions + 2 in-place rewires (q2-nc-suction low→q2-sh-sc; q3-coil-photo all_clean→q-heb-sizing-gate); prod diagnostic_questions 44→61.
+
+**Reusable cross-project data-replication method (durable takeaway):** base64 transport avoids all quote/escape/transcription risk — on SOURCE `SELECT encode(convert_to(json_agg(t)::text,'UTF8'),'base64')`; on DEST `INSERT INTO t SELECT * FROM json_populate_recordset(NULL::t, convert_from(decode('<b64>','base64'),'UTF8')::json)`. VERIFY every table with an md5 checksum comparison `md5(string_agg(t::text,'|' ORDER BY id))` source-vs-dest and only accept on exact match. Delegate the bulk transfer to a subagent to keep large JSONB out of the main context window. All Tier A checksums matched on the first attempt.
+
+**Verified on prod:** counts (dq 61 / fault_cards 25 / threshold 195 / new tiers 15), routing integrity (0 dangling resolve_card, 0 dangling next_step_id), all checksums == staging, AND a full authenticated browser click-through: New Assessment → Goodman GSXC18 → Comfort/Humidity → Clammy → 62 %RH + 68 F WB + 420 CFM/ton → Card #22 "Low latent capacity" with Reading Receipt (You entered 420 / Compared 350-402.5 CFM/ton from prod `cfm_per_ton_targets.climate_banded_default` / Result HIGH), Layer-4 + enhanced high-exposure note, and Estimate Builder (Basic $239 = $177+35%, Repair+Maint ★REC $478 = $354+35%, Codie level2 copy).
+
+**Posture note:** Tier A code shipped to prod in FREE BETA. The "Legal Gate 1/2 substantiation before Tier A ship" line in ACTIVE_TASKS is a pre-BILLING / commercial-launch gate, NOT a code-deploy blocker — every card carries the Alfred C1/C2/C3 disclaimers (verified live). LOW-confidence cards #25/#26 are live but their confidence upgrade still awaits the Houston field pilot (N>=30, >=85% match).
+
+**Cross-references:** DEC-070 (staging→main→prod overlay), DEC-111 / DEC-129 (verify against live DB, never migrations), DEC-130 (legal wordings v1 live), DEC-131 (scoped promote pattern), memory note `snapai-tierA-promoted-prod`.

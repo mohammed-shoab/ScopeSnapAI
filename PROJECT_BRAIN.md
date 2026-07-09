@@ -220,7 +220,7 @@ Staging custom domains (staging.snapai.mainnov.tech, pk-staging.snapai.mainnov.t
 | Railway project | `0e78dd68-ce72-46be-a2b1-7d3119de40a4` |
 | Railway service | `a23d5cad-d8c9-434e-a3dc-89634d8642ab` |
 | Railway environment | `03c478ed-5720-427a-b567-d6bd2ebf3eb1` |
-| Supabase project | `quqrvnoguofbjacrxcim` |
+| Supabase project (PROD) | `zpsoprffaujswywtsgzy` (snapai-prod-use1, us-east-1) — Tokyo `quqrvnoguofbjacrxcim` RETIRED/deleted, not in org anymore |
 | Vercel project | `scope-snap-ai` (mohammed-shoabs-projects-7844119e) |
 | GitHub repo | `mohammed-shoab/ScopeSnapAI` |
 
@@ -228,7 +228,7 @@ Staging custom domains (staging.snapai.mainnov.tech, pk-staging.snapai.mainnov.t
 | Service | ID / Reference |
 |---------|---------------|
 | Railway staging URL | `https://scopesnap-api-staging.up.railway.app` |
-| Supabase staging project | `pqmgveqkuckbvyygsilk` (ap-northeast-1) |
+| Supabase staging project | `kikhhnanuwzocwcpzutr` (snapai-staging-use1, us-east-1) — Tokyo `pqmgveqkuckbvyygsilk` RETIRED |
 | Vercel staging project | `prj_vq1rWfPN9tD3k82OLFjfIxmNdULc` (`scopesnap-web-staging`) |
 | Clerk staging app | `firm-chamois-61` (pk_test_ZmlybS1jaGFtb2lzLTYx…) |
 | R2 staging bucket | `scopesnap-uploads-staging` |
