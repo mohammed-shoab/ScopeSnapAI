@@ -101,7 +101,7 @@ export default function SignInPage() {
           fontFamily: "IBM Plex Mono, monospace",
         }}
       >
-        SnapAI â Professional HVAC assessments for contractors
+        SnapAI - Professional HVAC assessments for contractors
       </p>
     </div>
   );
