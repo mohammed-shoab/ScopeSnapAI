@@ -1,6 +1,6 @@
 # SnapAI — Active Tasks
 
-**Last updated:** 2026-07-08 (Bryan compendium Path B ship + video-marketing thread recall; Tier A GATE-D prod promotion + sign-in fix)
+**Last updated:** 2026-07-08 (Bryan compendium Path B ship + video-marketing thread recall; Tier A GATE-D prod promotion + sign-in fix; post-GATE-D prod QA sign-off PASS)
 **Historical sessions:** see `ACTIVE_TASKS_HISTORY.md` (60-row session-log index at top)
 
 ---
@@ -27,6 +27,7 @@
 - Two-phase code overlay (DEC-070): Phase 1 `5755dad` (backend evaluators + reading-receipt, fault_estimate cap le=26, level2 copy, migrations 046+047, 4 diagnostic components); Phase 2 `24efadf` (assess complaint entries, pushed AFTER data to avoid empty-flow window). Railway auto-ran alembic 045→046→047; Vercel deployed. Sign-in/sign-up mojibake fix `d8e60eb`.
 - DB data does NOT auto-promote (separate Supabase projects) — replicated staging→prod via base64 transport + per-table md5 checksum (all matched first try): 10 threshold tables (195 rows), fault_cards 20-26, pricing_tiers card_id>=20, 17 new diagnostic_questions + 2 rewires. Prod fault_cards 19→25, dq 44→61. Method captured in DEC-132.
 - Verified on prod: counts + routing integrity (0 dangling) + checksums=staging + full authenticated browser click-through (Comfort/Humidity → Clammy → Card #22 with Reading Receipt 350-402.5 CFM/ton, disclaimers, Estimate Builder $239/$478).
+- POST-GATE-D PROD QA (2026-07-08, snapai-qa skill) — **QA COMPLETE / PASS**: prod backend health ok (db connected, environment=production, /api/version decoder+replace 1.2); pytest 155 passed on main; Playwright E2E CI GREEN on main (#84 Phase1 / #85 Phase2 / #86 sign-in); prod UI regression — Not Cooling core 128 PSI → NORMAL → Ductwork Leak (High Conf), no misroute to high-pressure, no crash/503; Tier A Comfort → Card #22 receipt+estimate live; StagingBanner correctly ABSENT on prod; data counts/routing/checksums = staging. No bugs found, no fixes needed.
 
 **OPEN / follow-ups:**
 
