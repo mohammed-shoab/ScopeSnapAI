@@ -1,6 +1,6 @@
 # SnapAI AI — Tech Stack & Architecture
 
-**Current state (2026-07-06):** Beta — live on Vercel + Railway. Both markets QA-verified (US Houston active; PK dormant per DEC-123). Stack: Next.js 16 + React 19 + Clerk v7 + Turbopack (DEC-113) on Vercel; FastAPI on Railway with Alembic head 034; Supabase Postgres; Cloudflare R2 for photos + PDFs; Sentry v10 (DEC-108); PostHog analytics; Google Gemini 2.5 (Flash + Flash-Lite). Legal-safe-wordings v1 shipped 2026-07-06 (DEC-130). Historical build narrative → `TECH_STACK_HISTORY.md`.
+**Current state (2026-07-10):** Beta — live on Vercel + Railway. Both markets QA-verified (US Houston active; PK dormant per DEC-123). Stack: Next.js 16 + React 19 + Clerk v7 + Turbopack (DEC-113) on Vercel; FastAPI on Railway with Alembic head 047; Supabase Postgres; Cloudflare R2 for photos + PDFs; Sentry v10 (DEC-108); PostHog analytics; Google Gemini 2.5 (Flash + Flash-Lite). Legal-safe-wordings v1 shipped 2026-07-06 (DEC-130). Historical build narrative → `TECH_STACK_HISTORY.md`.
 
 ---
 
