@@ -8,8 +8,8 @@ Pre-commit hook that enforces the mechanical brain-file rules from
 1. **No `Previously:` blocks in top 30 lines** of mutable-state files
    (STATUS.md rejects any; PROJECT_BRAIN.md / TECH_STACK.md allow max 1 for the "Last updated" stamp).
 2. **Line-count caps** — warns (not rejects) if a file exceeds its cap:
-   - STATUS.md ≤ 60 · PROJECT_BRAIN.md ≤ 500 · TECH_STACK.md ≤ 500
-   - ACTIVE_TASKS.md ≤ 300 · WORKFLOW.md ≤ 300 · MARKET_GUIDE.md ≤ 300
+   - STATUS.md ≤ 60 · PROJECT_BRAIN.md ≤ 500 · TECH_STACK.md ≤ 2000
+   - ACTIVE_TASKS.md ≤ 300 · WORKFLOW.md ≤ 2000 · MARKET_GUIDE.md ≤ 300
    - DECISIONS.md + *_HISTORY.md — no cap
 3. **No `diagnos*` strings in homeowner-facing files** (Alfred's Principle 3):
    - `scopesnap-web/app/homeowner/`

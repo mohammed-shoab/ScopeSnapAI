@@ -1,6 +1,6 @@
 # SnapAI — Project Brain
 
-**Current state (2026-07-06):** SnapAI is a Next.js/Vercel + FastAPI/Railway HVAC diagnostic + estimate web app, live in prod at snapai.mainnov.tech (US) and pk.snapai.mainnov.tech (PK, dormant per DEC-123). Backend Alembic head 034. Latest DEC-130 (legal-safe-wordings v1 shipped 2026-07-06). Stack on Turbopack (DEC-113), Next 16 / React 19 / Clerk v7, Sentry v10, PostHog. Beta with first 10 Houston contractor testers. Historical build narrative → `PROJECT_BRAIN_HISTORY.md`.
+**Current state (2026-07-10):** SnapAI is a Next.js/Vercel + FastAPI/Railway HVAC diagnostic + estimate web app, live in prod at snapai.mainnov.tech (US) and pk.snapai.mainnov.tech (PK, dormant per DEC-123). Backend Alembic head 047 (verified live 2026-07-10 per DEC-129). Latest DEC-132 (Tier A diagnostic families promoted to prod, GATE D, 2026-07-08). Stack on Turbopack (DEC-113), Next 16 / React 19 / Clerk v7, Sentry v10, PostHog. Beta with first 10 Houston contractor testers. Historical build narrative → `PROJECT_BRAIN_HISTORY.md`.
 
 ## CRITICAL RULES (read before every task)
 

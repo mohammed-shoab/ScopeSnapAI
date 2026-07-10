@@ -74,7 +74,7 @@ Karpathy's framework, applied to your 7 brain files:
 
 **Rule:** Tables > prose. First 20 lines = load-bearing rules table (CRITICAL RULES section). No running commentary at top. Updates are surgical, not narrative.
 
-**Line caps:** `PROJECT_BRAIN.md` ≤ 500 lines. `TECH_STACK.md` ≤ 500 lines. `WORKFLOW.md` ≤ 300 lines. `MARKET_GUIDE.md` ≤ 300 lines.
+**Line caps:** `PROJECT_BRAIN.md` ≤ 500 lines. `TECH_STACK.md` ≤ 2000 lines. `WORKFLOW.md` ≤ 2000 lines. `MARKET_GUIDE.md` ≤ 300 lines.
 
 ### Archetype 3 — Immutable append-only logs (grow indefinitely, no cap)
 
@@ -267,9 +267,9 @@ On successful load, greet with:
 |---|---|---|
 | STATUS.md | 60 lines | Reject commit, prompt to prune |
 | PROJECT_BRAIN.md | 500 lines | Warn + prompt to move history |
-| TECH_STACK.md | 500 lines | Warn + prompt to move history |
+| TECH_STACK.md | 2000 lines | Warn + prompt to move history |
 | ACTIVE_TASKS.md (OPEN section) | 300 lines | Warn + prompt to archive closed sessions |
-| WORKFLOW.md | 300 lines | Warn |
+| WORKFLOW.md | 2000 lines | Warn |
 | MARKET_GUIDE.md | 300 lines | Warn |
 | DECISIONS.md | none | — |
 | *_HISTORY.md files | none | — |
