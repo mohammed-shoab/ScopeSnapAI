@@ -1,54 +1,26 @@
 /**
  * SnapAI -- /tech landing page (D.1)
  * Contractor-targeted landing page for cold email, LinkedIn DMs, video bio links.
- * Destination: snapai.mainnov.tech/tech
+ * Destination: snapai.mainnov.tech/tech  (also served at the site root "/" via rewrite)
  *
  * PostHog: fires "tech_landing_visited" on mount (captures UTM params)
- * CTA: routes to /dashboard (Clerk auth / sign-up flow)
+ * Primary CTA: routes to /dashboard (Clerk auth / sign-up flow)
+ * Secondary (owner) CTA: book-a-call for the free data audit (owner door)
  */
 
-// COPY DRAFT — pending Codie + Alfred sign-off
 "use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePostHog } from "posthog-js/react";
 
+// TODO(Shoab): replace with the real book-a-call scheduling link (Cal.com / Calendly).
+// PLACEHOLDER for now — the owner "Request your free audit" secondary CTA points here.
+const OWNER_AUDIT_BOOKING_URL = "https://cal.com/REPLACE-ME/snapai-audit";
+
 export default function TechLandingPage() {
   const posthog = usePostHog();
   const [copied, setCopied] = useState(false);
-
-  // Waitlist email-capture (moved from former root landing page) — POST /api/waitlist
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-  async function handleSignup(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setSubmitting(true);
-    setError("");
-    try {
-      const res = await fetch(`${API_URL}/api/waitlist`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      if (res.ok) {
-        setSubmitted(true);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setError(data?.detail || "Something went wrong. Please try again.");
-      }
-    } catch {
-      setError("Could not connect. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
 
   // PostHog: fire tech_landing_visited + capture UTM params
   useEffect(() => {
@@ -84,13 +56,13 @@ export default function TechLandingPage() {
       number: "02",
       title: "App walks the tech through the fault",
       description:
-        "Answer a series of guided questions about symptoms. The system follows the same fault tree your best senior tech has in his head.",
+        "Answer a set of guided questions about what the unit's doing. SnapAI walks your tech through the fault, step by step.",
     },
     {
       number: "03",
-      title: "Three context-aware options, one recommendation — in 90 seconds",
+      title: "Three clear options and a recommendation — in minutes",
       description:
-        "SnapAI generates a three-tier estimate with your markup applied. Send the homeowner a branded PDF before you leave the driveway.",
+        "SnapAI builds a three-tier estimate with your markup applied. Hand the homeowner a branded PDF before you leave.",
     },
   ];
 
@@ -128,11 +100,11 @@ export default function TechLandingPage() {
         </div>
 
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-text-primary leading-tight mb-5 max-w-3xl mx-auto">
-          Your newest tech diagnoses like your most experienced.
+          Turn a tough HVAC call into a clean, three-option quote.
         </h1>
 
         <p className="text-lg sm:text-xl text-text-secondary max-w-2xl mx-auto mb-8 leading-relaxed">
-          A decision-support app built for independent HVAC shops. It walks your tech through the fault, then lays out three context-aware options and a clear recommendation. Homeowner-approved PDF — before you pull out of the driveway.
+          SnapAI is the app that helps any HVAC tech assess a tough call and turn it into a clear, three-option quote for the homeowner in minutes — no CRM to get trapped in, and your tech makes every call.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -141,9 +113,9 @@ export default function TechLandingPage() {
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-ss bg-brand-green text-white font-semibold text-base shadow-green hover:bg-brand-green-dark transition-colors"
             onClick={() => posthog?.capture("tech_cta_clicked", { location: "hero" })}
           >
-            Start free — built for independent HVAC shops
+            Start free →
           </Link>
-          <p className="text-sm text-text-tertiary">First 10 testers. Free, no commitment.</p>
+          <p className="text-sm text-text-tertiary">Free for the first 10 techs. No credit card, no commitment.</p>
         </div>
 
         <p className="text-sm text-text-tertiary max-w-2xl mx-auto mt-6 leading-relaxed">
@@ -156,7 +128,7 @@ export default function TechLandingPage() {
       <section className="bg-surface-card border-y border-surface-border py-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12">
-            Three steps. One job closed.
+            Three steps, one clean quote.
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
@@ -177,86 +149,65 @@ export default function TechLandingPage() {
         </div>
       </section>
 
-      {/* ── Builder Positioning (“honest voice” section) ───────── */}
+      {/* ── Builder Positioning (research-backed section) ───────── */}
       <section className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
         <div className="bg-surface-card border border-surface-border rounded-ss p-8 shadow-ss">
           <p className="text-sm text-text-secondary leading-relaxed mb-4">
-            We built SnapAI by deeply researching how HVAC diagnostic actually works —
+            We built SnapAI by deeply researching how HVAC diagnostics actually work —
             manufacturer documentation, training references, and the fault patterns that show up
             most often on residential systems. The assessment engine, fault card database,
             and pricing tiers reflect months of that research.
           </p>
           <p className="text-sm text-text-secondary leading-relaxed mb-4">
-            Beta program now open — first 10 HVAC techs get founding access.
-            Your input shapes every release.
+            Now open to the first 10 HVAC techs. Free — and your input shapes what we build next.
           </p>
           <p className="text-xs font-semibold text-brand-green">
-            Free during beta. Pricing announced before launch.
+            Free while we build it with you. Pricing comes later.
           </p>
         </div>
       </section>
 
-            {/* ── Beta CTA (bottom) ──────────────────────────────────────────────── */}
+            {/* ── Primary CTA (bottom) ───────────────────────────────────────────── */}
       <section className="bg-brand-green py-16">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
             Free for the first 10 techs.
           </h2>
           <p className="text-green-100 mb-8 leading-relaxed">
-            Built with real field experience. Assessment logic validated against real residential
-            split-system calls. R-410A, R-22 surcharges, and local labor rates all baked in.
+            Built from deep research — manufacturer specs, training references, and the residential
+            fault patterns that show up most. R-410A and R-22 surcharges and your local labor rates
+            are baked in.
           </p>
           <Link
             href="/dashboard"
             className="inline-flex items-center justify-center px-8 py-4 rounded-ss bg-white text-brand-green font-bold text-base hover:bg-green-50 transition-colors shadow-ss-lg"
             onClick={() => posthog?.capture("tech_cta_clicked", { location: "bottom" })}
           >
-            Claim Your Free Beta Spot
+            Start free →
           </Link>
-          <p className="text-green-100 text-xs mt-4">No credit card. No commitment. Cancel anytime.</p>
+          <p className="text-green-100 text-xs mt-4">Free for the first 10 techs. No credit card.</p>
         </div>
       </section>
 
-      {/* ── Early Access Signup (waitlist — moved from former root landing) ── */}
-      <section className="bg-surface-card border-y border-surface-border py-16">
-        <div className="max-w-lg mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-2xl font-bold mb-3">Get early access</h2>
-          <p className="text-text-secondary mb-8 text-sm leading-relaxed">
-            Limited early access — first 30 assessments free.
-            No credit card required.
+      {/* ── Owner Door (secondary — free data-audit offer) ─────────────────── */}
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
+        <div className="border border-surface-border rounded-ss p-8 bg-surface-bg">
+          <h2 className="text-xl font-bold text-text-primary mb-3">Own a shop?</h2>
+          <p className="text-sm text-text-secondary leading-relaxed mb-6">
+            I&apos;m the data scientist who built SnapAI. Send me your last year of tickets and I&apos;ll
+            show you — free — your real callback, repeat-visit, and lost-quote numbers on the tough
+            calls, based on what your tickets show. I only take a few shops a month because I run
+            every analysis myself.
           </p>
-          {submitted ? (
-            <div className="bg-brand-green/10 border border-brand-green/20 rounded-ss p-6">
-              <p className="text-brand-green font-semibold text-lg mb-1">You&apos;re in!</p>
-              <p className="text-text-secondary text-sm">
-                Check your inbox — we&apos;ll send your access details shortly.
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={handleSignup} className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                className="flex-1 border border-surface-border rounded-ss px-4 py-3 text-sm bg-surface-bg focus:outline-none focus:ring-2 focus:ring-brand-green placeholder:text-text-secondary"
-              />
-              <button
-                type="submit"
-                disabled={submitting}
-                className="bg-brand-green text-white font-semibold py-3 px-6 rounded-ss hover:bg-brand-green-dark transition-colors text-sm disabled:opacity-60 whitespace-nowrap"
-              >
-                {submitting ? "Sending…" : "Start Free →"}
-              </button>
-            </form>
-          )}
-          {error && (
-            <p className="mt-3 text-red-500 text-xs">{error}</p>
-          )}
-          <p className="mt-4 text-xs text-text-secondary">
-            No spam. Unsubscribe any time.
-          </p>
+          <a
+            href={OWNER_AUDIT_BOOKING_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => posthog?.capture("owner_audit_cta_clicked", { location: "owner_door" })}
+            className="inline-flex items-center justify-center px-5 py-2.5 rounded-ss border border-brand-green text-brand-green font-semibold text-sm hover:bg-brand-green-light transition-colors"
+          >
+            Request your free audit →
+          </a>
         </div>
       </section>
 

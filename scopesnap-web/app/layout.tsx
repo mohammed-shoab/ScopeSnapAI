@@ -4,9 +4,9 @@ import { PostHogProvider } from "@/providers/PostHogProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SnapAI — AI-Powered HVAC Estimation",
+  title: "SnapAI — turn a tough HVAC call into a clean quote",
   description:
-    "Photograph any HVAC unit. Get an AI-assisted assessment with three context-aware options and a clear recommendation. Send the homeowner a report in 90 seconds.",
+    "SnapAI helps any HVAC tech assess a tough call and turn it into a clear, three-option quote for the homeowner in minutes — no CRM, and your tech makes every call.",
   manifest: "/manifest.json",
   icons: {
     icon: [
