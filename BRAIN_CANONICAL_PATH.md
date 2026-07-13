@@ -1,39 +1,44 @@
-# Canonical SnapAI Brain Location
+# Canonical SnapAI Brain — READ THIS FIRST (any AI session)
 
-The `ScopeSnapAI/` folder at this path is the SINGLE source of truth for SnapAI brain files:
+**There is exactly ONE copy of each brain file. It lives at the REPOSITORY ROOT.**
+Every AI session (snapai-dev, snapai-qa, snapai-* skills, ad-hoc) MUST read AND write ONLY
+the root files listed below. Do not read, edit, or create brain files anywhere else.
 
-- PROJECT_BRAIN.md
-- DECISIONS.md
-- ACTIVE_TASKS.md
-- MARKET_GUIDE.md
-- TECH_STACK.md
-- BUILD_LOG.md
-- STATUS.md
-- WORKFLOW.md
+## The canonical brain files — the ONLY real copies (repo root)
 
-**DO NOT create copies of these files anywhere else.**
+| Purpose | Canonical file (repo root) |
+|---------|----------------------------|
+| Project state, live URLs, infra IDs, deploy state | `PROJECT_BRAIN.md` |
+| Architecture decisions (DEC-###, authoritative log) | `DECISIONS.md` |
+| Active + open tasks | `ACTIVE_TASKS.md` |
+| Stack, hosting, accounts, versions | `TECH_STACK.md` |
+| US (Houston) vs PK market differences | `MARKET_GUIDE.md` |
+| Change / staging-first / deploy / rollback workflow | `WORKFLOW.md` |
+| Build log | `BUILD_LOG.md` |
+| One-line current status | `STATUS.md` |
 
-Per DEC-111, AI sessions reading the Drive-synced copy must `git fetch origin --no-tags` first to confirm vs prod.
+- **On disk (Drive working copy):** `C:\Users\Shoab\My Drive\Personal Claude\ScopeSnapAI\<FILE>.md`
+- **In git:** the ROOT of `github.com/mohammed-shoab/ScopeSnapAI`, branches `main` (prod truth) and `staging` (pre-prod truth).
+- History indexes live in `ACTIVE_TASKS_HISTORY.md`, `PROJECT_BRAIN_HISTORY.md`, `TECH_STACK_HISTORY.md`, `session_logs/` — those are archives, NOT the live brain.
 
-## Brain consolidation history
+## There are NO other copies — if you find one, it is STALE
+- No brain files may exist under any subfolder: `ScopeSnapAI/`, `ProjectBrain/`, `_archive/`, `snapai-board/`, `session_logs/`, etc.
+- **How to spot a stale shadow:** a second copy with a LOWER top DEC number, an OLDER "Last updated" date, or a smaller/older body than the root copy. The root copy always has the highest DEC and newest date.
+- If you ever find a duplicate: do NOT read or edit it. Remove it (git-tracked → recoverable from history) and tell Shoab. Never let a session read the stale copy by accident.
 
-Date: 2026-06-26
-Action: Removed duplicate brain locations + moved to `_archive/brain_consolidation_2026-06-26/`
+## Consolidation history
+- **2026-06-26 (DEC-111):** removed the first duplicate round — a nested `ScopeSnapAI/ScopeSnapAI/` shadow + `ProjectBrain/*.md` parallel copies → archived to `_archive/brain_consolidation_2026-06-26/`.
+- **2026-07-14:** a nested `ScopeSnapAI/` shadow set had reappeared and drifted ~1 month stale (its `DECISIONS.md` was at DEC-096 vs root DEC-133). Removed the 5 stale duplicates — `ScopeSnapAI/DECISIONS.md`, `ScopeSnapAI/ACTIVE_TASKS.md`, `ScopeSnapAI/PROJECT_BRAIN.md`, `ScopeSnapAI/TECH_STACK.md`, `ScopeSnapAI/WORKFLOW.md`. The repo now holds exactly ONE copy of each brain file, at the root. (Removed files remain in git history if ever needed.)
 
-Previously-duplicate locations now archived:
-
-1. **`ScopeSnapAI/ScopeSnapAI/`** — nested shadow folder containing 6 stale brain files (May 26-Jun 14, ~1 month behind canonical). Folder removed entirely after moving files to `_archive/brain_consolidation_2026-06-26/ScopeSnapAI_nested_shadow/`
-
-2. **`ProjectBrain/PROJECT_BRAIN.md` + DECISIONS.md + ACTIVE_TASKS.md + SESSION_LOG.md** — parallel external copy with smaller line counts (May-Jun dates) than canonical. Moved to `_archive/brain_consolidation_2026-06-26/ProjectBrain_md_duplicates/`. The Python brain app (`project_brain_app.py` + configs + run_me.bat) was KEPT in `ProjectBrain/` in case still useful as a brain browser tool — but it no longer maintains duplicate brain files.
-
-## How to verify canonical state in any future AI session
-
+## MANDATORY first step for any AI session — the Drive copy can lag prod
+The Drive-synced folder is a git working copy that can be BEHIND `origin`. NEVER claim code
+or brain state from it without fetching first:
 ```bash
 cd "C:\Users\Shoab\My Drive\Personal Claude\ScopeSnapAI"
 git fetch origin --no-tags
-git log origin/main --oneline -5      # truth for prod
-git log origin/staging --oneline -5   # truth for staging
-git show origin/main:scopesnap-api/api/fault_estimate.py  # truth for any file
+git log origin/main --oneline -5          # truth for prod
+git log origin/staging --oneline -5       # truth for staging
+git show origin/main:DECISIONS.md | grep -m1 'DEC-'   # confirm latest DEC live on prod
 ```
-
-NEVER claim code state from this Drive-synced working copy without `git fetch` first. See AI_TOOLING_GOTCHAS.md Gotcha 4 + DEC-111 in DECISIONS.md.
+If the working copy is behind, `git pull` (or read `git show origin/<branch>:<file>`) BEFORE
+editing any brain file. See `AI_TOOLING_GOTCHAS.md` Gotcha 4 + `DECISIONS.md` DEC-111.
