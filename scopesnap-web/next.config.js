@@ -30,14 +30,21 @@ const nextConfig = {
         permanent: true,
       },
       {
-        source: "/",
-        destination: "/tech",
-        permanent: true,
-      },
-      {
         source: "/homeowner",
         destination: "/tech",
         permanent: true,
+      },
+    ];
+  },
+  async rewrites() {
+    // 2026-06-18: the site root "/" now RENDERS the /tech landing (tech-primary +
+    // owner door) directly via internal rewrite — URL stays "/", content = /tech,
+    // HTTP 200 (no 308). Supersedes the prior "/" -> "/tech" permanent redirect
+    // (snapai_redirect_308_decision). "/homeowner" still 308-redirects to /tech.
+    return [
+      {
+        source: "/",
+        destination: "/tech",
       },
     ];
   },

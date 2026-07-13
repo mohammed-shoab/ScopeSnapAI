@@ -1,34 +1,31 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * Legal-safe landing redirects (next.config.js `redirects()`).
+ * Legal-safe landing routing (next.config.js).
  *
- * The public root `/` and the legacy homeowner landing `/homeowner` both
- * redirect to the contractor landing `/tech`. This is part of the legal-copy
- * architecture: the "diagnosis"-style public surface is funneled to the
- * contractor-facing page so consumer-facing pages don't imply a homeowner can
- * self-diagnose. These tests pin that behaviour at the HTTP layer.
+ * As of 2026-07-14 (SUPERSEDES the prior "/" -> "/tech" 308 redirect decision,
+ * snapai_redirect_308_decision): the public root "/" now RENDERS the contractor
+ * /tech landing directly via an internal Next.js rewrite — URL stays "/", HTTP
+ * 200, no redirect. The rendered content is still the contractor-facing /tech
+ * page (tech-primary + owner "data-audit" door), so the legal intent is
+ * preserved: the consumer-visible root serves the contractor page, not a
+ * homeowner self-diagnosis surface. The legacy "/homeowner" landing STILL
+ * 3xx-redirects to /tech (unchanged).
  *
- * Uses Playwright's request context with `maxRedirects: 0` so we inspect the
- * raw redirect response (status + Location) rather than following it through a
- * full browser navigation. Status-agnostic: Next emits 308 for
- * `permanent: true`, but we accept any 3xx (301/302/307/308) so the contract is
- * "it redirects to /tech", not "it uses one specific redirect status".
+ * These tests pin that behaviour at the HTTP layer using Playwright's request
+ * context with maxRedirects: 0 to inspect the raw response.
  */
-test.describe("Legal landing redirects @legal", () => {
+test.describe("Legal landing routing @legal", () => {
   const REDIRECT_STATUSES = [301, 302, 307, 308];
 
-  test("GET / redirects to /tech", async ({ request, baseURL }) => {
+  test("GET / renders /tech (200, no redirect)", async ({ request }) => {
     const res = await request.get("/", { maxRedirects: 0 });
-
-    expect(REDIRECT_STATUSES).toContain(res.status());
-
-    // Location may be absolute or root-relative; resolve against baseURL and
-    // assert the path is exactly /tech.
-    const location = res.headers()["location"];
-    expect(location, "redirect Location header must be present").toBeTruthy();
-    const resolved = new URL(location, baseURL);
-    expect(resolved.pathname).toBe("/tech");
+    // Root now renders via rewrite -> expect 200, NOT a 3xx redirect.
+    expect(res.status()).toBe(200);
+    // Body is the /tech landing: assert a stable marker from its <head> <title>
+    // (server-rendered, so present in the raw HTML regardless of hydration).
+    const body = await res.text();
+    expect(body).toContain("turn a tough HVAC call into a clean quote");
   });
 
   test("GET /homeowner redirects to /tech", async ({ request, baseURL }) => {
@@ -42,10 +39,11 @@ test.describe("Legal landing redirects @legal", () => {
     expect(resolved.pathname).toBe("/tech");
   });
 
-  test("following the / redirect lands on /tech (200)", async ({ request }) => {
-    // Sanity check with redirects followed: the final resource resolves.
+  test("GET / resolves 200 at the root URL (rewrite keeps the URL at /)", async ({ request }) => {
+    // With the rewrite, following redirects still lands at "/" (a redirect would
+    // have moved the final URL to /tech). The resource must resolve OK.
     const res = await request.get("/");
     expect(res.ok()).toBeTruthy();
-    expect(new URL(res.url()).pathname).toBe("/tech");
+    expect(new URL(res.url()).pathname).toBe("/");
   });
 });
