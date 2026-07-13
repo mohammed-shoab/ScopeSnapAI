@@ -474,3 +474,9 @@ Implication: pk.snapai has been running against the **staging** backend + stagin
 ## QA RUN — 2026-06-09 (snapai-qa, all 4 surfaces)
 
 **Surfaces:** US
+
+---
+
+## 2026-07-14 — Public landing (/tech) rewrite + root routing change (DEC-133)
+
+The public `/tech` landing was rewritten (locked hero, trades voice, two false claims removed, owner data-audit door added). **Routing:** the site root `/` now RENDERS the `/tech` landing via a Next.js internal **rewrite** (HTTP 200, URL stays `/`) instead of the prior `/` -> `/tech` 308 redirect (supersedes snapai_redirect_308_decision). `/homeowner` still 308 -> `/tech`. Live on prod (main `551330a`), staging (`93da676`). Files: scopesnap-web/app/tech/page.tsx, app/layout.tsx, next.config.js, tests/e2e/legal-redirects.spec.ts. Open: scarcity number + book-a-call URL + Alfred final legal pass. See DECISIONS.md DEC-133.

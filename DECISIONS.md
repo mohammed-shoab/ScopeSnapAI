@@ -2604,3 +2604,22 @@ Shoab said "check it yourself" via Supabase MCP. Live prod query against `diagno
 **Posture note:** Tier A code shipped to prod in FREE BETA. The "Legal Gate 1/2 substantiation before Tier A ship" line in ACTIVE_TASKS is a pre-BILLING / commercial-launch gate, NOT a code-deploy blocker — every card carries the Alfred C1/C2/C3 disclaimers (verified live). LOW-confidence cards #25/#26 are live but their confidence upgrade still awaits the Houston field pilot (N>=30, >=85% match).
 
 **Cross-references:** DEC-070 (staging→main→prod overlay), DEC-111 / DEC-129 (verify against live DB, never migrations), DEC-130 (legal wordings v1 live), DEC-131 (scoped promote pattern), memory note `snapai-tierA-promoted-prod`.
+
+
+---
+
+## DEC-133 — Public /tech landing rewrite: locked hero, false claims removed, owner data-audit door, root renders /tech (rewrite supersedes 308)
+
+**Date:** 2026-07-14  **Status:** LIVE on prod (main `551330a`; staging `93da676`). Alfred final legal pass PENDING before declared public-ready.
+
+**What & why:**
+1. **Removed two FALSE + legally-exposed claims** that were live on prod ("Built with real field experience"; "Assessment logic validated against real residential split-system calls"). Founder is a data scientist with zero field experience ([[snapai_founder_not_a_tech]]); accuracy Q7.1 is UNMEASURED so no "validated". Replaced with research-backed language.
+2. **Rewrote /tech copy to the locked hero definition** ([[snapai_app_definition_locked]]) verbatim + trades voice: "assess" not "diagnose" (public surface = consumer rules, [[snapai_legal_surface_taxonomy]]), speed "in minutes" not "90 seconds", removed "AI-Powered"/"context-aware"/"beta program"/"founding access", no city ([[snapai_no_houston_public_copy]]), no "honest" self-claim ([[snapai_copy_honest_rule]]). Consolidated to ONE primary CTA "Start free ->"; removed the waitlist/early-access section. Scarcity = "first 10 techs" (PLACEHOLDER, Shoab-confirmed for now).
+3. **Root routing changed: "/" now RENDERS /tech via Next.js rewrite** (HTTP 200, URL stays "/"), superseding the prior "/" -> "/tech" 308 redirect (supersedes snapai_redirect_308_decision). "/homeowner" still 308 -> /tech. Legal intent preserved (consumer root serves the contractor page). The `tests/e2e/legal-redirects.spec.ts` @legal test was updated to pin the new behaviour — the routing change first turned Playwright CI red (spec asserted a 3xx), caught + fixed, now green.
+4. **Added SECONDARY owner "data-audit" door** ("Own a shop?" -> "Request your free audit ->" book-a-call, PLACEHOLDER url) — the Hormozi lead-magnet offer ([[snapai_offer_anchor_data_audit]]). NO ticket/data upload built (no intake until a signed privacy agreement).
+
+**Files (staging -> main, file-scoped):** scopesnap-web/app/tech/page.tsx, app/layout.tsx (title + meta description de-banned), next.config.js (rewrite added; withSentryConfig + Clerk-middleware CSP preserved), tests/e2e/legal-redirects.spec.ts.
+
+**QA:** staging + prod both verified live in Chrome — banned-string grep ZERO, all approved copy present, root rewrite + owner door render, visual UX clean. Playwright E2E green on staging `93da676` (34 specs). Vercel prod build green (tsc gate). Frontend-only; no backend/DB/auth change.
+
+**Open:** (a) confirm true scarcity number (10-techs placeholder); (b) supply real book-a-call URL (cal.com/REPLACE-ME placeholder); (c) **Alfred final legal pass** on live copy before declared public-ready; (d) privacy agreement required before ANY owner-audit data intake.

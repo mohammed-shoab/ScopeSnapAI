@@ -236,3 +236,15 @@ NOTE: the older backlog task "Enable GitHub Dependabot" is now DONE — Dependab
 ## Last QA Run — /snapai-qa on PRODUCTION (2026-06-17 PM)
 - **Target: PROD** (snapai.mainnov.tech). Run after Brand Decoder v1.2 promote (main `f70b6276`).
 - **Phase 2 backend — PASS:** `/health` ok (db connected, environme
+
+---
+
+## 2026-07-14 — Public /tech landing rewrite + owner data-audit door (DONE, LIVE on prod)
+
+**Done (DEC-133):** rewrote the public `/tech` landing to the locked hero definition + trades voice; **removed the two false/legally-exposed claims** ("real field experience" / "validated against real residential split-system calls"); consolidated to one CTA "Start free ->"; added the SECONDARY owner "Own a shop?" -> "Request your free audit ->" book-a-call door; **changed `/` to RENDER `/tech` via rewrite** (200, supersedes the 308). Updated `legal-redirects.spec.ts` (Playwright caught the routing change, fixed, CI green). Staging `93da676` -> prod (main) `551330a`. QA PASS both envs (banned-string grep zero, root rewrite + owner door verified in Chrome).
+
+**Open items:**
+- [ ] Shoab: confirm the TRUE scarcity number ("first 10 techs" is a placeholder used everywhere).
+- [ ] Shoab: supply the real book-a-call URL (owner CTA points at `cal.com/REPLACE-ME/snapai-audit` placeholder).
+- [ ] **Alfred: final legal pass on the live copy before it is declared public-ready.**
+- [ ] Privacy agreement (privacy specialist) required BEFORE any owner-audit ticket/data intake — none is built yet.
