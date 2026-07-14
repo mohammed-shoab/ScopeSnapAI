@@ -14,9 +14,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePostHog } from "posthog-js/react";
 
-// TODO(Shoab): replace with the real book-a-call scheduling link (Cal.com / Calendly).
-// PLACEHOLDER for now — the owner "Request your free audit" secondary CTA points here.
-const OWNER_AUDIT_BOOKING_URL = "https://cal.com/REPLACE-ME/snapai-audit";
+// Owner "data-audit" funnel → the external QUALIFYING FORM (Typeform / Tally / Calendly routing
+// form), NOT the app and NOT a raw calendar. PLACEHOLDER — Shoab supplies the real form URL, then
+// swap here. Consent is a checkbox ON THE FORM (snapai_data_use_legal_framework); no data intake on
+// this page. See snapai_owner_audit_funnel.
+const OWNER_AUDIT_FORM_URL = "REPLACE_WITH_FORM_URL";
 
 export default function TechLandingPage() {
   const posthog = usePostHog();
@@ -118,6 +120,16 @@ export default function TechLandingPage() {
           <p className="text-sm text-text-tertiary">Free for the first 10 techs. No credit card, no commitment.</p>
         </div>
 
+        <p className="mt-5 text-sm text-text-tertiary">
+          <a
+            href={OWNER_AUDIT_FORM_URL}
+            className="underline decoration-dotted underline-offset-4 hover:text-text-secondary transition-colors"
+            onClick={() => posthog?.capture("owner_selfid_link_clicked", { location: "hero" })}
+          >
+            Own a shop? Get a free audit of your own numbers →
+          </a>
+        </p>
+
         <p className="text-sm text-text-tertiary max-w-2xl mx-auto mt-6 leading-relaxed">
           SnapAI is a decision-support tool for licensed HVAC professionals. It organizes symptoms and surfaces likely faults to assist the technician&apos;s own judgment; it does not perform diagnosis, and all findings must be verified on site by a qualified tech.
         </p>
@@ -189,22 +201,23 @@ export default function TechLandingPage() {
         </div>
       </section>
 
-      {/* ── Owner Door (secondary — free data-audit offer) ─────────────────── */}
-      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-16">
-        <div className="border border-surface-border rounded-ss p-8 bg-surface-bg">
-          <h2 className="text-xl font-bold text-text-primary mb-3">Own a shop?</h2>
-          <p className="text-sm text-text-secondary leading-relaxed mb-6">
-            I&apos;m the data scientist who built SnapAI. Send me your last year of tickets and I&apos;ll
-            show you — free — your real callback, repeat-visit, and lost-quote numbers on the tough
-            calls, based on what your tickets show. I only take a few shops a month because I run
-            every analysis myself.
+      {/* ── Owner Data-Audit Funnel (SECONDARY — visually distinct band) ───── */}
+      <section className="bg-brand-green-light border-y border-surface-border py-16">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
+          <h2 className="text-2xl sm:text-3xl font-bold text-text-primary mb-4">
+            Own a shop? See your real numbers — free.
+          </h2>
+          <p className="text-base text-text-secondary leading-relaxed mb-8 max-w-2xl mx-auto">
+            I&apos;m Shoab — the data scientist who built SnapAI. Send me your last year of service
+            tickets and I&apos;ll show you, free, where your tough calls are leaking money: your real
+            callback rate, your repeat visits, and the quotes that walked out the door — based on what
+            your tickets show. You keep the report either way. I only take a few shops a month, because
+            I run every analysis myself.
           </p>
           <a
-            href={OWNER_AUDIT_BOOKING_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => posthog?.capture("owner_audit_cta_clicked", { location: "owner_door" })}
-            className="inline-flex items-center justify-center px-5 py-2.5 rounded-ss border border-brand-green text-brand-green font-semibold text-sm hover:bg-brand-green-light transition-colors"
+            href={OWNER_AUDIT_FORM_URL}
+            onClick={() => posthog?.capture("owner_audit_cta_clicked", { location: "owner_section" })}
+            className="inline-flex items-center justify-center px-6 py-3 rounded-ss border border-brand-green text-brand-green font-semibold text-sm bg-white hover:bg-brand-green hover:text-white transition-colors"
           >
             Request your free audit →
           </a>
