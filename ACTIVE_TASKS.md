@@ -248,3 +248,16 @@ NOTE: the older backlog task "Enable GitHub Dependabot" is now DONE — Dependab
 - [ ] Shoab: supply the real book-a-call URL (owner CTA points at `cal.com/REPLACE-ME/snapai-audit` placeholder).
 - [ ] **Alfred: final legal pass on the live copy before it is declared public-ready.**
 - [ ] Privacy agreement (privacy specialist) required BEFORE any owner-audit ticket/data intake — none is built yet.
+
+
+---
+
+## 2026-07-14 — Owner data-audit funnel on /tech (CODE DONE + live prod; FUNNEL not live)
+
+Code shipped (DEC-134): self-ID link under the hero + visually-distinct "Own a shop?" section -> external qualifying FORM_URL (placeholder). staging `290dfd4` -> prod `156e71f`. QA PASS both envs (secondary to tech CTA, no data intake on page, no banned strings, Playwright green).
+
+**GO-LIVE BLOCKERS (Shoab):**
+- [ ] Privacy attorney finalizes the **Data-Use Terms** doc (consent-checkbox link).
+- [ ] Configure the **qualifying form** (Typeform/Tally/Calendly) with consent checkbox (unticked, logged) + qualify logic (ServiceTitan/Housecall Pro/Jobber/Service Fusion = FIT -> calendar; QuickBooks/Paper/Other = capture email + soft follow-up).
+- [ ] Configure **scheduler** (limited slots = scarcity) + **booking-confirmation email** (invites early CSV send; not gated) + **per-shop private folder**.
+- [ ] Supply real **FORM_URL** -> swap `REPLACE_WITH_FORM_URL` in tech/page.tsx.

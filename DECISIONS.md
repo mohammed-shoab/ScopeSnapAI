@@ -2623,3 +2623,24 @@ Shoab said "check it yourself" via Supabase MCP. Live prod query against `diagno
 **QA:** staging + prod both verified live in Chrome — banned-string grep ZERO, all approved copy present, root rewrite + owner door render, visual UX clean. Playwright E2E green on staging `93da676` (34 specs). Vercel prod build green (tsc gate). Frontend-only; no backend/DB/auth change.
 
 **Open:** (a) confirm true scarcity number (10-techs placeholder); (b) supply real book-a-call URL (cal.com/REPLACE-ME placeholder); (c) **Alfred final legal pass** on live copy before declared public-ready; (d) privacy agreement required before ANY owner-audit data intake.
+
+
+---
+
+## DEC-134 — Owner data-audit FUNNEL added to /tech landing (self-ID link + qualifying-form section)
+
+**Date:** 2026-07-14  **Status:** CODE LIVE on prod (main `156e71f`; staging `290dfd4`). The FUNNEL is NOT live until the go-live blockers below are cleared.
+
+Adds the SECONDARY shop-owner funnel to the public `/tech` landing (tech CTA stays primary):
+- Slim **self-ID link under the hero**: "Own a shop? Get a free audit of your own numbers ->".
+- **Visually-distinct light-green band section**: "Own a shop? See your real numbers — free." + Shoab-voice body ("...You keep the report either way. I only take a few shops a month, because I run every analysis myself.") + "Request your free audit ->".
+- Both owner CTAs -> an external **QUALIFYING FORM** (Typeform/Tally/Calendly routing form), NOT the app and NOT a raw calendar. `FORM_URL = "REPLACE_WITH_FORM_URL"` placeholder until Shoab supplies the real form URL. Replaces the earlier book-a-call placeholder (DEC-133).
+- **NO ticket/data intake on the page.** Consent is a clickwrap checkbox ON THE FORM (unticked-by-default, logged), per [[snapai_data_use_legal_framework]]. Booking-confirmation email invites early data-send; the calendar is NOT gated behind a solo data export (finalized funnel decision, [[snapai_owner_audit_funnel]]).
+
+Data-use law: identifiable per-shop data = serve only that shop; cross-shop = de-identified/aggregate only; delete raw identifiable CSVs after the report.
+
+**GO-LIVE BLOCKERS (funnel not live until ALL done — Shoab-owned):**
+1. Privacy attorney finalizes the consumer-facing **Data-Use Terms** (the consent-checkbox link); the form's reassurance line must match it word-for-word.
+2. Configure the **qualifying form** + consent checkbox (logged) + **scheduler** (limited slots) + **booking-confirmation email** + **per-shop private folder**.
+3. Supply the real **FORM_URL** + swap it into `scopesnap-web/app/tech/page.tsx` (replace `REPLACE_WITH_FORM_URL`).
+4. Set the true **slot cap** (the "a few shops a month" scarcity).
