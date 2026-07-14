@@ -1,5 +1,8 @@
 # SnapAI — Project Brain
 
+> **⚑ CANONICAL BRAIN — READ FIRST.** This file plus `DECISIONS.md`, `ACTIVE_TASKS.md`, `TECH_STACK.md`, `MARKET_GUIDE.md`, `WORKFLOW.md`, `BUILD_LOG.md`, `STATUS.md` at the **repo root** are the ONE canonical brain. There are NO other copies — any brain file found under a subfolder (`ScopeSnapAI/`, `ProjectBrain/`, `_archive/`, …) is a STALE shadow: ignore it. Full directory + how to spot a stale shadow: `BRAIN_CANONICAL_PATH.md`. **ALWAYS `git fetch origin` before trusting brain/code state** — the Drive working copy can lag prod. Staging-first, never edit `main` directly (DEC-070).
+
+
 **Current state (2026-07-10):** SnapAI is a Next.js/Vercel + FastAPI/Railway HVAC diagnostic + estimate web app, live in prod at snapai.mainnov.tech (US) and pk.snapai.mainnov.tech (PK, dormant per DEC-123). Backend Alembic head 047 (verified live 2026-07-10 per DEC-129). Latest DEC-132 (Tier A diagnostic families promoted to prod, GATE D, 2026-07-08). Stack on Turbopack (DEC-113), Next 16 / React 19 / Clerk v7, Sentry v10, PostHog. Beta with first 10 Houston contractor testers. Historical build narrative → `PROJECT_BRAIN_HISTORY.md`.
 
 ## CRITICAL RULES (read before every task)
@@ -474,3 +477,9 @@ Implication: pk.snapai has been running against the **staging** backend + stagin
 ## QA RUN — 2026-06-09 (snapai-qa, all 4 surfaces)
 
 **Surfaces:** US
+
+---
+
+## 2026-07-14 — Public landing (/tech) rewrite + root routing change (DEC-133)
+
+The public `/tech` landing was rewritten (locked hero, trades voice, two false claims removed, owner data-audit door added). **Routing:** the site root `/` now RENDERS the `/tech` landing via a Next.js internal **rewrite** (HTTP 200, URL stays `/`) instead of the prior `/` -> `/tech` 308 redirect (supersedes snapai_redirect_308_decision). `/homeowner` still 308 -> `/tech`. Live on prod (main `551330a`), staging (`93da676`). Files: scopesnap-web/app/tech/page.tsx, app/layout.tsx, next.config.js, tests/e2e/legal-redirects.spec.ts. Open: scarcity number + book-a-call URL + Alfred final legal pass. See DECISIONS.md DEC-133.
