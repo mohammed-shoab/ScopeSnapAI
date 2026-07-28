@@ -1,0 +1,3 @@
+# Normalize Markdown line endings to LF so brain-doc diffs reflect real content
+# changes, not CRLF-vs-LF noise (audit finding #7 root cause).
+*.md text eol=lf
