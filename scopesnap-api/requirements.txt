@@ -1,6 +1,6 @@
-fastapi==0.140.0
-uvicorn[standard]==0.51.0
-boto3==1.43.56
+fastapi==0.141.1
+uvicorn[standard]==0.52.0
+boto3==1.43.60
 sqlalchemy[asyncio]==2.0.51
 asyncpg==0.31.0
 alembic==1.18.5
@@ -11,7 +11,7 @@ httpx==0.28.1
 pydantic-settings==2.14.2
 google-generativeai==0.8.6
 stripe==10.12.0
-resend==2.34.0
+resend==2.35.0
 python-jose[cryptography]==3.5.0
 psycopg2-binary==2.9.12
 python-dotenv==1.2.2
