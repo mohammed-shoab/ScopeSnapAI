@@ -1,9 +1,9 @@
 fastapi==0.141.1
-uvicorn[standard]==0.52.0
-boto3==1.43.60
+uvicorn[standard]==0.52.1
+boto3==1.43.66
 sqlalchemy[asyncio]==2.0.51
 asyncpg==0.31.0
-alembic==1.18.5
+alembic==1.19.0
 python-multipart==0.0.32
 pillow==12.3.0
 weasyprint==68.1
