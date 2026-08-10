@@ -10,17 +10,17 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "next": "16.2.12",
+    "next": "16.3.0",
     "react": "^19",
     "react-dom": "^19",
-    "@clerk/nextjs": "^7.6.3",
+    "@clerk/nextjs": "^7.7.0",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.2",
     "lucide-react": "^0.577.0",
-    "posthog-js": "^1.409.0",
+    "posthog-js": "^1.413.3",
     "@sentry/nextjs": "^10.69.0",
     "tesseract.js": "^5.1.1",
-    "@supabase/supabase-js": "^2.111.0",
+    "@supabase/supabase-js": "^2.112.2",
     "@react-google-maps/api": "^2.19.3"
   },
   "devDependencies": {
@@ -29,15 +29,15 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.12",
+    "eslint-config-next": "16.3.0",
     "tailwindcss": "^3.4.1",
     "autoprefixer": "^10.5.4",
     "postcss": "^8",
-    "caniuse-lite": "1.0.30001806",
-    "@types/google.maps": "^3.65.3"
+    "caniuse-lite": "1.0.30001807",
+    "@types/google.maps": "^3.65.4"
   },
   "overrides": {
-    "caniuse-lite": "1.0.30001806"
+    "caniuse-lite": "1.0.30001807"
   },
   "engines": {
     "node": "22"
