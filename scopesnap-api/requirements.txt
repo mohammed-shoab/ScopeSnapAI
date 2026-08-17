@@ -1,17 +1,17 @@
 fastapi==0.141.1
-uvicorn[standard]==0.52.1
-boto3==1.43.66
-sqlalchemy[asyncio]==2.0.51
+uvicorn[standard]==0.52.3
+boto3==1.43.71
+sqlalchemy[asyncio]==2.0.52
 asyncpg==0.31.0
-alembic==1.19.0
+alembic==1.19.1
 python-multipart==0.0.32
 pillow==12.3.0
 weasyprint==68.1
 httpx==0.28.1
-pydantic-settings==2.14.2
+pydantic-settings==2.15.0
 google-generativeai==0.8.6
 stripe==10.12.0
-resend==2.35.0
+resend==2.36.0
 python-jose[cryptography]==3.5.0
 psycopg2-binary==2.9.12
 python-dotenv==1.2.2
@@ -23,7 +23,7 @@ onnxruntime==1.28.0       # YOLO inference via ONNX — 50MB, no PyTorch needed
 xgboost>=2.1.4            # Sensor fault detection model (90.09% accuracy)
 joblib>=1.5.3             # Loading .pkl model files
 numpy>=1.26.4             # Feature engineering for sensor model + ONNX preprocessing
-sentry-sdk[fastapi]==2.66.1
+sentry-sdk[fastapi]==2.68.0
 slowapi==0.1.10            # Rate limiting for Gemini/AI endpoints
 openpyxl>=3.1.5              # WS-A: read SnapAI_HVAC_Master_Price_List_2026.xlsx in load_repo.py
 aiosqlite==0.22.1            # async SQLite driver for onboarding-gate tests (test-only in-memory DB)
