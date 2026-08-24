@@ -1,6 +1,6 @@
 fastapi==0.141.1
-uvicorn[standard]==0.52.3
-boto3==1.43.71
+uvicorn[standard]==0.52.4
+boto3==1.43.76
 sqlalchemy[asyncio]==2.0.52
 asyncpg==0.31.0
 alembic==1.19.1
@@ -11,15 +11,15 @@ httpx==0.28.1
 pydantic-settings==2.15.0
 google-generativeai==0.8.6
 stripe==10.12.0
-resend==2.36.0
+resend==2.38.0
 python-jose[cryptography]==3.5.0
 psycopg2-binary==2.9.12
-python-dotenv==1.2.2
+python-dotenv==1.2.3
 svix==1.99.1
 
 # AI Cascade dependencies
 # ultralytics/PyTorch (~2GB) excluded — ONNX Runtime used for inference instead
-onnxruntime==1.28.0       # YOLO inference via ONNX — 50MB, no PyTorch needed
+onnxruntime==1.29.0       # YOLO inference via ONNX — 50MB, no PyTorch needed
 xgboost>=2.1.4            # Sensor fault detection model (90.09% accuracy)
 joblib>=1.5.3             # Loading .pkl model files
 numpy>=1.26.4             # Feature engineering for sensor model + ONNX preprocessing
