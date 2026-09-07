@@ -21,7 +21,7 @@ svix==1.99.1
 # ultralytics/PyTorch (~2GB) excluded — ONNX Runtime used for inference instead
 onnxruntime==1.29.0       # YOLO inference via ONNX — 50MB, no PyTorch needed
 xgboost>=2.1.4            # Sensor fault detection model (90.09% accuracy)
-joblib>=1.5.3             # Loading .pkl model files
+joblib>=1.6.0             # Loading .pkl model files
 numpy>=1.26.4             # Feature engineering for sensor model + ONNX preprocessing
 sentry-sdk[fastapi]==2.68.1
 slowapi==0.1.10            # Rate limiting for Gemini/AI endpoints
