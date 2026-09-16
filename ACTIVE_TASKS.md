@@ -1,6 +1,6 @@
 # SnapAI — Active Tasks
 
-**Last updated:** 2026-09-16 (snapai-full-audit mode=full on staging; 8 findings, F6 PKR-in-USD and F8 ambient-floor are the actionable ones; fast-uri 3.1.8 merged via PR #64)
+**Last updated:** 2026-09-16 (audit fixes: F6/F8 via PR #66, F2/F7 via PR #67, 180 tests green; Phase 4 checkpoint 2 FAILS - prod missing DEC-135 migration 048)
 **Historical sessions:** see `ACTIVE_TASKS_HISTORY.md` (60-row session-log index at top)
 
 ---
@@ -19,6 +19,81 @@
 ---
 
 ## Recent sessions (2026-06-18 onward — Bryan's exception: any session with any OPEN item stays)
+
+## Session 2026-09-16 (later) - audit findings FIXED on staging
+
+Prod/main untouched throughout. Staging HEAD f1ad5cd.
+
+### Shipped
+
+| PR | Finding | Fix | Staging |
+|----|---------|-----|---------|
+| #66 | **F6** PK market rendered estimates in USD | dropped the hardcoded `fmt()`; all 4 call sites now use the existing market-aware `formatCurrency()` from `lib/market.ts`. 0 hardcoded `currency:"USD"` left. | d2bf691 |
+| #66 | **F8** ambient below lowest `operating_targets` row fell back to a HOT band | when the floor lookup misses, select the COLDEST configured band. Zero-row pairs (US R-32, static by design) keep the fallback dict. | d2bf691 |
+| #67 | **F2** SSRF guard bypassable via HTTP redirect | `_NoRedirectHandler` + `_safe_open()`; both fetches refuse redirects. 0 bare `urlopen` left. | f1ad5cd |
+| #67 | **F7** public diagnosis route trusted the spoofable X-Market header | NO migration needed: `diagnostic_sessions.company_id -> companies.market` gives a trusted source. Route now uses `tables_for_market(company_market)`; `Depends(get_tables)` REMOVED from the signature. See DEC-136. | f1ad5cd |
+
+25 regression tests added across the two PRs; **pytest 180 pass**. F8's two
+behavioural tests were red-green verified (fail on unpatched code). F2's file
+fails at COLLECTION on unpatched code (ImportError on the new `_safe_open`), so
+its real proof is the live-loopback test asserting a 302 is NOT followed.
+
+### Audit gap closed
+
+The authenticated `audit/` Playwright harness **PASSED** - first time. But it
+lands on `/onboarding`, not `/dashboard` as the skill doc expects: the Clerk test
+user is un-onboarded, so **new assessment / nameplate OCR / diagnostic walkthrough
+/ estimate builder are STILL unexercised**. Login is proven; the product is not.
+Worth onboarding the audit user so the harness reaches the real flows.
+
+### NEW - Phase 4 promote gate: CHECKPOINT 2 FAILS
+
+**Prod is missing the DEC-135 RLS migration.**
+
+- staging alembic_version = **048**, prod = **047**
+- `048_rls_threshold_tables_and_auto_enable_trigger.py` exists on staging
+- commit `c3eb21c` (DEC-135) is **NOT an ancestor of origin/main**
+
+Any staging->main promote must run migration 048 against prod. Until then prod
+lacks the Tier A threshold-table RLS hardening.
+
+**Documentation gap:** DEC-135 is cited by commit `c3eb21c`, by migration 048 and
+by the `fix/rls-guard-dec135` branch, but **no DEC-135 entry exists in
+DECISIONS.md** (highest present was DEC-134). Someone should write it up.
+
+### F3 re-diagnosed - NOT a code defect
+
+k6 hit `/api/health`, which touches no tables, so the 200-VU p95 failure is
+Railway Hobby-plan CPU, not queries. Upgrading the plan is a spend decision, not
+a fix. BUT the Supabase advisors found real scale problems that WILL bite under
+authenticated load:
+
+- **9 RLS policies re-evaluate `auth.<fn>()` / `current_setting()` per row**
+  (`assessments`, `estimates`, `users`, `properties`, `pricing_rules`,
+  `diagnostic_sessions`, `job_confirmations`, `photo_labels`, `reading_inputs`).
+  Fix is wrapping the call as `(select auth.<fn>())`.
+- 17 unindexed foreign keys; 48 unused indexes.
+
+### Still open
+
+| # | Finding | Status |
+|---|---------|--------|
+| F1 | Live Gemini key in PUBLIC git history | OPEN - Shoab accepted the risk 2026-09-16; key NOT rotated. Cannot be actioned by an agent (needs GCP console). |
+| F3 | 200-VU p95 ceiling | OPEN - capacity decision + the RLS initplan work above |
+| F4 | CI gitleaks is incremental, never rescans history | OPEN - needs a scheduled full-history job |
+| F5 | Local `scopesnapai-web` container crash-looping | OPEN - local dev only |
+
+### Environment notes worth keeping
+
+- `next build` CANNOT be run on Shoab's machine: Turbopack fails to resolve
+  `tailwindcss` under the machine-wide `NODE_ENV=production`. Verified it fails
+  identically on UNPATCHED staging, so it is environmental, not a regression.
+  CI is the only frontend build gate. `npm ci --include=dev` is required locally.
+- `FaultResolutionScreen.tsx` and `diagnostic.py` are **CRLF**, unlike the
+  brain files which are LF. Patch scripts must detect per-file endings.
+- GitHub's "Compare & pull request" banner defaults the base to **main**. On this
+  repo main IS prod. Always open PRs from an explicit `compare/staging...<branch>`
+  URL and confirm the base before clicking create.
 
 ## Session 2026-09-16 - snapai-full-audit (mode=full, STAGING ONLY)
 
@@ -143,25 +218,6 @@ Pointer to session log: `session_logs/SESSION_LOG_2026-07-08_bryan_compendium_ex
 
 ---
 
-## Session 2026-06-29 -- Dependabot weekly triage + PROMOTED TO PROD
-
-**DONE this session:**
-- Weekly Dependabot triage (scheduled task `snapai-dependabot-triage`): 2 open PRs, both staging-targeted grouped minor/patch with green CI + clean mergeable_state -> MERGED both to `staging`.
-  - #21 pip-minor-patch (`scopesnap-api/requirements.txt`): fastapi 0.138.0->0.138.1, boto3 1.43.34->1.43.36, alembic 1.18.4->1.18.5, weasyprint 68.0->68.1, svix 1.96.0->1.96.1.
-  - #22 npm-minor-patch (`scopesnap-web`): @clerk/nextjs 7.5.7->7.5.9, posthog-js 1.391.2->1.395.0, @sentry/nextjs 10.59.0->10.62.0, autoprefixer 10.0.1->10.5.2.
-- Staging QA PASS: Playwright E2E + backend pytest + gitleaks + NUL-byte all green (merge commits f1e858d / 59d15b2); /health ok, /api/version 1.2, /api/models/all US+PK 200, both staging fronts 200.
-- PROMOTED TO PROD (DEC-070 file-scoped overlay): `main` 8d618fd -> **d9ae18e**, 3 files (requirements.txt, package.json, package-lock.json). Deps-only, no migration, prod-runtime-neutral.
-- Prod QA PASS: main CI green on d9ae18e (Playwright E2E + pytest + gitleaks + NUL-byte); Railway prod /health ok (environment production, clean boot on bumped deps); /api/version 1.2; /api/models/all US+PK 200; both prod fronts (snapai.mainnov.tech + pk.snapai.mainnov.tech) 200.
-
-**OPEN / follow-ups (DATED):**
-
-| Priority | Item | Owner | Notes |
-|----------|------|-------|-------|
-| LOW | **Dependabot security advisory #34 (moderate)** | Shoab | GitHub flagged 1 moderate advisory on the default branch during the prod push. Pre-existing transitive, NOT from this week's bumps. Review: github.com/mohammed-shoab/ScopeSnapAI/security/dependabot/34 |
-| LOW (watch) | Turbopack adoption (DEC-113) | snapai-dev | Still PLANNED; unaffected by this dep bump. |
-
----
-
 ## Playwright e2e CI (`playwright-e2e.yml`) — RED→GREEN + PROMOTED TO PROD — 2026-06-22 (DEC-125)
 
 | Item | Result |
@@ -196,89 +252,6 @@ Pointer to session log: `session_logs/SESSION_LOG_2026-07-08_bryan_compendium_ex
 **Git state:**
 - `staging` branch HEAD: `f58c77e`
 - `main` branch HEAD: `932b20e` — PROMOTED TO PRODUCTION 2026-05-27 ✅
-
----
-
-## Session 2026-06-20 — Full release PROMOTED TO PROD + Dependabot triage (DEC-112)
-
-**DONE this session:**
-- Promoted the full staging release to PROD (main commit `5b092eb653`): Next 16/React 19/Clerk v7 migration + accumulated Brand-Decoder/audit work + migrations 037-041 (041 new to prod) + Dependabot backend bumps. File-scoped overlay incl new package-lock.json + middleware.ts->proxy.ts delete.
-- Verified prod: e2e CI #32 green; Vercel prod build green; Railway backend green (alembic 041 applied, clean boot); /health ok; /api/version 1.2; Sentry v10 delivering on Next 16 prod (ingest 200); dashboard clean (resolved deliberate test markers).
-- Dependabot: closed stale main-targeted #2-#6 (superseded); merged staging #7 (CI actions), #9 (pip group 18 bumps), #11 (joblib); #8 already closed; #10/#12/#13 deferred to Dependabot rebase. Backend pytest 122 passed against bumped deps.
-- Vercel staging DSN confirmed set; Sentry watch clean.
-
-**OPEN / follow-ups (DATED):**
-
-| Priority | Item | Owner | Notes |
-|----------|------|-------|-------|
-| MED | **Turbopack adoption (DEC-113)** | snapai-dev | PLANNED, not started. Earliest start **2026-06-27** (after ~1wk Next16 prod bake); target **2026-06-27 -> 2026-07-11**. Prereqs: Sentry -> instrumentation-client.ts + drop disableLogger; Tailwind v3-under-Turbopack spike or v4; remove next.config webpack() block; flip to `next build`. Staging-first. |
-| LOW (watch) | Next 16 prod bake | snapai-dev | Watch Sentry ~1 week post-2026-06-20 for any React 19/Clerk v7 prod regressions before starting Turbopack. |
-| LOW | Dependabot rebase #10/#12/#13 | Dependabot | numpy/openpyxl/xgboost floor bumps; auto-rebase after #9/#11. |
-
----
-
-## Session 2026-06-18 (PM2) — Next 16 / React 19 / Clerk v7 migration (DEC-112)
-
-**DONE this session:**
-- Migrated scopesnap-web: Next 14.2.15->16.2.9, React ^18->^19, @clerk/nextjs ^5.7.2->^7.5.3, eslint ^8->^9, eslint-config-next 16.2.9 (sentry already ^10.58.0).
-- Next 16 async APIs (awaited params/headers); middleware.ts->proxy.ts + Clerk v7 `auth.protect()`; SignIn/SignUp prop renames; tsconfig baseUrl; build `next build --webpack`; globals.css `@keyframes dashRot` fix.
-- Fixed React-19/Next-16 bugs: chooser-gate "16+years old" missing space (SWC trims space after `{expr}`) -> explicit `{" "}`; `useSearchParams` SSR hydration mismatch -> mounted-guards in both test harnesses.
-- Fixed pre-existing staging failure: `ReportClient` now renders every tier's line items (removed `isSelected` gate) — bug-fixes-day1 e2e.
-- Verified: tsc 0 errors; Vercel prod build green; e2e 34 passed; staging CI run #29 green; backend `/api/version` 1.2; Sentry v10 delivering on Next 16 staging build.
-- Merged `feat/next16-react19-clerk7` -> staging (PR #14, `ba7e479`); staging deployed.
-- Dependabot: closed stale main-targeted #2-#6 (superseded); merged staging-targeted #7 (CI actions), #9 (pip group, 18 backend bumps), #11 (joblib). #8 already closed (Next 16 conflict). #10/#12/#13 (numpy/openpyxl/xgboost floor bumps) deferred to Dependabot rebase (requirements.txt conflict after #9/#11).
-
-**OPEN / follow-ups:**
-
-| Priority | Item | Owner | Notes |
-|----------|------|-------|-------|
-| HIGH | Promote Next 16 / React 19 / Clerk v7 to prod | Shoab | Gated — deferred. Staging verified green; prod still Next 14 until go. |
-| MED | Backend QA after pip-group merge (#9) | snapai-dev | 18 backend bumps incl fastapi 0.115->0.137, uvicorn 0.30->0.49 landed on staging — verify /health + pytest. |
-| MED | Adopt Turbopack | snapai-dev | Currently `--webpack`; revisit after reconciling webpack config + Tailwind v3 postcss. |
-| LOW | Dependabot rebase #10/#12/#13 | Dependabot | numpy/openpyxl/xgboost floor bumps conflicted post-#9/#11 merge; will auto-rebase. |
-
----
-
-## Session 2026-06-18 (PM) — Dependabot / dependency upgrades (DEC-110)
-
-**DONE this session:**
-- ✅ Triaged the 5 open Dependabot PRs live (labels were misleading — #2/#4 were a Sentry v8→v10 MAJOR, not minor).
-- ✅ Landed on staging (`550cd50`) → prod (`8541182`): `@sentry/nextjs ^8→^10.58.0`, `@opentelemetry/core 2.8.0`, `dompurify 3.4.11` (one regenerated lockfile). CI green (staging #15, prod #18).
-- ✅ §5 Sentry RE-PROVEN both envs after the major bump — ingest 200, SDK 10.58.0, events tagged staging + production (`SNAPAI-WEB-2`, resolved). Dashboard clean. Prod `/api/version` still 1.2.
-- ✅ `dependabot.yml` policy committed to staging (target staging, group minor+patch, ignore majors, security on) — already byte-identical on main via audit-session `6f4925a`.
-
-**OPEN / shelved:**
-
-| Priority | Item | Owner | Notes |
-|----------|------|-------|-------|
-| MEDIUM | **React 19 / Next 16 / Clerk v7 migration epic** (Dependabot #5 next 14→16, #3 @clerk/nextjs 5→7) | snapai-dev | Both fail npm install on peer conflicts — both need React 19 (we pin `react ^18`). Deliberate multi-day migration: also Turbopack-default vs our next.config webpack block, middleware→proxy, async cookies()/headers()/params, Clerk v6/7 compat. Sentry v10 (a prerequisite) already done. Prod stays on Next 14 until done. |
-| LOW | **Close the 5 stale main-targeted Dependabot PRs** | Shoab / Dependabot | #2/#4/#6 superseded by the landed bumps; #5/#3 shelved (ignored by new policy). Dependabot should auto-reconcile on next run (Mon 06:00 PKT) now that main targets staging. |
-| LOW | **npm audit: 7 advisories (1 crit/5 high/1 mod)** | snapai-dev | Pre-existing transitive, not introduced by this change. `audit fix --force` makes breaking changes — needs a deliberate pass. |
-| LOW (watch) | **Sentry post-deploy watch** | snapai-dev | Dashboard clean immediately post-deploy; keep an eye 15–30 min for any v10-related frontend errors. |
-
----
-
-## Session 2026-06-18 — Observability audit + auth fix (DEC-106–109)
-
-**DONE this session:**
-- ✅ **Backend Sentry capture fixed** — catch-all handler now calls `sentry_sdk.capture_exception` (DEC-107, `09a5a87`→prod `e4eaf1b`). Proven `SNAPAI-API-17`.
-- ✅ **Frontend Sentry wired + live** — `withSentryConfig` + CSP ingest allow + `NEXT_PUBLIC_SENTRY_DSN` on staging Vercel (DEC-108, `17ae165`→prod `390d54b`). Proven `SNAPAI-WEB-1`.
-- ✅ **Gmail + Sentry-dashboard error audit** — emails all map to resolved/historical; the dashboard (not the emails) surfaced 8 real unresolved issues. Lesson logged: audit the platform, not the alert emails.
-- ✅ **`SNAPAI-API-Z` auth bug fixed** (undefined `logger` + duplicate-provision race) — DEC-109, staging `37faefed` → prod `d432caad`. Live both envs, prod `/health` ok + `/api/version` 1.2. Had sat unresolved since the 2026-05-23 isolation audit (~4 weeks).
-- ✅ **Sentry dashboard cleaned** — all 8 then-unresolved issues Resolved (Resolve, not Archive, to keep regression detection). Dashboard now empty all projects/envs.
-- ✅ **Gemini billing verified live** — balance $9.97 healthy; 429 "credits depleted" errors were historical (topped up $10 Jun 7, expires Jul 1 2027); active key `SnapAI Backend Key 2026-06` (`...y2tg`).
-- ✅ **Brain files updated** — PROJECT_BRAIN banner, TECH_STACK (Sentry/Gemini/Dependabot corrections), DECISIONS (DEC-106–109), this entry.
-
-**OPEN — Shoab-owned:**
-
-| Priority | Item | Owner | Notes |
-|----------|------|-------|-------|
-| MEDIUM | **Enable Gemini auto-reload** (AI Studio → Billing → "Set up auto-reload") | Shoab | Auto-reload is OFF. When the $9.97 prepay balance depletes, OCR 429s again with no auto-refill. Payment-method change — Claude can't do it. |
-| LOW | **Fix or close Dependabot bump PRs** (`next` 14→16, `js-cookie`/`@clerk`) | Shoab / snapai-dev | Preview builds fail (breaking changes) → "Failed preview deployment" emails. Benign — never touch live prod/staging. PRs can't merge until breaking changes resolved. |
-| LOW (watch) | **Watch `SNAPAI-API-Z` stays quiet on Sentry** | snapai-dev | Auth fix can't be synthetically triggered (needs a real new-user Clerk login). Sentry silence on this issue is the proof-of-fix signal. |
-| LOW (optional) | **Make double-provision airtight** | snapai-dev | Fix made the webhook+fallback race non-fatal; ideally only one path should provision a signup. Cleanup, not urgent. |
-
-NOTE: the older backlog task "Enable GitHub Dependabot" is now DONE — Dependabot is active and opening PRs.
 
 ---
 

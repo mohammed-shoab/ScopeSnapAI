@@ -2644,3 +2644,42 @@ Data-use law: identifiable per-shop data = serve only that shop; cross-shop = de
 2. Configure the **qualifying form** + consent checkbox (logged) + **scheduler** (limited slots) + **booking-confirmation email** + **per-shop private folder**.
 3. Supply the real **FORM_URL** + swap it into `scopesnap-web/app/tech/page.tsx` (replace `REPLACE_WITH_FORM_URL`).
 4. Set the true **slot cap** (the "a few shops a month" scarcity).
+
+## DEC-136 - Public routes resolve market from the RECORD OWNER, never the X-Market header
+
+**Date:** 2026-09-16
+**Context:** snapai-full-audit finding F7.
+
+`GET /api/diagnostic/public/{share_token}` is unauthenticated and resolved its
+market via `Depends(get_tables)` - i.e. the `X-Market` request header, which any
+caller can forge. A forged header made the endpoint read fault cards from the
+wrong market's table (wrong-market card text, or a spurious 404). `reports.py`
+had already been hardened for exactly this on its own public route, using
+`estimate.market`; the diagnosis route had not.
+
+**Decision:** on any PUBLIC (unauthenticated) route, the market MUST be derived
+from the persisted record's owner, never from the request header.
+
+- `reports.py` -> `tables_for_market(estimate.market)` (already in place)
+- `diagnostic.py` -> `tables_for_market(companies.market)` via
+  `diagnostic_sessions.company_id -> companies.market` (added 2026-09-16, PR #67)
+
+No migration was required: `companies.market` already existed (DEC-043 era) and
+staging data confirmed the join is total - 47 sessions, 0 without `company_id`,
+0 orphan FKs; 4 companies, 0 null markets.
+
+The `Depends(get_tables)` parameter was REMOVED from the public diagnosis route
+signature rather than left unused, so nobody mistakes the header for a live input.
+
+**Header-based `get_tables` / `get_market` remain legitimate** on routes that
+serve only market-scoped REFERENCE data with no per-record owner - currently
+`/brands`. They are NOT acceptable on any route that resolves a specific record.
+
+**Cross-references:** DEC-049 (cross-market isolation), DEC-070 (staging-first),
+and the `get_company_tables` hardening for authenticated routes.
+
+**Note:** DEC-135 is referenced by commit `c3eb21c`, by migration
+`048_rls_threshold_tables_and_auto_enable_trigger.py` and by the
+`fix/rls-guard-dec135` branch, but has NO entry in this file. It should be
+written up. As of 2026-09-16 that migration is on staging only - prod is still
+at alembic 047.
