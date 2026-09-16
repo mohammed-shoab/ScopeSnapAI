@@ -28,7 +28,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import AuthContext, get_current_user
-from api.dependencies import get_tables, get_company_tables, MarketTables
+from api.dependencies import (
+    get_tables,
+    get_company_tables,
+    tables_for_market,
+    MarketTables,
+)
 from db.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -2332,26 +2337,39 @@ async def finalize_diagnosis(
 @router.get("/public/{share_token}")
 async def get_public_diagnosis(
     share_token: str = Path(...),
-    tables: MarketTables = Depends(get_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """
     D.9 -- Unauthenticated public share. Customer PII always null.
-    Market from X-Market header sent by frontend detectMarket().
+
+    F7 (audit 2026-09-16): market is resolved from the OWNING COMPANY
+    (diagnostic_sessions.company_id -> companies.market), never from the
+    X-Market header, which any caller can forge on this unauthenticated
+    route. Mirrors reports.py, which already trusts estimate.market on its
+    own public route. Previously a forged header made this endpoint read
+    fault cards from the wrong market's table.
     """
     sess_res = await db.execute(
         text(
-            "SELECT id, assessment_id, status, resolved_card_id,"
-            "       created_at, share_token, confidence_level, reasoning_chain, reading_receipt,"
-            "       customer_label, customer_address"
-            " FROM diagnostic_sessions"
-            " WHERE share_token = :token AND deleted_at IS NULL LIMIT 1"
+            "SELECT ds.id, ds.assessment_id, ds.status, ds.resolved_card_id,"
+            "       ds.created_at, ds.share_token, ds.confidence_level,"
+            "       ds.reasoning_chain, ds.reading_receipt,"
+            "       ds.customer_label, ds.customer_address,"
+            "       c.market AS company_market"
+            " FROM diagnostic_sessions ds"
+            " LEFT JOIN companies c ON c.id = ds.company_id"
+            " WHERE ds.share_token = :token AND ds.deleted_at IS NULL LIMIT 1"
         ),
         {"token": share_token},
     )
     session = sess_res.fetchone()
     if not session or session.status != "resolved" or not session.resolved_card_id:
         raise HTTPException(status_code=404, detail="Diagnosis not found.")
+
+    # F7: trust the owning company's market, not the X-Market header.
+    # Falls back to US when company_market is absent, matching
+    # tables_for_market's own default.
+    tables = tables_for_market(getattr(session, "company_market", None) or "US")
 
     fc_table = tables.fault_cards
     if tables.market == "US":
