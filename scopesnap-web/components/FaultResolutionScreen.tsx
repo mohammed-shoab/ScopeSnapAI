@@ -22,7 +22,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { detectMarket } from "@/lib/market";
+import { detectMarket, formatCurrency } from "@/lib/market";
 import { trackEvent } from "@/lib/tracking";
 import { apiFetch } from "@/lib/api";
 import DiagnosisFeedbackModal from "@/components/DiagnosisFeedbackModal";
@@ -128,9 +128,9 @@ const CONFIDENCE: Record<string, { bg: string; text: string; label: string }> = 
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmt(n: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
-}
+// F6: money must follow the active market. `formatCurrency` (lib/market.ts)
+// resolves symbol + locale from MARKET_CONFIG, so PK renders its own symbol
+// with en-PK grouping instead of the previous hardcoded en-US/USD.
 
 const TIER_LABEL: Record<string, "good" | "better" | "best"> = { A: "good", B: "better", C: "best" };
 
@@ -643,7 +643,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>
-                      {fmt(tier.total)}
+                      {formatCurrency(tier.total, market)}
                     </span>
                     <span style={{ fontSize: 16, color: "#94a3b8", transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>
                       &#8964;
@@ -659,7 +659,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
                         <li key={i} style={{ fontSize: 13, color: "#334155" }}>
                           {item.description}
                           {item.category === "parts" && (
-                            <span style={{ fontSize: 12, color: "#475569" }}> — {fmt(item.amount)}</span>
+                            <span style={{ fontSize: 12, color: "#475569" }}> — {formatCurrency(item.amount, market)}</span>
                           )}
                         </li>
                       ))}
@@ -702,7 +702,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
                 >
                   <span style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{tierName}</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontWeight: 700, fontSize: 14 }}>{fmt(tier.total)}</span>
+                    <span style={{ fontWeight: 700, fontSize: 14 }}>{formatCurrency(tier.total, market)}</span>
                     <span style={{ fontSize: 16, color: "#94a3b8", transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}>&#8964;</span>
                   </div>
                 </button>
@@ -713,7 +713,7 @@ export default function FaultResolutionScreen({ data, mode = "authenticated", un
                         <li key={i} style={{ fontSize: 13, color: "#334155" }}>
                           {item.description}
                           {item.category === "parts" && (
-                            <span style={{ fontSize: 12, color: "#475569" }}> — {fmt(item.amount)}</span>
+                            <span style={{ fontSize: 12, color: "#475569" }}> — {formatCurrency(item.amount, market)}</span>
                           )}
                         </li>
                       ))}
