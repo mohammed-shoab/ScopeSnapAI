@@ -634,6 +634,25 @@ async def _evaluate_pressure_for_market(
             {"mkt": market, "ref": ref, "amb": ambient_c},
         )
         targets = row.fetchone()
+        if targets is None:
+            # F8: ambient is BELOW the lowest configured row for this
+            # market+refrigerant (e.g. PK R-22 has rows only at 35/45 C, so a
+            # 30 C reading matched nothing). Previously this fell through to the
+            # hot-weather _FALLBACK_* dict, which biases toward a false "low"
+            # classification -> false refrigerant-leak diagnosis. Use the COLDEST
+            # configured band instead. If the table has no rows at all for this
+            # pair (e.g. US R-32, static by design per PROJECT_BRAIN L84), targets
+            # stays None and the fallback dict still applies - unchanged.
+            row = await db.execute(
+                text(
+                    "SELECT suction_min_psi, suction_max_psi, discharge_min_psi, discharge_max_psi "
+                    "FROM operating_targets "
+                    "WHERE market = :mkt AND refrigerant = :ref "
+                    "ORDER BY ambient_c ASC LIMIT 1"
+                ),
+                {"mkt": market, "ref": ref},
+            )
+            targets = row.fetchone()
     except Exception as e:
         logger.warning("[diagnostic] operating_targets lookup failed (market=%s): %s", market, e)
         targets = None
