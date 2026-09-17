@@ -1243,3 +1243,60 @@ deliberately kept in place.
 Pointer to session log: `session_logs/SESSION_LOG_2026-07-08_bryan_compendium_extraction.md` (parallel session created; success criterion #10 closed today via Path B ship).
 
 ---
+
+---
+
+## Archived 2026-09-17 - superseded audit sessions
+
+The 2026-09-16 audit sessions, superseded by the 2026-09-17 entries.
+PROJECT_BRAIN.md QA History retains the permanent one-line record of
+each run. Moved to stay under the 300-line pre-commit cap (RULE 2).
+
+## Session 2026-09-16 - snapai-full-audit (mode=full, STAGING ONLY)
+
+Prod/main untouched. Staging HEAD 556414c. Full report: `SnapAI_Full_Audit_2026-09-16.md`
+(in the Personal Claude workspace folder, not committed to the repo).
+
+Shipped this session:
+- PR #64 merged to staging: fast-uri 3.1.2 -> 3.1.8 (lockfile-only, 3-line diff, integrity hash
+  verified against npm registry). Clears Dependabot #78/#86/#87/#88/#89 and removes the only
+  package regression a future staging->main promote would have introduced.
+
+Open findings (none fixed in-loop):
+
+| # | Finding | Severity | Where |
+|---|---------|----------|-------|
+| F1 | Live Gemini API key in PUBLIC git history; Clerk sk_test too. No rotation evidence. **Shoab accepted the risk 2026-09-16 - key NOT rotated.** | HIGH | `session_logs/SESSION_LOG_2026-05-21_code_audit.md` L126 |
+| F2 | SSRF guard bypassable via HTTP redirect - `_is_safe_remote_url` validates the initial URL, then `urlopen` follows redirects without re-checking. DNS-rebinding window too. | MEDIUM | `scopesnap-api/services/pdf_generator.py` L441, L509 |
+| F3 | Throughput knee between 50 and 200 VUs on `/api/health` (cheapest endpoint). p95 4313ms @200, 8.76% failures @500. | MEDIUM | staging infra |
+| F4 | CI gitleaks is INCREMENTAL - never rescans history. Green for months while F1 sat there. | MEDIUM | `.github/workflows/gitleaks.yml` |
+| F5 | Local `scopesnapai-web` container crash-looping `Restarting (254)`. Local dev only. | LOW | local docker |
+| F6 | **PK market renders estimates in USD.** `fmt()` hardcodes en-US/USD; component resolves market on L140 but never passes it. 4 call sites render tier totals + line items. BUG-037 class recurrence. | HIGH (PK) | `scopesnap-web/components/FaultResolutionScreen.tsx` L131 |
+| F7 | Inconsistent market trust on public routes: `reports.py` correctly uses `tables_for_market(estimate.market)`; `diagnostic.py` public route still uses the spoofable X-Market header. Root cause: only `estimates` has a `market` column. | MEDIUM | `api/diagnostic.py` L2316 vs `api/reports.py` L234 |
+| F8 | Ambient below the lowest `operating_targets` row falls through to a HOT-band fallback. `ambient_c` is user-supplied with no ge/le constraint. Worst: PK R-22 has only 2 rows (35/45), so 30C falls back to the 45C band. Biases toward false `low` -> false refrigerant-leak diagnosis. | MEDIUM-HIGH | `api/diagnostic.py` L596-655, L50 |
+
+Verified PASS this session:
+- PSI assertions: R-410A 130 PSI -> `ok` (exclusive bounds, boundary value - needs a regression
+  test to lock it), R-22 high_min 88, R-32 high_min 140.
+- Urdu integrity: 653 Urdu runs in `lib/urdu-strings.ts`, 0 U+FFFD, real UTF-8.
+- backend pytest 155 pass / 0 fail.
+- ZAP active: SQLi, RCE, SSTI, XXE, cloud-metadata all PASS.
+
+Corrections made during the audit (recorded so they are not re-litigated):
+- "US R-32 has 0 operating_targets rows" is NOT a defect. PROJECT_BRAIN L84 specifies R-32 US/PK as
+  a static 110-145 band and the code fallback matches. Doc, code and DB agree.
+- 28 of 30 semgrep `avoid-sqlalchemy-text` ERRORs are FALSE POSITIVES. The f-strings interpolate
+  only table/column identifiers sourced from `MarketTables` (frozen dataclass, 16 hardcoded
+  literals); `get_tables()` uses strict equality so a hostile X-Market header cannot become a table
+  name. All user values use bound params. ZAP active found no SQLi, corroborating this.
+
+Doc staleness spotted: PROJECT_BRAIN L84 lists R-32 as US/PK static, but PK R-32 now has 5
+ambient-aware DB rows (100-165 PSI) that override it. Canonical table should mark R-32 PK dynamic.
+
+Skill-doc fix needed: `snapai-full-audit` P2 references `sentry.client.config.ts`, which does not
+exist. The client Sentry filter lives in `instrumentation-client.ts` (Next 16 / Turbopack).
+
+NOT run this session: `audit/` Playwright harness (authenticated flows), webapp-testing,
+accessibility-a11y-enhanced, GStack qa/review/benchmark, quality-playbook, Phase 4 promote gate
+(needs prod DB + Vercel/Railway env access), Phases 5-6. Cross-market isolation was verified by
+code inspection, not by a live cross-market 404 test.

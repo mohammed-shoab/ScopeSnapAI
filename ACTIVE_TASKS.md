@@ -1,6 +1,6 @@
 # SnapAI — Active Tasks
 
-**Last updated:** 2026-09-17 (audit close-out: F9 fixed via PR #70, real assessment->diagnosis walkthrough via PR #71, Phase 4 scored - CP2/CP3 FAIL; F6 PKR still unproven on screen)
+**Last updated:** 2026-09-17 (visual click-through: F11 prod-share-link + F13 receipt off-by-one FIXED; F12 confidence contradiction OPEN; suite 212 green)
 **Historical sessions:** see `ACTIVE_TASKS_HISTORY.md` (60-row session-log index at top)
 
 ---
@@ -19,6 +19,39 @@
 ---
 
 ## Recent sessions (2026-06-18 onward — Bryan's exception: any session with any OPEN item stays)
+
+## Session 2026-09-17 (visual) - 3 findings that only LOOKING could catch
+
+Staging HEAD 57300dc. Prod untouched.
+
+First visual pass of the audit: Playwright drove US staging and saved 9
+screenshots to `Personal Claude/audit-screens/`, which were then actually read.
+Everything else in this audit - 212 tests, ZAP active, semgrep, k6, gitleaks -
+had already passed. These three were invisible to all of it, because the code
+ran fine; it just told the technician the wrong thing.
+
+| # | Finding | Status |
+|---|---------|--------|
+| F11 | **Staging share links pointed at PRODUCTION.** The fault screen footer read `snapai.mainnov.tech/d/159529f437...` on a STAGING page. `diagnostic.py` hardcoded the prod hosts in two places with no env awareness; CP7 had already proved a staging token 404s on prod. Now derived from `settings.frontend_url` via `_public_base_url(market)` with PK host mapping. `FRONTEND_URL` already existed on every Railway service and was simply unused. | **FIXED** |
+| F13 | **Displayed band contradicted the classifier.** Receipt showed "Compared against 115-141 PSI -> WITHIN RANGE" but canonical is 115-140 normal / >=141 HIGH, and the classifier uses 140. Cause: `low_threshold` (115) is an INCLUSIVE bottom while `high_threshold` (141) is an EXCLUSIVE start-of-high - confirmed against staging `diagnostic_questions.reading_spec` (discharge is the same shape: 225/276). Band top now steps back one unit. | **FIXED** |
+| F12 | **Two contradictory "Confidence" values on one screen.** Header pill `data.fault.confidence` = "High Confidence"; receipt `reading_receipt.confidence` = "MEDIUM", four lines apart. Separate backend fields that may legitimately measure different things (diagnosis vs reading quality) - but both are labelled just "Confidence", so the screen argues with itself in front of a homeowner. | **OPEN - product decision: relabel or reconcile** |
+
+14 regression tests (`test_f11_f13_visual_findings.py`), red-green verified:
+10 fail against unpatched code. Full suite **212 passed**.
+
+**Rendered correctly** (verified by eye): dashboard, assessments list, Step Zero,
+complaint grid, diagnostic tree, fault resolution, Pricing Database. STAGING
+banner present, correct identity, no layout breakage. US pricing shows `$95/hr`,
+`$1,400`, `$250` - the F6 fix behaving correctly on the US side.
+
+**Also seen:** the dashboard shows "Recent Assessments" EMPTY and "Your first
+assessment is 3 taps away" even though the walkthrough had resolved diagnoses.
+Either assessments only surface once an estimate is finalised, or they are not
+being listed. Not yet investigated.
+
+**Lesson worth keeping:** a green suite means the code did not crash. It does not
+mean the screen is right. Every finding above was a correct-looking code path
+rendering a wrong number or a wrong link. Budget a visual pass in every audit.
 
 ## Session 2026-09-17 - audit close-out: F9 fixed, walkthrough real, Phase 4 scored
 
@@ -182,55 +215,6 @@ authenticated load:
 - GitHub's "Compare & pull request" banner defaults the base to **main**. On this
   repo main IS prod. Always open PRs from an explicit `compare/staging...<branch>`
   URL and confirm the base before clicking create.
-
-## Session 2026-09-16 - snapai-full-audit (mode=full, STAGING ONLY)
-
-Prod/main untouched. Staging HEAD 556414c. Full report: `SnapAI_Full_Audit_2026-09-16.md`
-(in the Personal Claude workspace folder, not committed to the repo).
-
-Shipped this session:
-- PR #64 merged to staging: fast-uri 3.1.2 -> 3.1.8 (lockfile-only, 3-line diff, integrity hash
-  verified against npm registry). Clears Dependabot #78/#86/#87/#88/#89 and removes the only
-  package regression a future staging->main promote would have introduced.
-
-Open findings (none fixed in-loop):
-
-| # | Finding | Severity | Where |
-|---|---------|----------|-------|
-| F1 | Live Gemini API key in PUBLIC git history; Clerk sk_test too. No rotation evidence. **Shoab accepted the risk 2026-09-16 - key NOT rotated.** | HIGH | `session_logs/SESSION_LOG_2026-05-21_code_audit.md` L126 |
-| F2 | SSRF guard bypassable via HTTP redirect - `_is_safe_remote_url` validates the initial URL, then `urlopen` follows redirects without re-checking. DNS-rebinding window too. | MEDIUM | `scopesnap-api/services/pdf_generator.py` L441, L509 |
-| F3 | Throughput knee between 50 and 200 VUs on `/api/health` (cheapest endpoint). p95 4313ms @200, 8.76% failures @500. | MEDIUM | staging infra |
-| F4 | CI gitleaks is INCREMENTAL - never rescans history. Green for months while F1 sat there. | MEDIUM | `.github/workflows/gitleaks.yml` |
-| F5 | Local `scopesnapai-web` container crash-looping `Restarting (254)`. Local dev only. | LOW | local docker |
-| F6 | **PK market renders estimates in USD.** `fmt()` hardcodes en-US/USD; component resolves market on L140 but never passes it. 4 call sites render tier totals + line items. BUG-037 class recurrence. | HIGH (PK) | `scopesnap-web/components/FaultResolutionScreen.tsx` L131 |
-| F7 | Inconsistent market trust on public routes: `reports.py` correctly uses `tables_for_market(estimate.market)`; `diagnostic.py` public route still uses the spoofable X-Market header. Root cause: only `estimates` has a `market` column. | MEDIUM | `api/diagnostic.py` L2316 vs `api/reports.py` L234 |
-| F8 | Ambient below the lowest `operating_targets` row falls through to a HOT-band fallback. `ambient_c` is user-supplied with no ge/le constraint. Worst: PK R-22 has only 2 rows (35/45), so 30C falls back to the 45C band. Biases toward false `low` -> false refrigerant-leak diagnosis. | MEDIUM-HIGH | `api/diagnostic.py` L596-655, L50 |
-
-Verified PASS this session:
-- PSI assertions: R-410A 130 PSI -> `ok` (exclusive bounds, boundary value - needs a regression
-  test to lock it), R-22 high_min 88, R-32 high_min 140.
-- Urdu integrity: 653 Urdu runs in `lib/urdu-strings.ts`, 0 U+FFFD, real UTF-8.
-- backend pytest 155 pass / 0 fail.
-- ZAP active: SQLi, RCE, SSTI, XXE, cloud-metadata all PASS.
-
-Corrections made during the audit (recorded so they are not re-litigated):
-- "US R-32 has 0 operating_targets rows" is NOT a defect. PROJECT_BRAIN L84 specifies R-32 US/PK as
-  a static 110-145 band and the code fallback matches. Doc, code and DB agree.
-- 28 of 30 semgrep `avoid-sqlalchemy-text` ERRORs are FALSE POSITIVES. The f-strings interpolate
-  only table/column identifiers sourced from `MarketTables` (frozen dataclass, 16 hardcoded
-  literals); `get_tables()` uses strict equality so a hostile X-Market header cannot become a table
-  name. All user values use bound params. ZAP active found no SQLi, corroborating this.
-
-Doc staleness spotted: PROJECT_BRAIN L84 lists R-32 as US/PK static, but PK R-32 now has 5
-ambient-aware DB rows (100-165 PSI) that override it. Canonical table should mark R-32 PK dynamic.
-
-Skill-doc fix needed: `snapai-full-audit` P2 references `sentry.client.config.ts`, which does not
-exist. The client Sentry filter lives in `instrumentation-client.ts` (Next 16 / Turbopack).
-
-NOT run this session: `audit/` Playwright harness (authenticated flows), webapp-testing,
-accessibility-a11y-enhanced, GStack qa/review/benchmark, quality-playbook, Phase 4 promote gate
-(needs prod DB + Vercel/Railway env access), Phases 5-6. Cross-market isolation was verified by
-code inspection, not by a live cross-market 404 test.
 
 ## Playwright e2e CI (`playwright-e2e.yml`) — RED→GREEN + PROMOTED TO PROD — 2026-06-22 (DEC-125)
 
