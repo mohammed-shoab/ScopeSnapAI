@@ -36,6 +36,74 @@ from api.dependencies import (
 )
 from db.database import get_db
 from config import get_settings
+import re as _re_mod
+
+
+# ---------------------------------------------------------------------------
+# F14 (audit 2026-09-17): keep database identifiers out of user-facing copy.
+#
+# Seen in production-like staging on a Refrigerant Leak card:
+#   "Compared against  reference targets
+#      (superheat_subcool_targets.target_superheat_min_f,target_superheat_max_f)"
+#   "WHY THIS CARD  SH above target_superheat_max_f AND SC below
+#      target_subcool_min_f"
+#
+# A technician was shown the schema, and never the actual target numbers.
+# These helpers translate the tokens we know, and DROP anything that still
+# looks like an identifier rather than render it. Failing closed is deliberate:
+# a missing line is better than leaking internals to someone quoting a customer.
+# ---------------------------------------------------------------------------
+
+_RECEIPT_TOKEN_PROSE = {
+    "target_superheat_max_f": "the target superheat maximum",
+    "target_superheat_min_f": "the target superheat minimum",
+    "target_subcool_max_f": "the target subcool maximum",
+    "target_subcool_min_f": "the target subcool minimum",
+    "suction_max_psi": "the target suction maximum",
+    "suction_min_psi": "the target suction minimum",
+    "discharge_max_psi": "the target discharge maximum",
+    "discharge_min_psi": "the target discharge minimum",
+}
+
+# table.column or table.col_a,col_b
+_IDENT_PATH_RE = _re_mod.compile(r"\b[a-z][a-z0-9_]*\.[a-z0-9_]+(?:\s*,\s*[a-z0-9_]+)*")
+# bare snake_case with 2+ underscores, e.g. target_superheat_max_f
+_IDENT_TOKEN_RE = _re_mod.compile(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+){2,}\b")
+
+
+def _looks_like_identifier(s: str) -> bool:
+    return bool(_IDENT_PATH_RE.search(s) or _IDENT_TOKEN_RE.search(s))
+
+
+def _humanize_receipt_source(raw):
+    """`compare_to` is an internal pointer (table.column). Never show it."""
+    if not raw or not isinstance(raw, str):
+        return None
+    s = raw.strip()
+    if not s or _looks_like_identifier(s):
+        return None
+    return s
+
+
+def _humanize_receipt_why(raw):
+    """Turn a rule expression into prose, or drop it if it stays machine-ish."""
+    if not raw or not isinstance(raw, str):
+        return None
+    s = raw.strip()
+    if not s:
+        return None
+    s = _re_mod.sub(r"\bSH\b", "superheat", s)
+    s = _re_mod.sub(r"\bSC\b", "subcool", s)
+    for token, prose in _RECEIPT_TOKEN_PROSE.items():
+        s = s.replace(token, prose)
+    s = _re_mod.sub(r"\s+AND\s+", " and ", s)
+    s = _re_mod.sub(r"\s+OR\s+", " or ", s)
+    s = _re_mod.sub(r"\s{2,}", " ", s).strip()
+    if _looks_like_identifier(s):
+        return None
+    return s[:1].upper() + s[1:] if s else None
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -1206,9 +1274,9 @@ async def _build_reading_receipt(db: AsyncSession, q_row, answer, branch: dict, 
         "unit": spec.get("unit"),
         "target_low": _tlow,
         "target_high": _thigh,
-        "target_source": spec.get("compare_to"),
+        "target_source": _humanize_receipt_source(spec.get("compare_to")),
         "result": _reading_result_label(branch_key),
-        "why_line": why,
+        "why_line": _humanize_receipt_why(why),
         "ruled_out": [],
         "confidence": confidence,
         "high_exposure": int(card_id) in _HIGH_EXPOSURE_CARDS,
