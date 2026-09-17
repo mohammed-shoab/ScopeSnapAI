@@ -24,6 +24,7 @@ from api.auth import get_current_user, AuthContext
 from api.dependencies import get_company_tables, MarketTables
 from api.fault_estimate import finalize_replacement_copy
 from config import get_settings
+from uuid import UUID
 
 router = APIRouter(prefix="/api/estimates", tags=["estimates"])
 
@@ -307,7 +308,7 @@ async def process_followups_early(
 
 @router.get("/{estimate_id}")
 async def get_estimate(
-    estimate_id: str,
+    estimate_id: UUID,
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     tables: MarketTables = Depends(get_company_tables),
@@ -367,7 +368,7 @@ async def get_estimate(
 
 @router.post("/{estimate_id}/refresh")
 async def refresh_draft_estimate(
-    estimate_id: str,
+    estimate_id: UUID,
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -462,7 +463,7 @@ async def refresh_draft_estimate(
 
 @router.patch("/{estimate_id}")
 async def update_estimate(
-    estimate_id: str,
+    estimate_id: UUID,
     body: UpdateEstimateRequest,
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -590,7 +591,7 @@ async def list_estimates(
 
 @router.post("/{estimate_id}/documents")
 async def generate_documents(
-    estimate_id: str,
+    estimate_id: UUID,
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -839,7 +840,7 @@ class SendEstimateRequest(BaseModel):
 
 @router.post("/{estimate_id}/send")
 async def send_estimate(
-    estimate_id: str,
+    estimate_id: UUID,
     body: SendEstimateRequest = SendEstimateRequest(),
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
