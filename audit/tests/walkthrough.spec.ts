@@ -32,6 +32,11 @@ async function signIn(page: Page) {
   await page.addInitScript(() => {
     try {
       window.sessionStorage.setItem("snapai_audit_mode", "1");
+      // Step Zero has a photo|manual A/B that coin-flips on first visit and
+      // persists to localStorage.snap_sz_path. Pin it to "manual" so the walk
+      // is deterministic and needs no nameplate image. This is the app's OWN
+      // mechanism, not a test backdoor - a real tech can pick the manual tab.
+      window.localStorage.setItem("snap_sz_path", "manual");
     } catch {
       /* ignore */
     }
@@ -107,18 +112,35 @@ test.describe("SnapAI audit - assessment -> diagnosis -> estimate", () => {
     await page.goto(`${BASE}/assessments/new`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(6000);
 
-    // step-zero: nameplate OCR is optional; get past it.
+    // --- STEP ZERO via the manual-entry tab (no photo needed) ---
+    //
+    // NOTE: StepZeroPanel declares and destructures `onSkip` but NEVER invokes
+    // it, and assess/page.tsx:462 wires onSkip={() => setPhase("complaint")} -
+    // a handler that can never fire (logged as F10). Step Zero is still
+    // completable though: the panel has a photo|manual tab pair, and the manual
+    // tab's "Confirm & Continue" calls onConfirm directly.
     const complaintHeading = page.locator("text=/what.?s the complaint/i");
-    for (let i = 0; i < 6; i++) {
-      if (await complaintHeading.count()) break;
-      const skip = page
-        .locator("button", {
-          hasText: /skip|continue|manual|enter manually|later|no photo/i,
-        })
+
+    if (!(await complaintHeading.count())) {
+      // Make sure we are on the manual tab even if the A/B landed on photo.
+      const manualTab = page
+        .locator("button", { hasText: /^\s*(manual|type it|enter manually)/i })
         .first();
-      if (!(await skip.count())) break;
-      await skip.click().catch(() => {});
-      await page.waitForTimeout(2500);
+      if (await manualTab.count()) {
+        await manualTab.click().catch(() => {});
+        await page.waitForTimeout(2000);
+      }
+
+      const confirm = page.locator("button", { hasText: /confirm & continue/i }).first();
+      await expect(
+        confirm,
+        "manual tab should expose 'Confirm & Continue' - if this fails, Step Zero " +
+          "has become a hard photo gate and the walk cannot proceed without an image",
+      ).toHaveCount(1, { timeout: 20000 });
+
+      console.log("STEP-ZERO: confirming via manual entry tab");
+      await confirm.click();
+      await page.waitForTimeout(6000);
     }
 
     const reached = (await complaintHeading.count()) > 0;
@@ -132,9 +154,9 @@ test.describe("SnapAI audit - assessment -> diagnosis -> estimate", () => {
       );
       test.info().annotations.push({
         type: "blocked",
-        description: "Could not auto-skip step-zero; it may require a nameplate photo.",
+        description: "Manual-entry confirm did not advance past Step Zero.",
       });
-      return;
+      expect(reached, "manual entry should advance to the complaint phase").toBeTruthy();
     }
 
     const name = page
@@ -168,6 +190,64 @@ test.describe("SnapAI audit - assessment -> diagnosis -> estimate", () => {
       looksDiagnostic,
       "after choosing a complaint the diagnostic question tree should render",
     ).toBeTruthy();
+
+    // --- drive the question tree toward a resolved fault ---
+    let steps = 0;
+    let resolved = false;
+    for (let i = 0; i < 25; i++) {
+      const txt = await page.locator("body").innerText();
+
+      // Terminal states: a fault card / estimate tiers.
+      if (/good\b.*better\b.*best|recommended repair|estimate|three option/i.test(txt)) {
+        resolved = true;
+        break;
+      }
+
+      // Numeric readings (e.g. suction PSI) - feed a mid-range R-410A value.
+      const num = page.locator('input[type="number"]:visible').first();
+      if (await num.count()) {
+        await num.fill("125").catch(() => {});
+        const go = page
+          .locator("button:visible", { hasText: /next|continue|submit|save/i })
+          .first();
+        if (await go.count()) {
+          await go.click().catch(() => {});
+          steps++;
+          await page.waitForTimeout(3500);
+          continue;
+        }
+      }
+
+      // Otherwise pick the first plausible answer control.
+      const answer = page
+        .locator("button:visible", { hasText: /^(yes|no|normal|ok|none|continue|next)\b/i })
+        .first();
+      if (await answer.count()) {
+        await answer.click().catch(() => {});
+        steps++;
+        await page.waitForTimeout(3500);
+        continue;
+      }
+
+      break; // nothing recognisable to click
+    }
+
+    const finalTxt = await page.locator("body").innerText();
+    console.log("DIAGNOSTIC steps answered:", steps, "| resolved:", resolved);
+    console.log("FINAL url:", page.url());
+    console.log("FINAL body head:", finalTxt.slice(0, 400).replace(/\n+/g, " | "));
+
+    if (!resolved) {
+      test.info().annotations.push({
+        type: "partial",
+        description:
+          `Answered ${steps} diagnostic step(s) but did not reach a fault/estimate. ` +
+          "The tree may need domain-correct answers rather than first-option picks.",
+      });
+    }
+    // Assert progress, not resolution - a generic answerer should not be
+    // expected to navigate a clinical decision tree correctly.
+    expect(steps, "should be able to answer at least one diagnostic step").toBeGreaterThan(0);
   });
 
   test("no 5xx on any request during the walk", async ({ page }) => {
