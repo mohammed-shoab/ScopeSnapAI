@@ -1382,3 +1382,98 @@ authenticated load:
 - GitHub's "Compare & pull request" banner defaults the base to **main**. On this
   repo main IS prod. Always open PRs from an explicit `compare/staging...<branch>`
   URL and confirm the base before clicking create.
+
+---
+
+## Archived 2026-09-18 (PM) - superseded sessions
+
+Moved to stay under the 300-line pre-commit cap (RULE 2). PROJECT_BRAIN.md
+QA History retains the permanent one-line record of each run.
+
+## Session 2026-09-17 - audit close-out: F9 fixed, walkthrough real, Phase 4 scored
+
+Prod/main untouched. Staging HEAD a8ffa3a.
+
+### Shipped
+
+| PR | What | Staging |
+|----|------|---------|
+| #70 | **F9** non-UUID path param caused an unhandled 500. 7 `{estimate_id}` params typed `UUID` (5 estimates.py, 2 payments.py) + a narrow `DBAPIError`->400 handler in main.py covering the 18 `assessment_id`/`session_id` params still typed `str`. 18 tests, red-green (11 fail unpatched). Suite: **198 passed**. | 61b694f |
+| #71 | The assessment -> diagnosis walkthrough, for real. | a8ffa3a |
+
+### F9 - why it hid
+
+Sentry **SNAPAI-API-1A**: `GET /api/estimates/new` -> `DataError: invalid UUID
+'new'`. It hid because the old flow test asserted against **`/assessment/new`
+(singular), which is not a route** - Next matched `[id]` with `id="new"`, the
+page rendered "Loading estimate...", the test went GREEN, and the backend 500'd
+underneath. Real entry: **`/assessments/new`** -> `/assess`. A render check is
+not a behaviour check; the walkthrough now asserts state transitions and fails
+on ANY 5xx.
+
+### Walkthrough now genuinely works
+
+`/assessments/new` -> `/assess` -> Step Zero via **manual tab** -> "Not Cooling"
+-> question tree -> resolved **"Ductwork Leak | High Confidence"**, 0x 5xx.
+Determinism via `localStorage.snap_sz_path="manual"` - the app's OWN A/B key,
+not a backdoor. Asserts PROGRESS (>=1 step), not resolution: a first-option
+answerer should not be trusted to navigate a clinical decision tree.
+
+### CORRECTION - Step Zero is NOT a hard photo gate
+
+An earlier entry claimed a nameplate photo was mandatory. **Wrong** -
+StepZeroPanel has a photo|manual tab pair; manual's "Confirm & Continue" calls
+`onConfirm` directly.
+
+### NEW - F10 (LOW): dead `onSkip` prop
+
+`components/StepZeroPanel.tsx` declares `onSkip` (L68) and destructures it
+(L114) but **never invokes it**. `app/(app)/assess/page.tsx:462` wires
+`onSkip={() => setPhase("complaint")}` - a handler that can never fire. Either
+restore a skip affordance or delete the prop. Not a blocker: the manual tab
+works.
+
+### Phase 4 promote gate - SCORED
+
+| # | Checkpoint | Result |
+|---|------------|--------|
+| 1 | Staging deploy live | **PASS** |
+| 2 | Schema parity | **FAIL** - staging alembic 048, prod 047. Migration `048_rls_threshold_tables_and_auto_enable_trigger.py` is on staging; `c3eb21c` (DEC-135) is NOT an ancestor of main. A promote MUST run 048 on prod. |
+| 3 | Env-var key parity | **CLOSED - ACCEPTED (DEC-137)** - `CRON_SECRET` is set on PROD (fails closed, verified) and deliberately NOT set on staging. Shoab's decision 2026-09-18. Staging-only exposure, not a promote blocker. CP3 must score this PASS-with-note from now on. Missing on PROD would still be a real FAIL. |
+| 4 | Smoke both markets | **PASS** - all 4 surfaces HTTP 200, len 2437 |
+| 5 | Console-error baseline | **PASS** - NOVEL=0 both markets; staging 26 vs prod 33 |
+| 6 | Railway log baseline | **NOT MEANINGFUL** - ZAP active + k6 500 VUs deliberately generated thousands of errors on staging the same day. Needs a quiet window. |
+| 7 | Cross-market isolation | **PASS** - live proof of F7: no header / `X-Market: US` / forged `X-Market: PK` / SQL-injection string in the header all return byte-identical results (HTTP 200, len=996, card 'Refrigerant Leak'). Staging token 404s on prod; bogus token 404s. |
+
+### Observability - filter NOT working on staging
+
+`SNAPAI_AUDIT_MODE` is **not set on the Railway staging service** (confirmed in
+Variables). That is why SNAPAI-API-1A reached Sentry - `_sentry_before_send`
+never engaged. **The audit polluted Sentry**, exactly what mitigation #4 exists
+to prevent. Set it before the next run.
+
+### STILL NOT VERIFIED - F6 PKR rendering
+
+F6 (PR #66) is verified only by code reading + CI. A Playwright check to sign in
+on **pk-staging** and assert the rendered currency got as far as auth
+(`PK hostname: pk-staging...`) but **authenticated PK nav times out**
+(`net::ERR_ABORTED`, then 30s, across 4 retries). Spec NOT committed - it does
+not pass. Nobody has SEEN PK render its own symbol. Treat F6 as
+fixed-in-code, unproven-on-screen. Check pk-staging perf / Clerk cross-domain
+handoff on that hostname.
+
+### Open findings
+
+| # | Finding | Severity |
+|---|---------|----------|
+| F1 | Live Gemini key in PUBLIC git history - risk ACCEPTED by Shoab, key NOT rotated | HIGH |
+| F3 | 200-VU p95 ceiling (Hobby plan, not a code defect) + **9 RLS policies re-evaluating `auth.<fn>()` per row** + 17 unindexed FKs | MEDIUM |
+| F4 | CI gitleaks is incremental - never rescans history | MEDIUM |
+| F5 | Local `scopesnapai-web` container crash-looping | LOW |
+| F10 | Dead `onSkip` prop | LOW |
+| - | ~~`CRON_SECRET` missing on staging~~ CLOSED - accepted, DEC-137 | - |
+| - | `SNAPAI_AUDIT_MODE` not set on Railway staging | MEDIUM |
+| - | prod missing migration 048 (DEC-135) | MEDIUM |
+### Never run: `webapp-testing`, `accessibility-a11y-enhanced`, GStack
+`qa`/`benchmark`/`review`, `quality-playbook`. No human clicked through the site
+in a visible browser - all UI coverage is headless Playwright.

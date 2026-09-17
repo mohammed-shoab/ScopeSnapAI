@@ -1,6 +1,6 @@
 # SnapAI — Active Tasks
 
-**Last updated:** 2026-09-18 (F14 identifier-leak FIXED, suite 237 green; migration 048 applied to PROD - CP2 closed; CP3 accepted - DEC-137; promote scoped to an overlay, NOT executed)
+**Last updated:** 2026-09-18 PM (**PROMOTED TO PROD** f2ba07e -> 18a1c3e, all CI + deploys green, Dependabot 28 -> 9 with 0 critical; prod click-through confirms F13/F14/CP7 live; NEW F15-F18; PKR unverifiable - zero PK companies exist)
 **Historical sessions:** see `ACTIVE_TASKS_HISTORY.md` (60-row session-log index at top)
 
 ---
@@ -19,6 +19,87 @@
 ---
 
 ## Recent sessions (2026-06-18 onward — Bryan's exception: any session with any OPEN item stays)
+
+## Session 2026-09-18 (PM) - PROMOTED TO PROD + post-deploy click-through
+
+**PROMOTE EXECUTED.** Shoab's explicit go. `f2ba07e -> 18a1c3e`, DEC-070 scoped
+overlay of 24 files (NOT a git merge - see the 2026-09-18 AM entry for why).
+Verified live: main CI all green (backend pytest, Playwright E2E, gitleaks,
+NUL-byte, RLS guard); Railway prod deployment ACTIVE + "Deployment successful",
+which also proves `alembic upgrade head` resolved revision 048; both Vercel
+projects rebuilt green.
+
+**The urgent reason it had to go now.** Migration 048 had been applied to the prod
+DATABASE while the migration FILE existed only on staging. `start.sh` runs
+`alembic upgrade head` under `set -e`, so the NEXT backend deploy would have died
+with "Can't locate revision identified by '048'". Prod was healthy but one deploy
+away from a failed boot. Closed by shipping the file.
+
+**Dependabot on the default branch: 28 -> 9. All 4 CRITICAL cleared** (next
+16.2.12 -> 16.3.4). Also cleared sharp, nanoid, fast-uri, browserslist, dompurify
+and the stale postcss 8.4.31. REMAINING 9 (staging is equally behind, not
+regressions): js-yaml x2, brace-expansion x4, fflate, weasyprint x2 - one
+weasyprint advisory has NO patched version.
+
+**PROD VERIFIED BY HAND IN CHROME (US).** Full walk: sign-in -> dashboard -> new
+assessment -> Step Zero manual (Carrier 24ACC6, auto-filled specs, 2015, Mild) ->
+Not Cooling -> 55 PSI (classified low) -> SH 25 / SC 3 -> **Refrigerant Leak** ->
+estimate builder (3 tiers, correct USD) -> Generate Documents (PDF + report link)
+-> homeowner report -> Diagnoses list -> Pricing Rules.
+
+  - **F14 CONFIRMED FIXED ON PROD.** Receipt now reads "Superheat above the target
+    superheat maximum and subcool below the target subcool minimum". API confirms
+    `target_source: null` - the identifier pointer is SUPPRESSED, i.e. the
+    fail-closed policy behaving as designed. Zero schema anywhere in the UI, the
+    homeowner report or the JSON payload.
+  - **F13 CONFIRMED FIXED ON PROD** - question copy reads "115-140", not 115-141.
+  - **CP7 PASS ON PROD (live proof of F7/DEC-136).** Public diagnostic route
+    returns a byte-identical 1342-byte body under X-Market of none/US/PK/ZZ and a
+    SQL-injection string. NOTE: the first attempt used the REPORT token and got a
+    33-byte 404 - a VACUOUS pass. Caught it because 33 bytes was too short. Always
+    sanity-check that the endpoint returns real data before trusting an
+    equality-based security test.
+  - F12 still present on prod, now proven at the DATA layer: `fault.confidence:
+    "high"` vs `reading_receipt.confidence: "Medium"` in one payload.
+  - Receipt still has `target_low: null, target_high: null` - the known follow-up.
+  - "Recent Assessments" renders POPULATED on prod, so the empty list seen on
+    staging was a data artifact, NOT a code bug. Earlier note corrected.
+
+**NEW FINDINGS (prod, none caused by the promote)**
+  F15  PK Urdu i18n, TWO defects, customer-facing. First visual confirmation of
+       Urdu mode ever (pk-staging auth nav had always timed out). RTL layout flip
+       itself works correctly.
+       (a) BIDI: hero subtitle renders "seconds - AI-powered - three options, one
+           recommendation 90" - the leading "90" is displaced to the END under
+           RTL. String is also untranslated.
+       (b) "LAST 5 ASSESSMENTS" left in English while its own child labels are
+           translated - a missed translation key, not a missing locale.
+  F16  PROD-ONLY pricing data defect. `pricing_rules`: prod has 28 rows vs
+       staging 14, every national default duplicated EXACTLY twice, and the UI
+       renders both copies. Separately - and true in BOTH envs - every row is
+       `deprecated = true` yet still rendered to the user as "National Defaults",
+       so the endpoint is not filtering on `deprecated`. Pre-existing; nothing in
+       the promote seeds pricing data.
+  F17  React #418 hydration mismatch on the PUBLIC homeowner report page.
+  F18  Homeowner report `<title>` renders "HVAC Report - - Shoab DS's HVAC" - an
+       empty segment with a doubled dash when no customer name is set.
+
+**PKR / F6 IS NOT VERIFIABLE, IN EITHER ENVIRONMENT.** `companies` holds 17 rows
+on prod and 4 on staging - **all market='US', zero PK companies anywhere.** There
+is no PK tenant capable of producing a PK estimate, so the PKR branch of the F6
+fix has never been exercised end-to-end and cannot be until a PK company exists.
+Any earlier "PKR verified" note means unit/data level, NOT a live UI estimate.
+This also means the PK production front-end is live with zero tenants, and that a
+US company viewing the PK host correctly still sees USD (DEC-136: market comes
+from the record owner, not the host).
+
+**PROD DB STATE** alembic 048, RLS on 56 tables, `rls_auto_enable_trg` armed
+(evtenabled='O'), anon EXECUTE revoked. NOTE: the trigger is named
+`rls_auto_enable_trg`, NOT `rls_auto_enable` - a verification query using the
+bare name returns 0 and looks like a regression. It is not.
+
+---
+
 
 ## Session 2026-09-18 - F14 fixed, prod migration 048 applied, promote scoped
 
@@ -96,94 +177,6 @@ being listed. Not yet investigated.
 **Lesson worth keeping:** a green suite means the code did not crash. It does not
 mean the screen is right. Every finding above was a correct-looking code path
 rendering a wrong number or a wrong link. Budget a visual pass in every audit.
-
-## Session 2026-09-17 - audit close-out: F9 fixed, walkthrough real, Phase 4 scored
-
-Prod/main untouched. Staging HEAD a8ffa3a.
-
-### Shipped
-
-| PR | What | Staging |
-|----|------|---------|
-| #70 | **F9** non-UUID path param caused an unhandled 500. 7 `{estimate_id}` params typed `UUID` (5 estimates.py, 2 payments.py) + a narrow `DBAPIError`->400 handler in main.py covering the 18 `assessment_id`/`session_id` params still typed `str`. 18 tests, red-green (11 fail unpatched). Suite: **198 passed**. | 61b694f |
-| #71 | The assessment -> diagnosis walkthrough, for real. | a8ffa3a |
-
-### F9 - why it hid
-
-Sentry **SNAPAI-API-1A**: `GET /api/estimates/new` -> `DataError: invalid UUID
-'new'`. It hid because the old flow test asserted against **`/assessment/new`
-(singular), which is not a route** - Next matched `[id]` with `id="new"`, the
-page rendered "Loading estimate...", the test went GREEN, and the backend 500'd
-underneath. Real entry: **`/assessments/new`** -> `/assess`. A render check is
-not a behaviour check; the walkthrough now asserts state transitions and fails
-on ANY 5xx.
-
-### Walkthrough now genuinely works
-
-`/assessments/new` -> `/assess` -> Step Zero via **manual tab** -> "Not Cooling"
--> question tree -> resolved **"Ductwork Leak | High Confidence"**, 0x 5xx.
-Determinism via `localStorage.snap_sz_path="manual"` - the app's OWN A/B key,
-not a backdoor. Asserts PROGRESS (>=1 step), not resolution: a first-option
-answerer should not be trusted to navigate a clinical decision tree.
-
-### CORRECTION - Step Zero is NOT a hard photo gate
-
-An earlier entry claimed a nameplate photo was mandatory. **Wrong** -
-StepZeroPanel has a photo|manual tab pair; manual's "Confirm & Continue" calls
-`onConfirm` directly.
-
-### NEW - F10 (LOW): dead `onSkip` prop
-
-`components/StepZeroPanel.tsx` declares `onSkip` (L68) and destructures it
-(L114) but **never invokes it**. `app/(app)/assess/page.tsx:462` wires
-`onSkip={() => setPhase("complaint")}` - a handler that can never fire. Either
-restore a skip affordance or delete the prop. Not a blocker: the manual tab
-works.
-
-### Phase 4 promote gate - SCORED
-
-| # | Checkpoint | Result |
-|---|------------|--------|
-| 1 | Staging deploy live | **PASS** |
-| 2 | Schema parity | **FAIL** - staging alembic 048, prod 047. Migration `048_rls_threshold_tables_and_auto_enable_trigger.py` is on staging; `c3eb21c` (DEC-135) is NOT an ancestor of main. A promote MUST run 048 on prod. |
-| 3 | Env-var key parity | **CLOSED - ACCEPTED (DEC-137)** - `CRON_SECRET` is set on PROD (fails closed, verified) and deliberately NOT set on staging. Shoab's decision 2026-09-18. Staging-only exposure, not a promote blocker. CP3 must score this PASS-with-note from now on. Missing on PROD would still be a real FAIL. |
-| 4 | Smoke both markets | **PASS** - all 4 surfaces HTTP 200, len 2437 |
-| 5 | Console-error baseline | **PASS** - NOVEL=0 both markets; staging 26 vs prod 33 |
-| 6 | Railway log baseline | **NOT MEANINGFUL** - ZAP active + k6 500 VUs deliberately generated thousands of errors on staging the same day. Needs a quiet window. |
-| 7 | Cross-market isolation | **PASS** - live proof of F7: no header / `X-Market: US` / forged `X-Market: PK` / SQL-injection string in the header all return byte-identical results (HTTP 200, len=996, card 'Refrigerant Leak'). Staging token 404s on prod; bogus token 404s. |
-
-### Observability - filter NOT working on staging
-
-`SNAPAI_AUDIT_MODE` is **not set on the Railway staging service** (confirmed in
-Variables). That is why SNAPAI-API-1A reached Sentry - `_sentry_before_send`
-never engaged. **The audit polluted Sentry**, exactly what mitigation #4 exists
-to prevent. Set it before the next run.
-
-### STILL NOT VERIFIED - F6 PKR rendering
-
-F6 (PR #66) is verified only by code reading + CI. A Playwright check to sign in
-on **pk-staging** and assert the rendered currency got as far as auth
-(`PK hostname: pk-staging...`) but **authenticated PK nav times out**
-(`net::ERR_ABORTED`, then 30s, across 4 retries). Spec NOT committed - it does
-not pass. Nobody has SEEN PK render its own symbol. Treat F6 as
-fixed-in-code, unproven-on-screen. Check pk-staging perf / Clerk cross-domain
-handoff on that hostname.
-
-### Open findings
-
-| # | Finding | Severity |
-|---|---------|----------|
-| F1 | Live Gemini key in PUBLIC git history - risk ACCEPTED by Shoab, key NOT rotated | HIGH |
-| F3 | 200-VU p95 ceiling (Hobby plan, not a code defect) + **9 RLS policies re-evaluating `auth.<fn>()` per row** + 17 unindexed FKs | MEDIUM |
-| F4 | CI gitleaks is incremental - never rescans history | MEDIUM |
-| F5 | Local `scopesnapai-web` container crash-looping | LOW |
-| F10 | Dead `onSkip` prop | LOW |
-| - | ~~`CRON_SECRET` missing on staging~~ CLOSED - accepted, DEC-137 | - |
-| - | `SNAPAI_AUDIT_MODE` not set on Railway staging | MEDIUM |
-| - | prod missing migration 048 (DEC-135) | MEDIUM |
-### Never run: `webapp-testing`, `accessibility-a11y-enhanced`, GStack
-`qa`/`benchmark`/`review`, `quality-playbook`. No human clicked through the site
-in a visible browser - all UI coverage is headless Playwright.
 
 ## Playwright e2e CI (`playwright-e2e.yml`) — RED→GREEN + PROMOTED TO PROD — 2026-06-22 (DEC-125)
 
