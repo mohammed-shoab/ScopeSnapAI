@@ -179,8 +179,13 @@ test.describe("SnapAI audit — product flows", () => {
   test("gated product routes are reachable", async ({ page }) => {
     await signIn(page);
 
+    // NOTE: "/assessment/new" (singular) is NOT a route. Next matches [id] with
+    // id="new", the page renders "Loading estimate...", and the backend 500s on
+    // GET /api/estimates/new (Sentry SNAPAI-API-1A -> F9). The real entry point
+    // is "/assessments/new" (plural), which redirects to /assess.
     const routes = [
-      "/assessment/new",
+      "/assessments/new",
+      "/assessments",
       "/settings/pricing",
       "/team/technicians",
       "/settings/integrations",
@@ -201,16 +206,21 @@ test.describe("SnapAI audit — product flows", () => {
     console.log("ROUTES:", JSON.stringify(results, null, 2));
   });
 
-  test("new assessment screen renders its entry point", async ({ page }) => {
+  test("new assessment entry point redirects into the /assess wizard", async ({ page }) => {
     await signIn(page);
-    await page.goto(`${BASE}/assessment/new`, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(4000);
+    await page.goto(`${BASE}/assessments/new`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(5000);
 
     const body = await page.locator("body").innerText();
     console.log("ASSESSMENT url:", page.url());
     console.log("ASSESSMENT text (first 300):", body.slice(0, 300).replace(/\n+/g, " | "));
 
     expect(page.url()).not.toContain("/sign-in");
-    expect(body.length, "assessment screen should render").toBeGreaterThan(80);
+    // The old version of this test pointed at /assessment/new and passed
+    // vacuously against a non-existent route. Assert the real redirect.
+    expect(page.url(), "/assessments/new must land in the /assess wizard").toContain(
+      "/assess",
+    );
+    expect(body.length, "assessment wizard should render").toBeGreaterThan(80);
   });
 });

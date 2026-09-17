@@ -18,6 +18,7 @@ from db.database import get_db
 from db.models import Assessment, Company, Estimate, Property
 from api.auth import get_current_user, AuthContext
 from services.payment import get_payment_service
+from uuid import UUID
 
 router = APIRouter(tags=["payments"])
 webhook_router = APIRouter(tags=["webhooks"])
@@ -32,7 +33,7 @@ class CheckoutRequest(BaseModel):
 
 @router.post("/api/estimates/{estimate_id}/checkout")
 async def create_checkout(
-    estimate_id: str,
+    estimate_id: UUID,
     body: CheckoutRequest = CheckoutRequest(),
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -147,7 +148,7 @@ async def create_checkout(
 
 @router.get("/api/estimates/{estimate_id}/payment")
 async def get_payment_status(
-    estimate_id: str,
+    estimate_id: UUID,
     auth: AuthContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
