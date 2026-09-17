@@ -1,0 +1,43 @@
+name: RLS guard (migrations)
+
+# Blocks any migration that creates a table in `public` without enabling
+# row-level security on it.
+#
+# Why (DEC-135): Supabase grants `anon` and `authenticated` full DML on new
+# public tables, and neither role has BYPASSRLS. A table without RLS is therefore
+# writable -- not merely readable -- by anyone holding the publishable anon key,
+# which ships inside the frontend bundle. In 2026 this happened twice: migration
+# 042 (remediated by 044) and migration 046, which left the ten Tier A threshold
+# tables that drive the diagnostic engine open for ~30 days on production.
+#
+# A written rule was added after the first occurrence and did not prevent the
+# second. This is the mechanical version.
+#
+# Layer 1 of the defence is the `rls_auto_enable_trg` event trigger installed by
+# migration 048, which enables RLS at the database level automatically. This
+# workflow is layer 2: it catches the case where that trigger is dropped,
+# disabled, or missing on a freshly provisioned environment. No secrets and no
+# database connection required -- it reads the migration source only.
+
+on:
+  push:
+    paths:
+      - 'scopesnap-api/db/migrations/versions/**'
+      - 'scripts/check_migration_rls.py'
+      - '.github/workflows/rls-guard.yml'
+  pull_request:
+    paths:
+      - 'scopesnap-api/db/migrations/versions/**'
+      - 'scripts/check_migration_rls.py'
+      - '.github/workflows/rls-guard.yml'
+
+jobs:
+  rls-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Check migrations enable RLS on new public tables
+        run: python scripts/check_migration_rls.py

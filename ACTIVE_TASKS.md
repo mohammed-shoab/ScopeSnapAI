@@ -1,6 +1,6 @@
 # SnapAI — Active Tasks
 
-**Last updated:** 2026-07-08 (Bryan compendium Path B ship + video-marketing thread recall; Tier A GATE-D prod promotion + sign-in fix; post-GATE-D prod QA sign-off PASS)
+**Last updated:** 2026-09-18 (F14 identifier-leak FIXED, suite 237 green; migration 048 applied to PROD - CP2 closed; CP3 accepted - DEC-137; promote scoped to an overlay, NOT executed)
 **Historical sessions:** see `ACTIVE_TASKS_HISTORY.md` (60-row session-log index at top)
 
 ---
@@ -20,98 +20,170 @@
 
 ## Recent sessions (2026-06-18 onward — Bryan's exception: any session with any OPEN item stays)
 
-## Session 2026-07-08 — Tier A diagnostic families PROMOTED TO PROD (GATE D)
+## Session 2026-09-18 - F14 fixed, prod migration 048 applied, promote scoped
 
-**DONE this session:**
-- Executed GATE D on Shoab's explicit "do it completely till prod" go. Full Tier A build now LIVE on production (snapai-prod-use1 `zpsoprffaujswywtsgzy`).
-- Two-phase code overlay (DEC-070): Phase 1 `5755dad` (backend evaluators + reading-receipt, fault_estimate cap le=26, level2 copy, migrations 046+047, 4 diagnostic components); Phase 2 `24efadf` (assess complaint entries, pushed AFTER data to avoid empty-flow window). Railway auto-ran alembic 045→046→047; Vercel deployed. Sign-in/sign-up mojibake fix `d8e60eb`.
-- DB data does NOT auto-promote (separate Supabase projects) — replicated staging→prod via base64 transport + per-table md5 checksum (all matched first try): 10 threshold tables (195 rows), fault_cards 20-26, pricing_tiers card_id>=20, 17 new diagnostic_questions + 2 rewires. Prod fault_cards 19→25, dq 44→61. Method captured in DEC-132.
-- Verified on prod: counts + routing integrity (0 dangling) + checksums=staging + full authenticated browser click-through (Comfort/Humidity → Clammy → Card #22 with Reading Receipt 350-402.5 CFM/ton, disclaimers, Estimate Builder $239/$478).
-- POST-GATE-D PROD QA (2026-07-08, snapai-qa skill) — **QA COMPLETE / PASS**: prod backend health ok (db connected, environment=production, /api/version decoder+replace 1.2); pytest 155 passed on main; Playwright E2E CI GREEN on main (#84 Phase1 / #85 Phase2 / #86 sign-in); prod UI regression — Not Cooling core 128 PSI → NORMAL → Ductwork Leak (High Conf), no misroute to high-pressure, no crash/503; Tier A Comfort → Card #22 receipt+estimate live; StagingBanner correctly ABSENT on prod; data counts/routing/checksums = staging. No bugs found, no fixes needed.
+**F14 - raw DB identifiers in user-facing copy. FIXED (staging).**
+Found by clicking through staging in a REAL browser on a Refrigerant Leak
+diagnosis. The reading receipt showed the technician
+`superheat_subcool_targets.target_superheat_min_f,target_superheat_max_f` as
+"Compared against", and `SH above target_superheat_max_f AND SC below
+target_subcool_min_f` as "why this card" - database schema on screen, and the
+actual target numbers never shown at all. Sanitised in the BACKEND
+(`_humanize_receipt_source` / `_humanize_receipt_why`) so web, PDF and the
+homeowner report are all covered. Policy is FAIL CLOSED: a string that still
+looks like an identifier after translation is dropped, not rendered.
+25 new tests; suite 212 -> **237 passed**.
 
-**OPEN / follow-ups:**
+**Still open from the visual pass (NOT fixed, deliberately):**
+- F12 - two contradictory "Confidence" values on one screen. Needs a product
+  decision (relabel vs reconcile), not a unilateral code change.
+- The receipt still shows "reference targets" with NO numbers for
+  superheat/subcool cards. Suppressing the leak was the safe half; resolving the
+  real numbers needs a lookup key that is not obviously available.
+- Dashboard "Recent Assessments" renders EMPTY despite resolved diagnoses
+  existing. Observed, not investigated.
 
-| Priority | Item | Owner | Notes |
-|----------|------|-------|-------|
-| MEDIUM | LOW-confidence cards #25 (liquid-line) / #26 (compressor) are LIVE but carry LOW confidence pending Houston field pilot (N>=30, >=85% match). Code + feedback loop ready; confidence UPGRADE gated on real field data. | Shoab | Gap 3 — empirical, not closable by calc |
-| LOW | Bryan's 2 directional refinements logged (D3 coil-drop 0.20 → prefer rated coil drop; D4 14F TXV starved-superheat treat as directional) — not blockers | Shoab + Bryan | From SnapAI_TierA_Bryan_Clinical_Review.md |
-| NOTE | Legal Gate 1/2 substantiation is a pre-BILLING gate (app is FREE BETA); cards carry Alfred C1/C2/C3 disclaimers live. Not a code-deploy blocker. | Shoab + Alfred | Reconciles ACTIVE workstream 2 |
+**PROD change - migration 048 applied and verified (CP2 CLOSED).**
+The DEC-135 RLS work was genuinely absent on prod, not just an unstamped version.
+Applied to prod Supabase and verified: `tables_rls_on=10`, `trigger_armed=1`,
+`evtenabled='O'`, `anon_can_exec=false`, `alembic='048'`. This is the ONLY prod
+change made; prod CODE remains at `f2ba07e`.
 
----
+**CP3 CLOSED as accepted - see DEC-137.** Stop re-raising it.
 
-## Session 2026-07-08 — Bryan compendium ship (Path B) + video-marketing thread recall
-
-**DONE this session:**
-- Verified Bryan Orr HVAC compendium outputs (parallel extraction, 30 Opus subagents, 959 episodes): master compendium 1443 lines + 12 topic files 25,292 lines + 3 refreshed board refs + session log + push script + 30 raw batch JSONs — all present and correctly structured.
-- Chose Path B (mirror-and-commit) over leave-in-Drive or session-log-only. Mirrored 16 files into `ScopeSnapAI/snapai-board/references/bryan-orr/`.
-- Committed staging (`70b03bd` feat) + promoted to main (`47d4c37` scoped) via DEC-070. Board persona knowledge now git-versioned. DEC-131 sets the mirror-and-promote precedent for future board compendia.
-- Live-tested Bryan compendium load: `@board Bryan` diagnostic-sequence test (3-ton R-410A overcharge scenario) returned episode-cited response with 4 verbatim episode IDs (`qIo_iT8msZA`, `lfuiVg8WSQ0`, `QjF4I8db1kA`, `6WlUva3hrhk`) — confirms router row 20 + skill protocol both trigger the compendium reads.
-- Recalled the paused video-marketing thread — surfaced `SnapAI_Video_Marketing_Strategy_TwoDoor.md` (2026-05-22) + `SnapAI_Virality_FreeTrial_Strategy_Boards_Recommendations_2026-07-01.md` (27 voices) + Panel 5 additions (Bryan/Jenny/Zaria/Alex Su) + Nav additions (MrBeast/Reilly). Flagged honestly: Panel 5 + Reilly/MrBeast opinions on the virality strategy were NOT persisted to a follow-up doc — only their persona files exist.
-
-**OPEN / follow-ups:**
-
-| Priority | Item | Owner | Notes |
-|----------|------|-------|-------|
-| HIGH | Re-run virality-strategy question to full boards with 6 new voices (Panel 5 + MrBeast/Reilly) given DEC-130 legal shipped + Tier A app shipped + Bryan compendium loaded | Shoab + @board + @nav | Running next in this session |
-| HIGH | Q7.1 from 2026-07-01 doc STILL open + blocking: current SnapAI diagnostic accuracy % across last 30 days of tester data. Karpathy's >80% threshold gates the whole dependency thesis | Shoab | Was flagged "this week" on 2026-07-01, still open a week+ later |
-| MEDIUM | Q7.2–7.7 from 2026-07-01 doc still open (buyer persona for videos, named 50 shop owners target list, daily-ritual metric measurability, production pipeline architecture, value metric for pricing, first-3-videos-for-14-day-test) | Shoab | Re-evaluate after board re-ask |
-| LOW | Clean up laptop-side scratch files from Bryan extraction (_extraction/*.py, HVAC_School_Transcripts/build_b28.py) | Shoab | Drive mount blocks rm; Windows-side delete needed |
-
-Pointer to session log: `session_logs/SESSION_LOG_2026-07-08_bryan_compendium_extraction.md` (parallel session created; success criterion #10 closed today via Path B ship).
-
----
-
-## Session 2026-06-29 (PM) — Turbopack PROMOTED TO PROD (DEC-113)
-
-**DONE this session:**
-- Promoted Turbopack to prod (scoped overlay, main `66699a05`): next.config.js (webpack()/disableLogger removed), package.json build `next build`, instrumentation-client.ts + instrumentation.ts, deleted sentry.client.config.ts. Prod already had audit work + migrations 042-044, so nothing else shipped.
-- Verified prod: Vercel Turbopack build green (both projects), e2e CI green, /health ok, /api/version 1.2, §5 Sentry delivers under Turbopack (ingest 200), landing + Clerk v7 sign-in render, proxy.ts auth works, no console errors (US+PK).
-- Both staging + prod now on Turbopack. Tailwind v3 retained (works under Turbopack).
-
-**OPEN / follow-ups:**
-
-| Priority | Item | Owner | Notes |
-|----------|------|-------|-------|
-| LOW (watch) | Turbopack prod bake | snapai-dev | Watch Sentry a few days for any Turbopack-specific frontend issues. |
-| LOW | Resolve deliberate §5 test markers | Shoab/snapai-dev | SNAPAI-TURBOPACK-STG/PROD markers created during verification; resolve in Sentry when convenient (browser Sentry session was expired this run). |
+**Promote scoped, NOT executed.** A `git merge staging -> main` produces **11
+conflicts**, not the 3 an earlier dry run reported against a much older staging
+HEAD. Root cause: every main-side commit on the conflicted code files is a
+`promote:` commit from `scripts/promote-to-prod.sh`, which is a scoped FILE
+OVERLAY, not a merge. This repo has never done a true git merge to main, so git
+is comparing two histories that were only ever copied between. **Verified safe:**
+every main-only line in `diagnostic.py` (23), `pdf_generator.py` (2) and
+`FaultResolutionScreen.tsx` (8) is the PRE-FIX code these patches replace - there
+is zero independent main-side work in them. Use the overlay, not a merge.
 
 ---
 
-## Session 2026-06-29 — Turbopack adopted on STAGING (DEC-113)
 
-**DONE this session:**
-- Adopted Turbopack on staging (PR #23, merge `a43c681`): build `next build --webpack` -> `next build`; Sentry -> `instrumentation-client.ts` + `instrumentation.ts` (deleted sentry.client.config.ts, removed disableLogger); removed next.config `webpack()` block.
-- Tailwind v3.4 builds clean under Turbopack (no v4 upgrade needed). Clean build, zero warnings.
-- Verified: Vercel Turbopack builds green (both projects), staging e2e CI run #65 green, local Turbopack build + e2e 34 passed, §5 Sentry delivers under Turbopack (ingest 200, nextjs/10.62.0 via instrumentation-client.ts).
-- Pre-check: prod healthy after ~9-day Next 16 bake (/health ok, /api/version 1.2).
+## Session 2026-09-17 (visual) - 3 findings that only LOOKING could catch
 
-**OPEN / follow-ups:**
+Staging HEAD 57300dc. Prod untouched.
 
-| Priority | Item | Owner | Notes |
-|----------|------|-------|-------|
-| MED | **Promote Turbopack to prod** | Shoab | Gated. Staging verified green on Turbopack; prod still `next build --webpack` until go. Separate prod promote (staging-first done). |
-| LOW (watch) | Turbopack dev hot-reload | snapai-dev | Removed the dev `webpack()` polling block; if local hot-reload breaks in Docker/WSL, add top-level `watchOptions: { pollIntervalMs: 1000 }` or `next dev --webpack`. |
+First visual pass of the audit: Playwright drove US staging and saved 9
+screenshots to `Personal Claude/audit-screens/`, which were then actually read.
+Everything else in this audit - 212 tests, ZAP active, semgrep, k6, gitleaks -
+had already passed. These three were invisible to all of it, because the code
+ran fine; it just told the technician the wrong thing.
 
----
+| # | Finding | Status |
+|---|---------|--------|
+| F11 | **Staging share links pointed at PRODUCTION.** The fault screen footer read `snapai.mainnov.tech/d/159529f437...` on a STAGING page. `diagnostic.py` hardcoded the prod hosts in two places with no env awareness; CP7 had already proved a staging token 404s on prod. Now derived from `settings.frontend_url` via `_public_base_url(market)` with PK host mapping. `FRONTEND_URL` already existed on every Railway service and was simply unused. | **FIXED** |
+| F13 | **Displayed band contradicted the classifier.** Receipt showed "Compared against 115-141 PSI -> WITHIN RANGE" but canonical is 115-140 normal / >=141 HIGH, and the classifier uses 140. Cause: `low_threshold` (115) is an INCLUSIVE bottom while `high_threshold` (141) is an EXCLUSIVE start-of-high - confirmed against staging `diagnostic_questions.reading_spec` (discharge is the same shape: 225/276). Band top now steps back one unit. | **FIXED** |
+| F12 | **Two contradictory "Confidence" values on one screen.** Header pill `data.fault.confidence` = "High Confidence"; receipt `reading_receipt.confidence` = "MEDIUM", four lines apart. Separate backend fields that may legitimately measure different things (diagnosis vs reading quality) - but both are labelled just "Confidence", so the screen argues with itself in front of a homeowner. | **OPEN - product decision: relabel or reconcile** |
 
-## Session 2026-06-29 -- Dependabot weekly triage + PROMOTED TO PROD
+14 regression tests (`test_f11_f13_visual_findings.py`), red-green verified:
+10 fail against unpatched code. Full suite **212 passed**.
 
-**DONE this session:**
-- Weekly Dependabot triage (scheduled task `snapai-dependabot-triage`): 2 open PRs, both staging-targeted grouped minor/patch with green CI + clean mergeable_state -> MERGED both to `staging`.
-  - #21 pip-minor-patch (`scopesnap-api/requirements.txt`): fastapi 0.138.0->0.138.1, boto3 1.43.34->1.43.36, alembic 1.18.4->1.18.5, weasyprint 68.0->68.1, svix 1.96.0->1.96.1.
-  - #22 npm-minor-patch (`scopesnap-web`): @clerk/nextjs 7.5.7->7.5.9, posthog-js 1.391.2->1.395.0, @sentry/nextjs 10.59.0->10.62.0, autoprefixer 10.0.1->10.5.2.
-- Staging QA PASS: Playwright E2E + backend pytest + gitleaks + NUL-byte all green (merge commits f1e858d / 59d15b2); /health ok, /api/version 1.2, /api/models/all US+PK 200, both staging fronts 200.
-- PROMOTED TO PROD (DEC-070 file-scoped overlay): `main` 8d618fd -> **d9ae18e**, 3 files (requirements.txt, package.json, package-lock.json). Deps-only, no migration, prod-runtime-neutral.
-- Prod QA PASS: main CI green on d9ae18e (Playwright E2E + pytest + gitleaks + NUL-byte); Railway prod /health ok (environment production, clean boot on bumped deps); /api/version 1.2; /api/models/all US+PK 200; both prod fronts (snapai.mainnov.tech + pk.snapai.mainnov.tech) 200.
+**Rendered correctly** (verified by eye): dashboard, assessments list, Step Zero,
+complaint grid, diagnostic tree, fault resolution, Pricing Database. STAGING
+banner present, correct identity, no layout breakage. US pricing shows `$95/hr`,
+`$1,400`, `$250` - the F6 fix behaving correctly on the US side.
 
-**OPEN / follow-ups (DATED):**
+**Also seen:** the dashboard shows "Recent Assessments" EMPTY and "Your first
+assessment is 3 taps away" even though the walkthrough had resolved diagnoses.
+Either assessments only surface once an estimate is finalised, or they are not
+being listed. Not yet investigated.
 
-| Priority | Item | Owner | Notes |
-|----------|------|-------|-------|
-| LOW | **Dependabot security advisory #34 (moderate)** | Shoab | GitHub flagged 1 moderate advisory on the default branch during the prod push. Pre-existing transitive, NOT from this week's bumps. Review: github.com/mohammed-shoab/ScopeSnapAI/security/dependabot/34 |
-| LOW (watch) | Turbopack adoption (DEC-113) | snapai-dev | Still PLANNED; unaffected by this dep bump. |
+**Lesson worth keeping:** a green suite means the code did not crash. It does not
+mean the screen is right. Every finding above was a correct-looking code path
+rendering a wrong number or a wrong link. Budget a visual pass in every audit.
 
----
+## Session 2026-09-17 - audit close-out: F9 fixed, walkthrough real, Phase 4 scored
+
+Prod/main untouched. Staging HEAD a8ffa3a.
+
+### Shipped
+
+| PR | What | Staging |
+|----|------|---------|
+| #70 | **F9** non-UUID path param caused an unhandled 500. 7 `{estimate_id}` params typed `UUID` (5 estimates.py, 2 payments.py) + a narrow `DBAPIError`->400 handler in main.py covering the 18 `assessment_id`/`session_id` params still typed `str`. 18 tests, red-green (11 fail unpatched). Suite: **198 passed**. | 61b694f |
+| #71 | The assessment -> diagnosis walkthrough, for real. | a8ffa3a |
+
+### F9 - why it hid
+
+Sentry **SNAPAI-API-1A**: `GET /api/estimates/new` -> `DataError: invalid UUID
+'new'`. It hid because the old flow test asserted against **`/assessment/new`
+(singular), which is not a route** - Next matched `[id]` with `id="new"`, the
+page rendered "Loading estimate...", the test went GREEN, and the backend 500'd
+underneath. Real entry: **`/assessments/new`** -> `/assess`. A render check is
+not a behaviour check; the walkthrough now asserts state transitions and fails
+on ANY 5xx.
+
+### Walkthrough now genuinely works
+
+`/assessments/new` -> `/assess` -> Step Zero via **manual tab** -> "Not Cooling"
+-> question tree -> resolved **"Ductwork Leak | High Confidence"**, 0x 5xx.
+Determinism via `localStorage.snap_sz_path="manual"` - the app's OWN A/B key,
+not a backdoor. Asserts PROGRESS (>=1 step), not resolution: a first-option
+answerer should not be trusted to navigate a clinical decision tree.
+
+### CORRECTION - Step Zero is NOT a hard photo gate
+
+An earlier entry claimed a nameplate photo was mandatory. **Wrong** -
+StepZeroPanel has a photo|manual tab pair; manual's "Confirm & Continue" calls
+`onConfirm` directly.
+
+### NEW - F10 (LOW): dead `onSkip` prop
+
+`components/StepZeroPanel.tsx` declares `onSkip` (L68) and destructures it
+(L114) but **never invokes it**. `app/(app)/assess/page.tsx:462` wires
+`onSkip={() => setPhase("complaint")}` - a handler that can never fire. Either
+restore a skip affordance or delete the prop. Not a blocker: the manual tab
+works.
+
+### Phase 4 promote gate - SCORED
+
+| # | Checkpoint | Result |
+|---|------------|--------|
+| 1 | Staging deploy live | **PASS** |
+| 2 | Schema parity | **FAIL** - staging alembic 048, prod 047. Migration `048_rls_threshold_tables_and_auto_enable_trigger.py` is on staging; `c3eb21c` (DEC-135) is NOT an ancestor of main. A promote MUST run 048 on prod. |
+| 3 | Env-var key parity | **CLOSED - ACCEPTED (DEC-137)** - `CRON_SECRET` is set on PROD (fails closed, verified) and deliberately NOT set on staging. Shoab's decision 2026-09-18. Staging-only exposure, not a promote blocker. CP3 must score this PASS-with-note from now on. Missing on PROD would still be a real FAIL. |
+| 4 | Smoke both markets | **PASS** - all 4 surfaces HTTP 200, len 2437 |
+| 5 | Console-error baseline | **PASS** - NOVEL=0 both markets; staging 26 vs prod 33 |
+| 6 | Railway log baseline | **NOT MEANINGFUL** - ZAP active + k6 500 VUs deliberately generated thousands of errors on staging the same day. Needs a quiet window. |
+| 7 | Cross-market isolation | **PASS** - live proof of F7: no header / `X-Market: US` / forged `X-Market: PK` / SQL-injection string in the header all return byte-identical results (HTTP 200, len=996, card 'Refrigerant Leak'). Staging token 404s on prod; bogus token 404s. |
+
+### Observability - filter NOT working on staging
+
+`SNAPAI_AUDIT_MODE` is **not set on the Railway staging service** (confirmed in
+Variables). That is why SNAPAI-API-1A reached Sentry - `_sentry_before_send`
+never engaged. **The audit polluted Sentry**, exactly what mitigation #4 exists
+to prevent. Set it before the next run.
+
+### STILL NOT VERIFIED - F6 PKR rendering
+
+F6 (PR #66) is verified only by code reading + CI. A Playwright check to sign in
+on **pk-staging** and assert the rendered currency got as far as auth
+(`PK hostname: pk-staging...`) but **authenticated PK nav times out**
+(`net::ERR_ABORTED`, then 30s, across 4 retries). Spec NOT committed - it does
+not pass. Nobody has SEEN PK render its own symbol. Treat F6 as
+fixed-in-code, unproven-on-screen. Check pk-staging perf / Clerk cross-domain
+handoff on that hostname.
+
+### Open findings
+
+| # | Finding | Severity |
+|---|---------|----------|
+| F1 | Live Gemini key in PUBLIC git history - risk ACCEPTED by Shoab, key NOT rotated | HIGH |
+| F3 | 200-VU p95 ceiling (Hobby plan, not a code defect) + **9 RLS policies re-evaluating `auth.<fn>()` per row** + 17 unindexed FKs | MEDIUM |
+| F4 | CI gitleaks is incremental - never rescans history | MEDIUM |
+| F5 | Local `scopesnapai-web` container crash-looping | LOW |
+| F10 | Dead `onSkip` prop | LOW |
+| - | ~~`CRON_SECRET` missing on staging~~ CLOSED - accepted, DEC-137 | - |
+| - | `SNAPAI_AUDIT_MODE` not set on Railway staging | MEDIUM |
+| - | prod missing migration 048 (DEC-135) | MEDIUM |
+### Never run: `webapp-testing`, `accessibility-a11y-enhanced`, GStack
+`qa`/`benchmark`/`review`, `quality-playbook`. No human clicked through the site
+in a visible browser - all UI coverage is headless Playwright.
 
 ## Playwright e2e CI (`playwright-e2e.yml`) — RED→GREEN + PROMOTED TO PROD — 2026-06-22 (DEC-125)
 
@@ -147,89 +219,6 @@ Pointer to session log: `session_logs/SESSION_LOG_2026-07-08_bryan_compendium_ex
 **Git state:**
 - `staging` branch HEAD: `f58c77e`
 - `main` branch HEAD: `932b20e` — PROMOTED TO PRODUCTION 2026-05-27 ✅
-
----
-
-## Session 2026-06-20 — Full release PROMOTED TO PROD + Dependabot triage (DEC-112)
-
-**DONE this session:**
-- Promoted the full staging release to PROD (main commit `5b092eb653`): Next 16/React 19/Clerk v7 migration + accumulated Brand-Decoder/audit work + migrations 037-041 (041 new to prod) + Dependabot backend bumps. File-scoped overlay incl new package-lock.json + middleware.ts->proxy.ts delete.
-- Verified prod: e2e CI #32 green; Vercel prod build green; Railway backend green (alembic 041 applied, clean boot); /health ok; /api/version 1.2; Sentry v10 delivering on Next 16 prod (ingest 200); dashboard clean (resolved deliberate test markers).
-- Dependabot: closed stale main-targeted #2-#6 (superseded); merged staging #7 (CI actions), #9 (pip group 18 bumps), #11 (joblib); #8 already closed; #10/#12/#13 deferred to Dependabot rebase. Backend pytest 122 passed against bumped deps.
-- Vercel staging DSN confirmed set; Sentry watch clean.
-
-**OPEN / follow-ups (DATED):**
-
-| Priority | Item | Owner | Notes |
-|----------|------|-------|-------|
-| MED | **Turbopack adoption (DEC-113)** | snapai-dev | PLANNED, not started. Earliest start **2026-06-27** (after ~1wk Next16 prod bake); target **2026-06-27 -> 2026-07-11**. Prereqs: Sentry -> instrumentation-client.ts + drop disableLogger; Tailwind v3-under-Turbopack spike or v4; remove next.config webpack() block; flip to `next build`. Staging-first. |
-| LOW (watch) | Next 16 prod bake | snapai-dev | Watch Sentry ~1 week post-2026-06-20 for any React 19/Clerk v7 prod regressions before starting Turbopack. |
-| LOW | Dependabot rebase #10/#12/#13 | Dependabot | numpy/openpyxl/xgboost floor bumps; auto-rebase after #9/#11. |
-
----
-
-## Session 2026-06-18 (PM2) — Next 16 / React 19 / Clerk v7 migration (DEC-112)
-
-**DONE this session:**
-- Migrated scopesnap-web: Next 14.2.15->16.2.9, React ^18->^19, @clerk/nextjs ^5.7.2->^7.5.3, eslint ^8->^9, eslint-config-next 16.2.9 (sentry already ^10.58.0).
-- Next 16 async APIs (awaited params/headers); middleware.ts->proxy.ts + Clerk v7 `auth.protect()`; SignIn/SignUp prop renames; tsconfig baseUrl; build `next build --webpack`; globals.css `@keyframes dashRot` fix.
-- Fixed React-19/Next-16 bugs: chooser-gate "16+years old" missing space (SWC trims space after `{expr}`) -> explicit `{" "}`; `useSearchParams` SSR hydration mismatch -> mounted-guards in both test harnesses.
-- Fixed pre-existing staging failure: `ReportClient` now renders every tier's line items (removed `isSelected` gate) — bug-fixes-day1 e2e.
-- Verified: tsc 0 errors; Vercel prod build green; e2e 34 passed; staging CI run #29 green; backend `/api/version` 1.2; Sentry v10 delivering on Next 16 staging build.
-- Merged `feat/next16-react19-clerk7` -> staging (PR #14, `ba7e479`); staging deployed.
-- Dependabot: closed stale main-targeted #2-#6 (superseded); merged staging-targeted #7 (CI actions), #9 (pip group, 18 backend bumps), #11 (joblib). #8 already closed (Next 16 conflict). #10/#12/#13 (numpy/openpyxl/xgboost floor bumps) deferred to Dependabot rebase (requirements.txt conflict after #9/#11).
-
-**OPEN / follow-ups:**
-
-| Priority | Item | Owner | Notes |
-|----------|------|-------|-------|
-| HIGH | Promote Next 16 / React 19 / Clerk v7 to prod | Shoab | Gated — deferred. Staging verified green; prod still Next 14 until go. |
-| MED | Backend QA after pip-group merge (#9) | snapai-dev | 18 backend bumps incl fastapi 0.115->0.137, uvicorn 0.30->0.49 landed on staging — verify /health + pytest. |
-| MED | Adopt Turbopack | snapai-dev | Currently `--webpack`; revisit after reconciling webpack config + Tailwind v3 postcss. |
-| LOW | Dependabot rebase #10/#12/#13 | Dependabot | numpy/openpyxl/xgboost floor bumps conflicted post-#9/#11 merge; will auto-rebase. |
-
----
-
-## Session 2026-06-18 (PM) — Dependabot / dependency upgrades (DEC-110)
-
-**DONE this session:**
-- ✅ Triaged the 5 open Dependabot PRs live (labels were misleading — #2/#4 were a Sentry v8→v10 MAJOR, not minor).
-- ✅ Landed on staging (`550cd50`) → prod (`8541182`): `@sentry/nextjs ^8→^10.58.0`, `@opentelemetry/core 2.8.0`, `dompurify 3.4.11` (one regenerated lockfile). CI green (staging #15, prod #18).
-- ✅ §5 Sentry RE-PROVEN both envs after the major bump — ingest 200, SDK 10.58.0, events tagged staging + production (`SNAPAI-WEB-2`, resolved). Dashboard clean. Prod `/api/version` still 1.2.
-- ✅ `dependabot.yml` policy committed to staging (target staging, group minor+patch, ignore majors, security on) — already byte-identical on main via audit-session `6f4925a`.
-
-**OPEN / shelved:**
-
-| Priority | Item | Owner | Notes |
-|----------|------|-------|-------|
-| MEDIUM | **React 19 / Next 16 / Clerk v7 migration epic** (Dependabot #5 next 14→16, #3 @clerk/nextjs 5→7) | snapai-dev | Both fail npm install on peer conflicts — both need React 19 (we pin `react ^18`). Deliberate multi-day migration: also Turbopack-default vs our next.config webpack block, middleware→proxy, async cookies()/headers()/params, Clerk v6/7 compat. Sentry v10 (a prerequisite) already done. Prod stays on Next 14 until done. |
-| LOW | **Close the 5 stale main-targeted Dependabot PRs** | Shoab / Dependabot | #2/#4/#6 superseded by the landed bumps; #5/#3 shelved (ignored by new policy). Dependabot should auto-reconcile on next run (Mon 06:00 PKT) now that main targets staging. |
-| LOW | **npm audit: 7 advisories (1 crit/5 high/1 mod)** | snapai-dev | Pre-existing transitive, not introduced by this change. `audit fix --force` makes breaking changes — needs a deliberate pass. |
-| LOW (watch) | **Sentry post-deploy watch** | snapai-dev | Dashboard clean immediately post-deploy; keep an eye 15–30 min for any v10-related frontend errors. |
-
----
-
-## Session 2026-06-18 — Observability audit + auth fix (DEC-106–109)
-
-**DONE this session:**
-- ✅ **Backend Sentry capture fixed** — catch-all handler now calls `sentry_sdk.capture_exception` (DEC-107, `09a5a87`→prod `e4eaf1b`). Proven `SNAPAI-API-17`.
-- ✅ **Frontend Sentry wired + live** — `withSentryConfig` + CSP ingest allow + `NEXT_PUBLIC_SENTRY_DSN` on staging Vercel (DEC-108, `17ae165`→prod `390d54b`). Proven `SNAPAI-WEB-1`.
-- ✅ **Gmail + Sentry-dashboard error audit** — emails all map to resolved/historical; the dashboard (not the emails) surfaced 8 real unresolved issues. Lesson logged: audit the platform, not the alert emails.
-- ✅ **`SNAPAI-API-Z` auth bug fixed** (undefined `logger` + duplicate-provision race) — DEC-109, staging `37faefed` → prod `d432caad`. Live both envs, prod `/health` ok + `/api/version` 1.2. Had sat unresolved since the 2026-05-23 isolation audit (~4 weeks).
-- ✅ **Sentry dashboard cleaned** — all 8 then-unresolved issues Resolved (Resolve, not Archive, to keep regression detection). Dashboard now empty all projects/envs.
-- ✅ **Gemini billing verified live** — balance $9.97 healthy; 429 "credits depleted" errors were historical (topped up $10 Jun 7, expires Jul 1 2027); active key `SnapAI Backend Key 2026-06` (`...y2tg`).
-- ✅ **Brain files updated** — PROJECT_BRAIN banner, TECH_STACK (Sentry/Gemini/Dependabot corrections), DECISIONS (DEC-106–109), this entry.
-
-**OPEN — Shoab-owned:**
-
-| Priority | Item | Owner | Notes |
-|----------|------|-------|-------|
-| MEDIUM | **Enable Gemini auto-reload** (AI Studio → Billing → "Set up auto-reload") | Shoab | Auto-reload is OFF. When the $9.97 prepay balance depletes, OCR 429s again with no auto-refill. Payment-method change — Claude can't do it. |
-| LOW | **Fix or close Dependabot bump PRs** (`next` 14→16, `js-cookie`/`@clerk`) | Shoab / snapai-dev | Preview builds fail (breaking changes) → "Failed preview deployment" emails. Benign — never touch live prod/staging. PRs can't merge until breaking changes resolved. |
-| LOW (watch) | **Watch `SNAPAI-API-Z` stays quiet on Sentry** | snapai-dev | Auth fix can't be synthetically triggered (needs a real new-user Clerk login). Sentry silence on this issue is the proof-of-fix signal. |
-| LOW (optional) | **Make double-provision airtight** | snapai-dev | Fix made the webhook+fallback race non-fatal; ideally only one path should provision a signup. Cleanup, not urgent. |
-
-NOTE: the older backlog task "Enable GitHub Dependabot" is now DONE — Dependabot is active and opening PRs.
 
 ---
 

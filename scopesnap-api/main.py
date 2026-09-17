@@ -21,6 +21,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from config import get_settings
 from db.database import check_db_connection
+from sqlalchemy.exc import DBAPIError
 from api import assessments, estimates, reports, properties
 from api.payments import router as payments_router, webhook_router as stripe_webhook_router
 from api.clerk_webhook import router as clerk_webhook_router, me_router as auth_router
@@ -295,3 +296,33 @@ async def on_startup():
             print(f"â Equipment models: {model_count} models loaded")
     except Exception as _equip_err:
         print(f"â ï¸  Equipment models seed failed (non-fatal): {_equip_err}")
+
+
+# F9 (audit 2026-09-17): defence-in-depth for malformed identifiers.
+#
+# A non-UUID path segment (e.g. GET /api/estimates/new) used to reach Postgres
+# and raise asyncpg DataError -> unhandled 500 + a Sentry event + the full SQL
+# in logs. The {estimate_id} routes are now typed UUID so FastAPI 422s before
+# the DB is touched, but assessment_id / session_id params elsewhere are still
+# typed str. Until those are typed too, translate the driver-level data error
+# into a 400 so a bad URL is a client error, not a server error.
+#
+# Deliberately narrow: only DataError/InvalidTextRepresentation are caught.
+# Genuine DB failures still surface as 500s and still page us.
+@app.exception_handler(DBAPIError)
+async def _dbapi_data_error_handler(request: Request, exc: DBAPIError):
+    root = str(getattr(exc, "orig", exc))
+    is_bad_input = (
+        "DataError" in root
+        or "invalid input" in root
+        or "InvalidTextRepresentation" in root
+    )
+    if not is_bad_input:
+        raise exc
+    logger.warning(
+        "[main] malformed identifier on %s %s", request.method, request.url.path
+    )
+    return JSONResponse(
+        status_code=400,
+        content={"detail": "Malformed identifier in request path."},
+    )

@@ -2644,3 +2644,89 @@ Data-use law: identifiable per-shop data = serve only that shop; cross-shop = de
 2. Configure the **qualifying form** + consent checkbox (logged) + **scheduler** (limited slots) + **booking-confirmation email** + **per-shop private folder**.
 3. Supply the real **FORM_URL** + swap it into `scopesnap-web/app/tech/page.tsx` (replace `REPLACE_WITH_FORM_URL`).
 4. Set the true **slot cap** (the "a few shops a month" scarcity).
+
+## DEC-136 - Public routes resolve market from the RECORD OWNER, never the X-Market header
+
+**Date:** 2026-09-16
+**Context:** snapai-full-audit finding F7.
+
+`GET /api/diagnostic/public/{share_token}` is unauthenticated and resolved its
+market via `Depends(get_tables)` - i.e. the `X-Market` request header, which any
+caller can forge. A forged header made the endpoint read fault cards from the
+wrong market's table (wrong-market card text, or a spurious 404). `reports.py`
+had already been hardened for exactly this on its own public route, using
+`estimate.market`; the diagnosis route had not.
+
+**Decision:** on any PUBLIC (unauthenticated) route, the market MUST be derived
+from the persisted record's owner, never from the request header.
+
+- `reports.py` -> `tables_for_market(estimate.market)` (already in place)
+- `diagnostic.py` -> `tables_for_market(companies.market)` via
+  `diagnostic_sessions.company_id -> companies.market` (added 2026-09-16, PR #67)
+
+No migration was required: `companies.market` already existed (DEC-043 era) and
+staging data confirmed the join is total - 47 sessions, 0 without `company_id`,
+0 orphan FKs; 4 companies, 0 null markets.
+
+The `Depends(get_tables)` parameter was REMOVED from the public diagnosis route
+signature rather than left unused, so nobody mistakes the header for a live input.
+
+**Header-based `get_tables` / `get_market` remain legitimate** on routes that
+serve only market-scoped REFERENCE data with no per-record owner - currently
+`/brands`. They are NOT acceptable on any route that resolves a specific record.
+
+**Cross-references:** DEC-049 (cross-market isolation), DEC-070 (staging-first),
+and the `get_company_tables` hardening for authenticated routes.
+
+**Note:** DEC-135 is referenced by commit `c3eb21c`, by migration
+`048_rls_threshold_tables_and_auto_enable_trigger.py` and by the
+`fix/rls-guard-dec135` branch, but has NO entry in this file. It should be
+written up. As of 2026-09-16 that migration is on staging only - prod is still
+at alembic 047.
+
+## DEC-137 - CRON_SECRET is deliberately NOT set on staging; CP3 is CLOSED as accepted
+
+**Date:** 2026-09-18
+**Supersedes the open recommendation in DEC-126.**
+**Context:** the promote gate's CP3 (env-var key parity) has failed on every audit
+run since 2026-06-22, always for the same reason, and has been re-raised to Shoab
+each time. This entry exists to stop that.
+
+**The actual mechanic.** `verify_cron_secret` in `scopesnap-api/api/estimates.py`
+guards the two `/process-followups` handlers and fails OPEN by design when the
+secret is blank:
+
+    expected = (get_settings().cron_secret or "").strip()
+    if not expected:
+        logging.warning("process-followups is UNAUTHENTICATED: set CRON_SECRET ...")
+        return
+    if not x_cron_secret or x_cron_secret != expected:
+        raise HTTPException(401)
+
+- PROD:    `CRON_SECRET` IS set -> the endpoint fails CLOSED, 401 without the
+           header. Verified live (SECURITY_AUDIT_FINDINGS.md L123). Unchanged.
+- STAGING: not set -> the endpoint is unauthenticated.
+
+**Decision (Shoab, 2026-09-18): leave staging as it is. Do not set it, and do not
+raise it again.**
+
+**Why this is acceptable, stated explicitly so it is not re-litigated:**
+- The exposure is confined to staging. Prod - the only environment with real
+  customers and real billing - already fails closed and is not affected.
+- The endpoint's blast radius on staging is follow-up email over staging seed
+  data, not customer data, money movement or deletion.
+- The fail-open branch is intentional backward-compatibility, not an oversight:
+  it exists so the scheduler keeps working before the secret is provisioned.
+- Setting it on staging is a Railway dashboard action with no code change, so it
+  can be done at any time if the calculus changes. Nothing is blocked by it.
+
+**Consequences for the audit:**
+- `snapai-full-audit` Phase 4 CP3 MUST treat a staging-only `CRON_SECRET` gap as
+  PASS-with-note, not FAIL. It is not a promote blocker and never was - it does
+  not gate, and cannot gate, anything on the prod side.
+- If `CRON_SECRET` is ever found MISSING ON PROD, that is a genuine FAIL and must
+  be escalated immediately. This decision covers staging ONLY.
+
+**Not accepted by this entry:** nothing else in the env-var parity checkpoint. Any
+NEW divergence between the two environments is still a finding.
+

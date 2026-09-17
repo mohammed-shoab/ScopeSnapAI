@@ -28,8 +28,82 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth import AuthContext, get_current_user
-from api.dependencies import get_tables, get_company_tables, MarketTables
+from api.dependencies import (
+    get_tables,
+    get_company_tables,
+    tables_for_market,
+    MarketTables,
+)
 from db.database import get_db
+from config import get_settings
+import re as _re_mod
+
+
+# ---------------------------------------------------------------------------
+# F14 (audit 2026-09-17): keep database identifiers out of user-facing copy.
+#
+# Seen in production-like staging on a Refrigerant Leak card:
+#   "Compared against  reference targets
+#      (superheat_subcool_targets.target_superheat_min_f,target_superheat_max_f)"
+#   "WHY THIS CARD  SH above target_superheat_max_f AND SC below
+#      target_subcool_min_f"
+#
+# A technician was shown the schema, and never the actual target numbers.
+# These helpers translate the tokens we know, and DROP anything that still
+# looks like an identifier rather than render it. Failing closed is deliberate:
+# a missing line is better than leaking internals to someone quoting a customer.
+# ---------------------------------------------------------------------------
+
+_RECEIPT_TOKEN_PROSE = {
+    "target_superheat_max_f": "the target superheat maximum",
+    "target_superheat_min_f": "the target superheat minimum",
+    "target_subcool_max_f": "the target subcool maximum",
+    "target_subcool_min_f": "the target subcool minimum",
+    "suction_max_psi": "the target suction maximum",
+    "suction_min_psi": "the target suction minimum",
+    "discharge_max_psi": "the target discharge maximum",
+    "discharge_min_psi": "the target discharge minimum",
+}
+
+# table.column or table.col_a,col_b
+_IDENT_PATH_RE = _re_mod.compile(r"\b[a-z][a-z0-9_]*\.[a-z0-9_]+(?:\s*,\s*[a-z0-9_]+)*")
+# bare snake_case with 2+ underscores, e.g. target_superheat_max_f
+_IDENT_TOKEN_RE = _re_mod.compile(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+){2,}\b")
+
+
+def _looks_like_identifier(s: str) -> bool:
+    return bool(_IDENT_PATH_RE.search(s) or _IDENT_TOKEN_RE.search(s))
+
+
+def _humanize_receipt_source(raw):
+    """`compare_to` is an internal pointer (table.column). Never show it."""
+    if not raw or not isinstance(raw, str):
+        return None
+    s = raw.strip()
+    if not s or _looks_like_identifier(s):
+        return None
+    return s
+
+
+def _humanize_receipt_why(raw):
+    """Turn a rule expression into prose, or drop it if it stays machine-ish."""
+    if not raw or not isinstance(raw, str):
+        return None
+    s = raw.strip()
+    if not s:
+        return None
+    s = _re_mod.sub(r"\bSH\b", "superheat", s)
+    s = _re_mod.sub(r"\bSC\b", "subcool", s)
+    for token, prose in _RECEIPT_TOKEN_PROSE.items():
+        s = s.replace(token, prose)
+    s = _re_mod.sub(r"\s+AND\s+", " and ", s)
+    s = _re_mod.sub(r"\s+OR\s+", " or ", s)
+    s = _re_mod.sub(r"\s{2,}", " ", s).strip()
+    if _looks_like_identifier(s):
+        return None
+    return s[:1].upper() + s[1:] if s else None
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -634,6 +708,25 @@ async def _evaluate_pressure_for_market(
             {"mkt": market, "ref": ref, "amb": ambient_c},
         )
         targets = row.fetchone()
+        if targets is None:
+            # F8: ambient is BELOW the lowest configured row for this
+            # market+refrigerant (e.g. PK R-22 has rows only at 35/45 C, so a
+            # 30 C reading matched nothing). Previously this fell through to the
+            # hot-weather _FALLBACK_* dict, which biases toward a false "low"
+            # classification -> false refrigerant-leak diagnosis. Use the COLDEST
+            # configured band instead. If the table has no rows at all for this
+            # pair (e.g. US R-32, static by design per PROJECT_BRAIN L84), targets
+            # stays None and the fallback dict still applies - unchanged.
+            row = await db.execute(
+                text(
+                    "SELECT suction_min_psi, suction_max_psi, discharge_min_psi, discharge_max_psi "
+                    "FROM operating_targets "
+                    "WHERE market = :mkt AND refrigerant = :ref "
+                    "ORDER BY ambient_c ASC LIMIT 1"
+                ),
+                {"mkt": market, "ref": ref},
+            )
+            targets = row.fetchone()
     except Exception as e:
         logger.warning("[diagnostic] operating_targets lookup failed (market=%s): %s", market, e)
         targets = None
@@ -1146,7 +1239,19 @@ async def _build_reading_receipt(db: AsyncSession, q_row, answer, branch: dict, 
     confidence = {"low": "Low", "medium": "Medium", "high": "High"}.get(conf_raw, "Medium")
 
     _tlow = spec.get("band_min") if spec.get("band_min") is not None else spec.get("low_threshold")
-    _thigh = spec.get("band_max") if spec.get("band_max") is not None else spec.get("high_threshold")
+    # F13 (audit 2026-09-17): low_threshold is the INCLUSIVE bottom of the
+    # normal band, but high_threshold is the EXCLUSIVE start of "high"
+    # (spec 115/141 == canonical "115-140 normal, >=141 high"). Rendering
+    # high_threshold as the top of the band showed techs "115-141 WITHIN
+    # RANGE" while the classifier called 141 HIGH. Step back one unit so the
+    # displayed band matches the decision the engine actually makes.
+    _thigh = spec.get("band_max")
+    if _thigh is None:
+        _ht = spec.get("high_threshold")
+        if isinstance(_ht, (int, float)) and not isinstance(_ht, bool):
+            _thigh = _ht - 1 if float(_ht).is_integer() else _ht
+        else:
+            _thigh = _ht
     # Derive a numeric range for reading types whose spec carries no band/threshold
     # (cfm_per_ton uses a tolerance around a humid target) so the receipt shows a real
     # range instead of "reference targets".
@@ -1169,9 +1274,9 @@ async def _build_reading_receipt(db: AsyncSession, q_row, answer, branch: dict, 
         "unit": spec.get("unit"),
         "target_low": _tlow,
         "target_high": _thigh,
-        "target_source": spec.get("compare_to"),
+        "target_source": _humanize_receipt_source(spec.get("compare_to")),
         "result": _reading_result_label(branch_key),
-        "why_line": why,
+        "why_line": _humanize_receipt_why(why),
         "ruled_out": [],
         "confidence": confidence,
         "high_exposure": int(card_id) in _HIGH_EXPOSURE_CARDS,
@@ -2001,12 +2106,7 @@ async def get_diagnostic_result(
     # Build share URL from share_token if present
     share_url = ""
     if session.share_token:
-        base_url = (
-            "https://pk.snapai.mainnov.tech"
-            if tables.market == "PK"
-            else "https://snapai.mainnov.tech"
-        )
-        share_url = base_url + "/d/" + session.share_token
+        share_url = _public_base_url(tables.market) + "/d/" + session.share_token
 
     # Build alternative_diagnoses from alternative_cards JSONB
     alt_cards = fc.alternative_cards or []
@@ -2308,31 +2408,71 @@ async def finalize_diagnosis(
     return {"share_token": share_token, "status": "finalized"}
 
 
+def _public_base_url(market: str) -> str:
+    """F11 (audit 2026-09-17): build share links from the DEPLOYED environment.
+
+    The base URL used to be hardcoded to the production domains, so every share
+    link generated on staging pointed at prod - where the token does not exist
+    and 404s. Derive it from settings.frontend_url (FRONTEND_URL, already set on
+    every Railway service) and map to the PK sibling host when the record's
+    market is PK.
+
+      staging.snapai.mainnov.tech -> pk-staging.snapai.mainnov.tech
+      snapai.mainnov.tech         -> pk.snapai.mainnov.tech
+      localhost / anything else   -> returned unchanged
+    """
+    base = (get_settings().frontend_url or "").rstrip("/")
+    if not base:
+        base = "https://snapai.mainnov.tech"
+    if str(market).strip().upper() != "PK":
+        return base
+    # Already a PK host? leave it alone.
+    if "//pk." in base or "//pk-" in base:
+        return base
+    if "//staging." in base:
+        return base.replace("//staging.", "//pk-staging.", 1)
+    if "//snapai." in base:
+        return base.replace("//snapai.", "//pk.snapai.", 1)
+    return base
+
 # -- D.9: GET /public/{share_token} -------------------------------------------
 
 @router.get("/public/{share_token}")
 async def get_public_diagnosis(
     share_token: str = Path(...),
-    tables: MarketTables = Depends(get_tables),
     db: AsyncSession = Depends(get_db),
 ):
     """
     D.9 -- Unauthenticated public share. Customer PII always null.
-    Market from X-Market header sent by frontend detectMarket().
+
+    F7 (audit 2026-09-16): market is resolved from the OWNING COMPANY
+    (diagnostic_sessions.company_id -> companies.market), never from the
+    X-Market header, which any caller can forge on this unauthenticated
+    route. Mirrors reports.py, which already trusts estimate.market on its
+    own public route. Previously a forged header made this endpoint read
+    fault cards from the wrong market's table.
     """
     sess_res = await db.execute(
         text(
-            "SELECT id, assessment_id, status, resolved_card_id,"
-            "       created_at, share_token, confidence_level, reasoning_chain, reading_receipt,"
-            "       customer_label, customer_address"
-            " FROM diagnostic_sessions"
-            " WHERE share_token = :token AND deleted_at IS NULL LIMIT 1"
+            "SELECT ds.id, ds.assessment_id, ds.status, ds.resolved_card_id,"
+            "       ds.created_at, ds.share_token, ds.confidence_level,"
+            "       ds.reasoning_chain, ds.reading_receipt,"
+            "       ds.customer_label, ds.customer_address,"
+            "       c.market AS company_market"
+            " FROM diagnostic_sessions ds"
+            " LEFT JOIN companies c ON c.id = ds.company_id"
+            " WHERE ds.share_token = :token AND ds.deleted_at IS NULL LIMIT 1"
         ),
         {"token": share_token},
     )
     session = sess_res.fetchone()
     if not session or session.status != "resolved" or not session.resolved_card_id:
         raise HTTPException(status_code=404, detail="Diagnosis not found.")
+
+    # F7: trust the owning company's market, not the X-Market header.
+    # Falls back to US when company_market is absent, matching
+    # tables_for_market's own default.
+    tables = tables_for_market(getattr(session, "company_market", None) or "US")
 
     fc_table = tables.fault_cards
     if tables.market == "US":
@@ -2360,12 +2500,7 @@ async def get_public_diagnosis(
 
     share_url = ""
     if session.share_token:
-        base = (
-            "https://pk.snapai.mainnov.tech"
-            if tables.market == "PK"
-            else "https://snapai.mainnov.tech"
-        )
-        share_url = base + "/d/" + session.share_token
+        share_url = _public_base_url(tables.market) + "/d/" + session.share_token
 
     return {
         "session_id": str(session.id),

@@ -15,6 +15,31 @@ from pathlib import Path
 from typing import Optional
 
 
+import urllib.request as _urlreq_mod
+
+
+class _NoRedirectHandler(_urlreq_mod.HTTPRedirectHandler):
+    """F2 (audit 2026-09-16): refuse HTTP redirects outright.
+
+    _is_safe_remote_url() below validates the URL it is handed, but
+    urllib's default opener then FOLLOWS redirects without re-validating.
+    A public, allow-listed URL that 302s to http://169.254.169.254/... would
+    therefore sail straight past the guard and reach cloud metadata. Refusing
+    redirects closes that hole, and also removes the DNS-rebinding window
+    between the guard's getaddrinfo() and the fetch's own resolution.
+
+    Callers must use _safe_open() rather than urlopen() directly.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _safe_open(req, timeout):
+    """Open `req` with redirects refused. Pairs with _is_safe_remote_url()."""
+    return _urlreq_mod.build_opener(_NoRedirectHandler).open(req, timeout=timeout)
+
+
 def _is_safe_remote_url(url: str) -> bool:
     """SSRF guard: allow only http(s) URLs whose host resolves to a public IP.
     Blocks private/loopback/link-local (incl. cloud metadata 169.254.169.254),
@@ -438,7 +463,7 @@ def _fetch_and_annotate_photo(photo_url: str, issues: list, max_w: int = 516):
 
         # ── Fetch ─────────────────────────────────────────────────────────────
         req = _urlreq.Request(photo_url, headers={"User-Agent": "SnapAI-PDF/1.0"})
-        with _urlreq.urlopen(req, timeout=10) as resp:
+        with _safe_open(req, timeout=10) as resp:
             img_bytes = resp.read()
 
         # ── Load with Pillow ──────────────────────────────────────────────────
@@ -506,7 +531,7 @@ def _fetch_photo(url: str):
             return None, None, None
 
         req = _urlreq.Request(url, headers={"User-Agent": "SnapAI-PDF/1.0"})
-        with _urlreq.urlopen(req, timeout=8) as resp:
+        with _safe_open(req, timeout=8) as resp:
             img_bytes = resp.read()
 
         img = _PILImage.open(_io.BytesIO(img_bytes)).convert("RGB")
