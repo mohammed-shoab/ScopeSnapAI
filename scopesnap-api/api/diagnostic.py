@@ -35,6 +35,7 @@ from api.dependencies import (
     MarketTables,
 )
 from db.database import get_db
+from config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -1170,7 +1171,19 @@ async def _build_reading_receipt(db: AsyncSession, q_row, answer, branch: dict, 
     confidence = {"low": "Low", "medium": "Medium", "high": "High"}.get(conf_raw, "Medium")
 
     _tlow = spec.get("band_min") if spec.get("band_min") is not None else spec.get("low_threshold")
-    _thigh = spec.get("band_max") if spec.get("band_max") is not None else spec.get("high_threshold")
+    # F13 (audit 2026-09-17): low_threshold is the INCLUSIVE bottom of the
+    # normal band, but high_threshold is the EXCLUSIVE start of "high"
+    # (spec 115/141 == canonical "115-140 normal, >=141 high"). Rendering
+    # high_threshold as the top of the band showed techs "115-141 WITHIN
+    # RANGE" while the classifier called 141 HIGH. Step back one unit so the
+    # displayed band matches the decision the engine actually makes.
+    _thigh = spec.get("band_max")
+    if _thigh is None:
+        _ht = spec.get("high_threshold")
+        if isinstance(_ht, (int, float)) and not isinstance(_ht, bool):
+            _thigh = _ht - 1 if float(_ht).is_integer() else _ht
+        else:
+            _thigh = _ht
     # Derive a numeric range for reading types whose spec carries no band/threshold
     # (cfm_per_ton uses a tolerance around a humid target) so the receipt shows a real
     # range instead of "reference targets".
@@ -2025,12 +2038,7 @@ async def get_diagnostic_result(
     # Build share URL from share_token if present
     share_url = ""
     if session.share_token:
-        base_url = (
-            "https://pk.snapai.mainnov.tech"
-            if tables.market == "PK"
-            else "https://snapai.mainnov.tech"
-        )
-        share_url = base_url + "/d/" + session.share_token
+        share_url = _public_base_url(tables.market) + "/d/" + session.share_token
 
     # Build alternative_diagnoses from alternative_cards JSONB
     alt_cards = fc.alternative_cards or []
@@ -2332,6 +2340,33 @@ async def finalize_diagnosis(
     return {"share_token": share_token, "status": "finalized"}
 
 
+def _public_base_url(market: str) -> str:
+    """F11 (audit 2026-09-17): build share links from the DEPLOYED environment.
+
+    The base URL used to be hardcoded to the production domains, so every share
+    link generated on staging pointed at prod - where the token does not exist
+    and 404s. Derive it from settings.frontend_url (FRONTEND_URL, already set on
+    every Railway service) and map to the PK sibling host when the record's
+    market is PK.
+
+      staging.snapai.mainnov.tech -> pk-staging.snapai.mainnov.tech
+      snapai.mainnov.tech         -> pk.snapai.mainnov.tech
+      localhost / anything else   -> returned unchanged
+    """
+    base = (get_settings().frontend_url or "").rstrip("/")
+    if not base:
+        base = "https://snapai.mainnov.tech"
+    if str(market).strip().upper() != "PK":
+        return base
+    # Already a PK host? leave it alone.
+    if "//pk." in base or "//pk-" in base:
+        return base
+    if "//staging." in base:
+        return base.replace("//staging.", "//pk-staging.", 1)
+    if "//snapai." in base:
+        return base.replace("//snapai.", "//pk.snapai.", 1)
+    return base
+
 # -- D.9: GET /public/{share_token} -------------------------------------------
 
 @router.get("/public/{share_token}")
@@ -2397,12 +2432,7 @@ async def get_public_diagnosis(
 
     share_url = ""
     if session.share_token:
-        base = (
-            "https://pk.snapai.mainnov.tech"
-            if tables.market == "PK"
-            else "https://snapai.mainnov.tech"
-        )
-        share_url = base + "/d/" + session.share_token
+        share_url = _public_base_url(tables.market) + "/d/" + session.share_token
 
     return {
         "session_id": str(session.id),
