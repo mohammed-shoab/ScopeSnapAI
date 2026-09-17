@@ -1,6 +1,6 @@
 # SnapAI — Active Tasks
 
-**Last updated:** 2026-09-17 (visual click-through: F11 prod-share-link + F13 receipt off-by-one FIXED; F12 confidence contradiction OPEN; suite 212 green)
+**Last updated:** 2026-09-18 (F14 identifier-leak FIXED, suite 237 green; migration 048 applied to PROD - CP2 closed; CP3 accepted - DEC-137; promote scoped to an overlay, NOT executed)
 **Historical sessions:** see `ACTIVE_TASKS_HISTORY.md` (60-row session-log index at top)
 
 ---
@@ -19,6 +19,50 @@
 ---
 
 ## Recent sessions (2026-06-18 onward — Bryan's exception: any session with any OPEN item stays)
+
+## Session 2026-09-18 - F14 fixed, prod migration 048 applied, promote scoped
+
+**F14 - raw DB identifiers in user-facing copy. FIXED (staging).**
+Found by clicking through staging in a REAL browser on a Refrigerant Leak
+diagnosis. The reading receipt showed the technician
+`superheat_subcool_targets.target_superheat_min_f,target_superheat_max_f` as
+"Compared against", and `SH above target_superheat_max_f AND SC below
+target_subcool_min_f` as "why this card" - database schema on screen, and the
+actual target numbers never shown at all. Sanitised in the BACKEND
+(`_humanize_receipt_source` / `_humanize_receipt_why`) so web, PDF and the
+homeowner report are all covered. Policy is FAIL CLOSED: a string that still
+looks like an identifier after translation is dropped, not rendered.
+25 new tests; suite 212 -> **237 passed**.
+
+**Still open from the visual pass (NOT fixed, deliberately):**
+- F12 - two contradictory "Confidence" values on one screen. Needs a product
+  decision (relabel vs reconcile), not a unilateral code change.
+- The receipt still shows "reference targets" with NO numbers for
+  superheat/subcool cards. Suppressing the leak was the safe half; resolving the
+  real numbers needs a lookup key that is not obviously available.
+- Dashboard "Recent Assessments" renders EMPTY despite resolved diagnoses
+  existing. Observed, not investigated.
+
+**PROD change - migration 048 applied and verified (CP2 CLOSED).**
+The DEC-135 RLS work was genuinely absent on prod, not just an unstamped version.
+Applied to prod Supabase and verified: `tables_rls_on=10`, `trigger_armed=1`,
+`evtenabled='O'`, `anon_can_exec=false`, `alembic='048'`. This is the ONLY prod
+change made; prod CODE remains at `f2ba07e`.
+
+**CP3 CLOSED as accepted - see DEC-137.** Stop re-raising it.
+
+**Promote scoped, NOT executed.** A `git merge staging -> main` produces **11
+conflicts**, not the 3 an earlier dry run reported against a much older staging
+HEAD. Root cause: every main-side commit on the conflicted code files is a
+`promote:` commit from `scripts/promote-to-prod.sh`, which is a scoped FILE
+OVERLAY, not a merge. This repo has never done a true git merge to main, so git
+is comparing two histories that were only ever copied between. **Verified safe:**
+every main-only line in `diagnostic.py` (23), `pdf_generator.py` (2) and
+`FaultResolutionScreen.tsx` (8) is the PRE-FIX code these patches replace - there
+is zero independent main-side work in them. Use the overlay, not a merge.
+
+---
+
 
 ## Session 2026-09-17 (visual) - 3 findings that only LOOKING could catch
 
@@ -102,7 +146,7 @@ works.
 |---|------------|--------|
 | 1 | Staging deploy live | **PASS** |
 | 2 | Schema parity | **FAIL** - staging alembic 048, prod 047. Migration `048_rls_threshold_tables_and_auto_enable_trigger.py` is on staging; `c3eb21c` (DEC-135) is NOT an ancestor of main. A promote MUST run 048 on prod. |
-| 3 | Env-var key parity | **FAIL** - `CRON_SECRET` exists in prod, missing on staging (Railway reported it: 24 vars vs 25). Does not break a promote; it means the daily R2 backup path has never been exercised on staging. |
+| 3 | Env-var key parity | **CLOSED - ACCEPTED (DEC-137)** - `CRON_SECRET` is set on PROD (fails closed, verified) and deliberately NOT set on staging. Shoab's decision 2026-09-18. Staging-only exposure, not a promote blocker. CP3 must score this PASS-with-note from now on. Missing on PROD would still be a real FAIL. |
 | 4 | Smoke both markets | **PASS** - all 4 surfaces HTTP 200, len 2437 |
 | 5 | Console-error baseline | **PASS** - NOVEL=0 both markets; staging 26 vs prod 33 |
 | 6 | Railway log baseline | **NOT MEANINGFUL** - ZAP active + k6 500 VUs deliberately generated thousands of errors on staging the same day. Needs a quiet window. |
@@ -134,87 +178,12 @@ handoff on that hostname.
 | F4 | CI gitleaks is incremental - never rescans history | MEDIUM |
 | F5 | Local `scopesnapai-web` container crash-looping | LOW |
 | F10 | Dead `onSkip` prop | LOW |
-| - | `CRON_SECRET` missing on staging | LOW |
+| - | ~~`CRON_SECRET` missing on staging~~ CLOSED - accepted, DEC-137 | - |
 | - | `SNAPAI_AUDIT_MODE` not set on Railway staging | MEDIUM |
 | - | prod missing migration 048 (DEC-135) | MEDIUM |
 ### Never run: `webapp-testing`, `accessibility-a11y-enhanced`, GStack
 `qa`/`benchmark`/`review`, `quality-playbook`. No human clicked through the site
 in a visible browser - all UI coverage is headless Playwright.
-
-## Session 2026-09-16 (later) - audit findings FIXED on staging
-
-Prod/main untouched throughout. Staging HEAD f1ad5cd.
-
-### Shipped
-
-| PR | Finding | Fix | Staging |
-|----|---------|-----|---------|
-| #66 | **F6** PK market rendered estimates in USD | dropped the hardcoded `fmt()`; all 4 call sites now use the existing market-aware `formatCurrency()` from `lib/market.ts`. 0 hardcoded `currency:"USD"` left. | d2bf691 |
-| #66 | **F8** ambient below lowest `operating_targets` row fell back to a HOT band | when the floor lookup misses, select the COLDEST configured band. Zero-row pairs (US R-32, static by design) keep the fallback dict. | d2bf691 |
-| #67 | **F2** SSRF guard bypassable via HTTP redirect | `_NoRedirectHandler` + `_safe_open()`; both fetches refuse redirects. 0 bare `urlopen` left. | f1ad5cd |
-| #67 | **F7** public diagnosis route trusted the spoofable X-Market header | NO migration needed: `diagnostic_sessions.company_id -> companies.market` gives a trusted source. Route now uses `tables_for_market(company_market)`; `Depends(get_tables)` REMOVED from the signature. See DEC-136. | f1ad5cd |
-
-25 regression tests added across the two PRs; **pytest 180 pass**. F8's two
-behavioural tests were red-green verified (fail on unpatched code). F2's file
-fails at COLLECTION on unpatched code (ImportError on the new `_safe_open`), so
-its real proof is the live-loopback test asserting a 302 is NOT followed.
-
-### Audit gap closed
-
-The authenticated `audit/` Playwright harness **PASSED** - first time. But it
-lands on `/onboarding`, not `/dashboard` as the skill doc expects: the Clerk test
-user is un-onboarded, so **new assessment / nameplate OCR / diagnostic walkthrough
-/ estimate builder are STILL unexercised**. Login is proven; the product is not.
-Worth onboarding the audit user so the harness reaches the real flows.
-
-### NEW - Phase 4 promote gate: CHECKPOINT 2 FAILS
-
-**Prod is missing the DEC-135 RLS migration.**
-
-- staging alembic_version = **048**, prod = **047**
-- `048_rls_threshold_tables_and_auto_enable_trigger.py` exists on staging
-- commit `c3eb21c` (DEC-135) is **NOT an ancestor of origin/main**
-
-Any staging->main promote must run migration 048 against prod. Until then prod
-lacks the Tier A threshold-table RLS hardening.
-
-**Documentation gap:** DEC-135 is cited by commit `c3eb21c`, by migration 048 and
-by the `fix/rls-guard-dec135` branch, but **no DEC-135 entry exists in
-DECISIONS.md** (highest present was DEC-134). Someone should write it up.
-
-### F3 re-diagnosed - NOT a code defect
-
-k6 hit `/api/health`, which touches no tables, so the 200-VU p95 failure is
-Railway Hobby-plan CPU, not queries. Upgrading the plan is a spend decision, not
-a fix. BUT the Supabase advisors found real scale problems that WILL bite under
-authenticated load:
-
-- **9 RLS policies re-evaluate `auth.<fn>()` / `current_setting()` per row**
-  (`assessments`, `estimates`, `users`, `properties`, `pricing_rules`,
-  `diagnostic_sessions`, `job_confirmations`, `photo_labels`, `reading_inputs`).
-  Fix is wrapping the call as `(select auth.<fn>())`.
-- 17 unindexed foreign keys; 48 unused indexes.
-
-### Still open
-
-| # | Finding | Status |
-|---|---------|--------|
-| F1 | Live Gemini key in PUBLIC git history | OPEN - Shoab accepted the risk 2026-09-16; key NOT rotated. Cannot be actioned by an agent (needs GCP console). |
-| F3 | 200-VU p95 ceiling | OPEN - capacity decision + the RLS initplan work above |
-| F4 | CI gitleaks is incremental, never rescans history | OPEN - needs a scheduled full-history job |
-| F5 | Local `scopesnapai-web` container crash-looping | OPEN - local dev only |
-
-### Environment notes worth keeping
-
-- `next build` CANNOT be run on Shoab's machine: Turbopack fails to resolve
-  `tailwindcss` under the machine-wide `NODE_ENV=production`. Verified it fails
-  identically on UNPATCHED staging, so it is environmental, not a regression.
-  CI is the only frontend build gate. `npm ci --include=dev` is required locally.
-- `FaultResolutionScreen.tsx` and `diagnostic.py` are **CRLF**, unlike the
-  brain files which are LF. Patch scripts must detect per-file endings.
-- GitHub's "Compare & pull request" banner defaults the base to **main**. On this
-  repo main IS prod. Always open PRs from an explicit `compare/staging...<branch>`
-  URL and confirm the base before clicking create.
 
 ## Playwright e2e CI (`playwright-e2e.yml`) — RED→GREEN + PROMOTED TO PROD — 2026-06-22 (DEC-125)
 

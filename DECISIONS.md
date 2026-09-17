@@ -2683,3 +2683,50 @@ and the `get_company_tables` hardening for authenticated routes.
 `fix/rls-guard-dec135` branch, but has NO entry in this file. It should be
 written up. As of 2026-09-16 that migration is on staging only - prod is still
 at alembic 047.
+
+## DEC-137 - CRON_SECRET is deliberately NOT set on staging; CP3 is CLOSED as accepted
+
+**Date:** 2026-09-18
+**Supersedes the open recommendation in DEC-126.**
+**Context:** the promote gate's CP3 (env-var key parity) has failed on every audit
+run since 2026-06-22, always for the same reason, and has been re-raised to Shoab
+each time. This entry exists to stop that.
+
+**The actual mechanic.** `verify_cron_secret` in `scopesnap-api/api/estimates.py`
+guards the two `/process-followups` handlers and fails OPEN by design when the
+secret is blank:
+
+    expected = (get_settings().cron_secret or "").strip()
+    if not expected:
+        logging.warning("process-followups is UNAUTHENTICATED: set CRON_SECRET ...")
+        return
+    if not x_cron_secret or x_cron_secret != expected:
+        raise HTTPException(401)
+
+- PROD:    `CRON_SECRET` IS set -> the endpoint fails CLOSED, 401 without the
+           header. Verified live (SECURITY_AUDIT_FINDINGS.md L123). Unchanged.
+- STAGING: not set -> the endpoint is unauthenticated.
+
+**Decision (Shoab, 2026-09-18): leave staging as it is. Do not set it, and do not
+raise it again.**
+
+**Why this is acceptable, stated explicitly so it is not re-litigated:**
+- The exposure is confined to staging. Prod - the only environment with real
+  customers and real billing - already fails closed and is not affected.
+- The endpoint's blast radius on staging is follow-up email over staging seed
+  data, not customer data, money movement or deletion.
+- The fail-open branch is intentional backward-compatibility, not an oversight:
+  it exists so the scheduler keeps working before the secret is provisioned.
+- Setting it on staging is a Railway dashboard action with no code change, so it
+  can be done at any time if the calculus changes. Nothing is blocked by it.
+
+**Consequences for the audit:**
+- `snapai-full-audit` Phase 4 CP3 MUST treat a staging-only `CRON_SECRET` gap as
+  PASS-with-note, not FAIL. It is not a promote blocker and never was - it does
+  not gate, and cannot gate, anything on the prod side.
+- If `CRON_SECRET` is ever found MISSING ON PROD, that is a genuine FAIL and must
+  be escalated immediately. This decision covers staging ONLY.
+
+**Not accepted by this entry:** nothing else in the env-var parity checkpoint. Any
+NEW divergence between the two environments is still a finding.
+
