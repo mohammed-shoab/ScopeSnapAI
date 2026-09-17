@@ -1300,3 +1300,85 @@ NOT run this session: `audit/` Playwright harness (authenticated flows), webapp-
 accessibility-a11y-enhanced, GStack qa/review/benchmark, quality-playbook, Phase 4 promote gate
 (needs prod DB + Vercel/Railway env access), Phases 5-6. Cross-market isolation was verified by
 code inspection, not by a live cross-market 404 test.
+
+---
+
+## Archived 2026-09-18 - superseded audit sessions
+
+Moved to stay under the 300-line pre-commit cap (RULE 2). PROJECT_BRAIN.md
+QA History retains the permanent one-line record of each run.
+
+## Session 2026-09-16 (later) - audit findings FIXED on staging
+
+Prod/main untouched throughout. Staging HEAD f1ad5cd.
+
+### Shipped
+
+| PR | Finding | Fix | Staging |
+|----|---------|-----|---------|
+| #66 | **F6** PK market rendered estimates in USD | dropped the hardcoded `fmt()`; all 4 call sites now use the existing market-aware `formatCurrency()` from `lib/market.ts`. 0 hardcoded `currency:"USD"` left. | d2bf691 |
+| #66 | **F8** ambient below lowest `operating_targets` row fell back to a HOT band | when the floor lookup misses, select the COLDEST configured band. Zero-row pairs (US R-32, static by design) keep the fallback dict. | d2bf691 |
+| #67 | **F2** SSRF guard bypassable via HTTP redirect | `_NoRedirectHandler` + `_safe_open()`; both fetches refuse redirects. 0 bare `urlopen` left. | f1ad5cd |
+| #67 | **F7** public diagnosis route trusted the spoofable X-Market header | NO migration needed: `diagnostic_sessions.company_id -> companies.market` gives a trusted source. Route now uses `tables_for_market(company_market)`; `Depends(get_tables)` REMOVED from the signature. See DEC-136. | f1ad5cd |
+
+25 regression tests added across the two PRs; **pytest 180 pass**. F8's two
+behavioural tests were red-green verified (fail on unpatched code). F2's file
+fails at COLLECTION on unpatched code (ImportError on the new `_safe_open`), so
+its real proof is the live-loopback test asserting a 302 is NOT followed.
+
+### Audit gap closed
+
+The authenticated `audit/` Playwright harness **PASSED** - first time. But it
+lands on `/onboarding`, not `/dashboard` as the skill doc expects: the Clerk test
+user is un-onboarded, so **new assessment / nameplate OCR / diagnostic walkthrough
+/ estimate builder are STILL unexercised**. Login is proven; the product is not.
+Worth onboarding the audit user so the harness reaches the real flows.
+
+### NEW - Phase 4 promote gate: CHECKPOINT 2 FAILS
+
+**Prod is missing the DEC-135 RLS migration.**
+
+- staging alembic_version = **048**, prod = **047**
+- `048_rls_threshold_tables_and_auto_enable_trigger.py` exists on staging
+- commit `c3eb21c` (DEC-135) is **NOT an ancestor of origin/main**
+
+Any staging->main promote must run migration 048 against prod. Until then prod
+lacks the Tier A threshold-table RLS hardening.
+
+**Documentation gap:** DEC-135 is cited by commit `c3eb21c`, by migration 048 and
+by the `fix/rls-guard-dec135` branch, but **no DEC-135 entry exists in
+DECISIONS.md** (highest present was DEC-134). Someone should write it up.
+
+### F3 re-diagnosed - NOT a code defect
+
+k6 hit `/api/health`, which touches no tables, so the 200-VU p95 failure is
+Railway Hobby-plan CPU, not queries. Upgrading the plan is a spend decision, not
+a fix. BUT the Supabase advisors found real scale problems that WILL bite under
+authenticated load:
+
+- **9 RLS policies re-evaluate `auth.<fn>()` / `current_setting()` per row**
+  (`assessments`, `estimates`, `users`, `properties`, `pricing_rules`,
+  `diagnostic_sessions`, `job_confirmations`, `photo_labels`, `reading_inputs`).
+  Fix is wrapping the call as `(select auth.<fn>())`.
+- 17 unindexed foreign keys; 48 unused indexes.
+
+### Still open
+
+| # | Finding | Status |
+|---|---------|--------|
+| F1 | Live Gemini key in PUBLIC git history | OPEN - Shoab accepted the risk 2026-09-16; key NOT rotated. Cannot be actioned by an agent (needs GCP console). |
+| F3 | 200-VU p95 ceiling | OPEN - capacity decision + the RLS initplan work above |
+| F4 | CI gitleaks is incremental, never rescans history | OPEN - needs a scheduled full-history job |
+| F5 | Local `scopesnapai-web` container crash-looping | OPEN - local dev only |
+
+### Environment notes worth keeping
+
+- `next build` CANNOT be run on Shoab's machine: Turbopack fails to resolve
+  `tailwindcss` under the machine-wide `NODE_ENV=production`. Verified it fails
+  identically on UNPATCHED staging, so it is environmental, not a regression.
+  CI is the only frontend build gate. `npm ci --include=dev` is required locally.
+- `FaultResolutionScreen.tsx` and `diagnostic.py` are **CRLF**, unlike the
+  brain files which are LF. Patch scripts must detect per-file endings.
+- GitHub's "Compare & pull request" banner defaults the base to **main**. On this
+  repo main IS prod. Always open PRs from an explicit `compare/staging...<branch>`
+  URL and confirm the base before clicking create.
